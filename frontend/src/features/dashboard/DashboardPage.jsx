@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { getDashboardStats } from "./dashboardApi";
+import { getDashboardStats, getChatHistory } from "./dashboardApi";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
@@ -19,6 +19,7 @@ import {
   Activity,
   Clock,
   Star,
+  Bot,
 } from "lucide-react";
 import {
   LineChart,
@@ -38,14 +39,19 @@ import {
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const data = await getDashboardStats();
-        setDashboardData(data);
+        const [dashboardStats, chatData] = await Promise.all([
+          getDashboardStats(),
+          getChatHistory().catch(() => ({ data: { data: [] } })), // Handle if chat API fails
+        ]);
+        setDashboardData(dashboardStats);
+        setChatHistory(chatData.data.data || []);
       } catch (err) {
         console.error("Dashboard Error:", err);
         setError(err.message);
@@ -88,6 +94,7 @@ const DashboardPage = () => {
           ],
           contentCount: 25,
         });
+        setChatHistory([]);
       } finally {
         setLoading(false);
       }
@@ -186,7 +193,6 @@ const DashboardPage = () => {
               </div>
             </div>
           </motion.div>
-
           {/* Stats Cards */}
           <motion.div
             variants={itemVariants}
@@ -249,7 +255,6 @@ const DashboardPage = () => {
               </motion.div>
             ))}
           </motion.div>
-
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Quiz Performance Chart */}
@@ -333,7 +338,6 @@ const DashboardPage = () => {
               </div>
             </motion.div>
           </div>
-
           {/* Quick Actions & Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Quick Actions */}
@@ -443,6 +447,73 @@ const DashboardPage = () => {
               </div>
             </motion.div>
           </div>
+          {/* Chat History Section */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
+                <MessageCircle size={24} />
+                Recent AI Conversations
+              </h3>
+              <button
+                onClick={() => navigate("/chat")}
+                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium transition-colors"
+              >
+                Open Chat →
+              </button>
+            </div>
+            <div className="space-y-4">
+              {chatHistory.slice(0, 5).map((chat, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot className="text-white" size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
+                      You asked:
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                      {chat.message}
+                    </p>
+                    <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
+                      AI Response:
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                      {chat.response}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                      {new Date(chat.createdAt).toLocaleDateString()} •{" "}
+                      {new Date(chat.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </motion.div>
+              )) || (
+                <div className="text-center py-8">
+                  <MessageCircle
+                    className="mx-auto mb-3 text-gray-400"
+                    size={32}
+                  />
+                  <p className="text-gray-500 dark:text-gray-400 mb-2">
+                    No chat history yet
+                  </p>
+                  <button
+                    onClick={() => navigate("/chat")}
+                    className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                  >
+                    Start a conversation →
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>{" "}
         </motion.div>
       </div>
 

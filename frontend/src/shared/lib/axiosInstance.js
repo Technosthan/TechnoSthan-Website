@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
 axiosInstance.interceptors.request.use((config) => {
@@ -13,5 +13,18 @@ axiosInstance.interceptors.request.use((config) => {
 
   return config;
 });
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token is invalid or expired, clear local storage and redirect to login
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  },
+);
 
 export default axiosInstance;

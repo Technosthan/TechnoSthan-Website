@@ -6,6 +6,8 @@ export const getQuizHistory = () => axiosInstance.get("/api/quiz/results");
 
 export const getAllContent = () => axiosInstance.get("/api/content");
 
+export const getChatHistory = () => axiosInstance.get("/api/chat/history");
+
 export const getDashboardStats = async () => {
   const [profile, quizResults, content] = await Promise.all([
     getProfile(),

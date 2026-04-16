@@ -32,7 +32,7 @@ const ContentPage = () => {
     const fetchContents = async () => {
       try {
         const response = await getAllContent();
-        setContents(response.data);
+        setContents(response.data.data);
       } catch (err) {
         console.error("API Error:", err);
         // Mock data for testing

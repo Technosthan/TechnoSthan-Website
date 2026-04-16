@@ -9,11 +9,29 @@ If question is unrelated, politely refuse.
 `;
 
 export const getAIResponse = async (message, history = []) => {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  // Combine system prompt and user message
-  const prompt = systemPrompt + "\nUser: " + message;
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  return response.text();
+    // Start with system prompt
+    let prompt = systemPrompt;
+
+    // Add history if provided
+    if (history.length > 0) {
+      history.forEach((msg) => {
+        prompt += `\n${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
+      });
+    }
+
+    // Add current user message
+    prompt += `\nUser: ${message}`;
+
+    console.log("Prompt:", prompt); // Add logging
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    throw new Error("Failed to get AI response: " + error.message);
+  }
 };

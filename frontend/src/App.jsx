@@ -7,13 +7,14 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import ContentPage from "./features/content/ContentPage";
 import QuizPage from "./features/quiz/QuizPage";
+import ChatPage from "./features/chat/ChatPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 import AdminRoute from "./shared/components/AdminRoute";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import AdminDashboardHome from "./features/admin/AdminDashboardHome";
-import ContentManager from "./features/admin/ContentManager";
-import QuizManager from "./features/admin/QuizManager";
-import UserManager from "./features/admin/UserManager";
+import ContentManagement from "./features/admin/ContentManagement";
+import QuizManagement from "./features/admin/QuizManagement";
+import UserManagement from "./features/admin/UserManagement";
 
 function App() {
   return (
@@ -49,6 +50,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route
@@ -60,9 +69,9 @@ function App() {
             }
           >
             <Route index element={<AdminDashboardHome />} />
-            <Route path="content" element={<ContentManager />} />
-            <Route path="quiz" element={<QuizManager />} />
-            <Route path="users" element={<UserManager />} />
+            <Route path="content" element={<ContentManagement />} />
+            <Route path="quiz" element={<QuizManagement />} />
+            <Route path="users" element={<UserManagement />} />
           </Route>
         </Routes>
       </BrowserRouter>

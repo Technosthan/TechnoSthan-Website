@@ -23,16 +23,20 @@ const QuizPage = () => {
     const fetchQuestions = async () => {
       try {
         const response = await getQuestions();
-        setQuestions(response.data);
+        setQuestions(response.data.data);
         // Initialize answers object
         const initialAnswers = {};
-        response.data.forEach((q) => {
+        response.data.data.forEach((q) => {
           initialAnswers[q._id] = "";
         });
         setAnswers(initialAnswers);
       } catch (err) {
         console.error("Quiz Error:", err);
-        setError("Failed to load quiz questions");
+        const errorMessage =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load quiz questions";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -64,7 +68,7 @@ const QuizPage = () => {
         }),
       );
       const response = await submitQuiz(answersArray);
-      setResults(response.data);
+      setResults(response.data.data);
       setSubmitted(true);
     } catch (err) {
       console.error("Submit Error:", err);

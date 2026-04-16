@@ -18,8 +18,8 @@ const features = [
   },
   {
     icon: "📊",
-    title: "IoT Dashboard",
-    desc: "Monitor real-time farm data and analytics.",
+    title: "My Dashboard",
+    desc: "Monitor your progress and performance.",
   },
 ];
 

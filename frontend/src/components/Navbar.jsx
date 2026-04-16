@@ -97,6 +97,12 @@ const Navbar = () => {
                 >
                   Quiz
                 </Link>
+                <Link
+                  to="/chat"
+                  className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-yellow-400 transition"
+                >
+                  AI Chat
+                </Link>
               </>
             )}
           </>
