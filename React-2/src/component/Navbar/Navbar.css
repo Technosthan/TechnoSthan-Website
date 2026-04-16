@@ -1,0 +1,162 @@
+/* ================= NAVBAR ================= */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  background: rgba(15, 32, 39, 0.85);
+  backdrop-filter: blur(12px);
+
+  height: 90px; /* 🔥 fixed height */
+  padding: 0 40px; /* vertical padding remove */
+  
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+}
+
+/* ================= LOGO ================= */
+.logo {
+  display: flex;
+  align-items: center;
+  height: 100%; /* 🔥 full navbar height */
+}
+
+.logo img {
+  height: 180%; /* 🔥 pura navbar cover kare */
+  width: auto; /* 🔥 proportional width */
+  object-fit: contain; /* 🔥 cut nahi hoga */
+  transition: transform 0.3s ease;
+}
+
+.logo img:hover {
+  transform: scale(1.05);
+}
+
+/* ================= NAV LINKS ================= */
+.nav-links {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+  position: relative;
+  font-size: 0.95rem;
+}
+
+/* underline effect */
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  width: 0%;
+  height: 2px;
+  background: #00c6ff;
+  left: 0;
+  bottom: -5px;
+  transition: 0.3s;
+}
+
+.nav-links a:hover::after {
+  width: 100%;
+}
+
+/* ================= AUTH BUTTONS ================= */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-btn {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.signup-btn {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.signup-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(59,130,246,0.7);
+}
+
+/* ================= MENU ICON ================= */
+.menu-toggle {
+  display: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 768px) {
+
+  .navbar {
+    height: 60px; /* 🔥 slightly smaller on mobile */
+    padding: 0 20px;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+
+  /* NAV DROPDOWN */
+  .nav-links {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+
+    background: rgba(15, 32, 39, 0.95);
+    backdrop-filter: blur(12px);
+
+    flex-direction: column;
+    width: 220px;
+    padding: 20px;
+    display: none;
+
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  }
+
+  .nav-links.active {
+    display: flex;
+  }
+
+  .nav-links a {
+    padding: 8px 0;
+  }
+
+  /* HIDE DESKTOP BUTTONS */
+  .auth-buttons {
+    display: none;
+  }
+
+  /* MOBILE AUTH */
+  .mobile-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  .mobile-auth a {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    background: #00c6ff;
+    color: black;
+    font-weight: 600;
+  }
+}

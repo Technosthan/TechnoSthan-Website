@@ -1,0 +1,41 @@
+.dashboard {
+  min-height: 100vh;
+  background: #0f172a;
+  color: white;
+}
+
+/* Navbar */
+.dashboard-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  background: #1e293b;
+}
+
+.dashboard-navbar button {
+  padding: 6px 12px;
+  background: red;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.user-name {
+  margin-right: 10px;
+}
+
+/* Content */
+.dashboard-content {
+  padding: 30px;
+  display: flex;
+  gap: 20px;
+}
+
+/* Cards */
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 10px;
+  flex: 1;
+}

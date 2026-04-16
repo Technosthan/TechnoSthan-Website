@@ -1,0 +1,225 @@
+/* WebDevelopment.css (Updated for Hospitality Theme) */
+
+:root {
+  --primary-color: #f59e0b; /* Gold (Hospitality feel) */
+  --secondary-color: #ef4444; /* Warm Red */
+  --text-main: #ffffff;
+  --text-muted: #e5e7eb;
+  --bg-dark: #0b1320; /* Deep Navy */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --font-family: 'Inter', system-ui, sans-serif;
+}
+
+.web-dev-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #0b1320, #111827);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  overflow: hidden;
+  padding: 80px 20px;
+}
+
+/* 🔥 UPDATED BACKGROUND (Hospitality Look) */
+.background-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+      to bottom right,
+      rgba(11, 19, 32, 0.95),
+      rgba(245, 158, 11, 0.15)
+    ),
+    url('./path/to/hospitality-bg.jpg'); /* Hotel / restaurant image */
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+
+.web-dev-container {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Header */
+.header-content {
+  text-align: center;
+  max-width: 800px;
+  margin-bottom: 70px;
+}
+
+.sub-title {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+.gradient-text {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  background: linear-gradient(135deg, #fff 20%, var(--primary-color) 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.description {
+  font-size: clamp(1.05rem, 4vw, 1.2rem);
+  color: #d1d5db; /* Darker premium color */
+  line-height: 1.6;
+  margin-top: 20px;
+  margin-bottom: 10px; /* 10px gap from bottom */
+}
+
+/* Grid */
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  width: 100%;
+  grid-auto-rows: minmax(auto, 1fr);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 🔥 CARD DESIGN UPGRADE */
+.tech-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: all 0.35s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glow Effect */
+.tech-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(245, 158, 11, 0.2),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tech-card:hover::before {
+  opacity: 1;
+}
+
+/* Hover */
+.tech-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Icon */
+.icon-wrapper {
+  color: var(--primary-color);
+  background: rgba(245, 158, 11, 0.15);
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  transition: 0.3s;
+}
+
+.tech-card:hover .icon-wrapper {
+  transform: rotate(5deg) scale(1.1);
+}
+
+/* Text */
+.tech-card h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.tech-card p {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .web-dev-section {
+    padding: 60px 15px;
+  }
+
+  .header-content {
+    margin-bottom: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .sub-title {
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+  }
+
+  .gradient-text {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    line-height: 1.2;
+  }
+
+  .description {
+    font-size: 1rem;
+    margin-top: 20px;
+    margin-bottom: 10px; /* Consistent 10px bottom gap */
+    line-height: 1.6;
+    display: block;
+    width: 100%;
+  }
+
+  .tech-card {
+    padding: 30px;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .web-dev-section {
+    padding: 50px 15px;
+  }
+
+  .header-content {
+    margin-bottom: 40px;
+  }
+
+  .gradient-text {
+    font-size: 1.5rem;
+  }
+
+  .description {
+    font-size: 0.95rem;
+    padding: 0 10px;
+    margin-bottom: 10px; /* Consistent 10px bottom gap */
+  }
+}
