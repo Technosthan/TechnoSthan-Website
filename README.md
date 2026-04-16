@@ -1,1 +1,0 @@
-# Technosthan-1
