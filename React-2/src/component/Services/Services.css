@@ -1,0 +1,212 @@
+.services-page {
+  min-height: 100vh;
+  background-color: #020617;
+  color: #ffffff;
+  padding: 100px 20px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Background Glow */
+.bg-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent 70%);
+  z-index: 0;
+}
+
+/* HEADER */
+.services-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+.badge {
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.services-header h1 {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 800;
+  margin: 20px 0;
+  background: linear-gradient(to bottom, #fff, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.services-header p {
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* GRID */
+.services-grid {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+/* ========================= */
+/* 🔥 FINAL CARD */
+/* ========================= */
+.service-card {
+  position: relative;
+  height: 280px;
+  border-radius: 24px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s ease;
+}
+
+/* 🔥 IMAGE LAYER (NEW) */
+.card-bg {
+  position: absolute;
+  inset: 0;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  filter: brightness(0.8) contrast(1.1);
+  transform: scale(1.05);
+
+  transition: transform 0.6s ease;
+  z-index: 0;
+}
+
+/* ZOOM */
+.service-card:hover .card-bg {
+  transform: scale(1.1);
+}
+
+/* 🔥 OVERLAY (CLEAN FIX) */
+.overlay {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(2, 6, 23, 0.85);
+
+  backdrop-filter: blur(3px);
+  transition: 0.3s ease;
+  z-index: 1;
+}
+
+/* HOVER */
+.service-card:hover .overlay {
+  background: rgba(2, 6, 23, 0.55);
+}
+
+/* CONTENT */
+.service-card .content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* TOP */
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* ICON */
+.icon-box {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.3s;
+}
+
+.service-card:hover .icon-box {
+  transform: scale(1.1);
+}
+
+/* ARROW */
+.arrow-icon {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: 0.3s;
+}
+
+.service-card:hover .arrow-icon {
+  opacity: 1;
+  transform: translateX(0);
+  color: #fff;
+}
+
+/* TEXT */
+.card-body h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.card-body p {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+/* FOOTER */
+.card-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 0;
+  transition: 0.4s;
+  z-index: 2;
+}
+
+.service-card:hover .card-footer {
+  width: 100%;
+}
+
+/* HOVER */
+.service-card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+/* SHADOW */
+.service-card:nth-child(1):hover {
+  box-shadow: 0 10px 30px rgba(255, 170, 120, 0.25);
+}
+.service-card:nth-child(2):hover {
+  box-shadow: 0 10px 30px rgba(0, 200, 255, 0.25);
+}
+.service-card:nth-child(3):hover {
+  box-shadow: 0 10px 30px rgba(120, 255, 160, 0.25);
+}
+.service-card:nth-child(4):hover {
+  box-shadow: 0 10px 30px rgba(150, 150, 255, 0.25);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .services-page {
+    padding: 60px 15px;
+  }
+}

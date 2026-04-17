@@ -1,0 +1,377 @@
+/* ==========================================
+   Grid Layout Utilities - Row & Column Based
+   =========================================== */
+
+/* ========== BASIC ROW LAYOUTS ========== */
+
+/* Full-width row container */
+.grid-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.grid-row.gap-small {
+  gap: 10px;
+}
+
+.grid-row.gap-medium {
+  gap: 20px;
+}
+
+.grid-row.gap-large {
+  gap: 30px;
+}
+
+.grid-row.gap-xl {
+  gap: 40px;
+}
+
+/* ========== COLUMN LAYOUTS ========== */
+
+/* Two-column layout */
+.grid-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+/* Three-column layout */
+.grid-cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* Four-column layout */
+.grid-cols-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+/* Six-column layout */
+.grid-cols-6 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 20px;
+}
+
+/* ========== RESPONSIVE GRID LAYOUTS ========== */
+
+/* Auto-fit responsive grid - cards adjust based on screen size */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.grid-auto-fit.min-280 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-auto-fit.min-300 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid-auto-fit.min-320 {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+/* Auto-fill responsive grid - maintains minimum size */
+.grid-auto-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+/* ========== ROW HEIGHT MANAGEMENT ========== */
+
+/* Equal minimum height rows */
+.grid-auto-rows-equal {
+  display: grid;
+  grid-auto-rows: minmax(auto, 1fr);
+}
+
+/* Fixed row height */
+.grid-auto-rows-200 {
+  display: grid;
+  grid-auto-rows: 200px;
+}
+
+.grid-auto-rows-250 {
+  display: grid;
+  grid-auto-rows: 250px;
+}
+
+.grid-auto-rows-300 {
+  display: grid;
+  grid-auto-rows: 300px;
+}
+
+/* ========== COMBINED RESPONSIVE + ROW HEIGHT ========== */
+
+/* Responsive 2-column with equal heights */
+.grid-responsive-2-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 20px;
+}
+
+/* Responsive 3-column with equal heights */
+.grid-responsive-3-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 20px;
+}
+
+/* Responsive 4-column with equal heights */
+.grid-responsive-4-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 20px;
+}
+
+/* ========== CONTAINER CENTERING ========== */
+
+.grid-centered {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.grid-centered.max-1100 {
+  max-width: 1100px;
+}
+
+.grid-centered.max-1000 {
+  max-width: 1000px;
+}
+
+.grid-centered.max-900 {
+  max-width: 900px;
+}
+
+/* ========== FLEX LAYOUTS (ALTERNATIVE TO GRID) ========== */
+
+/* Flexbox row */
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Flexbox column */
+.flex-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Equal width flex items */
+.flex-equal > * {
+  flex: 1;
+}
+
+/* ========== GRID SPAN UTILITIES ========== */
+
+/* Span utilities for grid items */
+.col-span-1 {
+  grid-column: span 1;
+}
+
+.col-span-2 {
+  grid-column: span 2;
+}
+
+.col-span-3 {
+  grid-column: span 3;
+}
+
+.col-span-4 {
+  grid-column: span 4;
+}
+
+.row-span-1 {
+  grid-row: span 1;
+}
+
+.row-span-2 {
+  grid-row: span 2;
+}
+
+.row-span-3 {
+  grid-row: span 3;
+}
+
+/* ========== RESPONSIVE MEDIA QUERIES ========== */
+
+/* Tablets (768px and below) */
+@media (max-width: 768px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .grid-auto-fit.min-280,
+  .grid-auto-fit.min-300,
+  .grid-auto-fit.min-320 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .grid-responsive-3-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-responsive-4-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .col-span-2,
+  .col-span-3,
+  .col-span-4 {
+    grid-column: span 1;
+  }
+}
+
+/* Mobile (600px and below) */
+@media (max-width: 600px) {
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-6 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-auto-fit,
+  .grid-auto-fit.min-280,
+  .grid-auto-fit.min-300,
+  .grid-auto-fit.min-320,
+  .grid-auto-fill {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-responsive-2-col,
+  .grid-responsive-3-col,
+  .grid-responsive-4-col {
+    grid-template-columns: 1fr;
+  }
+
+  .flex-row {
+    flex-direction: column;
+  }
+
+  .col-span-1,
+  .col-span-2,
+  .col-span-3,
+  .col-span-4 {
+    grid-column: span 1;
+  }
+}
+
+/* ========== COMMON LAYOUT PATTERNS ========== */
+
+/* Card grid layout - commonly used */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 25px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Service cards */
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 25px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Product showcase */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 20px;
+}
+
+/* Team members */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Feature grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-auto-rows: minmax(auto, 1fr);
+  gap: 30px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* ========== UTILITY CLASSES ========== */
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.p-20 {
+  padding: 20px;
+}
+
+.p-30 {
+  padding: 30px;
+}
+
+.p-40 {
+  padding: 40px;
+}
+
+.m-auto {
+  margin: auto;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-0 {
+  gap: 0;
+}

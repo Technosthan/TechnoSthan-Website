@@ -1,0 +1,141 @@
+.auth-page {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at top, #1e293b, #020617);
+}
+
+/* BOX */
+.auth-box {
+  width: 380px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(15px);
+  padding: 40px;
+  border-radius: 15px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+/* TITLE */
+.auth-box h1 {
+  color: white;
+  margin-bottom: 10px;
+  font-size: 1.8rem;
+}
+
+/* TEXT */
+.auth-box p {
+  color: #cbd5f5;
+  margin-bottom: 20px;
+}
+
+/* INPUT */
+.auth-box input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  outline: none;
+  background: rgba(255,255,255,0.05);
+  color: white;
+  transition: 0.3s;
+}
+
+/* INPUT FOCUS 🔥 */
+.auth-box input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 10px rgba(99,102,241,0.4);
+}
+
+/* BUTTON */
+.auth-box button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* BUTTON HOVER */
+.auth-box button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(168,85,247,0.5);
+}
+
+/* GOOGLE */
+.google-btn {
+  background: white;
+  color: #111;
+  font-weight: 500;
+}
+
+.google-btn:hover {
+  transform: scale(1.03);
+}
+
+.google-btn:disabled {
+  background: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ERROR BOX 🔥 */
+.error-box {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.error-box p {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* SIGNUP SUGGESTION LINK */
+.signup-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: #00c6ff;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.signup-link:hover {
+  text-decoration: underline;
+}
+
+/* LINK */
+.switch-link {
+  margin-top: 15px;
+  color: #cbd5f5;
+}
+
+.switch-link a {
+  color: #00c6ff;
+  text-decoration: none;
+}
+
+.switch-link a:hover {
+  text-decoration: underline;
+}
+
+/* RESPONSIVE */
+@media (max-width: 500px) {
+  .auth-box {
+    width: 90%;
+    padding: 25px;
+  }
+}
