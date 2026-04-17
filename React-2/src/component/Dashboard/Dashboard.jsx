@@ -6,6 +6,7 @@ function Dashboard() {
   const [data, setData] = useState(null);
   const [user, setUser] = useState(() => {
     // Initialize user from localStorage
+    
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
