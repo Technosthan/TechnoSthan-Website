@@ -22,10 +22,10 @@ const ContentPage = () => {
   // Icons for topics
   const getTopicIcon = (title) => {
     if (title.toLowerCase().includes("smart farming"))
-      return <Sprout className="text-green-500" size={24} />;
+      return <Sprout className="text-gray-500" size={24} />;
     if (title.toLowerCase().includes("soil"))
       return <Droplets className="text-blue-500" size={24} />;
-    return <Zap className="text-yellow-500" size={24} />;
+    return <Zap className="text-gray-500" size={24} />;
   };
 
   useEffect(() => {
@@ -192,8 +192,8 @@ const ContentPage = () => {
                   onClick={() => setSelectedContent(content)}
                   className={`bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg cursor-pointer transition-all hover:scale-105 hover:shadow-xl border-l-4 ${
                     selectedContent?.title === content.title
-                      ? "border-green-500 ring-2 ring-green-500"
-                      : "border-transparent hover:border-green-300"
+                      ? "border-gray-400 ring-2 ring-gray-400"
+                      : "border-transparent hover:border-gray-300"
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -260,7 +260,7 @@ const ContentPage = () => {
                       transition={{ delay: 0.1 * idx }}
                       className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 rounded-lg"
                     >
-                      <h3 className="text-xl font-semibold mb-2 text-yellow-600 dark:text-yellow-400 flex items-center">
+                      <h3 className="text-xl font-semibold mb-2 text-gray-600 dark:text-gray-400 flex items-center">
                         <Zap className="mr-2" size={18} />
                         {subtopic.heading}
                       </h3>

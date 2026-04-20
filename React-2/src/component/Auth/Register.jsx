@@ -8,8 +8,9 @@ const Register = () => {
 
   const [form, setForm] = useState({
     name: "",
-    identifier: "", // 🔥 email OR phone
-    password: ""
+    identifier: "",
+    password: "",
+    adminCode: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -55,12 +56,20 @@ const Register = () => {
       setLoading(true);
       setError("");
 
-      await axios.post(
+      // Convert identifier to email format for backend
+      const registerData = {
+        name: form.name,
+        email: form.identifier,
+        password: form.password,
+        adminCode: form.adminCode || ""
+      };
+
+      const res = await axios.post(
         "http://localhost:5000/api/auth/register",
-        form
+        registerData
       );
 
-      alert("Registration successful! Please login.");
+      alert(res.data.message + (res.data.role === "admin" ? " 🎉" : ""));
       navigate("/login");
 
     } catch (err) {
@@ -115,6 +124,15 @@ const Register = () => {
             placeholder="Password"
             required
             value={form.password}
+            onChange={handleChange}
+          />
+
+          {/* Admin Code - Optional */}
+          <input
+            type="password"
+            name="adminCode"
+            placeholder="Admin Code (optional)"
+            value={form.adminCode}
             onChange={handleChange}
           />
 

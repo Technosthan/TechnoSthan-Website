@@ -4,49 +4,52 @@
   justify-content: space-between;
   align-items: center;
 
-  background: rgba(15, 32, 39, 0.85);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 32, 39, 0.75);
+  backdrop-filter: blur(14px);
 
-  height: 90px; /* 🔥 fixed height */
-  padding: 0 40px; /* vertical padding remove */
-  
+  height: 80px;
+  padding: 0 40px;
+
   position: sticky;
   top: 0;
   z-index: 1000;
   width: 100%;
+
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 /* ================= LOGO ================= */
 .logo {
   display: flex;
   align-items: center;
-  height: 100%; /* 🔥 full navbar height */
+  gap: 10px;
 }
 
 .logo img {
-  height: 180%; /* 🔥 pura navbar cover kare */
-  width: auto; /* 🔥 proportional width */
-  object-fit: contain; /* 🔥 cut nahi hoga */
-  transition: transform 0.3s ease;
+  height: 55px; /* 🔥 FIXED (overflow हटाया) */
+  width: auto;
+  object-fit: contain;
+  transition: 0.3s;
 }
 
 .logo img:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 /* ================= NAV LINKS ================= */
 .nav-links {
   display: flex;
-  gap: 30px;
+  gap: 25px;
   align-items: center;
 }
 
 .nav-links a {
   text-decoration: none;
-  color: white;
+  color: #e2e8f0;
   font-weight: 500;
   position: relative;
   font-size: 0.95rem;
+  transition: 0.3s;
 }
 
 /* underline effect */
@@ -55,14 +58,37 @@
   position: absolute;
   width: 0%;
   height: 2px;
-  background: #00c6ff;
+  background: linear-gradient(90deg, #00c6ff, #6366f1);
   left: 0;
   bottom: -5px;
   transition: 0.3s;
 }
 
+.nav-links a:hover {
+  color: #00c6ff;
+}
+
 .nav-links a:hover::after {
   width: 100%;
+}
+
+/* ACTIVE LINK */
+.nav-links a.active {
+  color: #00c6ff;
+  font-weight: 600;
+}
+
+/* ================= ADMIN ================= */
+.admin-link {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  color: white;
+}
+
+.admin-link:hover {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
 }
 
 /* ================= AUTH BUTTONS ================= */
@@ -73,9 +99,14 @@
 }
 
 .login-btn {
-  color: white;
+  color: #e2e8f0;
   text-decoration: none;
   font-weight: 500;
+  transition: 0.3s;
+}
+
+.login-btn:hover {
+  color: #00c6ff;
 }
 
 .signup-btn {
@@ -98,13 +129,14 @@
   display: none;
   font-size: 1.8rem;
   cursor: pointer;
+  color: white;
 }
 
 /* ================= MOBILE ================= */
 @media (max-width: 768px) {
 
   .navbar {
-    height: 60px; /* 🔥 slightly smaller on mobile */
+    height: 60px;
     padding: 0 20px;
   }
 
@@ -128,6 +160,8 @@
 
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+
+    animation: fadeIn 0.3s ease;
   }
 
   .nav-links.active {
@@ -135,12 +169,8 @@
   }
 
   .nav-links a {
-    padding: 8px 0;
-  }
-
-  /* HIDE DESKTOP BUTTONS */
-  .auth-buttons {
-    display: none;
+    padding: 10px 0;
+    text-align: center;
   }
 
   /* MOBILE AUTH */
@@ -155,8 +185,25 @@
     text-align: center;
     padding: 10px;
     border-radius: 8px;
-    background: #00c6ff;
-    color: black;
+    background: linear-gradient(135deg, #00c6ff, #6366f1);
+    color: white;
     font-weight: 600;
+  }
+
+  /* HIDE DESKTOP BUTTONS */
+  .auth-buttons {
+    display: none;
+  }
+}
+
+/* 🔥 ANIMATION */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

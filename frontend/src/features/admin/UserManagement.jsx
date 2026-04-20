@@ -72,7 +72,7 @@ const UserManagement = () => {
   const getRoleIcon = (role) => {
     switch (role) {
       case "admin":
-        return <Crown className="h-5 w-5 text-yellow-600" />;
+        return <Crown className="h-5 w-5 text-gray-600" />;
       case "student":
         return <GraduationCap className="h-5 w-5 text-blue-600" />;
       default:
@@ -83,7 +83,7 @@ const UserManagement = () => {
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case "admin":
-        return "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200";
+        return "bg-gradient-to-r from-gray-100 to-gray-100 text-gray-800 border-gray-200";
       case "student":
         return "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border-blue-200";
       default:
@@ -161,7 +161,7 @@ const UserManagement = () => {
       </div>
 
       {error && (
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <div className="p-2 bg-red-100 rounded-lg mr-3">
               <X className="h-5 w-5 text-red-600" />
@@ -202,9 +202,9 @@ const UserManagement = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl shadow-lg p-6 border border-green-100">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl shadow-lg p-6 border border-gray-100">
           <div className="flex items-center">
-            <div className="p-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-gray-500 to-gray-600">
               <GraduationCap className="h-7 w-7 text-white" />
             </div>
             <div className="ml-4">

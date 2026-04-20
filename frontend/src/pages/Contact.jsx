@@ -3,10 +3,10 @@ import Footer from "../components/Footer";
 
 const Contact = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 transition-colors duration-500">
       <Navbar />
       <div className="px-6 md:px-16 py-20 max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text text-center">
+        <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text text-center">
           Contact Us
         </h1>
         <p className="text-gray-700 dark:text-gray-200 text-lg leading-relaxed text-center">

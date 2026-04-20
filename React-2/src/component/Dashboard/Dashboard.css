@@ -1,41 +1,124 @@
 .dashboard {
   min-height: 100vh;
-  background: #0f172a;
+  background: radial-gradient(circle at top, #1e293b, #020617);
   color: white;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Navbar */
+/* 🔥 NAVBAR */
 .dashboard-navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 30px;
-  background: #1e293b;
+  padding: 18px 30px;
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-.dashboard-navbar button {
-  padding: 6px 12px;
-  background: red;
-  color: white;
-  border: none;
-  cursor: pointer;
+/* RIGHT SIDE */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .user-name {
-  margin-right: 10px;
+  font-weight: 500;
+  color: #cbd5f5;
 }
 
-/* Content */
+/* LOGOUT BUTTON */
+.dashboard-navbar button {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.dashboard-navbar button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(239,68,68,0.6);
+}
+
+/* 🔥 CONTENT */
 .dashboard-content {
   padding: 30px;
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
 }
 
-/* Cards */
+/* 🔥 CARD */
 .card {
-  background: #1e293b;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 12px;
   flex: 1;
+  min-width: 280px;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+/* 🔥 TABLE */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px;
+  text-align: center;
+}
+
+.data-table th {
+  background: rgba(255,255,255,0.1);
+  color: #cbd5f5;
+}
+
+.data-table tr:nth-child(even) {
+  background: rgba(255,255,255,0.03);
+}
+
+.data-table tr:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* 🔥 DELETE BUTTON */
+.delete-btn {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.delete-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(239,68,68,0.6);
+}
+
+/* 🔥 RESPONSIVE */
+@media (max-width: 768px) {
+  .dashboard-content {
+    flex-direction: column;
+  }
+
+  .dashboard-navbar {
+    flex-direction: column;
+    gap: 10px;
+  }
 }

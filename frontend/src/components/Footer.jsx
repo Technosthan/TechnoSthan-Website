@@ -7,7 +7,7 @@ const Footer = () => {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text mb-4">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text mb-4">
               TECHNOSTHAN AGRITECH
             </h3>
             <p className="text-sm">
@@ -20,24 +20,24 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/" className="hover:text-green-400 transition">
+                <Link to="/" className="hover:text-gray-400 transition">
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-green-400 transition">
+                <Link to="/about" className="hover:text-gray-400 transition">
                   About
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-green-400 transition">
+                <Link to="/contact" className="hover:text-gray-400 transition">
                   Contact
                 </Link>
               </li>
               <li>
                 <Link
                   to="/dashboard"
-                  className="hover:text-green-400 transition"
+                  className="hover:text-gray-400 transition"
                 >
                   Dashboard
                 </Link>
@@ -75,11 +75,11 @@ const Footer = () => {
           <p className="mt-2">
             <Link
               to="/privacy"
-              className="hover:text-green-400 transition mr-4"
+              className="hover:text-gray-400 transition mr-4"
             >
               Privacy Policy
             </Link>
-            <Link to="/terms" className="hover:text-green-400 transition">
+            <Link to="/terms" className="hover:text-gray-400 transition">
               Terms of Service
             </Link>
           </p>

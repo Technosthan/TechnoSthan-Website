@@ -1,38 +1,85 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Navbar.css";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import logo from "../../assets/logo.png";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.role === "admin") {
+      setIsAdmin(true);
+    }
+  }, []);
+
+  // 🔥 active link helper
+  const isActive = (path) => location.pathname === path;
+
+  // 🔥 mobile menu close
+  const handleClick = () => {
+    setMenuOpen(false);
+  };
 
   return (
     <nav className="navbar">
 
-      {/* LOGO */}
-      <div className="logo">
+      {/* LOGO (clickable) */}
+      <Link to="/" className="logo">
         <img src={logo} alt="TechnoSthan Logo" />
-      </div>
+      </Link>
 
-      {/* MENU ICON (mobile only) */}
-      <div className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
+      {/* MENU ICON */}
+      <div
+        className="menu-toggle"
+        onClick={() => setMenuOpen(!menuOpen)}
+      >
         ☰
       </div>
 
       {/* NAV LINKS */}
       <div className={`nav-links ${menuOpen ? "active" : ""}`}>
-        <Link to="/">Home</Link>
-        <Link to="/about">About</Link>
-        <Link to="/services">Our Verticals</Link>
-        <Link to="/contact">Contact</Link>
 
-      
+        <Link to="/" onClick={handleClick} className={isActive("/") ? "active" : ""}>
+          Home
+        </Link>
+
+        <Link to="/about" onClick={handleClick} className={isActive("/about") ? "active" : ""}>
+          About
+        </Link>
+
+        <Link to="/services" onClick={handleClick}>
+          Our Verticals
+        </Link>
+
+        <Link to="/contact" onClick={handleClick} className={isActive("/contact") ? "active" : ""}>
+          Contact
+        </Link>
+
+        {/* 🔥 ADD THIS (IMPORTANT) */}
+        {/* <Link to="/search" onClick={handleClick} className={isActive("/search") ? "active" : ""}>
+          🔍 Search
+        </Link> */}
+
+        {isAdmin && (
+          <Link to="/admin" className="admin-link" onClick={handleClick}>
+            ⚡ Admin
+          </Link>
+        )}
+
+        {/* MOBILE LOGIN */}
+        {/* <div className="mobile-auth">
+          <Link to="/login" onClick={handleClick}>Login</Link>
+        </div> */}
+
       </div>
 
-      {/* DESKTOP BUTTONS */}
+      {/* DESKTOP BUTTON */}
       <div className="auth-buttons">
         <Link to="/login" className="login-btn">Login</Link>
-        {/* <Link to="/register" className="signup-btn">Sign up</Link> */}
       </div>
 
     </nav>

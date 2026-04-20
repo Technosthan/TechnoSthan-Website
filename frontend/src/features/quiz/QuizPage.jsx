@@ -131,12 +131,12 @@ const QuizPage = () => {
             transition={{ delay: 0.2 }}
             className="text-center mb-8"
           >
-            <Trophy className="mx-auto mb-4 text-yellow-500" size={64} />
+            <Trophy className="mx-auto mb-4 text-gray-500" size={64} />
             <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400">
               Quiz Results
             </h1>
             <div className="mt-6">
-              <div className="text-6xl font-bold text-green-600 dark:text-green-400 mb-2">
+              <div className="text-6xl font-bold text-gray-600 dark:text-gray-400 mb-2">
                 {percentage}%
               </div>
               <p className="text-xl">
@@ -170,18 +170,18 @@ const QuizPage = () => {
                       transition={{ delay: 0.1 * idx }}
                       className={`p-4 rounded-lg border-l-4 ${
                         isCorrect
-                          ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                          : "border-red-500 bg-red-50 dark:bg-red-900/20"
+                          ? "border-gray-400 bg-gray-50 dark:bg-gray-800/20"
+                          : "border-gray-400 bg-gray-50 dark:bg-gray-800/20"
                       }`}
                     >
                       <div className="flex items-center mb-2">
                         {isCorrect ? (
                           <CheckCircle
-                            className="text-green-500 mr-2"
+                            className="text-gray-500 mr-2"
                             size={20}
                           />
                         ) : (
-                          <XCircle className="text-red-500 mr-2" size={20} />
+                          <XCircle className="text-gray-400 mr-2" size={20} />
                         )}
                         <h3 className="font-semibold">{question.question}</h3>
                       </div>
@@ -192,7 +192,7 @@ const QuizPage = () => {
                       {!isCorrect && (
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           Correct answer:{" "}
-                          <span className="font-medium text-green-600">
+                          <span className="font-medium text-gray-600">
                             {answer.correct}
                           </span>
                         </p>

@@ -25,11 +25,11 @@ const features = [
 
 const FeatureCard = ({ icon, title, desc }) => (
   <motion.div
-    whileHover={{ scale: 1.07, boxShadow: "0 8px 32px 0 rgba(34,197,94,0.15)" }}
+    whileHover={{ scale: 1.07, boxShadow: "0 8px 32px 0 rgba(128,128,128,0.15)" }}
     className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg text-center transition"
   >
     <div className="text-4xl mb-2">{icon}</div>
-    <h3 className="font-semibold text-lg text-green-700 dark:text-yellow-300">
+    <h3 className="font-semibold text-lg text-gray-700 dark:text-gray-300">
       {title}
     </h3>
     <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{desc}</p>
@@ -45,9 +45,9 @@ const FeaturesSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="py-20 px-6 md:px-16 bg-gradient-to-r from-green-50 to-yellow-50 dark:from-green-900 dark:to-yellow-900"
+        className="py-20 px-6 md:px-16 bg-gradient-to-r from-gray-50 to-gray-50 dark:from-gray-900 dark:to-gray-900"
       >
-        <h2 className="text-3xl font-bold text-center mb-12 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+        <h2 className="text-3xl font-bold text-center mb-12 bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text">
           What You Can Do
         </h2>
         <motion.div
@@ -78,7 +78,7 @@ const FeaturesSection = () => {
         viewport={{ once: true }}
         className="py-20 px-6 md:px-16 text-center"
       >
-        <h2 className="text-3xl font-bold mb-12 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+        <h2 className="text-3xl font-bold mb-12 bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text">
           How It Works ⚡
         </h2>
         <div className="grid md:grid-cols-5 gap-6 text-lg font-medium text-gray-700 dark:text-gray-200">
@@ -104,7 +104,7 @@ const FeaturesSection = () => {
           alt="Farm Tech"
         />
         <div>
-          <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+          <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text">
             AI + IoT for Smart Farming
           </h2>
           <p className="text-gray-700 dark:text-gray-200">

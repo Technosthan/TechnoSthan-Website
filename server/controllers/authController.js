@@ -2,10 +2,13 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+// Secret admin code - change this to whatever you want
+const ADMIN_SECRET_CODE = "technosthanadmin2026";
+
 // REGISTER
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, adminCode } = req.body;
 
     // Input validation
     if (!name || !email || !password) {
@@ -26,15 +29,22 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12); // Increased rounds
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Check if admin code is correct
+    const role = (adminCode === ADMIN_SECRET_CODE) ? "admin" : "user";
 
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      password: hashedPassword
+      password: hashedPassword,
+      role: role
     });
 
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({ 
+      message: role === "admin" ? "Admin registered successfully!" : "User registered successfully",
+      role: role
+    });
 
   } catch (err) {
     console.error("Registration error:", err);

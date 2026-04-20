@@ -10,7 +10,7 @@ const ContactSection = () => {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8 }}
       viewport={{ once: true }}
-      className="bg-gradient-to-r from-green-500 to-yellow-400 text-white text-center py-20"
+      className="bg-gradient-to-r from-gray-500 to-gray-400 text-white text-center py-20"
     >
       <h2 className="text-3xl font-bold mb-4 drop-shadow-lg">
         Start Your Smart Farming Journey 🌱
@@ -19,7 +19,7 @@ const ContactSection = () => {
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.96 }}
         onClick={() => navigate("/register")}
-        className="bg-white text-green-700 font-bold px-8 py-4 rounded-2xl shadow-xl text-lg"
+        className="bg-white text-gray-700 font-bold px-8 py-4 rounded-2xl shadow-xl text-lg"
       >
         Join Now 
       </motion.button>

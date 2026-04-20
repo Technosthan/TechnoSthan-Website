@@ -11,7 +11,7 @@ const HeroSection = () => {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
       >
-        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text drop-shadow-lg">
+        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text drop-shadow-lg">
           Smart Agriculture for India 🇮🇳
         </h1>
         <p className="text-gray-700 dark:text-gray-200 mb-8 text-lg">
@@ -22,7 +22,7 @@ const HeroSection = () => {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate("/register")}
-          className="bg-gradient-to-r from-green-500 to-yellow-400 hover:scale-105 transition transform text-white px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold"
+          className="bg-gradient-to-r from-gray-500 to-gray-400 hover:scale-105 transition transform text-white px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold"
         >
           Get Started
         </motion.button>

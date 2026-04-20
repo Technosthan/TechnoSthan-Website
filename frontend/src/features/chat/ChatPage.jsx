@@ -170,7 +170,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 transition-colors duration-500">
       <Navbar />
 
       <div className="container mx-auto px-6 py-8">
@@ -238,7 +238,7 @@ const ChatPage = () => {
                   <div
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                       message.sender === "user"
-                        ? "bg-gradient-to-r from-green-400 to-blue-500 text-white"
+                        ? "bg-gradient-to-r from-gray-400 to-gray-500 text-white"
                         : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white"
                     }`}
                   >
@@ -246,7 +246,7 @@ const ChatPage = () => {
                     <p
                       className={`text-xs mt-1 ${
                         message.sender === "user"
-                          ? "text-green-100"
+                          ? "text-gray-200"
                           : "text-gray-500 dark:text-gray-400"
                       }`}
                     >
@@ -286,7 +286,7 @@ const ChatPage = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3"
+                  className="bg-gray-50 dark:bg-gray-800/20 border border-gray-200 dark:border-gray-700 rounded-lg p-3"
                 >
                   <p className="text-sm text-red-600 dark:text-red-400">
                     {error}

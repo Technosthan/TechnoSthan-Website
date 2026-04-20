@@ -1,7 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import { HelmetProvider } from "react-helmet-async"; // ✅ ADD THIS
+import { HelmetProvider } from "react-helmet-async";
 
+/* COMPONENTS */
 import AboutPage from "./component/About/AboutPage";
 import Navbar from "./component/Navbar/Navbar";
 import Footer from "./component/Footer/Footer";
@@ -17,20 +18,25 @@ import Login from "./component/Auth/Login";
 import Register from "./component/Auth/Register";
 import ScrollToTop from "./component/ScrollToTop";
 
+/* DASHBOARDS */
+import Dashboard from "./component/Dashboard/Dashboard";
+import AdminDashboard from "./component/AdminDashboard/AdminDashboard";
+
+/* PROTECTED */
 import ProtectedRoute from "./component/Protected/ProtectedRoute";
 import AdminRoute from "./component/Protected/AdminRoute";
-import Home from "./component/Home/Home";
 
-// Dummy dashboards
-const Dashboard = () => <h1 style={{ color: "white" }}>User Dashboard</h1>;
-const AdminDashboard = () => <h1 style={{ color: "white" }}>Admin Dashboard</h1>;
+/* PAGES */
+ import Home from "./component/Home/Home";
+import SocialForm from "./component/SocialForm/SocialForm";
+import ExplorePage from "./Tab/ExplorePage";
 
 
-// Wrapper
+/* WRAPPER */
 function AppWrapper() {
   return (
     <Router>
-      <HelmetProvider> {/* ✅ SEO WRAPPER */}
+      <HelmetProvider>
         <ScrollToTop />
         <App />
       </HelmetProvider>
@@ -39,7 +45,7 @@ function AppWrapper() {
 }
 
 
-// MAIN APP
+/* MAIN APP */
 function App() {
 
   const location = useLocation();
@@ -55,28 +61,31 @@ function App() {
 
       <Routes>
 
-        {/* ✅ HOME */}
+        {/* HOME */}
         <Route path="/" element={<Home />} />
 
-        {/* About */}
+        {/* ABOUT */}
         <Route path="/about" element={<AboutPage />} />
 
-        {/* Services */}
+        {/* SERVICES */}
         <Route path="/services" element={<Services />} />
         <Route path="/services/technosthan-hospitality" element={<TechnoSthanHospitality />} />
         <Route path="/services/technosthan-innovations-hub" element={<TechnoSthanInnovationsHub />} />
         <Route path="/services/technosthan-agritech" element={<TechnoSthanAgritech />} />
         <Route path="/services/technosthan-it-services" element={<TechnoSthanITServices />} />
 
-        {/* Other Pages */}
+        {/* OTHER */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/solution" element={<Solution />} />
 
-        {/* Auth */}
+        {/* AUTH */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Protected */}
+        {/* SOCIAL FORM */}
+        <Route path="/social" element={<SocialForm />} />
+
+        {/* USER DASHBOARD */}
         <Route
           path="/dashboard"
           element={
@@ -86,6 +95,11 @@ function App() {
           }
         />
 
+        {/* explore page  */}
+                <Route path="/explore" element={<ExplorePage />} />
+
+
+        {/* ADMIN DASHBOARD FIXED */}
         <Route
           path="/admin"
           element={

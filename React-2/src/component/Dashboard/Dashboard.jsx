@@ -3,16 +3,13 @@ import { useEffect, useState } from "react";
 import "./Dashboard.css";
 
 function Dashboard() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState([]);
   const [user, setUser] = useState(() => {
-    // Initialize user from localStorage
-    
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
         return JSON.parse(storedUser);
-      } catch (error) {
-        console.error("Error parsing stored user:", error);
+      } catch {
         localStorage.removeItem("user");
         return null;
       }
@@ -20,26 +17,40 @@ function Dashboard() {
     return null;
   });
 
-  // API CALL (Protected)
+  // 🔥 FETCH DATA (social data)
+  const fetchData = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/social", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+      setData(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/dashboard", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          }
-        });
-
-        setData(res.data);
-      } catch (err) {
-        console.log(err);
-      }
-    };
-
     fetchData();
   }, []);
 
-  //  Logout function
+  // 🔥 DELETE
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/social/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+
+      fetchData();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // LOGOUT
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -49,38 +60,78 @@ function Dashboard() {
   return (
     <div className="dashboard">
 
-      {/*  Navbar */}
+      {/* NAVBAR */}
       <div className="dashboard-navbar">
-        <h2>Dashboard </h2>
+        <h2>Dashboard</h2>
 
-        <div>
+        <div className="nav-right">
           <span>{user?.name}</span>
           <button onClick={handleLogout}>Logout</button>
         </div>
       </div>
 
-      {/* Content */}
+      {/* CONTENT */}
       <div className="dashboard-content">
 
-        {/* User Info */}
+        {/* USER CARD */}
         <div className="card">
           <h3>Welcome, {user?.name}</h3>
           <p>Email: {user?.email}</p>
           <p>Role: {user?.role}</p>
         </div>
 
-        {/*Admin Panel */}
+        {/* ADMIN PANEL */}
         {user?.role === "admin" && (
           <div className="card">
-            <h3>Admin Panel </h3>
-            <p>You have admin access</p>
+            <h3>Admin Panel</h3>
+            <p>You have full access</p>
           </div>
         )}
 
-        {/* API Data */}
+        {/* 🔥 DATA TABLE */}
         <div className="card">
-          <h3>Server Data</h3>
-          <pre>{JSON.stringify(data, null, 2)}</pre>
+          <h3>Social Media Data</h3>
+
+          {data.length === 0 ? (
+            <p>No data found</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Platforms</th>
+                  <th>Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {data.map((item, index) => (
+                  <tr key={item._id}>
+                    <td>{index + 1}</td>
+
+                    <td>
+                      {item.platforms.join(", ")}
+                    </td>
+
+                    <td>
+                      {new Date(item.createdAt).toLocaleString()}
+                    </td>
+
+                    <td>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDelete(item._id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
         </div>
 
       </div>

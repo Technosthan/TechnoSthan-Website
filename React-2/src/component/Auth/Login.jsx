@@ -43,9 +43,15 @@ const Login = () => {
       setLoading(true);
       setError("");
 
+      // Convert identifier to email format for backend
+      const loginData = {
+        email: form.identifier,
+        password: form.password
+      };
+
       const res = await axios.post(
         "http://localhost:5000/api/auth/login",
-        form
+        loginData
       );
 
       localStorage.setItem("token", res.data.token);

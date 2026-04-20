@@ -140,7 +140,7 @@ const QuizManager = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-400 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading questions...</p>
         </div>
       </div>
@@ -381,7 +381,7 @@ const QuizManager = () => {
                           key={index}
                           className={`p-3 rounded-xl border-2 transition-all duration-200 ${
                             option === question.correctAnswer
-                              ? "border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 shadow-sm"
+                              ? "border-gray-400 bg-gradient-to-r from-gray-50 to-gray-100 text-gray-800 shadow-sm"
                               : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
                           }`}
                         >

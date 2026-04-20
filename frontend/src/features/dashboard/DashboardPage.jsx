@@ -143,7 +143,7 @@ const DashboardPage = () => {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full"
+          className="w-16 h-16 border-4 border-gray-400 border-t-transparent rounded-full"
         />
       </div>
     );
@@ -164,7 +164,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 transition-colors duration-500">
       <Navbar />
 
       <div className="container mx-auto px-6 py-8">
@@ -459,7 +459,7 @@ const DashboardPage = () => {
               </h3>
               <button
                 onClick={() => navigate("/chat")}
-                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm font-medium transition-colors"
               >
                 Open Chat →
               </button>
@@ -473,7 +473,7 @@ const DashboardPage = () => {
                   transition={{ delay: index * 0.1 }}
                   className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <Bot className="text-white" size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -506,7 +506,7 @@ const DashboardPage = () => {
                   </p>
                   <button
                     onClick={() => navigate("/chat")}
-                    className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                    className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm font-medium transition-colors"
                   >
                     Start a conversation →
                   </button>

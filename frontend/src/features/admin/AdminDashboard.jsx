@@ -28,7 +28,7 @@ const menuItems = [
     icon: LayoutDashboard,
     path: "",
     description: "Overview & Analytics",
-    color: "from-green-500 to-emerald-600",
+    color: "from-gray-500 to-gray-600",
   },
   {
     id: "content",
@@ -112,7 +112,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 transition-colors duration-500">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <motion.div
@@ -146,11 +146,11 @@ const AdminDashboard = () => {
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-yellow-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-r from-gray-500 to-gray-400 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
                 <Shield className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text">
                   TECHNOSTHAN AGRITECH
                 </h1>
                 <p
@@ -250,7 +250,7 @@ const AdminDashboard = () => {
           >
             <div className="flex items-center mb-4">
               <motion.div
-                className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg"
+                className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-gray-400 to-gray-500 rounded-2xl flex items-center justify-center shadow-lg"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ duration: 0.2 }}
               >

@@ -43,7 +43,7 @@ const AdminDashboardHome = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-400 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading dashboard...</p>
         </div>
       </div>
@@ -52,7 +52,7 @@ const AdminDashboardHome = () => {
 
   if (error) {
     return (
-      <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6 shadow-sm">
         <div className="flex items-center mb-4">
           <div className="p-2 bg-red-100 rounded-lg mr-3">
             <Activity className="h-5 w-5 text-red-600" />
@@ -136,7 +136,7 @@ const AdminDashboardHome = () => {
         </div>
         <button
           onClick={fetchStats}
-          className="mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           <RefreshCw className="h-5 w-5 mr-2" />
           Refresh Data
@@ -206,7 +206,7 @@ const AdminDashboardHome = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-green-50 to-emerald-100 p-4 rounded-xl border border-green-200">
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
                   <BarChart3 className="h-5 w-5 text-green-600" />
                   <span className="text-xs font-semibold text-green-700">
@@ -276,15 +276,15 @@ const AdminDashboardHome = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-amber-100 rounded-xl border border-yellow-200">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
               <div className="flex items-center">
-                <Crown className="h-5 w-5 text-yellow-600 mr-3" />
+                <Crown className="h-5 w-5 text-gray-600 mr-3" />
                 <div>
                   <p className="font-semibold text-gray-900">Administrators</p>
                   <p className="text-sm text-gray-600">Platform managers</p>
                 </div>
               </div>
-              <span className="text-2xl font-bold text-yellow-700">
+              <span className="text-2xl font-bold text-gray-700">
                 {stats?.userRoles?.admin || 0}
               </span>
             </div>
@@ -309,7 +309,7 @@ const AdminDashboardHome = () => {
       {stats?.recentActivity && stats.recentActivity.length > 0 && (
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
           <div className="flex items-center mb-6">
-            <div className="p-2 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg mr-3">
+            <div className="p-2 bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg mr-3">
               <Activity className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -329,7 +329,7 @@ const AdminDashboardHome = () => {
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200"
               >
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center mr-4">
+                  <div className="w-10 h-10 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center mr-4">
                     <span className="text-white font-semibold text-sm">
                       {activity.userName.charAt(0).toUpperCase()}
                     </span>
@@ -349,10 +349,10 @@ const AdminDashboardHome = () => {
                     <div
                       className={`px-3 py-1 rounded-full text-sm font-semibold ${
                         activity.percentage >= 80
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-gray-100 text-gray-700"
                           : activity.percentage >= 60
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {activity.score}/{activity.totalQuestions} (

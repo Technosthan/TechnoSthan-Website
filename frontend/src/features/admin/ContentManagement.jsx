@@ -169,7 +169,7 @@ const ContentManagement = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-400 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading content...</p>
         </div>
       </div>
@@ -190,7 +190,7 @@ const ContentManagement = () => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="mt-4 lg:mt-0 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="mt-4 lg:mt-0 px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add New Content
@@ -226,7 +226,7 @@ const ContentManagement = () => {
       </div>
 
       {error && (
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <div className="p-2 bg-red-100 rounded-lg mr-3">
               <X className="h-5 w-5 text-red-600" />
@@ -420,7 +420,7 @@ const ContentManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   <Save className="h-5 w-5 mr-2" />
                   {editingContent ? "Update Content" : "Create Content"}
@@ -442,7 +442,7 @@ const ContentManagement = () => {
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <BookOpen className="h-5 w-5 text-green-600" />
+              <BookOpen className="h-5 w-5 text-gray-600" />
               <span className="text-sm font-medium text-gray-600">
                 Learning Materials
               </span>
@@ -465,7 +465,7 @@ const ContentManagement = () => {
               {!searchTerm && filterStatus === "all" && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Create First Content
@@ -481,7 +481,7 @@ const ContentManagement = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center mb-2">
-                      <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg flex items-center justify-center mr-3">
                         <BookOpen className="h-5 w-5 text-white" />
                       </div>
                       <div>

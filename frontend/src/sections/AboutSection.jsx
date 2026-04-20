@@ -11,7 +11,7 @@ const AboutSection = () => {
         viewport={{ once: true }}
         className="bg-white/80 dark:bg-gray-900/60 py-16 text-center"
       >
-        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-green-700 dark:text-yellow-300">
+        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-700 dark:text-gray-300">
           Empowering Farmers & Students 🌾
         </h2>
         <div className="flex flex-wrap justify-center gap-6 px-6">
@@ -41,7 +41,7 @@ const AboutSection = () => {
         viewport={{ once: true }}
         className="bg-white/80 dark:bg-gray-900/60 py-20 px-6 md:px-16 text-center"
       >
-        <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+        <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-gray-600 to-gray-500 text-transparent bg-clip-text">
           About TECHNOSTHAN AGRITECH
         </h2>
         <p className="max-w-3xl mx-auto text-gray-700 dark:text-gray-200">
