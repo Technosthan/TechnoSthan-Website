@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   return (
     <div className="grid md:grid-cols-2 gap-10 items-center px-6 md:px-16 py-20 max-w-7xl mx-auto">
@@ -11,20 +13,22 @@ const HeroSection = () => {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
       >
-        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text drop-shadow-lg">
+        <h1
+          className={`text-5xl md:text-6xl font-extrabold mb-6 ${theme.accent} drop-shadow-lg`}
+        >
           Smart Agriculture for India 🇮🇳
         </h1>
-        <p className="text-gray-700 dark:text-gray-200 mb-8 text-lg">
+        <p className={`${theme.text} mb-8 text-lg`}>
           Learn modern farming, test your knowledge, and monitor farm data using
           AI-powered tools.
         </p>
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => navigate("/register")}
-          className="bg-gradient-to-r from-green-500 to-yellow-400 hover:scale-105 transition transform text-white px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold"
+          onClick={() => navigate("/learning")}
+          className={`${theme.button} hover:scale-105 transition transform px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold`}
         >
-          Get Started
+          Start Learning
         </motion.button>
       </motion.div>
       <motion.img

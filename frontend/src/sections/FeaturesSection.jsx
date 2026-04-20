@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTheme } from "../contexts/ThemeContext";
 
 const features = [
   {
@@ -17,26 +18,26 @@ const features = [
     desc: "Ask farming questions and get instant answers.",
   },
   {
-    icon: "📊",
-    title: "My Dashboard",
-    desc: "Monitor your progress and performance.",
+    icon: "📈",
+    title: "Progress Tracking",
+    desc: "Monitor your learning progress and achievements.",
   },
 ];
 
-const FeatureCard = ({ icon, title, desc }) => (
+const FeatureCard = ({ icon, title, desc, theme }) => (
   <motion.div
     whileHover={{ scale: 1.07, boxShadow: "0 8px 32px 0 rgba(34,197,94,0.15)" }}
-    className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-lg p-6 rounded-2xl shadow-lg text-center transition"
+    className={`${theme.cardOpacity} backdrop-blur-lg p-6 rounded-2xl shadow-lg text-center transition`}
   >
     <div className="text-4xl mb-2">{icon}</div>
-    <h3 className="font-semibold text-lg text-green-700 dark:text-yellow-300">
-      {title}
-    </h3>
+    <h3 className={`font-semibold text-lg ${theme.accent}`}>{title}</h3>
     <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{desc}</p>
   </motion.div>
 );
 
 const FeaturesSection = () => {
+  const { theme } = useTheme();
+
   return (
     <>
       {/* FEATURES */}
@@ -45,9 +46,9 @@ const FeaturesSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="py-20 px-6 md:px-16 bg-gradient-to-r from-green-50 to-yellow-50 dark:from-green-900 dark:to-yellow-900"
+        className={`py-20 px-6 md:px-16 ${theme.bgGradient}`}
       >
-        <h2 className="text-3xl font-bold text-center mb-12 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+        <h2 className={`text-3xl font-bold text-center mb-12 ${theme.accent}`}>
           What You Can Do
         </h2>
         <motion.div
@@ -65,7 +66,7 @@ const FeaturesSection = () => {
           }}
         >
           {features.map((f, i) => (
-            <FeatureCard key={i} {...f} />
+            <FeatureCard key={i} {...f} theme={theme} />
           ))}
         </motion.div>
       </motion.section>
@@ -78,15 +79,16 @@ const FeaturesSection = () => {
         viewport={{ once: true }}
         className="py-20 px-6 md:px-16 text-center"
       >
-        <h2 className="text-3xl font-bold mb-12 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+        <h2 className={`text-3xl font-bold mb-12 ${theme.accent}`}>
           How It Works ⚡
         </h2>
-        <div className="grid md:grid-cols-5 gap-6 text-lg font-medium text-gray-700 dark:text-gray-200">
-          <div>📝 Register</div>
+        <div
+          className={`grid md:grid-cols-4 gap-6 text-lg font-medium ${theme.text}`}
+        >
           <div>📚 Learn</div>
           <div>🧪 Quiz</div>
           <div>🤖 Ask AI</div>
-          <div>📊 Monitor</div>
+          <div>📈 Progress</div>
         </div>
       </motion.section>
 
@@ -104,10 +106,10 @@ const FeaturesSection = () => {
           alt="Farm Tech"
         />
         <div>
-          <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+          <h2 className={`text-3xl font-bold mb-4 ${theme.accent}`}>
             AI + IoT for Smart Farming
           </h2>
-          <p className="text-gray-700 dark:text-gray-200">
+          <p className={`${theme.text} dark:text-gray-200`}>
             Use modern technology like sensors, AI, and data analytics to
             improve productivity and decision-making.
           </p>

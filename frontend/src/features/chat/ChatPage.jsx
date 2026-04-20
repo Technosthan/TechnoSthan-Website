@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { sendChatMessage, getChatHistory } from "./chatApi";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Send,
   Mic,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 const ChatPage = () => {
+  const { theme } = useTheme();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -170,7 +172,9 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div
+      className={`min-h-screen ${theme.bgGradient} ${theme.darkBgGradient} transition-colors duration-500`}
+    >
       <Navbar />
 
       <div className="container mx-auto px-6 py-8">
@@ -183,17 +187,19 @@ const ChatPage = () => {
           {/* Header */}
           <motion.div
             variants={itemVariants}
-            className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20 mb-6"
+            className={`${theme.cardOpacity} backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20 mb-6`}
           >
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+              <div
+                className={`w-16 h-16 ${theme.primary} rounded-full flex items-center justify-center`}
+              >
                 <MessageCircle className="text-white" size={32} />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                <h1 className={`text-3xl font-bold ${theme.text}`}>
                   AI Agricultural Assistant
                 </h1>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className={`${theme.text} opacity-80`}>
                   Get instant farming advice and agricultural insights
                 </p>
               </div>

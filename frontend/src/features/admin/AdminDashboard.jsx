@@ -13,13 +13,12 @@ import {
   Settings,
   Bell,
   Search,
-  Sun,
-  Moon,
   Shield,
   TrendingUp,
   Activity,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const menuItems = [
   {
@@ -59,10 +58,12 @@ const menuItems = [
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [darkMode, setDarkMode] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, currentTheme } = useTheme();
+
+  const darkMode = currentTheme === "red-black";
 
   useEffect(() => {
     // Set active tab based on current path
@@ -86,11 +87,6 @@ const AdminDashboard = () => {
     setSidebarOpen(false);
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    // In a real app, you'd save this to localStorage and apply to the entire app
-  };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -112,7 +108,9 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div
+      className={`min-h-screen ${theme.bgGradient} transition-colors duration-500`}
+    >
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <motion.div
@@ -131,11 +129,7 @@ const AdminDashboard = () => {
           initial={{ x: -300 }}
           animate={{ x: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-72 ${
-            darkMode ? "bg-gray-900/90" : "bg-white/80"
-          } backdrop-blur-xl border-r ${
-            darkMode ? "border-gray-700/50" : "border-white/30"
-          } shadow-2xl transform ${
+          className={`fixed lg:static inset-y-0 left-0 z-50 w-72 ${theme.cardOpacity} backdrop-blur-xl border-r ${theme.border} shadow-2xl transform ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           } transition-transform duration-300 ease-in-out lg:translate-x-0`}
         >
@@ -146,18 +140,16 @@ const AdminDashboard = () => {
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-yellow-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+              <div
+                className={`w-12 h-12 ${theme.primary} rounded-2xl flex items-center justify-center mr-4 shadow-lg`}
+              >
                 <Shield className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+                <h1 className={`text-xl font-bold ${theme.accent}`}>
                   TECHNOSTHAN AGRITECH
                 </h1>
-                <p
-                  className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  Admin Panel
-                </p>
+                <p className={`text-xs ${theme.textSecondary}`}>Admin Panel</p>
               </div>
             </motion.div>
             <button
@@ -181,9 +173,7 @@ const AdminDashboard = () => {
                     className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-300 group relative overflow-hidden ${
                       isActive
                         ? `bg-gradient-to-r ${item.color} text-white shadow-xl transform scale-105`
-                        : darkMode
-                          ? "text-gray-300 hover:bg-gray-800/50 hover:text-white"
-                          : "text-gray-600 hover:bg-white/60 hover:text-gray-900"
+                        : `${theme.navItem} hover:${theme.navItemHover}`
                     }`}
                     whileHover={{ scale: isActive ? 1.05 : 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -282,24 +272,6 @@ const AdminDashboard = () => {
 
             <div className="space-y-2">
               <motion.button
-                onClick={toggleDarkMode}
-                className={`w-full flex items-center px-4 py-3 text-left rounded-xl transition-all duration-200 ${
-                  darkMode
-                    ? "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                    : "bg-white/60 text-gray-600 hover:bg-white/80 hover:text-gray-900"
-                } backdrop-blur-sm`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {darkMode ? (
-                  <Sun className="h-5 w-5 mr-3" />
-                ) : (
-                  <Moon className="h-5 w-5 mr-3" />
-                )}
-                {darkMode ? "Light Mode" : "Dark Mode"}
-              </motion.button>
-
-              <motion.button
                 onClick={handleLogout}
                 className="w-full flex items-center px-4 py-3 text-left text-red-600 hover:bg-red-50/80 hover:text-red-700 rounded-xl transition-all duration-200 font-medium backdrop-blur-sm"
                 whileHover={{
@@ -347,24 +319,7 @@ const AdminDashboard = () => {
                 </h1>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <motion.button
-                  onClick={toggleDarkMode}
-                  className={`p-2 rounded-xl ${
-                    darkMode
-                      ? "bg-gray-800/50 hover:bg-gray-700/50"
-                      : "bg-white/60 hover:bg-white/80"
-                  } transition-colors duration-200`}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  {darkMode ? (
-                    <Sun className="h-5 w-5" />
-                  ) : (
-                    <Moon className="h-5 w-5" />
-                  )}
-                </motion.button>
-              </div>
+              <div className="w-10"></div>
             </div>
           </motion.div>
 

@@ -19,3 +19,9 @@ body {
   background: #f3f4f6;
   color: #111827;
 }
+
+/* Global input and textarea text color - always black */
+input,
+textarea {
+  color: black !important;
+}

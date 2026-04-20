@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { getAllContent } from "./contentApi";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   BookOpen,
   Play,
@@ -10,9 +11,12 @@ import {
   Droplets,
   Zap,
   Target,
+  Image as ImageIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 
 const ContentPage = () => {
+  const { theme } = useTheme();
   const [contents, setContents] = useState([]);
   const [selectedContent, setSelectedContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,13 +101,41 @@ const ContentPage = () => {
     : [];
 
   const convertToEmbedUrl = (url) => {
+    // Check if it's a YouTube URL
     const videoId = url.split("v=")[1]?.split("&")[0];
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    return url;
+  };
+
+  const isPDF = (resource) => {
+    return (
+      resource.type === "pdf" || resource.url.toLowerCase().includes(".pdf")
+    );
+  };
+
+  const isVideo = (resource) => {
+    return (
+      resource.type === "video" ||
+      resource.url.includes("youtube.com") ||
+      resource.url.includes("youtu.be") ||
+      resource.url.includes("vimeo.com")
+    );
+  };
+
+  const isImage = (resource) => {
+    return (
+      resource.type === "image" ||
+      /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(resource.url)
+    );
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div
+        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
+      >
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -117,7 +149,9 @@ const ContentPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div
+        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
+      >
         <div className="text-xl text-red-600 dark:text-red-400">
           Error: {error}
         </div>
@@ -130,14 +164,14 @@ const ContentPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 text-gray-900 dark:text-white"
+      className={`min-h-screen ${theme.bgGradient} ${theme.darkBgGradient} ${theme.text}`}
     >
       <div className="container mx-auto p-6">
         <motion.h1
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-4xl font-bold mb-6 text-green-600 dark:text-green-400 flex items-center justify-center"
+          className={`text-4xl font-bold mb-6 ${theme.accent} flex items-center justify-center`}
         >
           <BookOpen className="mr-3" size={40} />
           Learning Center
@@ -293,17 +327,90 @@ const ContentPage = () => {
                             className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                           >
                             <h4 className="font-semibold mb-2 flex items-center">
-                              <Play className="mr-2 text-red-500" size={16} />
+                              {resource.type === "pdf" ? (
+                                <BookOpen
+                                  className="mr-2 text-red-500"
+                                  size={16}
+                                />
+                              ) : resource.type === "image" ? (
+                                <ImageIcon
+                                  className="mr-2 text-green-500"
+                                  size={16}
+                                />
+                              ) : resource.type === "link" ? (
+                                <LinkIcon
+                                  className="mr-2 text-blue-500"
+                                  size={16}
+                                />
+                              ) : (
+                                <Play className="mr-2 text-red-500" size={16} />
+                              )}
                               {resource.label}
                             </h4>
-                            <div className="aspect-video rounded-lg overflow-hidden">
-                              <iframe
-                                src={convertToEmbedUrl(resource.url)}
-                                title={resource.label}
-                                className="w-full h-full"
-                                allowFullScreen
-                              ></iframe>
-                            </div>
+                            {isVideo(resource) ? (
+                              <div className="aspect-video rounded-lg overflow-hidden">
+                                <iframe
+                                  src={convertToEmbedUrl(resource.url)}
+                                  title={resource.label}
+                                  className="w-full h-full"
+                                  allowFullScreen
+                                ></iframe>
+                              </div>
+                            ) : isPDF(resource) ? (
+                              <div className="bg-white dark:bg-gray-600 p-4 rounded-lg">
+                                <iframe
+                                  src={resource.url}
+                                  title={resource.label}
+                                  className="w-full h-96 border-0 rounded"
+                                  type="application/pdf"
+                                ></iframe>
+                                <div className="mt-2 text-center">
+                                  <a
+                                    href={resource.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                  >
+                                    <BookOpen className="mr-2" size={16} />
+                                    Open PDF in New Tab
+                                  </a>
+                                </div>
+                              </div>
+                            ) : isImage(resource) ? (
+                              <div className="bg-white dark:bg-gray-600 p-4 rounded-lg">
+                                <img
+                                  src={resource.url}
+                                  alt={resource.label}
+                                  className="w-full max-h-96 object-contain rounded"
+                                  onError={(e) => {
+                                    e.target.src = "/placeholder-image.png"; // Fallback image
+                                  }}
+                                />
+                                <div className="mt-2 text-center">
+                                  <a
+                                    href={resource.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                                  >
+                                    <ImageIcon className="mr-2" size={16} />
+                                    View Full Image
+                                  </a>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-4 bg-white dark:bg-gray-600 rounded-lg">
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                                >
+                                  <LinkIcon className="mr-2" size={16} />
+                                  {resource.label} - Click to open
+                                </a>
+                              </div>
+                            )}
                           </motion.div>
                         ))}
                       </div>

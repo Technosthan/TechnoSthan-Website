@@ -3,37 +3,32 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import DashboardPage from "./features/dashboard/DashboardPage";
+import LandingPage from "./pages/LandingPage";
 import ContentPage from "./features/content/ContentPage";
 import QuizPage from "./features/quiz/QuizPage";
 import ChatPage from "./features/chat/ChatPage";
-import ProtectedRoute from "./shared/components/ProtectedRoute";
 import AdminRoute from "./shared/components/AdminRoute";
+import ProtectedRoute from "./shared/components/ProtectedRoute";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import AdminDashboardHome from "./features/admin/AdminDashboardHome";
 import ContentManagement from "./features/admin/ContentManagement";
 import QuizManagement from "./features/admin/QuizManagement";
 import UserManagement from "./features/admin/UserManagement";
+import { ThemeProvider } from "./contexts/ThemeContext.jsx";
+import FloatingThemeSelector from "./components/FloatingThemeSelector";
 
 function App() {
   return (
-    <div className="bg-gray-200 min-h-screen">
+    <ThemeProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+
+          {/* Protected User Routes */}
           <Route
             path="/learning"
             element={
@@ -59,6 +54,9 @@ function App() {
             }
           />
 
+          {/* Auth Routes */}
+          <Route path="/login" element={<LoginPage />} />
+
           {/* Admin Routes */}
           <Route
             path="/admin/dashboard"
@@ -75,7 +73,8 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-    </div>
+      <FloatingThemeSelector />
+    </ThemeProvider>
   );
 }
 

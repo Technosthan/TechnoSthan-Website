@@ -8,6 +8,25 @@ export const useAuth = () => {
   const getErrorMessage = (error) =>
     error?.response?.data?.message || error?.message || "Something went wrong";
 
+  const register = async (data) => {
+    setLoading(true);
+    try {
+      const res = await registerUser(data);
+      const { token, user: userData } = res.data.data;
+
+      // Store token and user data
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData);
+
+      return { token, user: userData };
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const login = async (data) => {
     setLoading(true);
     try {
@@ -27,35 +46,8 @@ export const useAuth = () => {
     }
   };
 
-  const loginWithGoogle = async (idToken) => {
-    setLoading(true);
-    try {
-      const res = await googleLogin(idToken);
-      const { token, user: userData } = res.data.data;
-
-      // Store token and user data
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      setUser(userData);
-
-      return { token, user: userData };
-    } catch (error) {
-      throw new Error(getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (data) => {
-    setLoading(true);
-    try {
-      const res = await registerUser(data);
-      return res.data; // Return the full response data
-    } catch (error) {
-      throw new Error(getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    googleLogin();
   };
 
   const logout = () => {
@@ -80,9 +72,9 @@ export const useAuth = () => {
   };
 
   return {
-    login,
-    loginWithGoogle,
     register,
+    login,
+    handleGoogleLogin,
     logout,
     loading,
     user: getCurrentUser(),

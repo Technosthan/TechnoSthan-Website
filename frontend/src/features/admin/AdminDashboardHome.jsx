@@ -15,10 +15,17 @@ import {
   Calendar,
   Clock,
   Zap,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  ExternalLink,
+  Link as LinkIcon,
 } from "lucide-react";
 import { getAdminStats } from "./adminApi";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const AdminDashboardHome = () => {
+  const { theme } = useTheme();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,8 +50,12 @@ const AdminDashboardHome = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading dashboard...</p>
+          <div
+            className={`animate-spin rounded-full h-16 w-16 border-4 ${theme.primary} border-t-transparent mx-auto mb-4`}
+          ></div>
+          <p className={`text-gray-600 font-medium ${theme.textSecondary}`}>
+            Loading dashboard...
+          </p>
         </div>
       </div>
     );
@@ -127,7 +138,7 @@ const AdminDashboardHome = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-black mb-2">
             Admin Dashboard
           </h1>
           <p className="text-gray-600">
@@ -160,9 +171,7 @@ const AdminDashboardHome = () => {
                 </div>
                 <div
                   className={`flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                    card.trendUp
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
+                    card.trendUp ? theme.trendUp : theme.trendDown
                   }`}
                 >
                   <TrendingUp
@@ -206,22 +215,24 @@ const AdminDashboardHome = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-green-50 to-emerald-100 p-4 rounded-xl border border-green-200">
+              <div className={`${theme.statCard1} p-4 rounded-xl border`}>
                 <div className="flex items-center justify-between mb-2">
-                  <BarChart3 className="h-5 w-5 text-green-600" />
-                  <span className="text-xs font-semibold text-green-700">
+                  <BarChart3 className={`h-5 w-5 ${theme.statCard1Icon}`} />
+                  <span
+                    className={`text-xs font-semibold ${theme.statCard1Text}`}
+                  >
                     Average
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-green-700">
+                <p className={`text-2xl font-bold ${theme.statCard1Text}`}>
                   {Math.round(stats.quizPerformance.averageScore || 0)}%
                 </p>
-                <p className="text-xs text-green-600">Score</p>
+                <p className={`text-xs ${theme.statCard1Icon}`}>Score</p>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-4 rounded-xl border border-blue-200">
+              <div className={`${theme.statCard2} p-4 rounded-xl border`}>
                 <div className="flex items-center justify-between mb-2">
-                  <Target className="h-5 w-5 text-blue-600" />
+                  <Target className={`h-5 w-5 ${theme.statCard2Icon}`} />
                   <span className="text-xs font-semibold text-blue-700">
                     Attempts
                   </span>
@@ -349,10 +360,10 @@ const AdminDashboardHome = () => {
                     <div
                       className={`px-3 py-1 rounded-full text-sm font-semibold ${
                         activity.percentage >= 80
-                          ? "bg-green-100 text-green-700"
+                          ? theme.activityGood
                           : activity.percentage >= 60
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700"
+                            ? theme.activityMedium
+                            : theme.activityPoor
                       }`}
                     >
                       {activity.score}/{activity.totalQuestions} (

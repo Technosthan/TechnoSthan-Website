@@ -15,6 +15,8 @@ import {
   Link as LinkIcon,
   Calendar,
   User,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   getAllContent,
@@ -31,6 +33,8 @@ const ContentManager = () => {
   const [editingContent, setEditingContent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [resourcesCollapsed, setResourcesCollapsed] = useState(false);
+  const [resourceSearch, setResourceSearch] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -165,6 +169,11 @@ const ContentManager = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // Filter resources based on search
+  const filteredResources = formData.resources.filter((_, index) =>
+    (index + 1).toString().includes(resourceSearch),
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -207,7 +216,7 @@ const ContentManager = () => {
               placeholder="Search content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+              className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -267,7 +276,7 @@ const ContentManager = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
                     placeholder="Enter content title..."
                     required
                   />
@@ -283,7 +292,7 @@ const ContentManager = () => {
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none"
+                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none"
                     placeholder="Enter content description..."
                     required
                   />
@@ -333,7 +342,7 @@ const ContentManager = () => {
                           onChange={(e) =>
                             updateSubtopic(index, "heading", e.target.value)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
                         />
                         <textarea
                           placeholder="Subtopic content..."
@@ -342,7 +351,7 @@ const ContentManager = () => {
                             updateSubtopic(index, "body", e.target.value)
                           }
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none"
+                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none"
                         />
                       </div>
                     </div>
@@ -351,63 +360,160 @@ const ContentManager = () => {
               </div>
 
               {/* Resources */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-lg font-semibold text-gray-700">
-                    Resources
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addResource}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center font-medium"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Resource
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {formData.resources.map((resource, index) => (
-                    <div
-                      key={index}
-                      className="bg-purple-50 rounded-xl p-4 border border-purple-200"
+              <div className="border border-gray-200 rounded-lg">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => setResourcesCollapsed(!resourcesCollapsed)}
+                      className="flex items-center hover:bg-gray-50 rounded px-2 py-1 transition-colors duration-200"
                     >
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-semibold text-purple-600 bg-white px-3 py-1 rounded-full">
-                          Resource {index + 1}
-                        </span>
-                        {formData.resources.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeResource(index)}
-                            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors duration-200"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
+                      {resourcesCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-gray-600 mr-2" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-600 mr-2" />
+                      )}
+                      <span className="text-lg font-semibold text-gray-700">
+                        Resources ({formData.resources.length})
+                      </span>
+                    </button>
+                    {!resourcesCollapsed && (
+                      <div className="flex items-center space-x-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <input
+                            type="text"
+                            placeholder="Search by resource number..."
+                            value={resourceSearch}
+                            onChange={(e) => setResourceSearch(e.target.value)}
+                            className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-64"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addResource}
+                          className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center font-medium"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input
-                          type="text"
-                          placeholder="Resource label (e.g., 'YouTube Video')"
-                          value={resource.label}
-                          onChange={(e) =>
-                            updateResource(index, "label", e.target.value)
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
-                        />
-                        <input
-                          type="url"
-                          placeholder="Resource URL..."
-                          value={resource.url}
-                          onChange={(e) =>
-                            updateResource(index, "url", e.target.value)
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </div>
+
+                {!resourcesCollapsed && (
+                  <div className="p-4">
+                    {filteredResources.length === 0 ? (
+                      <div className="text-center py-8">
+                        <LinkIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No resources found
+                        </h3>
+                        <p className="text-gray-600">
+                          {resourceSearch
+                            ? "Try adjusting your search criteria."
+                            : "Add your first resource to get started."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Resource 
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Label
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                URL
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredResources.map((resource) => {
+                              const actualIndex = formData.resources.findIndex(
+                                (r) => r === resource,
+                              );
+                              return (
+                                <tr
+                                  key={actualIndex}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {actualIndex + 1}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <input
+                                      type="text"
+                                      value={resource.label}
+                                      onChange={(e) =>
+                                        updateResource(
+                                          actualIndex,
+                                          "label",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Resource label..."
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <input
+                                      type="url"
+                                      value={resource.url}
+                                      onChange={(e) =>
+                                        updateResource(
+                                          actualIndex,
+                                          "url",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Resource URL..."
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    <div className="flex items-center space-x-2">
+                                      {resource.url && (
+                                        <a
+                                          href={resource.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                                          title="View resource"
+                                        >
+                                          <ExternalLink className="h-4 w-4" />
+                                        </a>
+                                      )}
+                                      {formData.resources.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            removeResource(actualIndex)
+                                          }
+                                          className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                                          title="Delete resource"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { getDashboardStats, getChatHistory } from "./dashboardApi";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   User,
   BookOpen,
@@ -38,6 +39,7 @@ import {
 
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [dashboardData, setDashboardData] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,11 +141,13 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div
+        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
+      >
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full"
+          className={`w-16 h-16 border-4 ${theme.primary} border-t-transparent rounded-full`}
         />
       </div>
     );
@@ -151,20 +155,24 @@ const DashboardPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div
+        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
+      >
         <div className="text-center">
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
             Oops! Something went wrong
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">{error}</p>
+          <p className={`${theme.text}`}>{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div
+      className={`min-h-screen ${theme.bgGradient} ${theme.darkBgGradient} transition-colors duration-500`}
+    >
       <Navbar />
 
       <div className="container mx-auto px-6 py-8">
@@ -177,17 +185,17 @@ const DashboardPage = () => {
           {/* Welcome Section */}
           <motion.div
             variants={itemVariants}
-            className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+            className={`${theme.cardOpacity} backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20`}
           >
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
                 <User className="text-white" size={32} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                <h2 className={`text-2xl font-bold ${theme.text}`}>
                   Welcome back, {dashboardData?.profile?.name || "Farmer"}! 👋
                 </h2>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className={`${theme.text} opacity-80`}>
                   Ready to continue your agricultural learning journey?
                 </p>
               </div>
@@ -239,10 +247,12 @@ const DashboardPage = () => {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p
+                      className={`text-sm font-medium ${theme.text} opacity-60`}
+                    >
                       {stat.title}
                     </p>
-                    <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                    <p className={`text-3xl font-bold ${theme.text}`}>
                       {stat.value}
                     </p>
                   </div>
@@ -260,9 +270,11 @@ const DashboardPage = () => {
             {/* Quiz Performance Chart */}
             <motion.div
               variants={itemVariants}
-              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+              className={`${theme.cardOpacity} backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20`}
             >
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800 dark:text-white">
+              <h3
+                className={`text-xl font-bold mb-4 flex items-center gap-2 ${theme.text}`}
+              >
                 <BarChart3 size={24} />
                 Quiz Performance Trend
               </h3>
@@ -299,9 +311,11 @@ const DashboardPage = () => {
             {/* Performance Distribution */}
             <motion.div
               variants={itemVariants}
-              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+              className={`${theme.cardOpacity} backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20`}
             >
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800 dark:text-white">
+              <h3
+                className={`text-xl font-bold mb-4 flex items-center gap-2 ${theme.text}`}
+              >
                 <Award size={24} />
                 Performance Distribution
               </h3>
@@ -343,9 +357,11 @@ const DashboardPage = () => {
             {/* Quick Actions */}
             <motion.div
               variants={itemVariants}
-              className="lg:col-span-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+              className={`lg:col-span-2 ${theme.cardOpacity} backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20`}
             >
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 dark:text-white">
+              <h3
+                className={`text-xl font-bold mb-6 flex items-center gap-2 ${theme.text}`}
+              >
                 <Activity size={24} />
                 Quick Actions
               </h3>
@@ -405,9 +421,11 @@ const DashboardPage = () => {
             {/* Recent Activity */}
             <motion.div
               variants={itemVariants}
-              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+              className={`${theme.cardOpacity} backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20`}
             >
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 dark:text-white">
+              <h3
+                className={`text-xl font-bold mb-6 flex items-center gap-2 ${theme.text}`}
+              >
                 <Clock size={24} />
                 Recent Activity
               </h3>
@@ -418,16 +436,18 @@ const DashboardPage = () => {
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: index * 0.1 }}
-                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    className={`flex items-center gap-3 p-3 ${theme.card} rounded-lg`}
                   >
-                    <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                    <div
+                      className={`w-10 h-10 ${theme.primary} rounded-full flex items-center justify-center`}
+                    >
                       <Star className="text-white" size={16} />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800 dark:text-white">
+                      <p className={`font-medium ${theme.text}`}>
                         Quiz Completed
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className={`text-sm ${theme.text} opacity-60`}>
                         Score: {activity.score}/{activity.total} •{" "}
                         {new Date(activity.createdAt).toLocaleDateString()}
                       </p>
@@ -439,7 +459,7 @@ const DashboardPage = () => {
                       className="mx-auto mb-3 text-gray-400"
                       size={32}
                     />
-                    <p className="text-gray-500 dark:text-gray-400">
+                    <p className={`${theme.text} opacity-60`}>
                       No recent activity
                     </p>
                   </div>
@@ -459,7 +479,7 @@ const DashboardPage = () => {
               </h3>
               <button
                 onClick={() => navigate("/chat")}
-                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                className={`${theme.link} text-sm font-medium transition-colors`}
               >
                 Open Chat →
               </button>
@@ -506,7 +526,7 @@ const DashboardPage = () => {
                   </p>
                   <button
                     onClick={() => navigate("/chat")}
-                    className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                    className={`${theme.link} text-sm font-medium transition-colors`}
                   >
                     Start a conversation →
                   </button>

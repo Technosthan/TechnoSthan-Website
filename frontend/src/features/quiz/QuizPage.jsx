@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getQuestions, submitQuiz } from "./quizApi";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Brain,
   CheckCircle,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 const QuizPage = () => {
+  const { theme } = useTheme();
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -89,7 +91,9 @@ const QuizPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div
+        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
+      >
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -103,7 +107,9 @@ const QuizPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div
+        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
+      >
         <div className="text-xl text-red-600 dark:text-red-400 text-center">
           <XCircle className="mx-auto mb-4" size={48} />
           {error}
@@ -122,7 +128,7 @@ const QuizPage = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 text-gray-900 dark:text-white"
+        className={`min-h-screen ${theme.bgGradient} ${theme.darkBgGradient} ${theme.text}`}
       >
         <div className="container mx-auto p-6">
           <motion.div
@@ -132,7 +138,7 @@ const QuizPage = () => {
             className="text-center mb-8"
           >
             <Trophy className="mx-auto mb-4 text-yellow-500" size={64} />
-            <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+            <h1 className={`text-4xl font-bold ${theme.accent}`}>
               Quiz Results
             </h1>
             <div className="mt-6">
@@ -151,8 +157,8 @@ const QuizPage = () => {
             transition={{ delay: 0.4 }}
             className="max-w-2xl mx-auto"
           >
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">
+            <div className={`${theme.card} p-6 rounded-xl shadow-lg`}>
+              <h2 className={`text-2xl font-semibold mb-4 ${theme.accent}`}>
                 Question Review
               </h2>
               <div className="space-y-4">
@@ -224,14 +230,14 @@ const QuizPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 text-gray-900 dark:text-white"
+      className={`min-h-screen ${theme.bgGradient} ${theme.darkBgGradient} ${theme.text}`}
     >
       <div className="container mx-auto p-6">
         <motion.h1
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-4xl font-bold mb-6 text-blue-600 dark:text-blue-400 flex items-center justify-center"
+          className={`text-4xl font-bold mb-6 ${theme.accent} flex items-center justify-center`}
         >
           <Brain className="mr-3" size={40} />
           Knowledge Quiz

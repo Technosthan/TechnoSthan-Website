@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
+import { useTheme } from "../contexts/ThemeContext";
 
 const AboutSection = () => {
+  const { theme } = useTheme();
+
   return (
     <>
       {/* TRUST / FARMER FEEL */}
@@ -9,9 +12,9 @@ const AboutSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="bg-white/80 dark:bg-gray-900/60 py-16 text-center"
+        className={`${theme.cardOpacity} py-16 text-center`}
       >
-        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-green-700 dark:text-yellow-300">
+        <h2 className={`text-2xl md:text-3xl font-bold mb-8 ${theme.accent}`}>
           Empowering Farmers & Students 🌾
         </h2>
         <div className="flex flex-wrap justify-center gap-6 px-6">
@@ -39,12 +42,12 @@ const AboutSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="bg-white/80 dark:bg-gray-900/60 py-20 px-6 md:px-16 text-center"
+        className={`${theme.cardOpacity} py-20 px-6 md:px-16 text-center`}
       >
-        <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text">
+        <h2 className={`text-3xl font-bold mb-6 ${theme.accent}`}>
           About TECHNOSTHAN AGRITECH
         </h2>
-        <p className="max-w-3xl mx-auto text-gray-700 dark:text-gray-200">
+        <p className={`max-w-3xl mx-auto ${theme.text} dark:text-gray-200`}>
           TECHNOSTHAN AGRITECH is built to help farmers and students learn
           modern agriculture, use AI tools, and improve farming productivity
           through technology.

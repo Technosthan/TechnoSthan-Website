@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 
 const Footer = () => {
+  const { theme } = useTheme();
+
   return (
-    <footer className="bg-black/90 text-gray-300 py-8">
+    <footer className={`${theme.navbar} text-gray-300 py-8`}>
       <div className="max-w-7xl mx-auto px-6 md:px-16">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-yellow-500 text-transparent bg-clip-text mb-4">
+            <h3 className={`text-xl font-bold ${theme.accent} mb-4`}>
               TECHNOSTHAN AGRITECH
             </h3>
             <p className="text-sm">
@@ -36,10 +39,10 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  to="/dashboard"
+                  to="/learning"
                   className="hover:text-green-400 transition"
                 >
-                  Dashboard
+                  Learning
                 </Link>
               </li>
             </ul>
@@ -60,16 +63,19 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Contact Us</h4>
             <ul className="space-y-2 text-sm">
-              <li>Email: contact@kisangyanai.com</li>
-              <li>Phone: +91-123-456-7890</li>
-              <li>Address: India</li>
+              <li>Email: agritech@technosthan.com</li>
+              <li>Phone: +91-9477288288</li>
+              <li>
+                Address: 47/1 New Sanganer Road, Sodala, Jaipur, Rajasthan
+                302019
+              </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm">
           <p>
-            © 2026 TECHNOSTHAN AGRITECH | Built by technoSthan | All rights
+            © 2026 TECHNOSTHAN AGRITECH | Built by TechnoSthan | All rights
             reserved.
           </p>
           <p className="mt-2">

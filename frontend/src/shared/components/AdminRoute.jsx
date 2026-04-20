@@ -6,12 +6,12 @@ const AdminRoute = ({ children }) => {
 
   // Check if user is authenticated
   if (!token) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/admin/login" />;
   }
 
   // Check if user is admin
   if (!user || user.role !== "admin") {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/admin/login" />;
   }
 
   return children;

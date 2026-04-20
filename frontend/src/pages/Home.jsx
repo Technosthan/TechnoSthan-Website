@@ -12,13 +12,16 @@ const Home = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      navigate("/dashboard");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+
+    if (token && user?.role === "admin") {
+      navigate("/admin/dashboard");
     }
+    // Public users stay on home page
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-white to-yellow-100 dark:from-green-900 dark:via-gray-900 dark:to-yellow-900 transition-colors duration-500">
+    <div className="min-h-screen">
       <Navbar />
       <HeroSection />
       <AboutSection />

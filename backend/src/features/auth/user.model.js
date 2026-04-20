@@ -8,10 +8,22 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.mobile; // Email required only if mobile not present
+      },
       unique: true,
       lowercase: true,
       trim: true,
+      sparse: true, // Allows null values but ensures uniqueness when present
+    },
+    mobile: {
+      type: String,
+      required: function () {
+        return !this.email; // Mobile required only if email not present
+      },
+      unique: true,
+      trim: true,
+      sparse: true,
     },
     password: {
       type: String,

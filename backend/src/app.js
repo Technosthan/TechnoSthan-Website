@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import passport from "passport";
+import session from "express-session";
 
 // ✅ routes import
 import authRoutes from "./features/auth/auth.route.js";
@@ -19,6 +21,17 @@ app.use(
 );
 
 app.use(express.json());
+
+// Passport middleware
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "secret",
+    resave: false,
+    saveUninitialized: true,
+  }),
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 // ✅ test route
 app.get("/", (req, res) => {

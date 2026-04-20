@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Edit,
@@ -15,6 +15,8 @@ import {
   Link as LinkIcon,
   Calendar,
   User,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   getAllContent,
@@ -31,11 +33,16 @@ const ContentManagement = () => {
   const [editingContent, setEditingContent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [resourcesCollapsed, setResourcesCollapsed] = useState(true);
+  const [resourceSearch, setResourceSearch] = useState("");
+  const [openRows, setOpenRows] = useState({});
+  const [showContent, setShowContent] = useState(false);
+  const [searchContent, setSearchContent] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     subtopics: [{ heading: "", body: "" }],
-    resources: [{ label: "", url: "" }],
+    resources: [{ label: "", url: "", type: "video" }],
   });
 
   useEffect(() => {
@@ -59,7 +66,7 @@ const ContentManagement = () => {
       title: "",
       description: "",
       subtopics: [{ heading: "", body: "" }],
-      resources: [{ label: "", url: "" }],
+      resources: [{ label: "", url: "", type: "video" }],
     });
     setEditingContent(null);
     setShowForm(false);
@@ -75,8 +82,11 @@ const ContentManagement = () => {
           : [{ heading: "", body: "" }],
       resources:
         content.resources.length > 0
-          ? content.resources
-          : [{ label: "", url: "" }],
+          ? content.resources.map((resource) => ({
+              ...resource,
+              type: resource.type || "video", // Default to video if type is missing
+            }))
+          : [{ label: "", url: "", type: "video" }],
     });
     setEditingContent(content);
     setShowForm(true);
@@ -134,7 +144,7 @@ const ContentManagement = () => {
   const addResource = () => {
     setFormData({
       ...formData,
-      resources: [...formData.resources, { label: "", url: "" }],
+      resources: [...formData.resources, { label: "", url: "", type: "video" }],
     });
   };
 
@@ -153,15 +163,26 @@ const ContentManagement = () => {
     }
   };
 
-  // Filter and search contents
-  const filteredContents = contents.filter((content) => {
-    const matchesSearch =
-      content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      content.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const toggleRow = (index) => {
+    setOpenRows((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+
+  // Filter resources based on search
+  const filteredResources = formData.resources.filter((_, index) =>
+    (index + 1).toString().includes(resourceSearch),
+  );
+
+  // Filter content based on search and filter status
+  const filteredContent = contents.filter((item) => {
+    const matchesSearch = item.title.toLowerCase().includes(searchContent.toLowerCase());
     const matchesFilter =
       filterStatus === "all" ||
-      (filterStatus === "with-resources" && content.resources.length > 0) ||
-      (filterStatus === "no-resources" && content.resources.length === 0);
+      (filterStatus === "with-resources" && item.resources && item.resources.length > 0) ||
+      (filterStatus === "no-resources" && (!item.resources || item.resources.length === 0));
     return matchesSearch && matchesFilter;
   });
 
@@ -207,7 +228,7 @@ const ContentManagement = () => {
               placeholder="Search content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+              className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-300"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -267,7 +288,7 @@ const ContentManagement = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-800"
                     placeholder="Enter content title..."
                     required
                   />
@@ -283,7 +304,7 @@ const ContentManagement = () => {
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none"
+                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none placeholder-gray-400 dark:placeholder-gray-800"
                     placeholder="Enter content description..."
                     required
                   />
@@ -333,7 +354,7 @@ const ContentManagement = () => {
                           onChange={(e) =>
                             updateSubtopic(index, "heading", e.target.value)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-800"
                         />
                         <textarea
                           placeholder="Subtopic content..."
@@ -342,7 +363,7 @@ const ContentManagement = () => {
                             updateSubtopic(index, "body", e.target.value)
                           }
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none"
+                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none placeholder-gray-400 dark:placeholder-gray-800"
                         />
                       </div>
                     </div>
@@ -351,63 +372,223 @@ const ContentManagement = () => {
               </div>
 
               {/* Resources */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-lg font-semibold text-gray-700">
-                    Resources
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addResource}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center font-medium"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Resource
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {formData.resources.map((resource, index) => (
-                    <div
-                      key={index}
-                      className="bg-purple-50 rounded-xl p-4 border border-purple-200"
+              <div className="border border-gray-200 rounded-lg">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => setResourcesCollapsed(!resourcesCollapsed)}
+                      className="flex items-center hover:bg-gray-50 rounded px-2 py-1 transition-colors duration-200"
                     >
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-semibold text-purple-600 bg-white px-3 py-1 rounded-full">
-                          Resource {index + 1}
-                        </span>
-                        {formData.resources.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeResource(index)}
-                            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors duration-200"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
+                      {resourcesCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-gray-600 mr-2" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-600 mr-2" />
+                      )}
+                      <span className="text-lg font-semibold text-gray-700">
+                        Resources ({formData.resources.length})
+                      </span>
+                    </button>
+                    {!resourcesCollapsed && (
+                      <div className="flex items-center space-x-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <input
+                            type="text"
+                            placeholder="Search by resource number..."
+                            value={resourceSearch}
+                            onChange={(e) => setResourceSearch(e.target.value)}
+                            className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-64"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addResource}
+                          className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center font-medium"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input
-                          type="text"
-                          placeholder="Resource label (e.g., 'YouTube Video')"
-                          value={resource.label}
-                          onChange={(e) =>
-                            updateResource(index, "label", e.target.value)
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
-                        />
-                        <input
-                          type="url"
-                          placeholder="Resource URL..."
-                          value={resource.url}
-                          onChange={(e) =>
-                            updateResource(index, "url", e.target.value)
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </div>
+
+                {!resourcesCollapsed && (
+                  <div className="p-4">
+                    {filteredResources.length === 0 ? (
+                      <div className="text-center py-8">
+                        <LinkIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No resources found
+                        </h3>
+                        <p className="text-gray-600">
+                          {resourceSearch
+                            ? "Try adjusting your search criteria."
+                            : "Add your first resource to get started."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Resource 
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Label
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                URL
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredResources.map((resource) => {
+                              const actualIndex = formData.resources.findIndex(
+                                (r) => r === resource,
+                              );
+                              return (
+                                <React.Fragment key={actualIndex}>
+                                  {/* Resource Header Row - Always Visible */}
+                                  <tr
+                                    className="hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => toggleRow(actualIndex)}
+                                  >
+                                    <td colSpan="5" className="px-4 py-3">
+                                      <div className="flex items-center">
+                                        {openRows[actualIndex] ? (
+                                          <ChevronDown className="h-4 w-4 text-gray-600 mr-2" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 text-gray-600 mr-2" />
+                                        )}
+                                        <span className="text-sm font-medium text-gray-900">
+                                          Resource {actualIndex + 1}
+                                        </span>
+                                        <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                          {resource.type
+                                            ? resource.type
+                                                .charAt(0)
+                                                .toUpperCase() +
+                                              resource.type.slice(1)
+                                            : "Video"}
+                                        </span>
+                                        {resource.label && (
+                                          <span className="ml-2 text-xs text-gray-600 truncate max-w-xs">
+                                            - {resource.label}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+
+                                  {/* Resource Details Row - Only when open */}
+                                  {openRows[actualIndex] && (
+                                    <tr className="bg-gray-50">
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {actualIndex + 1.}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <select
+                                          value={resource.type}
+                                          onChange={(e) =>
+                                            updateResource(
+                                              actualIndex,
+                                              "type",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="text-sm px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                        >
+                                          <option value="video">
+                                            🎥 Video
+                                          </option>
+                                          <option value="pdf">📄 PDF</option>
+                                          <option value="link">🔗 Link</option>
+                                          <option value="image">
+                                            🖼️ Image
+                                          </option>
+                                        </select>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <input
+                                          type="text"
+                                          value={resource.label}
+                                          onChange={(e) =>
+                                            updateResource(
+                                              actualIndex,
+                                              "label",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                          placeholder="Resource label..."
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <input
+                                          type="url"
+                                          value={resource.url}
+                                          onChange={(e) =>
+                                            updateResource(
+                                              actualIndex,
+                                              "url",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                          placeholder="Resource URL..."
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                        <div className="flex items-center space-x-2">
+                                          {resource.url && (
+                                            <a
+                                              href={resource.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                                              title="View resource"
+                                              onClick={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                            >
+                                              <ExternalLink className="h-4 w-4" />
+                                            </a>
+                                          )}
+                                          {formData.resources.length > 1 && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeResource(actualIndex);
+                                              }}
+                                              className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                                              title="Delete resource"
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
@@ -435,34 +616,54 @@ const ContentManagement = () => {
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
         <div className="px-6 py-5 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">All Content</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {filteredContents.length} of {contents.length} items
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <BookOpen className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium text-gray-600">
-                Learning Materials
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowContent(!showContent)}
+              className="flex items-center hover:bg-gray-50 rounded px-2 py-1 transition-colors duration-200"
+            >
+              {showContent ? (
+                <ChevronDown className="h-5 w-5 text-gray-600 mr-2" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-gray-600 mr-2" />
+              )}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">All Content</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {filteredContent.length} of {contents.length} items
+                </p>
+              </div>
+            </button>
+            {showContent && (
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search by title..."
+                    value={searchContent}
+                    onChange={(e) => setSearchContent(e.target.value)}
+                    className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 w-64"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200">
-          {filteredContents.length === 0 ? (
+        {showContent && (
+          <div className="divide-y divide-gray-200">
+            {filteredContent.length === 0 ? (
             <div className="p-12 text-center">
               <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No content found
               </h3>
               <p className="text-gray-600 mb-6">
-                {searchTerm || filterStatus !== "all"
+                {searchContent || filterStatus !== "all"
                   ? "Try adjusting your search or filter criteria."
                   : "Get started by creating your first learning content."}
               </p>
-              {!searchTerm && filterStatus === "all" && (
+              {!searchContent && filterStatus === "all" && (
                 <button
                   onClick={() => setShowForm(true)}
                   className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -473,105 +674,143 @@ const ContentManagement = () => {
               )}
             </div>
           ) : (
-            filteredContents.map((content) => (
-              <div
-                key={content._id}
-                className="p-6 hover:bg-gray-50 transition-colors duration-200"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center mb-2">
-                      <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mr-3">
-                        <BookOpen className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
-                          {content.title}
-                        </h3>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {new Date(content.createdAt).toLocaleDateString()}
-                          <User className="h-4 w-4 ml-4 mr-1" />
-                          {content.authorId?.name || "Admin"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="text-gray-600 mb-4 line-clamp-2">
-                      {content.description}
-                    </p>
-
-                    {content.subtopics && content.subtopics.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                          <FileText className="h-4 w-4 mr-1" />
-                          Subtopics ({content.subtopics.length})
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {content.subtopics
-                            .slice(0, 3)
-                            .map((subtopic, index) => (
-                              <span
-                                key={index}
-                                className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium"
-                              >
-                                {subtopic.heading}
-                              </span>
-                            ))}
-                          {content.subtopics.length > 3 && (
-                            <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
-                              +{content.subtopics.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {content.resources && content.resources.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                          <LinkIcon className="h-4 w-4 mr-1" />
-                          Resources ({content.resources.length})
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {content.resources.map((resource, index) => (
-                            <a
-                              key={index}
-                              href={resource.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-xs rounded-full hover:bg-purple-200 transition-colors duration-200 font-medium"
+              <div className="overflow-x-auto">
+                <table className="w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                        #
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Title
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredContent.map((content, index) => (
+                      <React.Fragment key={content._id}>
+                        {/* Main Row */}
+                        <tr className="hover:bg-gray-50 transition-colors duration-200">
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <button
+                              onClick={() => toggleRow(content._id)}
+                              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
                             >
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              {resource.label}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                              {openRows[content._id] ? (
+                                <ChevronDown className="h-4 w-4 mr-1" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 mr-1" />
+                              )}
+                              <span className="text-sm font-medium">{index + 1}</span>
+                            </button>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                <BookOpen className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-gray-900 truncate">
+                                  {content.title}
+                                </div>
+                                <div className="flex items-center text-xs text-gray-500 mt-1">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {new Date(content.createdAt).toLocaleDateString()}
+                                  <User className="h-3 w-3 ml-3 mr-1" />
+                                  {content.authorId?.name || "Admin"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleEdit(content)}
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors duration-200"
+                                title="Edit content"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(content._id)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+                                title="Delete content"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
 
-                  <div className="flex items-center space-x-2 ml-6">
-                    <button
-                      onClick={() => handleEdit(content)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                      title="Edit content"
-                    >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(content._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                      title="Delete content"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
+                        {/* Expanded Row */}
+                        {openRows[content._id] && (
+                          <tr className="bg-gray-50">
+                            <td colSpan="3" className="px-4 py-4">
+                              <div className="space-y-4">
+                                {/* Description */}
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-700 mb-2">Description</h4>
+                                  <p className="text-sm text-gray-600 leading-relaxed">
+                                    {content.description}
+                                  </p>
+                                </div>
+
+                                {/* Subtopics */}
+                                {content.subtopics && content.subtopics.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                      Subtopics ({content.subtopics.length})
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                      {content.subtopics.map((subtopic, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium"
+                                        >
+                                          {subtopic.heading}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Resources */}
+                                {content.resources && content.resources.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                      Resources ({content.resources.length})
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                      {content.resources.map((resource, idx) => (
+                                        <a
+                                          key={idx}
+                                          href={resource.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-xs rounded-full hover:bg-purple-200 transition-colors duration-200 font-medium"
+                                        >
+                                          <ExternalLink className="h-3 w-3 mr-1" />
+                                          {resource.label}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))
-          )}
+            )}
         </div>
+        )}
       </div>
     </div>
   );
