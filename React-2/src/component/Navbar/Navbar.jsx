@@ -59,10 +59,17 @@ const Navbar = () => {
           Contact
         </Link>
 
-        {/* 🔥 ADD THIS (IMPORTANT) */}
-        {/* <Link to="/search" onClick={handleClick} className={isActive("/search") ? "active" : ""}>
+        <Link to="/social" onClick={handleClick} className={isActive("/social") ? "active" : ""}>
+          📱 Social Post
+        </Link>
+                <Link to="/socialform2" onClick={handleClick} className={isActive("/socialform") ? "active" : ""}>
+          📱 SocialForm2 Post
+        </Link>
+        
+
+        <Link to="/explore" onClick={handleClick} className={isActive("/explore") ? "active" : ""}>
           🔍 Search
-        </Link> */}
+        </Link>
 
         {isAdmin && (
           <Link to="/admin" className="admin-link" onClick={handleClick}>

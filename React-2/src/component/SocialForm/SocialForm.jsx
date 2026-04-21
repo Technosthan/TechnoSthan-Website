@@ -1,6 +1,7 @@
-// HRSocialDashboard.jsx
+// SocialForm.jsx - HR Social Dashboard
 import React, { useState, useEffect } from "react";
 import "./SocialForm.css";
+import { Helmet } from "react-helmet-async";
 
 
 // ========== ICONS (Simple SVG Components) ==========
@@ -162,23 +163,102 @@ const Icons = {
   )
 };
 
+// ========== PREMIUM PLATFORM ICONS (Official Brand SVGs) ==========
+const PlatformIcons = {
+  Facebook: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+    </svg>
+  ),
+  Instagram: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+    </svg>
+  ),
+  LinkedIn: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+    </svg>
+  ),
+  Twitter: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  ),
+  WhatsApp: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  ),
+  Telegram: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+    </svg>
+  ),
+  YouTube: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+    </svg>
+  ),
+  Pinterest: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z"/>
+    </svg>
+  ),
+  TikTok: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+    </svg>
+  ),
+  Snapchat: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M12.206.793c.99 0 4.347.432 5.932 3.43.529 1.193.403 2.857.11 3.826-.48 1.498-1.365 2.709-2.35 3.54-.493.406-1.026.748-1.16 1.245-.12.45-.066.906.196 1.287.404.593 1.198 1.111 1.88 1.444.682.333 1.423.515 1.767.746.346.231.577.538.577.838 0 .3-.231.607-.577.838-.344.23-1.085.413-1.767.746-.682.333-1.476.851-1.88 1.444-.262.38-.316.836-.196 1.287.134.497.667.84 1.16 1.245.985.831 1.87 2.042 2.35 3.54.293.97.419 2.634-.11 3.826-1.585 2.997-4.942 3.43-5.932 3.43-.99 0-4.347-.432-5.931-3.43-.529-1.193-.404-2.857-.11-3.826.48-1.497 1.365-2.709 2.35-3.539.493-.407 1.026-.748 1.16-1.245.12-.45.066-.906-.196-1.287-.404-.593-1.198-1.111-1.88-1.444-.682-.333-1.423-.514-1.767-.746-.346-.231-.577-.538-.577-.838 0-.3.231-.607.577-.838.344-.23 1.085-.413 1.767-.746.682-.333 1.476-.851 1.88-1.444.262-.38.316-.836.196-1.287-.134-.497-.667-.84-1.16-1.245-.985-.831-1.87-2.042-2.35-3.54-.293-.969-.419-2.634.11-3.826 1.584-2.997 4.941-3.43 5.931-3.43zM9.357 12.612c.752 0 1.36-.608 1.36-1.36 0-.752-.608-1.36-1.36-1.36-.752 0-1.36.608-1.36 1.36 0 .752.608 1.36 1.36 1.36zm5.287 0c.752 0 1.36-.608 1.36-1.36 0-.752-.608-1.36-1.36-1.36-.752 0-1.36.608-1.36 1.36 0 .752.608 1.36 1.36 1.36z"/>
+    </svg>
+  ),
+  Reddit: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.76.786 1.76 1.76 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.76 1.76-1.76.463 0 .92.082 1.336.25C7.86 10.04 9.652 10 11.5 10c1.73 0 3.332.08 4.5.232.477-.163.873-.25 1.207-.25.968 0 1.76.786 1.76 1.76 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.76 1.76-1.76.463 0 .92.082 1.336.25C7.86 10.04 9.652 10 11.5 10c1.73 0 3.332.08 4.5.232.477-.163.873-.25 1.207-.25zM8.75 11.5c0-.414.336-.75.75-.75s.75.336.75.75-.336.75-.75.75-.75-.336-.75-.75zm3.75 4.5c-.414 0-.75-.336-.75-.75s.336-.75.75-.75.75.336.75.75-.336.75-.75.75z"/>
+    </svg>
+  ),
+  Discord: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+    </svg>
+  ),
+  Slack: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+    </svg>
+  ),
+  Email: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+    </svg>
+  ),
+  SMS: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+    </svg>
+  )
+};
+
 // ========== PLATFORM DATA ==========
 const allPlatforms = [
-  { id: "facebook", name: "Facebook", icon: "FaFacebook", color: "#1877F2", charLimit: 63206 },
-  { id: "instagram", name: "Instagram", icon: "📷", color: "#E4405F", charLimit: 2200 },
-  { id: "linkedin", name: "LinkedIn", icon: "💼", color: "#0A66C2", charLimit: 3000 },
-  { id: "twitter", name: "Twitter/X", icon: "🐦", color: "#1DA1F2", charLimit: 280 },
-  { id: "whatsapp", name: "WhatsApp", icon: "💬", color: "#25D366", charLimit: 65536 },
-  { id: "telegram", name: "Telegram", icon: "✈️", color: "#0088CC", charLimit: 4096 },
-  { id: "youtube", name: "YouTube", icon: "▶️", color: "#FF0000", charLimit: 5000 },
-  { id: "pinterest", name: "Pinterest", icon: "📌", color: "#BD081C", charLimit: 500 },
-  { id: "tiktok", name: "TikTok", icon: "🎵", color: "#000000", charLimit: 2200 },
-  { id: "snapchat", name: "Snapchat", icon: "👻", color: "#FFFC00", charLimit: 250 },
-  { id: "reddit", name: "Reddit", icon: "🤖", color: "#FF4500", charLimit: 40000 },
-  { id: "discord", name: "Discord", icon: "🎮", color: "#5865F2", charLimit: 2000 },
-  { id: "slack", name: "Slack", icon: "💼", color: "#4A154B", charLimit: 40000 },
-  { id: "email", name: "Email Blast", icon: "📧", color: "#EA4335", charLimit: 100000 },
-  { id: "sms", name: "SMS", icon: "📱", color: "#34B7F1", charLimit: 160 }
+  { id: "facebook", name: "Facebook", icon: "Facebook", color: "#1877F2", charLimit: 63206 },
+  { id: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200 },
+  { id: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000 },
+  { id: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280 },
+  { id: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536 },
+  { id: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096 },
+  { id: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000 },
+  { id: "pinterest", name: "Pinterest", icon: "Pinterest", color: "#BD081C", charLimit: 500 },
+  { id: "tiktok", name: "TikTok", icon: "TikTok", color: "#000000", charLimit: 2200 },
+  { id: "snapchat", name: "Snapchat", icon: "Snapchat", color: "#FFFC00", charLimit: 250 },
+  { id: "reddit", name: "Reddit", icon: "Reddit", color: "#FF4500", charLimit: 40000 },
+  { id: "discord", name: "Discord", icon: "Discord", color: "#5865F2", charLimit: 2000 },
+  { id: "slack", name: "Slack", icon: "Slack", color: "#4A154B", charLimit: 40000 },
+  { id: "email", name: "Email Blast", icon: "Email", color: "#EA4335", charLimit: 100000 },
+  { id: "sms", name: "SMS", icon: "SMS", color: "#34B7F1", charLimit: 160 }
 ];
 
 // ========== TEMPLATE CATEGORIES ==========
@@ -276,24 +356,111 @@ const emojiCategories = {
   "🚀 Objects": ["🚀", "💡", "🔥", "⚡", "🌈", "☀️", "🌙", "⭐", "🌟", "✅", "❌", "⚠️", "ℹ️", "❓", "❗", "💯", "🔔", "📢", "🎯", "🎪"]
 };
 
+// ========== COMPANY CONFIGURATION (Default HR Company Settings) ==========
+const defaultCompanyConfig = {
+  companyName: "Technosthan",
+  tagline: "Innovating Tomorrow",
+  phone: "9477288288",
+  email: "hr@technosthan.com",
+  website: "https://technosthan.com",
+  address: "India",
+  socialLinks: {
+    facebook: "https://facebook.com/technosthan",
+    instagram: "https://instagram.com/technosthan",
+    linkedin: "https://linkedin.com/company/technosthan",
+    twitter: "https://twitter.com/technosthan",
+    youtube: "https://youtube.com/technosthan"
+  }
+};
+
+// ========== HR PROFILES DATA ==========
+const defaultHRProfiles = [
+  { id: 1, name: "Vikas Kumar", role: "Senior HR Manager", email: "vikas@technosthan.com", phone: "9507562013", avatar: "V", color: "#6366f1" },
+  { id: 2, name: "Priya Sharma", role: "HR Recruiter", email: "priya@technosthan.com", phone: "9876543210", avatar: "P", color: "#8b5cf6" }
+];
+
 // ========== MAIN COMPONENT ==========
-const HRSocialDashboard = () => {
+const SocialForm = () => {
+  const CONTACTS_STORAGE_KEY = "hr_social_whatsapp_contacts";
   // Navigation state
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  // Message composition state
-  const [message, setMessage] = useState("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  // HR Profile Management
+  const [hrProfiles, setHRProfiles] = useState(defaultHRProfiles);
+  const [currentHR, setCurrentHR] = useState(defaultHRProfiles[0]);
+  const [showHRProfileModal, setShowHRProfileModal] = useState(false);
+  const [editingHRProfile, setEditingHRProfile] = useState(null);
   
-  const [contects, setContects] = useState([
-    {name: "vikas", number: "9507562013" },
-    {name: "kartik", number: "9001060923" }
-  ]);
+  // Company Configuration State
+  const [companyConfig, setCompanyConfig] = useState(defaultCompanyConfig);
+  const [showCompanySettings, setShowCompanySettings] = useState(false);
+  
+  // Message composition state - Popular 5 platforms enabled by default for HR
+  const [selectedPlatforms, setSelectedPlatforms] = useState(["whatsapp"]);
+  // FIX: Add message state
+  const [message, setMessage] = useState("");
+  
+  // Image & Link state
+  const [attachedImage, setAttachedImage] = useState(null);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkInput, setLinkInput] = useState("");
+
+  const [contects, setContects] = useState(() => {
+    const fallbackContacts = [
+      { name: "vikas", number: "9507562013" },
+      { name: "kartik", number: "9001060923" }
+    ];
+
+    try {
+      const saved = localStorage.getItem(CONTACTS_STORAGE_KEY);
+      if (!saved) return fallbackContacts;
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : fallbackContacts;
+    } catch {
+      return fallbackContacts;
+    }
+  });
   const [selectedContacts, setSelectedContacts] = useState([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [socialDataId, setSocialDataId] = useState(null);
   const [scheduleType, setScheduleType] = useState("now");
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
+
+  const openWhatsAppComposer = () => {
+    if (!message.trim()) {
+      showNotification("Please write message first", "error");
+      return;
+    }
+    const text = encodeURIComponent(message);
+    const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+    const url = isMobile
+      ? `https://api.whatsapp.com/send?text=${text}`
+      : `https://web.whatsapp.com/send?text=${text}`;
+    window.open(url, "_blank");
+  };
+
+  const openWhatsAppForContacts = (contacts, textMessage) => {
+    const uniqueNumbers = [...new Set(
+      contacts
+        .map((contact) => normalizePhoneNumber(contact.number))
+        .filter(Boolean)
+    )];
+
+    let openedCount = 0;
+    uniqueNumbers.forEach((number) => {
+      const chatUrl = `https://wa.me/${number}?text=${encodeURIComponent(textMessage)}`;
+      const win = window.open(chatUrl, "_blank");
+      if (win) openedCount += 1;
+    });
+
+    return {
+      total: uniqueNumbers.length,
+      opened: openedCount
+    };
+  };
+
   const shareToPlatform = (platform) => {
   if (!message.trim()) {
     showNotification("Please write message first", "error");
@@ -301,19 +468,34 @@ const HRSocialDashboard = () => {
   }
 
   const text = encodeURIComponent(message);
-  const url = encodeURIComponent("https://example.com");
+  const url = encodeURIComponent(companyConfig.website);
+  const phone = companyConfig.phone;
 
   const shareLinks = {
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`,
-    twitter: `https://twitter.com/intent/tweet?text=${text}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
-    whatsapp: `https://wa.me/9477288288?text=${text}`,
+    facebook: companyConfig.socialLinks.facebook 
+      ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(companyConfig.socialLinks.facebook)}&quote=${text}`
+      : `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`,
+    twitter: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+    linkedin: companyConfig.socialLinks.linkedin
+      ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(companyConfig.socialLinks.linkedin)}`
+      : `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    whatsapp: null,
     telegram: `https://t.me/share/url?url=${url}&text=${text}`,
+    instagram: companyConfig.socialLinks.instagram
+      ? `https://instagram.com/${companyConfig.socialLinks.instagram.replace('https://instagram.com/', '')}`
+      : null,
+    youtube: companyConfig.socialLinks.youtube || null,
     reddit: `https://www.reddit.com/submit?title=${text}&url=${url}`,
     pinterest: `https://pinterest.com/pin/create/button/?url=${url}&description=${text}`,
-    email: `mailto:?subject=Check this&body=${text}`,
-    sms: `sms:?body=${text}`
+    email: `mailto:${companyConfig.email}?subject=${encodeURIComponent(companyConfig.companyName)}&body=${text}`,
+    sms: `sms:${phone}?body=${text}`
   };
+
+  if (platform === "whatsapp") {
+    openWhatsAppComposer();
+    showNotification("WhatsApp opened. Select contact and send from your logged-in account.");
+    return;
+  }
 
   if (shareLinks[platform]) {
     window.open(shareLinks[platform], "_blank");
@@ -386,6 +568,64 @@ const HRSocialDashboard = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(contects));
+    } catch {
+      // Ignore storage failures silently (private mode/quota)
+    }
+  }, [contects]);
+
+  useEffect(() => {
+    const bootstrapContactsFromBackend = async () => {
+      try {
+        const listRes = await fetch("http://localhost:5000/api/social");
+        if (!listRes.ok) return;
+
+        const list = await listRes.json();
+        let latestRecord = Array.isArray(list) && list.length > 0 ? list[0] : null;
+
+        if (!latestRecord) {
+          const createRes = await fetch("http://localhost:5000/api/social", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ socials: { whatsapp_contacts: contects } })
+          });
+
+          if (createRes.ok) {
+            const created = await createRes.json();
+            latestRecord = created?.data || null;
+          }
+        }
+
+        if (!latestRecord?._id) return;
+        setSocialDataId(latestRecord._id);
+
+        const contactsRes = await fetch(`http://localhost:5000/api/social/contacts/${latestRecord._id}`);
+        if (!contactsRes.ok) return;
+
+        const contacts = await contactsRes.json();
+        if (Array.isArray(contacts) && contacts.length > 0) {
+          setContects(contacts.map((contact) => ({
+            name: contact.name,
+            number: String(contact.number)
+          })));
+        }
+      } catch {
+        // Keep local fallback contacts if backend is unavailable
+      }
+    };
+
+    bootstrapContactsFromBackend();
+  }, []);
+
+  const normalizePhoneNumber = (phone) => {
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+    return digits;
+  };
+
   const getCharacterLimit = () => {
     if (selectedPlatforms.length === 0) return null;
     const limits = selectedPlatforms.map(id => {
@@ -455,17 +695,178 @@ const HRSocialDashboard = () => {
     }
   };
 
- const handleSubmit = async () => {
+  // Toggle contact selection
+  const toggleContact = (contact) => {
+    setSelectedContacts(prev =>
+      prev.some(c => c.number === contact.number)
+        ? prev.filter(c => c.number !== contact.number)
+        : [...prev, contact]
+    );
+  };
+
+  const toggleAllContacts = () => {
+    const allFilteredSelected = filteredContacts.length > 0 &&
+      filteredContacts.every((contact) =>
+        selectedContacts.some((selected) => selected.number === contact.number)
+      );
+
+    if (allFilteredSelected) {
+      setSelectedContacts((prev) =>
+        prev.filter((selected) =>
+          !filteredContacts.some((contact) => contact.number === selected.number)
+        )
+      );
+      return;
+    }
+
+    setSelectedContacts((prev) => {
+      const merged = [...prev];
+      filteredContacts.forEach((contact) => {
+        if (!merged.some((selected) => selected.number === contact.number)) {
+          merged.push(contact);
+        }
+      });
+      return merged;
+    });
+  };
+
+  // Add new contact
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactNumber, setNewContactNumber] = useState("");
+
+  const addContact = async () => {
+    if (!newContactName.trim() || !newContactNumber.trim()) {
+      showNotification("Please enter name and number", "error");
+      return;
+    }
+    const normalizedNumber = normalizePhoneNumber(newContactNumber);
+    if (normalizedNumber.length < 10) {
+      showNotification("Please enter a valid number", "error");
+      return;
+    }
+    const duplicateExists = contects.some(
+      (contact) => normalizePhoneNumber(contact.number) === normalizedNumber
+    );
+    if (duplicateExists) {
+      showNotification("This number is already saved", "error");
+      return;
+    }
+
+    if (socialDataId) {
+      try {
+        const res = await fetch("http://localhost:5000/api/social/add-contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: socialDataId,
+            name: newContactName.trim(),
+            number: normalizedNumber
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showNotification(err?.msg || "Could not save contact to server", "error");
+          return;
+        }
+
+        const payload = await res.json();
+        const serverContacts = payload?.data?.socials?.whatsapp_contacts || [];
+        setContects(serverContacts.map((contact) => ({
+          name: contact.name,
+          number: String(contact.number)
+        })));
+      } catch {
+        setContects([...contects, { name: newContactName.trim(), number: normalizedNumber }]);
+      }
+    } else {
+      setContects([...contects, { name: newContactName.trim(), number: normalizedNumber }]);
+    }
+
+    setNewContactName("");
+    setNewContactNumber("");
+    showNotification("Contact added! ✅");
+  };
+
+  // ========== IMAGE UPLOAD HANDLER ==========
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showNotification("Image size should be less than 5MB", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachedImage(reader.result);
+        showNotification("Image attached! 📷");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setAttachedImage(null);
+    showNotification("Image removed");
+  };
+
+  // ========== LINK HANDLER ==========
+  const addLink = () => {
+    if (!linkInput.trim()) {
+      showNotification("Please enter a link", "error");
+      return;
+    }
+    let formattedLink = linkInput.trim();
+    if (!formattedLink.startsWith('http://') && !formattedLink.startsWith('https://')) {
+      formattedLink = 'https://' + formattedLink;
+    }
+    setMessage(prev => prev + (prev ? '\n' : '') + formattedLink);
+    setLinkInput("");
+    setShowLinkInput(false);
+    showNotification("Link added! 🔗");
+  };
+
+  // ========== HR PROFILE HANDLERS ==========
+  const [newHRProfile, setNewHRProfile] = useState({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
+
+  const addHRProfile = () => {
+    if (!newHRProfile.name || !newHRProfile.role || !newHRProfile.email) {
+      showNotification("Please fill required fields", "error");
+      return;
+    }
+    const avatar = newHRProfile.name.charAt(0).toUpperCase();
+    const newProfile = { ...newHRProfile, id: Date.now(), avatar };
+    setHRProfiles([...hrProfiles, newProfile]);
+    setNewHRProfile({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
+    showNotification("HR Profile added! 👤");
+  };
+
+  const deleteHRProfile = (profileId) => {
+    if (hrProfiles.length <= 1) {
+      showNotification("Cannot delete the last profile", "error");
+      return;
+    }
+    if (window.confirm("Delete this HR profile?")) {
+      setHRProfiles(prevProfiles => {
+        const updatedProfiles = prevProfiles.filter(p => p.id !== profileId);
+        if (currentHR.id === profileId && updatedProfiles.length > 0) {
+          setCurrentHR(updatedProfiles[0]);
+        }
+        return updatedProfiles;
+      });
+      showNotification("Profile deleted!");
+    }
+  };
+
+  const switchHRProfile = (profile) => {
+    setCurrentHR(profile);
+    showNotification(`Switched to ${profile.name}`);
+  };
+
+  const handleSubmit = async () => {
   if (!message.trim()) {
     showNotification("Please enter a message", "error");
     return;
-  }
-  const toggleContact = (number) => {
-    setSelectedContacts(prev =>
-      prev.includes(number)
-        ? prev.filter(n => n !== number)
-        : [...prev, number]
-    );
   }
 
   if (selectedPlatforms.length === 0) {
@@ -484,6 +885,37 @@ const HRSocialDashboard = () => {
   }
 
   try {
+    if (selectedPlatforms.includes("whatsapp") && scheduleType === "now") {
+      const recipients = selectedContacts.length > 0
+        ? selectedContacts
+        : [{ number: companyConfig.phone, name: companyConfig.companyName }];
+
+      const waResult = openWhatsAppForContacts(recipients, message);
+      if (waResult.total === 0) {
+        showNotification("No valid WhatsApp number found", "error");
+      } else if (waResult.opened < waResult.total) {
+        showNotification(`Opened ${waResult.opened}/${waResult.total} chats. Please allow popups for full send.`, "info");
+      } else {
+        showNotification(`Opened ${waResult.total} WhatsApp chat(s). Press send in WhatsApp.`, "success");
+      }
+    }
+
+    if (selectedPlatforms.includes("sms") && scheduleType === "now") {
+      const normalizedNumber = normalizePhoneNumber(companyConfig.phone);
+      if (normalizedNumber) {
+        const url = `sms:${normalizedNumber}?body=${encodeURIComponent(message)}`;
+        window.open(url, "_blank");
+      }
+    }
+
+    if (selectedPlatforms.includes("email") && scheduleType === "now") {
+      const url = `mailto:${companyConfig.email}?subject=${encodeURIComponent(companyConfig.companyName)}&body=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+    }
+
+    // Do not auto-open all other platforms on Publish.
+    // Users can use each platform's Share button for manual posting.
+
     const data = {
       message,
       platforms: selectedPlatforms,
@@ -507,24 +939,14 @@ const HRSocialDashboard = () => {
     const updated = await res.json();
     setPostHistory(updated);
 
-    // 🔥🔥 WHATSAPP SEND LOGIC ADD
-    if (selectedPlatforms.includes("whatsapp") && scheduleType === "now") {
-      selectedContacts.forEach((number, index) => {
-        const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-
-        setTimeout(() => {
-          window.open(url, "_blank");
-        }, index * 800);
-      });
-    }
-
     // ✅ RESET
     setMessage("");
-    setSelectedPlatforms([]);
+    setSelectedPlatforms(["whatsapp"]);
     setScheduleDate("");
     setScheduleTime("");
     setScheduleType("now");
     setSelectedContacts([]);
+    setContactSearch("");
 
     // ✅ SUCCESS
     showNotification(
@@ -563,6 +985,15 @@ const HRSocialDashboard = () => {
   const filteredHistory = postHistory.filter(p =>
     p.message.toLowerCase().includes(searchHistory.toLowerCase())
   );
+
+  const filteredContacts = contects.filter((contact) => {
+    const keyword = contactSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    return (
+      contact.name.toLowerCase().includes(keyword) ||
+      String(contact.number).toLowerCase().includes(keyword)
+    );
+  });
 
   // ========== RENDER FUNCTIONS ==========
 
@@ -620,12 +1051,15 @@ const HRSocialDashboard = () => {
         <div className="dashboard-card platform-performance">
           <h3>📈 Platform Performance</h3>
           <div className="platform-stats">
-            {analyticsData.platformStats.map((stat, index) => (
+            {analyticsData.platformStats.map((stat, index) => {
+              const platform = allPlatforms.find(p => p.name === stat.platform);
+              const IconComponent = platform ? PlatformIcons[platform.icon] : null;
+              return (
               <div key={index} className="platform-stat-row">
                 <div className="platform-info">
-                  <span className="platform-icon">
-                    {allPlatforms.find(p => p.name === stat.platform)?.icon}
-                  </span>
+                  <div className="platform-icon" style={{ background: platform?.color || '#6366f1' }}>
+                    {IconComponent && <IconComponent />}
+                  </div>
                   <span className="platform-name">{stat.platform}</span>
                 </div>
                 <div className="platform-metrics">
@@ -646,7 +1080,7 @@ const HRSocialDashboard = () => {
                   ></div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
 
@@ -732,14 +1166,51 @@ const HRSocialDashboard = () => {
                 >
                   <Icons.Emoji />
                 </button>
-                <button className="toolbar-btn" title="Add Image">
+                <label className="toolbar-btn image-upload-btn" title="Add Image">
                   <Icons.Image />
-                </button>
-                <button className="toolbar-btn" title="Add Link">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                <button 
+                  className="toolbar-btn" 
+                  title="Add Link"
+                  onClick={() => setShowLinkInput(!showLinkInput)}
+                >
                   <Icons.Link />
                 </button>
               </div>
             </div>
+
+            {/* Link Input */}
+            {showLinkInput && (
+              <div className="link-input-container">
+                <input
+                  type="text"
+                  placeholder="Enter URL (e.g., technosthan.com)"
+                  value={linkInput}
+                  onChange={(e) => setLinkInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addLink()}
+                />
+                <button className="add-link-btn" onClick={addLink}>Add</button>
+                <button className="cancel-link-btn" onClick={() => { setShowLinkInput(false); setLinkInput(""); }}>
+                  <Icons.Close />
+                </button>
+              </div>
+            )}
+
+            {/* Attached Image Preview */}
+            {attachedImage && (
+              <div className="image-preview">
+                <img src={attachedImage} alt="Attached" />
+                <button className="remove-image-btn" onClick={removeImage}>
+                  <Icons.Close />
+                </button>
+              </div>
+            )}
 
             {showEmojiPicker && (
               <div className="emoji-picker">
@@ -771,10 +1242,10 @@ const HRSocialDashboard = () => {
             )}
 
             <textarea
-              placeholder="What would you like to share today? 💬"
+              placeholder="Write your message here..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              rows={8}
+              rows={4}
             />
 
             <div className="character-counter">
@@ -793,31 +1264,41 @@ const HRSocialDashboard = () => {
           {/* Platform Selection */}
           <div className="compose-card platforms-card">
             <div className="card-header">
-              <h3>📱 Select Platforms</h3>
+              <h3>📱 Platforms</h3>
               <button className="select-all-btn" onClick={selectAllPlatforms}>
-                {selectedPlatforms.length === allPlatforms.length ? "Deselect All" : "Select All"}
+                {selectedPlatforms.length === allPlatforms.length ? "Clear" : "All"}
               </button>
             </div>
 
             <div className="platforms-grid">
-              {allPlatforms.map((platform) => (
+              {allPlatforms.map((platform) => {
+                const IconComponent = PlatformIcons[platform.icon];
+                return (
                 <div
                   key={platform.id}
                   className={`platform-item ${selectedPlatforms.includes(platform.id) ? "selected" : ""}`}
                   onClick={() => togglePlatform(platform.id)}
                   style={{ "--platform-color": platform.color }}
                 >
-                  <span className="platform-icon">{platform.icon}</span>
+                  <div className="platform-icon-wrapper" style={{ background: platform.color }}>
+                    {IconComponent && <IconComponent />}
+                  </div>
                   <span className="platform-name">{platform.name}</span>
-                  <span className="platform-limit">{platform.charLimit} chars</span>
+                  <span className="platform-limit">{platform.charLimit.toLocaleString()} chars</span>
                   {selectedPlatforms.includes(platform.id) && (
-                    <span className="check-mark">✓</span>
+                    <span className="check-mark">
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                      </svg>
+                    </span>
                   )}
-                  <button onClick={() => shareToPlatform(platform.id)}>🚀</button>
-
-
+                  <button className="share-btn" onClick={(e) => { e.stopPropagation(); shareToPlatform(platform.id); }}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                    </svg>
+                  </button>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
 
@@ -874,6 +1355,94 @@ const HRSocialDashboard = () => {
             )}
           </div>
 
+          {/* 📱 Contacts Card - WhatsApp Only */}
+          {selectedPlatforms.includes("whatsapp") && (
+            <div className="compose-card contacts-card">
+              <h3>📱 Send to Contacts</h3>
+              <p className="contacts-hint">
+                Filter by name/number, select contacts for preview, then send from your own WhatsApp.
+              </p>
+              <div className="contacts-actions">
+                <button type="button" onClick={toggleAllContacts}>
+                  {filteredContacts.length > 0 && filteredContacts.every((contact) => selectedContacts.some((selected) => selected.number === contact.number)) ? "Unselect All" : "Select All"}
+                </button>
+                <button type="button" onClick={openWhatsAppComposer}>Open My WhatsApp</button>
+              </div>
+
+              <div className="contact-search-row">
+                <input
+                  type="text"
+                  placeholder="Search by name or number"
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                />
+              </div>
+              
+              <div className="contacts-list">
+                {filteredContacts.map((contact, index) => (
+                  <div
+                    key={index}
+                    className={`contact-item ${selectedContacts.some(c => c.number === contact.number) ? "selected" : ""}`}
+                    onClick={() => toggleContact(contact)}
+                  >
+                    <div className="contact-avatar">
+                      {contact.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="contact-info">
+                      <span className="contact-name">{contact.name}</span>
+                      <span className="contact-number">{contact.number}</span>
+                    </div>
+                    {selectedContacts.some(c => c.number === contact.number) && (
+                      <span className="contact-check">✓</span>
+                    )}
+                  </div>
+                ))}
+                {filteredContacts.length === 0 && (
+                  <div className="no-contact-found">No contact found for this keyword.</div>
+                )}
+              </div>
+
+              {/* Add New Contact */}
+              <div className="add-contact-form">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={newContactName}
+                  onChange={(e) => setNewContactName(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Number"
+                  value={newContactNumber}
+                  onChange={(e) => setNewContactNumber(e.target.value)}
+                />
+                <button className="add-contact-btn" onClick={addContact}>
+                  + Add
+                </button>
+              </div>
+
+              {selectedContacts.length > 0 && (
+                <div className="selected-contacts-summary">
+                  <span>Selected: {selectedContacts.length} contact(s)</span>
+                  <button onClick={() => setSelectedContacts([])}>Clear</button>
+                </div>
+              )}
+
+              {selectedContacts.length > 0 && (
+                <div className="selected-recipients-preview">
+                  <strong>Will Send To:</strong>
+                  <div className="recipient-chips">
+                    {selectedContacts.map((contact) => (
+                      <span key={contact.number} className="recipient-chip">
+                        {contact.name} ({contact.number})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Submit Button */}
           <button 
             className="submit-button"
@@ -881,7 +1450,7 @@ const HRSocialDashboard = () => {
             disabled={!message.trim() || selectedPlatforms.length === 0 || isOverLimit}
           >
             <Icons.Send />
-            {scheduleType === "now" ? "Send Now" : "Schedule Post"}
+            {scheduleType === "now" ? "Publish" : "Schedule"}
           </button>
         </div>
 
@@ -889,7 +1458,7 @@ const HRSocialDashboard = () => {
         <div className="compose-sidebar">
           {/* Preview */}
           <div className="compose-card preview-card">
-            <h3>👁️ Live Preview</h3>
+            <h3>👁️ Preview</h3>
             <div className="preview-content">
               {message ? (
                 <div className="preview-message">
@@ -899,19 +1468,20 @@ const HRSocialDashboard = () => {
                 </div>
               ) : (
                 <p className="preview-placeholder">
-                  Your message preview will appear here...
+                  Start typing to see preview...
                 </p>
               )}
             </div>
             {selectedPlatforms.length > 0 && (
               <div className="preview-platforms">
-                <span>Posting to:</span>
+                <span>To: {selectedPlatforms.length} platforms</span>
                 <div className="platform-tags">
-                  {selectedPlatforms.map(id => {
+                  {selectedPlatforms.slice(0, 5).map(id => {
                     const platform = allPlatforms.find(p => p.id === id);
+                    const IconComponent = platform ? PlatformIcons[platform.icon] : null;
                     return (
-                      <span key={id} className="platform-tag">
-                        {platform?.icon} {platform?.name}
+                      <span key={id} className="platform-tag" style={{ borderColor: platform?.color }}>
+                        {IconComponent && <IconComponent />}
                       </span>
                     );
                   })}
@@ -922,9 +1492,9 @@ const HRSocialDashboard = () => {
 
           {/* Quick Templates */}
           <div className="compose-card quick-templates-card">
-            <h3>⚡ Quick Templates</h3>
+            <h3>⚡ Templates</h3>
             <div className="quick-templates-list">
-              {templates.slice(0, 5).map((template) => (
+              {templates.slice(0, 4).map((template) => (
                 <button
                   key={template.id}
                   className="quick-template-btn"
@@ -1143,6 +1713,190 @@ const HRSocialDashboard = () => {
                 onClick={saveTemplate}
               >
                 {editingTemplate ? "Update Template" : "Create Template"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company Settings Modal */}
+      {showCompanySettings && (
+        <div className="modal-overlay" onClick={() => setShowCompanySettings(false)}>
+          <div className="modal-content company-settings-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>🏢 Company Settings</h2>
+              <button className="close-btn" onClick={() => setShowCompanySettings(false)}>
+                <Icons.Close />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="settings-section">
+                <h3>Company Information</h3>
+                <div className="settings-grid">
+                  <div className="input-group">
+                    <label>Company Name</label>
+                    <input 
+                      type="text" 
+                      value={companyConfig.companyName}
+                      onChange={(e) => setCompanyConfig({...companyConfig, companyName: e.target.value})}
+                      placeholder="Your Company Name"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Tagline</label>
+                    <input 
+                      type="text" 
+                      value={companyConfig.tagline}
+                      onChange={(e) => setCompanyConfig({...companyConfig, tagline: e.target.value})}
+                      placeholder="Your Tagline"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>📱 Phone Number</label>
+                    <input 
+                      type="text" 
+                      value={companyConfig.phone}
+                      onChange={(e) => setCompanyConfig({...companyConfig, phone: e.target.value})}
+                      placeholder="9477288288"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>📧 Email</label>
+                    <input 
+                      type="email" 
+                      value={companyConfig.email}
+                      onChange={(e) => setCompanyConfig({...companyConfig, email: e.target.value})}
+                      placeholder="hr@company.com"
+                    />
+                  </div>
+                  <div className="input-group full-width">
+                    <label>🌐 Website</label>
+                    <input 
+                      type="url" 
+                      value={companyConfig.website}
+                      onChange={(e) => setCompanyConfig({...companyConfig, website: e.target.value})}
+                      placeholder="https://yourcompany.com"
+                    />
+                  </div>
+                  <div className="input-group full-width">
+                    <label>📍 Address</label>
+                    <input 
+                      type="text" 
+                      value={companyConfig.address}
+                      onChange={(e) => setCompanyConfig({...companyConfig, address: e.target.value})}
+                      placeholder="Your Address"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>🔗 Social Media Links</h3>
+                <div className="settings-grid">
+                  <div className="input-group">
+                    <label>Facebook</label>
+                    <input 
+                      type="url" 
+                      value={companyConfig.socialLinks.facebook}
+                      onChange={(e) => setCompanyConfig({
+                        ...companyConfig, 
+                        socialLinks: {...companyConfig.socialLinks, facebook: e.target.value}
+                      })}
+                      placeholder="https://facebook.com/yourcompany"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Instagram</label>
+                    <input 
+                      type="url" 
+                      value={companyConfig.socialLinks.instagram}
+                      onChange={(e) => setCompanyConfig({
+                        ...companyConfig, 
+                        socialLinks: {...companyConfig.socialLinks, instagram: e.target.value}
+                      })}
+                      placeholder="https://instagram.com/yourcompany"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>LinkedIn</label>
+                    <input 
+                      type="url" 
+                      value={companyConfig.socialLinks.linkedin}
+                      onChange={(e) => setCompanyConfig({
+                        ...companyConfig, 
+                        socialLinks: {...companyConfig.socialLinks, linkedin: e.target.value}
+                      })}
+                      placeholder="https://linkedin.com/company/yourcompany"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Twitter/X</label>
+                    <input 
+                      type="url" 
+                      value={companyConfig.socialLinks.twitter}
+                      onChange={(e) => setCompanyConfig({
+                        ...companyConfig, 
+                        socialLinks: {...companyConfig.socialLinks, twitter: e.target.value}
+                      })}
+                      placeholder="https://twitter.com/yourcompany"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>YouTube</label>
+                    <input 
+                      type="url" 
+                      value={companyConfig.socialLinks.youtube}
+                      onChange={(e) => setCompanyConfig({
+                        ...companyConfig, 
+                        socialLinks: {...companyConfig.socialLinks, youtube: e.target.value}
+                      })}
+                      placeholder="https://youtube.com/@yourcompany"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>📱 Quick Actions</h3>
+                <div className="quick-actions-grid">
+                  <button className="quick-action-btn" onClick={() => {
+                    const text = encodeURIComponent(`Check out ${companyConfig.companyName}! ${companyConfig.website}`);
+                    window.open(`https://wa.me/${companyConfig.phone}?text=${text}`, "_blank");
+                  }}>
+                    <span>💬</span> Test WhatsApp
+                  </button>
+                  <button className="quick-action-btn" onClick={() => {
+                    const text = encodeURIComponent(`Check out ${companyConfig.companyName}! ${companyConfig.website}`);
+                    window.open(`mailto:${companyConfig.email}?subject=Contact&body=${text}`, "_blank");
+                  }}>
+                    <span>📧</span> Test Email
+                  </button>
+                  <button className="quick-action-btn" onClick={() => {
+                    const text = encodeURIComponent(`Check out ${companyConfig.companyName}! ${companyConfig.website}`);
+                    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(companyConfig.website)}`, "_blank");
+                  }}>
+                    <span>📘</span> Test Facebook
+                  </button>
+                  <button className="quick-action-btn" onClick={() => {
+                    const text = encodeURIComponent(`Check out ${companyConfig.companyName}! ${companyConfig.website}`);
+                    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(companyConfig.website)}`, "_blank");
+                  }}>
+                    <span>💼</span> Test LinkedIn
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="cancel-btn" onClick={() => setShowCompanySettings(false)}>
+                Cancel
+              </button>
+              <button className="save-btn" onClick={() => {
+                showNotification("Company settings saved! ✅");
+                setShowCompanySettings(false);
+              }}>
+                Save Settings
               </button>
             </div>
           </div>
@@ -1507,6 +2261,13 @@ const HRSocialDashboard = () => {
 
   return (
     <div className={`hr-dashboard ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <Helmet>
+        <title>HR Social Dashboard | WhatsApp & Multi Platform Publisher</title>
+        <meta
+          name="description"
+          content="Compose and publish social posts with WhatsApp contact selection, scheduling, templates, and analytics."
+        />
+      </Helmet>
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -1537,13 +2298,44 @@ const HRSocialDashboard = () => {
         </nav>
 
         <div className="sidebar-footer">
-          {!sidebarCollapsed && (
-            <div className="user-info">
-              <div className="user-avatar">HR</div>
-              <div className="user-details">
-                <span className="user-name">HR Admin</span>
-                <span className="user-role">Administrator</span>
+          {!sidebarCollapsed ? (
+            <div className="hr-profile-section">
+              <div className="current-hr-profile" onClick={() => setShowHRProfileModal(true)}>
+                <div className="hr-avatar" style={{ background: currentHR.color }}>
+                  {currentHR.avatar}
+                </div>
+                <div className="hr-details">
+                  <span className="hr-name">{currentHR.name}</span>
+                  <span className="hr-role">{currentHR.role}</span>
+                </div>
+                <span className="switch-profile-icon">🔄</span>
               </div>
+              {hrProfiles.length > 1 && (
+                <div className="hr-profiles-dropdown">
+                  {hrProfiles.filter(p => p.id !== currentHR.id).map(profile => (
+                    <button 
+                      key={profile.id} 
+                      className="hr-profile-option"
+                      onClick={() => switchHRProfile(profile)}
+                    >
+                      <div className="hr-avatar small" style={{ background: profile.color }}>
+                        {profile.avatar}
+                      </div>
+                      <span>{profile.name}</span>
+                    </button>
+                  ))}
+                  <button 
+                    className="add-new-hr-btn"
+                    onClick={() => { setEditingHRProfile(null); setShowHRProfileModal(true); }}
+                  >
+                    <Icons.Plus /> Add New HR
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="collapsed-hr-avatar" onClick={() => setShowHRProfileModal(true)} style={{ background: currentHR.color }}>
+              {currentHR.avatar}
             </div>
           )}
         </div>
@@ -1557,6 +2349,14 @@ const HRSocialDashboard = () => {
             <h2>{navItems.find(n => n.id === activeTab)?.label}</h2>
           </div>
           <div className="top-bar-right">
+            {/* Company Info Badge */}
+            <div className="company-badge" onClick={() => setShowCompanySettings(true)}>
+              <div className="company-badge-icon">🏢</div>
+              <div className="company-badge-info">
+                <span className="company-name">{companyConfig.companyName}</span>
+                <span className="company-tagline">{companyConfig.tagline}</span>
+              </div>
+            </div>
             <button className="notification-btn">
               <Icons.Bell />
               <span className="notification-badge">3</span>
@@ -1576,11 +2376,93 @@ const HRSocialDashboard = () => {
       {/* Notification Toast */}
       {notification && (
         <div className={`notification-toast ${notification.type}`}>
-          {notification.type === "success" ? "✅" : "❌"} {notification.message}
+          {notification.type === "success" ? "✅" : notification.type === "error" ? "❌" : "ℹ️"} {notification.message}
+        </div>
+      )}
+
+      {/* HR Profile Modal */}
+      {showHRProfileModal && (
+        <div className="modal-overlay" onClick={() => setShowHRProfileModal(false)}>
+          <div className="modal-content hr-profile-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>👤 HR Profile Management</h2>
+              <button className="modal-close" onClick={() => setShowHRProfileModal(false)}>
+                <Icons.Close />
+              </button>
+            </div>
+            <div className="modal-body">
+              {/* Current Profiles List */}
+              <div className="hr-profiles-list">
+                <h3>Your HR Profiles</h3>
+                {hrProfiles.map(profile => (
+                  <div key={profile.id} className={`hr-profile-card ${currentHR.id === profile.id ? 'active' : ''}`}>
+                    <div className="hr-profile-avatar" style={{ background: profile.color }}>
+                      {profile.avatar}
+                    </div>
+                    <div className="hr-profile-info">
+                      <span className="hr-profile-name">{profile.name}</span>
+                      <span className="hr-profile-role">{profile.role}</span>
+                      <span className="hr-profile-email">{profile.email}</span>
+                    </div>
+                    {currentHR.id === profile.id && <span className="current-badge">Current</span>}
+                    {hrProfiles.length > 1 && (
+                      <button className="delete-hr-btn" onClick={() => deleteHRProfile(profile.id)}>
+                        <Icons.Delete />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add New Profile Form */}
+              <div className="add-hr-form">
+                <h3>➕ Add New HR Profile</h3>
+                <div className="form-row">
+                  <input
+                    type="text"
+                    placeholder="Name *"
+                    value={newHRProfile.name}
+                    onChange={e => setNewHRProfile({...newHRProfile, name: e.target.value})}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Role *"
+                    value={newHRProfile.role}
+                    onChange={e => setNewHRProfile({...newHRProfile, role: e.target.value})}
+                  />
+                </div>
+                <div className="form-row">
+                  <input
+                    type="email"
+                    placeholder="Email *"
+                    value={newHRProfile.email}
+                    onChange={e => setNewHRProfile({...newHRProfile, email: e.target.value})}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Phone"
+                    value={newHRProfile.phone}
+                    onChange={e => setNewHRProfile({...newHRProfile, phone: e.target.value})}
+                  />
+                </div>
+                <div className="form-row">
+                  <input
+                    type="color"
+                    value={newHRProfile.color}
+                    onChange={e => setNewHRProfile({...newHRProfile, color: e.target.value})}
+                    title="Avatar Color"
+                  />
+                  <button className="add-hr-submit-btn" onClick={addHRProfile}>
+                    <Icons.Plus /> Add Profile
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
 
-export default HRSocialDashboard;
+export default SocialForm;

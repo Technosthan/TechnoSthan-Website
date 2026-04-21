@@ -29,6 +29,8 @@ import AdminRoute from "./component/Protected/AdminRoute";
 /* PAGES */
  import Home from "./component/Home/Home";
 import SocialForm from "./component/SocialForm/SocialForm";
+import HRSocial from "./component/HRSocial/HRSocial";
+
 import ExplorePage from "./Tab/ExplorePage";
 
 
@@ -84,6 +86,9 @@ function App() {
 
         {/* SOCIAL FORM */}
         <Route path="/social" element={<SocialForm />} />
+        <Route path="/socialform2" element={<SocialForm />} />
+        <Route path="/hr-social" element={<HRSocial />} />
+        <Route path="/HRSocial" element={<HRSocial />} />
 
         {/* USER DASHBOARD */}
         <Route

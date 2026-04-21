@@ -1,0 +1,317 @@
+/* ===== GLOBAL ===== */
+.main-container-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  padding: 15px;
+}
+
+/* ===== CARD ===== */
+.unified-glass-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 26px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+/* ===== SECTION ===== */
+.inner-box {
+  padding: 18px;
+  min-height: 200px;
+  position: relative;
+}
+
+.border-bottom {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ===== HEADER ===== */
+.box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.box-header h4 {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+
+/* ===== SLIDER ===== */
+.slider-control {
+  display: flex;
+  align-items: center;
+  margin: 12px 0;
+  gap: 5px;
+}
+
+.icon-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  flex: 1;
+  padding: 5px;
+  scroll-behavior: smooth;
+}
+
+.icon-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== ADD ICON BUTTON ===== */
+.add-bubble {
+  min-width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.12);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.add-bubble:hover {
+  background: #6366f1;
+  transform: scale(1.1);
+}
+
+/* ===== TEMPLATE BUBBLE ===== */
+.bubble-wrapper {
+  position: relative;
+}
+
+.mini-bubble {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.mini-bubble:hover {
+  transform: scale(1.1);
+}
+
+/* TOOLTIP */
+.hover-message {
+  position: absolute;
+  bottom: 45px;
+  background: white;
+  color: black;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  opacity: 0;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+
+.bubble-wrapper:hover .hover-message {
+  opacity: 1;
+}
+
+/* REMOVE TEMPLATE */
+.remove-template {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 10px;
+  color: #ef4444;
+  cursor: pointer;
+}
+
+/* ===== MESSAGE BOX (NEW) ===== */
+.message-box {
+  min-height: 80px;
+  margin-top: 15px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* MESSAGE CHIP */
+.message-chip {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  animation: dropIn 0.3s ease;
+}
+
+/* DROP ANIMATION */
+@keyframes dropIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== SOCIAL ICON ===== */
+.social-unit {
+  min-width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: white;
+  font-size: 18px;
+  transition: 0.25s;
+}
+
+.social-unit:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(255,255,255,0.2);
+}
+
+/* ===== ARROWS ===== */
+.arrow-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 5px;
+  transition: 0.2s;
+}
+
+.arrow-btn:hover {
+  color: white;
+}
+
+/* ===== DROP AREA ===== */
+.drop-preview {
+  background: rgba(0,0,0,0.25);
+  border: 2px dashed rgba(255,255,255,0.1);
+  border-radius: 14px;
+  min-height: 65px;
+  padding: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ===== SELECTED ICON ===== */
+.mini-target {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  animation: dropIn 0.35s ease;
+}
+
+.mini-target:hover {
+  transform: scale(1.1);
+}
+
+/* REMOVE ICON */
+.remove-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* HINT */
+.hint {
+  font-size: 11px;
+  color: #475569;
+}
+
+/* ===== BUTTONS ===== */
+.final-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-ui {
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-ui.secondary {
+  background: #1e293b;
+  color: white;
+}
+
+.btn-ui.primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+}
+
+.btn-ui.full {
+  grid-column: span 2;
+  background: white;
+  color: black;
+}
+
+.btn-ui:hover {
+  transform: translateY(-1px);
+}
+
+.btn-ui:active {
+  transform: scale(0.96);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 480px) {
+  .unified-glass-card {
+    border-radius: 18px;
+  }
+
+  .inner-box {
+    padding: 14px;
+  }
+
+  .mini-bubble {
+    width: 28px;
+    height: 28px;
+  }
+
+  .social-unit {
+    min-width: 36px;
+    height: 36px;
+  }
+}

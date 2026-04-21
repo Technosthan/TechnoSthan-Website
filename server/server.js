@@ -7,25 +7,29 @@ const passport = require("passport");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-require("dotenv").config({ path: "c:\\Users\\vk226\\OneDrive\\Desktop\\React-2project\\server\\.env" });
+require("dotenv").config({
+  path: "c:\\Users\\vk226\\OneDrive\\Desktop\\React-2project\\server\\.env",
+});
 
 const app = express();
 
 /* ================= SECURITY ================= */
 
 // Helmet
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "http://localhost:5173"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        scriptSrc: ["'self'"],
+        connectSrc: ["'self'", "http://localhost:5173"],
+      },
     },
-  },
-}));
+  })
+);
 
 // Rate Limit
 const limiter = rateLimit({
@@ -43,10 +47,12 @@ const authLimiter = rateLimit({
 /* ================= MIDDLEWARE ================= */
 
 // CORS
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
 // Body parser
 app.use(express.json({ limit: "10mb" }));
@@ -62,8 +68,8 @@ app.use(
     cookie: {
       secure: false,
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000
-    }
+      maxAge: 24 * 60 * 60 * 1000,
+    },
   })
 );
 
@@ -72,10 +78,12 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Only configure Google OAuth if credentials are provided
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'your_google_client_id_here' &&
-    process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CLIENT_SECRET !== 'your_google_client_secret_here') {
-  
+// Google OAuth (only if keys present)
+if (
+  process.env.GOOGLE_CLIENT_ID &&
+  process.env.GOOGLE_CLIENT_SECRET &&
+  process.env.GOOGLE_CLIENT_ID !== "your_google_client_id_here"
+) {
   passport.use(
     new GoogleStrategy(
       {
@@ -113,10 +121,12 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'your_googl
       }
     )
   );
-} // End Google OAuth conditional
+}
 
+// Serialize
 passport.serializeUser((user, done) => done(null, user.id));
 
+// Deserialize
 passport.deserializeUser(async (id, done) => {
   try {
     const User = require("./models/User");
@@ -138,15 +148,19 @@ app.use("/api", require("./routes/contactRoutes"));
 // Protected
 app.use("/api", require("./routes/protectedRoutes"));
 
-// 🔥 SOCIAL FORM ROUTES (IMPORTANT ADD)
-app.use("/api", require("./routes/socialRoutes"));
+// ✅ SOCIAL ROUTES (FINAL FIX)
+const socialRoutes = require("./routes/socialRoutes");
+app.use("/api/social", socialRoutes);
+
+// Posts
 app.use("/api/posts", postRoutes);
 
 /* ================= DB ================= */
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log(err));
+  .catch((err) => console.log(err));
 
 /* ================= SERVER ================= */
 
