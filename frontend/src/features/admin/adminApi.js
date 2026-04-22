@@ -7,6 +7,8 @@ export const getAdminStats = () => axiosInstance.get("/api/admin/stats");
 export const getAllUsers = () => axiosInstance.get("/api/admin/users");
 export const updateUserRole = (userId, role) =>
   axiosInstance.put(`/api/admin/users/${userId}/role`, { role });
+export const updateUserStatus = (userId, status) =>
+  axiosInstance.put(`/api/admin/users/${userId}/status`, { status });
 export const deleteUser = (userId) =>
   axiosInstance.delete(`/api/admin/users/${userId}`);
 
@@ -27,3 +29,9 @@ export const updateQuestion = (questionId, questionData) =>
   axiosInstance.put(`/api/quiz/questions/${questionId}`, questionData);
 export const deleteQuestion = (questionId) =>
   axiosInstance.delete(`/api/quiz/questions/${questionId}`);
+
+// Content-based quiz
+export const getQuestionsByContentId = (contentId) =>
+  axiosInstance.get(`/api/quiz/content/${contentId}`);
+export const deleteQuestionsByContentId = (contentId) =>
+  axiosInstance.delete(`/api/quiz/content/${contentId}`);

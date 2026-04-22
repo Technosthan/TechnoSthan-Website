@@ -4,8 +4,6 @@ import jwt from "jsonwebtoken";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
-
-
 const isEmail = (contact) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(contact);
@@ -58,6 +56,7 @@ export const registerUser = async (data) => {
     email: user.email,
     mobile: user.mobile,
     role: user.role,
+    status: user.status,
   };
 
   return { user: userResponse, token };
@@ -83,6 +82,13 @@ export const loginUser = async (data) => {
     throw new Error("Invalid credentials");
   }
 
+  // Check if user is blocked
+  if (user.status === "blocked") {
+    throw new Error(
+      "Your account has been blocked. Please contact administrator.",
+    );
+  }
+
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "24h",
   });
@@ -94,6 +100,7 @@ export const loginUser = async (data) => {
     email: user.email,
     mobile: user.mobile,
     role: user.role,
+    status: user.status,
   };
 
   return { user: userData, token };
@@ -128,6 +135,13 @@ export const googleAuth = async (profile) => {
     }
   }
 
+  // Check if user is blocked
+  if (user.status === "blocked") {
+    throw new Error(
+      "Your account has been blocked. Please contact administrator.",
+    );
+  }
+
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "24h",
   });
@@ -138,6 +152,7 @@ export const googleAuth = async (profile) => {
     email: user.email,
     mobile: user.mobile,
     role: user.role,
+    status: user.status,
     picture: user.picture,
   };
 

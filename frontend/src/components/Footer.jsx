@@ -55,7 +55,7 @@ const Footer = () => {
               <li>AI Chatbot</li>
               <li>IoT Dashboard</li>
               <li>Learning Modules</li>
-              <li>Quiz System</li>
+              <li>Knowledge Assessment</li>
             </ul>
           </div>
 

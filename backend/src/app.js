@@ -38,6 +38,9 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
+
+
+
 // ✅ connect routes
 app.use("/api/auth", authRoutes);
 app.use("/api/content", contentRoutes);

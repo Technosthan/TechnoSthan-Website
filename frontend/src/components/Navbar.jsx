@@ -69,12 +69,6 @@ const Navbar = () => {
           Learning
         </Link>
         <Link
-          to="/quiz"
-          className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
-        >
-          Quiz
-        </Link>
-        <Link
           to="/chat"
           className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
         >

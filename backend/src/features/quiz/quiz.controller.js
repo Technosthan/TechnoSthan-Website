@@ -5,6 +5,8 @@ import {
   addQuestion,
   updateQuestion,
   deleteQuestion,
+  getQuestionsByContentId,
+  deleteQuestionsByContentId,
 } from "./quiz.service.js";
 
 export const fetchQuestions = async (req, res) => {
@@ -42,16 +44,25 @@ export const results = async (req, res) => {
 
 export const createQuestion = async (req, res) => {
   try {
+    console.log("Creating question with data:", req.body);
     const question = await addQuestion(req.body);
+    console.log("Question created:", question);
     res.status(201).json({
       success: true,
       data: question,
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Error creating question:", error);
+    // In Express 5, make sure to handle async errors properly
+    if (!res.headersSent) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      // If headers already sent, we can't send another response
+      console.error("Headers already sent, cannot send error response");
+    }
   }
 };
 
@@ -76,6 +87,31 @@ export const removeQuestion = async (req, res) => {
     res.json({
       success: true,
       message: "Question deleted",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const fetchQuestionsByContentId = async (req, res) => {
+  const { contentId } = req.params;
+  const questions = await getQuestionsByContentId(contentId);
+  res.json({
+    success: true,
+    data: questions,
+  });
+};
+
+export const removeQuestionsByContentId = async (req, res) => {
+  try {
+    const { contentId } = req.params;
+    await deleteQuestionsByContentId(contentId);
+    res.json({
+      success: true,
+      message: "Questions deleted",
     });
   } catch (error) {
     res.status(400).json({

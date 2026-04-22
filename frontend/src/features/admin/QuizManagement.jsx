@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Edit,
@@ -7,12 +7,10 @@ import {
   Save,
   X,
   Search,
-  Filter,
   CheckCircle,
   Circle,
-  Calendar,
-  User,
-  Target,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   getAllQuestions,
@@ -20,31 +18,40 @@ import {
   updateQuestion,
   deleteQuestion,
 } from "./adminApi";
+import { getAllContent } from "../content/contentApi";
 
 const QuizManagement = () => {
+  const [contents, setContents] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [openContentRows, setOpenContentRows] = useState({});
+  const [selectedContentId, setSelectedContentId] = useState("");
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [formData, setFormData] = useState({
     question: "",
     options: ["", "", "", ""],
-    correctAnswer: "",
+    correctAnswer: 0,
   });
 
   useEffect(() => {
-    fetchQuestions();
+    fetchData();
   }, []);
 
-  const fetchQuestions = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await getAllQuestions();
-      setQuestions(response.data.data || []);
+      const [contentRes, questionRes] = await Promise.all([
+        getAllContent(),
+        getAllQuestions(),
+      ]);
+      setContents(contentRes.data.data || []);
+      setQuestions(questionRes.data.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load questions");
+      setError(err.response?.data?.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -54,26 +61,64 @@ const QuizManagement = () => {
     setFormData({
       question: "",
       options: ["", "", "", ""],
-      correctAnswer: "",
+      correctAnswer: 0,
     });
+    setSelectedContentId("");
     setEditingQuestion(null);
     setShowForm(false);
   };
 
-  const handleEdit = (question) => {
+  const toggleContentRow = (contentId) => {
+    setOpenContentRows((prev) => ({
+      ...prev,
+      [contentId]: !prev[contentId],
+    }));
+  };
+
+  // QUIZ CREATION AT CONTENT LEVEL ONLY
+  const handleAddQuestion = (contentId) => {
+    setSelectedContentId(contentId);
+    setFormData({
+      question: "",
+      options: ["", "", "", ""],
+      correctAnswer: 0,
+    });
+    setEditingQuestion(null);
+    setShowForm(true);
+  };
+
+  const handleEditQuestion = (question) => {
     setFormData({
       question: question.question,
       options: [...question.options],
       correctAnswer: question.correctAnswer,
     });
+    setSelectedContentId(question.contentId);
     setEditingQuestion(question);
     setShowForm(true);
+  };
+
+  const handleDeleteQuestion = async (questionId) => {
+    if (!window.confirm("Are you sure you want to delete this question?"))
+      return;
+
+    try {
+      await deleteQuestion(questionId);
+      await fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete question");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate form
+    if (!selectedContentId) {
+      setError("Please select a content for the question");
+      return;
+    }
+
     if (!formData.question.trim()) {
       setError("Question is required");
       return;
@@ -84,61 +129,36 @@ const QuizManagement = () => {
       return;
     }
 
-    if (!formData.correctAnswer.trim()) {
-      setError("Correct answer is required");
-      return;
-    }
-
-    if (!formData.options.includes(formData.correctAnswer)) {
-      setError("Correct answer must be one of the options");
-      return;
-    }
-
     try {
-      setError("");
+      const questionData = {
+        contentId: selectedContentId,
+        question: formData.question,
+        options: formData.options,
+        correctAnswer: formData.correctAnswer,
+      };
       if (editingQuestion) {
-        await updateQuestion(editingQuestion._id, formData);
+        await updateQuestion(editingQuestion._id, questionData);
       } else {
-        await createQuestion(formData);
+        await createQuestion(questionData);
       }
-      await fetchQuestions();
+      await fetchData();
       resetForm();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save question");
     }
   };
 
-  const handleDelete = async (questionId) => {
-    if (!window.confirm("Are you sure you want to delete this question?"))
-      return;
-
-    try {
-      await deleteQuestion(questionId);
-      await fetchQuestions();
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete question");
-    }
-  };
-
-  const updateOption = (index, value) => {
-    const updatedOptions = [...formData.options];
-    updatedOptions[index] = value;
-    setFormData({ ...formData, options: updatedOptions });
-  };
-
-  // Filter and search questions
-  const filteredQuestions = questions.filter((question) => {
-    const matchesSearch =
-      question.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      question.options.some((option) =>
-        option.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-    return matchesSearch;
+  // Filter contents based on search
+  const filteredContents = contents.filter((content) => {
+    const matchesTitle = content.title
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    return matchesTitle;
   });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading questions...</p>
@@ -156,16 +176,9 @@ const QuizManagement = () => {
             Quiz Management
           </h1>
           <p className="text-gray-600">
-            Create and manage quiz questions for your students
+            Create and manage quiz questions for your content
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="mt-4 lg:mt-0 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add New Question
-        </button>
       </div>
 
       {/* Search */}
@@ -175,7 +188,7 @@ const QuizManagement = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <input
               type="text"
-              placeholder="Search questions..."
+              placeholder="Search content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
@@ -185,7 +198,7 @@ const QuizManagement = () => {
       </div>
 
       {error && (
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-linear-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <div className="p-2 bg-red-100 rounded-lg mr-3">
               <X className="h-5 w-5 text-red-600" />
@@ -205,6 +218,9 @@ const QuizManagement = () => {
                 <h2 className="text-2xl font-bold text-gray-900">
                   {editingQuestion ? "Edit Question" : "Create New Question"}
                 </h2>
+                <div className="text-sm text-green-600 font-medium">
+                  Content-Level Quiz
+                </div>
                 <button
                   onClick={resetForm}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
@@ -212,9 +228,24 @@ const QuizManagement = () => {
                   <X className="h-6 w-6" />
                 </button>
               </div>
+              <p className="text-sm text-gray-600 mt-2">
+                Quiz questions belong directly to content.
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Selected Content
+                  </label>
+                  <div className="px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl">
+                    {contents.find((c) => c._id === selectedContentId)?.title ||
+                      "No content selected"}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Question
@@ -242,7 +273,7 @@ const QuizManagement = () => {
                       className="bg-gray-50 rounded-xl p-4 border border-gray-200"
                     >
                       <div className="flex items-center mb-3">
-                        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                        <div className="w-8 h-8 bg-linear-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
                           <span className="text-white font-bold text-sm">
                             {String.fromCharCode(65 + index)}
                           </span>
@@ -254,7 +285,11 @@ const QuizManagement = () => {
                       <input
                         type="text"
                         value={option}
-                        onChange={(e) => updateOption(index, e.target.value)}
+                        onChange={(e) => {
+                          const newOptions = [...formData.options];
+                          newOptions[index] = e.target.value;
+                          setFormData({ ...formData, options: newOptions });
+                        }}
                         className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
                         placeholder={`Enter option ${String.fromCharCode(65 + index)}...`}
                         required
@@ -271,20 +306,18 @@ const QuizManagement = () => {
                 <select
                   value={formData.correctAnswer}
                   onChange={(e) =>
-                    setFormData({ ...formData, correctAnswer: e.target.value })
+                    setFormData({
+                      ...formData,
+                      correctAnswer: parseInt(e.target.value),
+                    })
                   }
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
                   required
                 >
-                  <option value="">Select the correct answer</option>
-                  {formData.options.map(
-                    (option, index) =>
-                      option.trim() && (
-                        <option key={index} value={option}>
-                          {String.fromCharCode(65 + index)}. {option}
-                        </option>
-                      ),
-                  )}
+                  <option value={0}>A</option>
+                  <option value={1}>B</option>
+                  <option value={2}>C</option>
+                  <option value={3}>D</option>
                 </select>
               </div>
 
@@ -298,7 +331,7 @@ const QuizManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="px-6 py-3 bg-linear-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   <Save className="h-5 w-5 mr-2" />
                   {editingQuestion ? "Update Question" : "Create Question"}
@@ -309,126 +342,251 @@ const QuizManagement = () => {
         </div>
       )}
 
-      {/* Questions List */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-        <div className="px-6 py-5 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+      {/* Content Quiz Overview - SIMPLIFIED: Content → Questions */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+        <div
+          onClick={() => setIsQuizOpen(!isQuizOpen)}
+          className="flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-gray-600 text-lg">
+              {isQuizOpen ? "▼" : "▶"}
+            </span>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">All Questions</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {filteredQuestions.length} of {questions.length} items
+              <h2 className="text-lg font-semibold text-gray-900">All Quiz</h2>
+              <p className="text-sm text-gray-500">
+                {filteredContents.length} of {contents.length} items
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Brain className="h-5 w-5 text-purple-600" />
-              <span className="text-sm font-medium text-gray-600">
-                Quiz Questions
-              </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="text"
+                placeholder="Search content..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-64"
+              />
             </div>
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200">
-          {filteredQuestions.length === 0 ? (
-            <div className="p-12 text-center">
-              <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No questions found
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {searchTerm
-                  ? "Try adjusting your search criteria."
-                  : "Get started by creating your first quiz question."}
-              </p>
-              {!searchTerm && (
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Create First Question
-                </button>
-              )}
-            </div>
-          ) : (
-            filteredQuestions.map((question) => (
-              <div
-                key={question._id}
-                className="p-6 hover:bg-gray-50 transition-colors duration-200"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
-                        <Brain className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {question.question}
+        {isQuizOpen && (
+          <div className="border-t border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      #
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Content Title
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Questions
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredContents.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center">
+                        <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No content found
                         </h3>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {new Date(question.createdAt).toLocaleDateString()}
-                          <User className="h-4 w-4 ml-4 mr-1" />
-                          {question.authorId?.name || "Admin"}
-                        </div>
-                      </div>
-                    </div>
+                        <p className="text-gray-600">
+                          {searchTerm
+                            ? "Try adjusting your search criteria."
+                            : "Create content first to add quiz questions."}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredContents.map((content, contentIndex) => {
+                      const contentQuestions = questions.filter(
+                        (q) => q.contentId === content._id,
+                      );
+                      return (
+                        <React.Fragment key={content._id}>
+                          {/* Content Row */}
+                          <tr
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => toggleContentRow(content._id)}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                {openContentRows[content._id] ? (
+                                  <ChevronDown className="h-4 w-4 text-gray-600 mr-2" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-gray-600 mr-2" />
+                                )}
+                                <div className="w-8 h-8 bg-linear-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                                  <span className="text-white font-bold text-sm">
+                                    {contentIndex + 1}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {content.title}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {contentQuestions.length} questions
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(content.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddQuestion(content._id);
+                                  }}
+                                  className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center text-xs"
+                                  title="Add quiz question to this content"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add Question
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {question.options.map((option, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                            option === question.correctAnswer
-                              ? "border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 shadow-sm"
-                              : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
-                          }`}
-                        >
-                          <div className="flex items-center">
-                            {option === question.correctAnswer ? (
-                              <CheckCircle className="h-5 w-5 text-green-600 mr-3 flex-shrink-0" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                            )}
-                            <div className="flex items-center">
-                              <span className="font-bold text-sm mr-2 bg-white px-2 py-1 rounded-full border">
-                                {String.fromCharCode(65 + index)}
-                              </span>
-                              <span className="text-sm">{option}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 flex items-center text-sm text-green-600 font-medium">
-                      <Target className="h-4 w-4 mr-1" />
-                      Correct Answer: {question.correctAnswer}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2 ml-6">
-                    <button
-                      onClick={() => handleEdit(question)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                      title="Edit question"
-                    >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(question._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                      title="Delete question"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+                          {/* Questions Table */}
+                          {openContentRows[content._id] && (
+                            <tr>
+                              <td colSpan="5" className="px-6 py-4 bg-gray-50">
+                                {contentQuestions.length === 0 ? (
+                                  <div className="text-center py-8">
+                                    <Brain className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                      No questions for this content
+                                    </h3>
+                                    <p className="text-gray-600">
+                                      Add the first question for "
+                                      {content.title}"
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border border-gray-200 rounded-lg">
+                                      <thead className="bg-gray-100">
+                                        <tr>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            #
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Question
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Options (A/B/C/D)
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Correct Answer
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Actions
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200">
+                                        {contentQuestions.map(
+                                          (question, qIndex) => (
+                                            <tr
+                                              key={question._id}
+                                              className="hover:bg-gray-50"
+                                            >
+                                              <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                {qIndex + 1}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                                                {question.question}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-gray-500">
+                                                <div className="flex flex-wrap gap-1">
+                                                  {question.options.map(
+                                                    (opt, i) => (
+                                                      <span
+                                                        key={i}
+                                                        className={`px-2 py-1 rounded text-xs ${
+                                                          i ===
+                                                          question.correctAnswer
+                                                            ? "bg-green-100 text-green-800"
+                                                            : "bg-gray-100 text-gray-600"
+                                                        }`}
+                                                      >
+                                                        {String.fromCharCode(
+                                                          65 + i,
+                                                        )}
+                                                      </span>
+                                                    ),
+                                                  )}
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-green-600 font-medium">
+                                                {String.fromCharCode(
+                                                  65 + question.correctAnswer,
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-gray-500">
+                                                <div className="flex items-center space-x-2">
+                                                  <button
+                                                    onClick={() =>
+                                                      handleEditQuestion(
+                                                        question,
+                                                      )
+                                                    }
+                                                    className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                                                    title="Edit"
+                                                  >
+                                                    <Edit className="h-4 w-4" />
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleDeleteQuestion(
+                                                        question._id,
+                                                      )
+                                                    }
+                                                    className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                                                    title="Delete"
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </button>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          ),
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  updateUserStatus,
 } from "./admin.controller.js";
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
@@ -21,6 +22,7 @@ router.get("/stats", getAdminStats);
 // User management
 router.get("/users", getAllUsers);
 router.put("/users/:userId/role", updateUserRole);
+router.put("/users/:userId/status", updateUserStatus);
 router.delete("/users/:userId", deleteUser);
 
 export default router;

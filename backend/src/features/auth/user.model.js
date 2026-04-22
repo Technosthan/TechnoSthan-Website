@@ -37,6 +37,11 @@ const userSchema = new mongoose.Schema(
       enum: ["student", "admin"],
       default: "student",
     },
+    status: {
+      type: String,
+      enum: ["active", "blocked"],
+      default: "active",
+    },
     googleId: {
       type: String,
       sparse: true, // Allows null values but ensures uniqueness when present

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { getAllContent } from "./contentApi";
+import { getAllContent, getQuestionsByContentId } from "./contentApi";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   BookOpen,
@@ -22,6 +22,7 @@ const ContentPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [hasQuiz, setHasQuiz] = useState(false);
 
   // Icons for topics
   const getTopicIcon = (title) => {
@@ -91,6 +92,18 @@ const ContentPage = () => {
     };
     fetchContents();
   }, []);
+
+  useEffect(() => {
+    if (selectedContent) {
+      getQuestionsByContentId(selectedContent._id)
+        .then((res) => {
+          setHasQuiz(res.data.data.length > 0);
+        })
+        .catch(() => setHasQuiz(false));
+    } else {
+      setHasQuiz(false);
+    }
+  }, [selectedContent]);
 
   const filteredContents = Array.isArray(contents)
     ? contents.filter(
@@ -275,13 +288,20 @@ const ContentPage = () => {
                   transition={{ delay: 0.4 }}
                   className="mb-8 text-center"
                 >
-                  <Link
-                    to="/quiz"
-                    className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105"
-                  >
-                    <Target className="mr-2" size={20} />
-                    Take Knowledge Quiz
-                  </Link>
+                  {hasQuiz ? (
+                    <Link
+                      to={`/quiz/${selectedContent._id}`}
+                      className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105"
+                    >
+                      <Target className="mr-2" size={20} />
+                      Take Knowledge Quiz
+                    </Link>
+                  ) : (
+                    <div className="inline-flex items-center bg-gray-400 text-white font-semibold py-3 px-6 rounded-full cursor-not-allowed">
+                      <Target className="mr-2" size={20} />
+                      No Quiz Available
+                    </div>
+                  )}
                 </motion.div>
 
                 {/* Subtopics */}

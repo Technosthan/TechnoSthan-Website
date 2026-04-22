@@ -10,7 +10,13 @@ If question is unrelated, politely refuse.
 
 export const getAIResponse = async (message, history = []) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
+    });
 
     // Start with system prompt
     let prompt = systemPrompt;
@@ -32,6 +38,20 @@ export const getAIResponse = async (message, history = []) => {
     return response.text();
   } catch (error) {
     console.error("Gemini API error:", error);
-    throw new Error("Failed to get AI response: " + error.message);
+
+    // Handle specific error codes
+    if (error.status === 403) {
+      throw new Error(
+        "API access forbidden. Please check your Google Cloud API key and ensure the Generative Language API is enabled.",
+      );
+    } else if (error.status === 429) {
+      throw new Error("API quota exceeded. Please try again later.");
+    } else if (error.status === 500) {
+      throw new Error(
+        "Internal server error from Google Cloud API. Please try again later.",
+      );
+    } else {
+      throw new Error("Failed to get AI response: " + error.message);
+    }
   }
 };

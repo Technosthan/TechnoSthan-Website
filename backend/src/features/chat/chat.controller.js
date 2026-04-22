@@ -6,12 +6,20 @@ export const chat = async (req, res) => {
     const { message, history } = req.body;
     const userId = req.user.id;
 
-    const reply = await getAIResponse(message, history);
+    // Validation: Check if message is provided
+    if (!message || typeof message !== "string" || message.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required and must be a non-empty string",
+      });
+    }
+
+    const reply = await getAIResponse(message.trim(), history);
 
     // Save chat to database
     const chatEntry = new Chat({
       userId,
-      message,
+      message: message.trim(),
       response: reply,
     });
 
@@ -19,12 +27,33 @@ export const chat = async (req, res) => {
 
     res.json({
       success: true,
-      data: reply,
+      reply: reply,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Chat controller error:", error);
+
+    // Handle specific error messages from service
+    let statusCode = 500;
+    let errorMessage = "Internal server error";
+
+    if (error.message.includes("API access forbidden")) {
+      statusCode = 403;
+      errorMessage = error.message;
+    } else if (error.message.includes("API quota exceeded")) {
+      statusCode = 429;
+      errorMessage = error.message;
+    } else if (
+      error.message.includes("Internal server error from Google Cloud API")
+    ) {
+      statusCode = 500;
+      errorMessage = error.message;
+    } else {
+      errorMessage = error.message;
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: error.message,
+      message: errorMessage,
     });
   }
 };

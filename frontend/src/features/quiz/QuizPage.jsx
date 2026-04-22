@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { getQuestions, submitQuiz } from "./quizApi";
+import { getQuestionsByContentId, submitQuiz } from "./quizApi";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   Brain,
@@ -13,6 +14,7 @@ import {
 
 const QuizPage = () => {
   const { theme } = useTheme();
+  const { contentId } = useParams();
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -24,12 +26,12 @@ const QuizPage = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const response = await getQuestions();
+        const response = await getQuestionsByContentId(contentId);
         setQuestions(response.data.data);
-        // Initialize answers object
+        // Initialize answers object with null (not empty string)
         const initialAnswers = {};
         response.data.data.forEach((q) => {
-          initialAnswers[q._id] = "";
+          initialAnswers[q._id] = null; // Use null instead of "" to distinguish from index 0
         });
         setAnswers(initialAnswers);
       } catch (err) {
@@ -43,8 +45,10 @@ const QuizPage = () => {
         setLoading(false);
       }
     };
-    fetchQuestions();
-  }, []);
+    if (contentId) {
+      fetchQuestions();
+    }
+  }, [contentId]);
 
   const handleAnswerChange = (questionId, selectedOption) => {
     setAnswers((prev) => ({
@@ -54,8 +58,13 @@ const QuizPage = () => {
   };
 
   const handleSubmit = async () => {
-    // Check if all questions are answered
-    const unanswered = questions.filter((q) => !answers[q._id]);
+    // Check if all questions are answered - FIX: Use proper null/undefined check
+    const unanswered = questions.filter(
+      (q) =>
+        answers[q._id] === undefined ||
+        answers[q._id] === null ||
+        answers[q._id] === "",
+    );
     if (unanswered.length > 0) {
       alert(`Please answer all questions. ${unanswered.length} remaining.`);
       return;
@@ -83,10 +92,12 @@ const QuizPage = () => {
   const handleRetake = () => {
     setSubmitted(false);
     setResults(null);
-    setAnswers({});
+    // Reset answers to null (not empty string)
+    const resetAnswers = {};
     questions.forEach((q) => {
-      setAnswers((prev) => ({ ...prev, [q._id]: "" }));
+      resetAnswers[q._id] = null;
     });
+    setAnswers(resetAnswers);
   };
 
   if (loading) {
@@ -288,14 +299,17 @@ const QuizPage = () => {
                           <input
                             type="radio"
                             name={`question-${question._id}`}
-                            value={option}
-                            checked={answers[question._id] === option}
+                            value={optIdx}
+                            checked={answers[question._id] === optIdx}
                             onChange={() =>
-                              handleAnswerChange(question._id, option)
+                              handleAnswerChange(question._id, optIdx)
                             }
                             className="mr-3 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-gray-700 dark:text-gray-300">
+                            <span className="font-semibold mr-2">
+                              {String.fromCharCode(65 + optIdx)}.
+                            </span>
                             {option}
                           </span>
                         </label>

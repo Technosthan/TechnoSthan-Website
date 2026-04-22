@@ -6,6 +6,8 @@ import {
   createQuestion,
   editQuestion,
   removeQuestion,
+  fetchQuestionsByContentId,
+  removeQuestionsByContentId,
 } from "./quiz.controller.js";
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
@@ -22,5 +24,14 @@ router.get("/results", authMiddleware, results);
 router.post("/questions", authMiddleware, adminOnly, createQuestion);
 router.put("/questions/:id", authMiddleware, adminOnly, editQuestion);
 router.delete("/questions/:id", authMiddleware, adminOnly, removeQuestion);
+
+// Content-based quiz routes
+router.get("/content/:contentId", authMiddleware, fetchQuestionsByContentId);
+router.delete(
+  "/content/:contentId",
+  authMiddleware,
+  adminOnly,
+  removeQuestionsByContentId,
+);
 
 export default router;

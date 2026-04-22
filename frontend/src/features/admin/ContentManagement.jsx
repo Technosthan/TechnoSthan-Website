@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Edit,
@@ -23,9 +24,13 @@ import {
   createContent,
   updateContent,
   deleteContent,
+  getQuestionsByContentId,
+  deleteQuestionsByContentId,
+  createQuestion,
 } from "./adminApi";
 
 const ContentManagement = () => {
+  const navigate = useNavigate();
   const [contents, setContents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,7 +39,8 @@ const ContentManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [resourcesCollapsed, setResourcesCollapsed] = useState(true);
-  const [resourceSearch, setResourceSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [openRows, setOpenRows] = useState({});
   const [showContent, setShowContent] = useState(false);
   const [searchContent, setSearchContent] = useState("");
@@ -43,6 +49,7 @@ const ContentManagement = () => {
     description: "",
     subtopics: [{ heading: "", body: "" }],
     resources: [{ label: "", url: "", type: "video" }],
+    quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }],
   });
 
   useEffect(() => {
@@ -67,6 +74,7 @@ const ContentManagement = () => {
       description: "",
       subtopics: [{ heading: "", body: "" }],
       resources: [{ label: "", url: "", type: "video" }],
+      quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }],
     });
     setEditingContent(null);
     setShowForm(false);
@@ -87,21 +95,66 @@ const ContentManagement = () => {
               type: resource.type || "video", // Default to video if type is missing
             }))
           : [{ label: "", url: "", type: "video" }],
+      quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }], // Initialize with default quiz
     });
     setEditingContent(content);
+    // Fetch quizzes for this content
+    getQuestionsByContentId(content._id)
+      .then((res) => {
+        const quizzes = res.data.data.map((q) => ({
+          question: q.question,
+          options: [...q.options],
+          correctAnswer: q.correctAnswer,
+        }));
+        setFormData((prev) => ({
+          ...prev,
+          quizzes:
+            quizzes.length > 0
+              ? quizzes
+              : [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }],
+        }));
+      })
+      .catch(() => {
+        setFormData((prev) => ({
+          ...prev,
+          quizzes: [
+            { question: "", options: ["", "", "", ""], correctAnswer: 0 },
+          ],
+        }));
+      });
     setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingContent) {
-        await updateContent(editingContent._id, formData);
-      } else {
-        await createContent(formData);
+      const contentData = {
+        title: formData.title,
+        description: formData.description,
+        subtopics: formData.subtopics,
+        resources: formData.resources,
+      };
+      const content = editingContent
+        ? await updateContent(editingContent._id, contentData)
+        : await createContent(contentData);
+
+      // Handle quizzes
+      await deleteQuestionsByContentId(content.data.data._id);
+      for (const quiz of formData.quizzes) {
+        if (quiz.question.trim()) {
+          await createQuestion({
+            ...quiz,
+            contentId: content.data.data._id,
+          });
+        }
       }
+
       await fetchContents();
       resetForm();
+      // Navigate to admin content page after successful creation
+      if (!editingContent) {
+        navigate("/admin/dashboard/content");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save content");
     }
@@ -163,6 +216,35 @@ const ContentManagement = () => {
     }
   };
 
+  const addQuiz = () => {
+    setFormData({
+      ...formData,
+      quizzes: [
+        ...formData.quizzes,
+        { question: "", options: ["", "", "", ""], correctAnswer: 0 },
+      ],
+    });
+  };
+
+  const updateQuiz = (index, field, value) => {
+    const updatedQuizzes = [...formData.quizzes];
+    if (field === "options") {
+      updatedQuizzes[index].options = value;
+    } else {
+      updatedQuizzes[index][field] = value;
+    }
+    setFormData({ ...formData, quizzes: updatedQuizzes });
+  };
+
+  const removeQuiz = (index) => {
+    if (formData.quizzes.length > 1) {
+      setFormData({
+        ...formData,
+        quizzes: formData.quizzes.filter((_, i) => i !== index),
+      });
+    }
+  };
+
   const toggleRow = (index) => {
     setOpenRows((prev) => ({
       ...prev,
@@ -170,19 +252,32 @@ const ContentManagement = () => {
     }));
   };
 
+  // Filter resources based on search query and filter type
+  const filteredResources = formData.resources.filter((resource, index) => {
+    // Search filter: check label and url (case-insensitive)
+    const matchesSearch =
+      !searchQuery ||
+      resource.label?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.url?.toLowerCase().includes(searchQuery.toLowerCase());
 
-  // Filter resources based on search
-  const filteredResources = formData.resources.filter((_, index) =>
-    (index + 1).toString().includes(resourceSearch),
-  );
+    // Type filter: check resource type
+    const matchesFilter = filterType === "all" || resource.type === filterType;
+
+    return matchesSearch && matchesFilter;
+  });
 
   // Filter content based on search and filter status
   const filteredContent = contents.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchContent.toLowerCase());
+    const matchesSearch = item.title
+      .toLowerCase()
+      .includes(searchContent.toLowerCase());
     const matchesFilter =
       filterStatus === "all" ||
-      (filterStatus === "with-resources" && item.resources && item.resources.length > 0) ||
-      (filterStatus === "no-resources" && (!item.resources || item.resources.length === 0));
+      (filterStatus === "with-resources" &&
+        item.resources &&
+        item.resources.length > 0) ||
+      (filterStatus === "no-resources" &&
+        (!item.resources || item.resources.length === 0));
     return matchesSearch && matchesFilter;
   });
 
@@ -228,7 +323,7 @@ const ContentManagement = () => {
               placeholder="Search content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-300"
+              className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-600"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -390,16 +485,32 @@ const ContentManagement = () => {
                       </span>
                     </button>
                     {!resourcesCollapsed && (
-                      <div className="flex items-center space-x-2">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                          <input
-                            type="text"
-                            placeholder="Search by resource number..."
-                            value={resourceSearch}
-                            onChange={(e) => setResourceSearch(e.target.value)}
-                            className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-64"
-                          />
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <input
+                              type="text"
+                              placeholder="Search by label or URL..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-64"
+                            />
+                          </div>
+                          <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <select
+                              value={filterType}
+                              onChange={(e) => setFilterType(e.target.value)}
+                              className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-48"
+                            >
+                              <option value="all">All Types</option>
+                              <option value="video">🎥 Video</option>
+                              <option value="pdf">📄 PDF</option>
+                              <option value="link">🔗 Link</option>
+                              <option value="image">🖼️ Image</option>
+                            </select>
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -423,8 +534,8 @@ const ContentManagement = () => {
                           No resources found
                         </h3>
                         <p className="text-gray-600">
-                          {resourceSearch
-                            ? "Try adjusting your search criteria."
+                          {searchQuery || filterType !== "all"
+                            ? "Try adjusting your search or filter criteria."
                             : "Add your first resource to get started."}
                         </p>
                       </div>
@@ -434,7 +545,7 @@ const ContentManagement = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Resource 
+                                Resource
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Type
@@ -480,11 +591,12 @@ const ContentManagement = () => {
                                               resource.type.slice(1)
                                             : "Video"}
                                         </span>
-                                        {resource.label && (
-                                          <span className="ml-2 text-xs text-gray-600 truncate max-w-xs">
-                                            - {resource.label}
-                                          </span>
-                                        )}
+                                        {resource.label &&
+                                          !openRows[actualIndex] && (
+                                            <span className="ml-2 text-xs text-gray-600 truncate max-w-xs">
+                                              - {resource.label}
+                                            </span>
+                                          )}
                                       </div>
                                     </td>
                                   </tr>
@@ -493,7 +605,7 @@ const ContentManagement = () => {
                                   {openRows[actualIndex] && (
                                     <tr className="bg-gray-50">
                                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {actualIndex + 1.}
+                                        {actualIndex + 1}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap">
                                         <select
@@ -591,6 +703,99 @@ const ContentManagement = () => {
                 )}
               </div>
 
+              {/* Quizzes */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-lg font-semibold text-gray-700">
+                    Attach Quiz
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addQuiz}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center font-medium"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Question
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {(formData.quizzes || []).map((quiz, index) => (
+                    <div
+                      key={index}
+                      className="bg-indigo-50 rounded-xl p-4 border border-indigo-200"
+                    >
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-sm font-semibold text-gray-600 bg-white px-3 py-1 rounded-full">
+                          Question {index + 1}
+                        </span>
+                        {formData.quizzes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeQuiz(index)}
+                            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors duration-200"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          placeholder="Question..."
+                          value={quiz.question}
+                          onChange={(e) =>
+                            updateQuiz(index, "question", e.target.value)
+                          }
+                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400"
+                        />
+                        {(quiz.options || []).map((option, optIndex) => (
+                          <div
+                            key={optIndex}
+                            className="flex items-center space-x-2"
+                          >
+                            <span className="text-sm font-medium text-gray-600 w-8">
+                              {String.fromCharCode(65 + optIndex)}.
+                            </span>
+                            <input
+                              type="text"
+                              placeholder={`Option ${optIndex + 1}...`}
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...quiz.options];
+                                newOptions[optIndex] = e.target.value;
+                                updateQuiz(index, "options", newOptions);
+                              }}
+                              className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400"
+                            />
+                          </div>
+                        ))}
+                        <div className="flex items-center space-x-2">
+                          <label className="text-sm font-medium text-gray-600">
+                            Correct Answer:
+                          </label>
+                          <select
+                            value={quiz.correctAnswer}
+                            onChange={(e) =>
+                              updateQuiz(
+                                index,
+                                "correctAnswer",
+                                parseInt(e.target.value),
+                              )
+                            }
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
+                          >
+                            <option value={0}>A</option>
+                            <option value={1}>B</option>
+                            <option value={2}>C</option>
+                            <option value={3}>D</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button
                   type="button"
@@ -653,33 +858,33 @@ const ContentManagement = () => {
         {showContent && (
           <div className="divide-y divide-gray-200">
             {filteredContent.length === 0 ? (
-            <div className="p-12 text-center">
-              <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No content found
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {searchContent || filterStatus !== "all"
-                  ? "Try adjusting your search or filter criteria."
-                  : "Get started by creating your first learning content."}
-              </p>
-              {!searchContent && filterStatus === "all" && (
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Create First Content
-                </button>
-              )}
-            </div>
-          ) : (
+              <div className="p-12 text-center">
+                <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No content found
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {searchContent || filterStatus !== "all"
+                    ? "Try adjusting your search or filter criteria."
+                    : "Get started by creating your first learning content."}
+                </p>
+                {!searchContent && filterStatus === "all" && (
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Create First Content
+                  </button>
+                )}
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border border-gray-200 rounded-lg">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
-                        #
+                        S.No
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Title
@@ -704,7 +909,9 @@ const ContentManagement = () => {
                               ) : (
                                 <ChevronRight className="h-4 w-4 mr-1" />
                               )}
-                              <span className="text-sm font-medium">{index + 1}</span>
+                              <span className="text-sm font-medium">
+                                {index + 1}
+                              </span>
                             </button>
                           </td>
                           <td className="px-4 py-3">
@@ -718,7 +925,9 @@ const ContentManagement = () => {
                                 </div>
                                 <div className="flex items-center text-xs text-gray-500 mt-1">
                                   <Calendar className="h-3 w-3 mr-1" />
-                                  {new Date(content.createdAt).toLocaleDateString()}
+                                  {new Date(
+                                    content.createdAt,
+                                  ).toLocaleDateString()}
                                   <User className="h-3 w-3 ml-3 mr-1" />
                                   {content.authorId?.name || "Admin"}
                                 </div>
@@ -752,53 +961,61 @@ const ContentManagement = () => {
                               <div className="space-y-4">
                                 {/* Description */}
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-700 mb-2">Description</h4>
+                                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                    Description
+                                  </h4>
                                   <p className="text-sm text-gray-600 leading-relaxed">
                                     {content.description}
                                   </p>
                                 </div>
 
                                 {/* Subtopics */}
-                                {content.subtopics && content.subtopics.length > 0 && (
-                                  <div>
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">
-                                      Subtopics ({content.subtopics.length})
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                      {content.subtopics.map((subtopic, idx) => (
-                                        <span
-                                          key={idx}
-                                          className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium"
-                                        >
-                                          {subtopic.heading}
-                                        </span>
-                                      ))}
+                                {content.subtopics &&
+                                  content.subtopics.length > 0 && (
+                                    <div>
+                                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                        Subtopics ({content.subtopics.length})
+                                      </h4>
+                                      <div className="flex flex-wrap gap-2">
+                                        {content.subtopics.map(
+                                          (subtopic, idx) => (
+                                            <span
+                                              key={idx}
+                                              className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium"
+                                            >
+                                              {subtopic.heading}
+                                            </span>
+                                          ),
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
 
                                 {/* Resources */}
-                                {content.resources && content.resources.length > 0 && (
-                                  <div>
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">
-                                      Resources ({content.resources.length})
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                      {content.resources.map((resource, idx) => (
-                                        <a
-                                          key={idx}
-                                          href={resource.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-xs rounded-full hover:bg-purple-200 transition-colors duration-200 font-medium"
-                                        >
-                                          <ExternalLink className="h-3 w-3 mr-1" />
-                                          {resource.label}
-                                        </a>
-                                      ))}
+                                {content.resources &&
+                                  content.resources.length > 0 && (
+                                    <div>
+                                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                        Resources ({content.resources.length})
+                                      </h4>
+                                      <div className="flex flex-wrap gap-2">
+                                        {content.resources.map(
+                                          (resource, idx) => (
+                                            <a
+                                              key={idx}
+                                              href={resource.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-xs rounded-full hover:bg-purple-200 transition-colors duration-200 font-medium"
+                                            >
+                                              <ExternalLink className="h-3 w-3 mr-1" />
+                                              {resource.label}
+                                            </a>
+                                          ),
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
                               </div>
                             </td>
                           </tr>
@@ -809,7 +1026,7 @@ const ContentManagement = () => {
                 </table>
               </div>
             )}
-        </div>
+          </div>
         )}
       </div>
     </div>
