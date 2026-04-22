@@ -20,7 +20,8 @@ const defaultTemplates = [
 ];
 
 const HRSocial = () => {
-  const scrollRef = useRef(null);
+  const messageScrollRef = useRef(null);
+  const platformScrollRef = useRef(null);
 
   const [availableSocials, setAvailableSocials] = useState(
     JSON.parse(localStorage.getItem("socials")) || defaultSocials
@@ -90,9 +91,9 @@ const HRSocial = () => {
     setTemplates(templates.filter((t) => t.id !== id));
   };
 
-  const scroll = (dir) => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollLeft += dir === "left" ? -120 : 120;
+  const scroll = (ref, dir) => {
+    if (!ref.current) return;
+    ref.current.scrollLeft += dir === "left" ? -120 : 120;
   };
 
   return (
@@ -106,11 +107,11 @@ const HRSocial = () => {
           </div>
 
           <div className="slider-control">
-            <button className="arrow-btn" onClick={() => scroll("left")}>
+            <button className="arrow-btn" onClick={() => scroll(messageScrollRef, "left") }>
               <FaChevronLeft />
             </button>
 
-            <div className="icon-track" ref={scrollRef}>
+            <div className="icon-track" ref={messageScrollRef}>
               <div className="add-bubble" onClick={addTemplate}>
                 <FaPlus />
               </div>
@@ -134,7 +135,7 @@ const HRSocial = () => {
               ))}
             </div>
 
-            <button className="arrow-btn" onClick={() => scroll("right")}>
+            <button className="arrow-btn" onClick={() => scroll(messageScrollRef, "right") }>
               <FaChevronRight />
             </button>
           </div>
@@ -164,11 +165,11 @@ const HRSocial = () => {
           </div>
 
           <div className="slider-control">
-            <button className="arrow-btn" onClick={() => scroll("left")}>
+            <button className="arrow-btn" onClick={() => scroll(platformScrollRef, "left") }>
               <FaChevronLeft />
             </button>
 
-            <div className="icon-track" ref={scrollRef}>
+            <div className="icon-track" ref={platformScrollRef}>
               <div className="social-unit add-bubble" onClick={addPlatform}>
                 <FaPlus />
               </div>
@@ -189,7 +190,7 @@ const HRSocial = () => {
               })}
             </div>
 
-            <button className="arrow-btn" onClick={() => scroll("right")}>
+            <button className="arrow-btn" onClick={() => scroll(platformScrollRef, "right") }>
               <FaChevronRight />
             </button>
           </div>

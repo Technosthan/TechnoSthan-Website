@@ -52,9 +52,9 @@ function App() {
 
   const location = useLocation();
 
+  const noGlobalLayoutPaths = ["/login", "/register", "/dashboard", "/admin"];
   const hideLayout =
-    location.pathname === "/login" ||
-    location.pathname === "/register";
+    noGlobalLayoutPaths.includes(location.pathname);
 
   return (
     <>

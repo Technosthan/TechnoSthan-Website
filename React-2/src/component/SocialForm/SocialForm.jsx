@@ -370,6 +370,17 @@ const defaultCompanyConfig = {
     linkedin: "https://linkedin.com/company/technosthan",
     twitter: "https://twitter.com/technosthan",
     youtube: "https://youtube.com/technosthan"
+  },
+  platformBenchmarks: {
+    whatsapp: { followers: 0, engagement: 0 },
+    facebook: { followers: 0, engagement: 0 },
+    instagram: { followers: 0, engagement: 0 },
+    linkedin: { followers: 0, engagement: 0 },
+    twitter: { followers: 0, engagement: 0 },
+    youtube: { followers: 0, engagement: 0 },
+    telegram: { followers: 0, engagement: 0 },
+    pinterest: { followers: 0, engagement: 0 },
+    tiktok: { followers: 0, engagement: 0 }
   }
 };
 
@@ -379,18 +390,27 @@ const defaultHRProfiles = [
   { id: 2, name: "Priya Sharma", role: "HR Recruiter", email: "priya@technosthan.com", phone: "9876543210", avatar: "P", color: "#8b5cf6" }
 ];
 
+const dispatchPlatformOptions = [
+  { id: "linkedin", name: "LinkedIn" },
+  { id: "facebook", name: "Facebook" },
+  { id: "telegram", name: "Telegram" }
+];
+
 // ========== MAIN COMPONENT ==========
 const SocialForm = () => {
   const CONTACTS_STORAGE_KEY = "hr_social_whatsapp_contacts";
   // Navigation state
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   // HR Profile Management
   const [hrProfiles, setHRProfiles] = useState(defaultHRProfiles);
   const [currentHR, setCurrentHR] = useState(defaultHRProfiles[0]);
   const [showHRProfileModal, setShowHRProfileModal] = useState(false);
   const [editingHRProfile, setEditingHRProfile] = useState(null);
+  const [profileModalTab, setProfileModalTab] = useState("signin");
+  const [profileLoginEmail, setProfileLoginEmail] = useState("");
   
   // Company Configuration State
   const [companyConfig, setCompanyConfig] = useState(defaultCompanyConfig);
@@ -398,6 +418,19 @@ const SocialForm = () => {
   
   // Message composition state - Popular 5 platforms enabled by default for HR
   const [selectedPlatforms, setSelectedPlatforms] = useState(["whatsapp"]);
+  const [dispatchPlatforms, setDispatchPlatforms] = useState(["linkedin", "facebook", "telegram"]);
+  const [platformConnections, setPlatformConnections] = useState({
+    linkedin: false,
+    facebook: false,
+    telegram: false
+  });
+  const [connectingPlatform, setConnectingPlatform] = useState(null);
+  const [sendingType, setSendingType] = useState(null);
+  const [settingsNotifications, setSettingsNotifications] = useState({
+    emailScheduled: true,
+    pushEngagement: true,
+    weeklyReport: false
+  });
   // FIX: Add message state
   const [message, setMessage] = useState("");
   
@@ -461,30 +494,76 @@ const SocialForm = () => {
     };
   };
 
-  const shareToPlatform = (platform) => {
+  const copyMessageToClipboard = async (textValue) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textValue);
+        return true;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = textValue;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return copied;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleCopyMessage = async (platformName = "platform") => {
+    if (!message.trim()) {
+      showNotification("Please write message first", "error");
+      return;
+    }
+
+    const copied = await copyMessageToClipboard(message);
+    if (copied) {
+      showNotification(`Message copied for ${platformName}. Paste and publish.`, "success");
+    } else {
+      showNotification("Could not copy automatically. Please copy manually.", "error");
+    }
+  };
+
+  const shareToPlatform = async (platform) => {
   if (!message.trim()) {
     showNotification("Please write message first", "error");
     return;
   }
 
   const text = encodeURIComponent(message);
-  const url = encodeURIComponent(companyConfig.website);
+  const website = companyConfig.website?.trim() || "https://technosthan.com";
+  const normalizedWebsite = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+  const url = encodeURIComponent(normalizedWebsite);
   const phone = companyConfig.phone;
 
+  const openAndCopyHint = async (targetUrl, hintMessage) => {
+    window.open(targetUrl, "_blank");
+    const copied = await copyMessageToClipboard(message);
+    if (copied) {
+      showNotification(hintMessage || "Message copied. Paste it on platform and publish.", "info");
+    } else {
+      showNotification("Platform opened. Please copy and paste your message manually.", "info");
+    }
+  };
+
   const shareLinks = {
-    facebook: companyConfig.socialLinks.facebook 
-      ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(companyConfig.socialLinks.facebook)}&quote=${text}`
-      : `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
     twitter: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
-    linkedin: companyConfig.socialLinks.linkedin
-      ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(companyConfig.socialLinks.linkedin)}`
-      : `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
     whatsapp: null,
     telegram: `https://t.me/share/url?url=${url}&text=${text}`,
-    instagram: companyConfig.socialLinks.instagram
-      ? `https://instagram.com/${companyConfig.socialLinks.instagram.replace('https://instagram.com/', '')}`
-      : null,
-    youtube: companyConfig.socialLinks.youtube || null,
+    instagram: companyConfig.socialLinks.instagram || "https://www.instagram.com/",
+    youtube: companyConfig.socialLinks.youtube || "https://www.youtube.com/",
     reddit: `https://www.reddit.com/submit?title=${text}&url=${url}`,
     pinterest: `https://pinterest.com/pin/create/button/?url=${url}&description=${text}`,
     email: `mailto:${companyConfig.email}?subject=${encodeURIComponent(companyConfig.companyName)}&body=${text}`,
@@ -497,8 +576,24 @@ const SocialForm = () => {
     return;
   }
 
+  if (platform === "facebook") {
+    await openAndCopyHint(shareLinks.facebook, "Facebook opened. Message copied, paste it in your post.");
+    return;
+  }
+
+  if (platform === "linkedin") {
+    await openAndCopyHint(shareLinks.linkedin, "LinkedIn opened. Message copied, paste it in your post.");
+    return;
+  }
+
+  if (platform === "instagram" || platform === "youtube") {
+    await openAndCopyHint(shareLinks[platform], `${platform} opened. Message copied, paste it in your caption/post.`);
+    return;
+  }
+
   if (shareLinks[platform]) {
     window.open(shareLinks[platform], "_blank");
+    showNotification(`${platform} share window opened.`, "success");
   } else {
     showNotification(`${platform} direct share not supported`, "info");
   }
@@ -512,55 +607,26 @@ const SocialForm = () => {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [newTemplate, setNewTemplate] = useState({ title: "", content: "", category: "custom", tags: [] });
   
-  // History state
-  const [postHistory, setPostHistory] = useState([
-    {
-      id: 1,
-      message: "We're hiring developers! Join our amazing team. Apply now at careers.example.com #Hiring",
-      platforms: ["facebook", "linkedin", "twitter"],
-      sentAt: "2024-01-15 10:30 AM",
-      status: "sent",
-      engagement: { likes: 245, comments: 32, shares: 18 }
-    },
-    {
-      id: 2,
-      message: "Happy New Year from our team! Wishing you success in 2024! 🎉",
-      platforms: ["facebook", "instagram", "linkedin"],
-      sentAt: "2024-01-01 12:00 AM",
-      status: "sent",
-      engagement: { likes: 512, comments: 89, shares: 45 }
-    },
-    {
-      id: 3,
-      message: "Upcoming webinar: Digital Marketing Trends 2024. Register now!",
-      platforms: ["linkedin", "twitter", "email"],
-      sentAt: "2024-01-20 02:00 PM",
-      status: "scheduled",
-      engagement: null
-    }
-  ]);
-  
   // UI state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [notification, setNotification] = useState(null);
   const [searchHistory, setSearchHistory] = useState("");
   
-  // Analytics data
-  const [analyticsData] = useState({
-    totalPosts: 156,
-    totalEngagement: 45280,
-    avgEngagement: 290,
-    topPlatform: "LinkedIn",
-    weeklyGrowth: 12.5,
-    monthlyPosts: [12, 18, 15, 22, 28, 25, 20, 30, 35, 28, 32, 40],
-    platformStats: [
-      { platform: "LinkedIn", posts: 45, engagement: 15420, followers: 12500 },
-      { platform: "Facebook", posts: 38, engagement: 12890, followers: 8900 },
-      { platform: "Instagram", posts: 32, engagement: 9870, followers: 15600 },
-      { platform: "Twitter", posts: 41, engagement: 7100, followers: 5400 }
-    ]
+  // Analytics data - Real data from backend
+  const [analyticsData, setAnalyticsData] = useState({
+    totalPosts: 0,
+    totalEngagement: 0,
+    avgEngagement: 0,
+    topPlatform: "WhatsApp",
+    weeklyGrowth: 0,
+    monthlyPosts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    platformStats: []
   });
+  
+  // Real post history from backend
+  const [postHistory, setPostHistory] = useState([]);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   // ========== HELPER FUNCTIONS ==========
   const showNotification = (message, type = "success") => {
@@ -619,6 +685,202 @@ const SocialForm = () => {
     bootstrapContactsFromBackend();
   }, []);
 
+  const fetchConnections = async () => {
+    try {
+      const userId = encodeURIComponent(currentHR?.email || "anonymous");
+
+      const response = await fetch(
+        `http://localhost:5000/api/social/connections?userId=${userId}`
+      );
+
+      if (!response.ok) {
+        console.warn("Connection API unavailable");
+        return;
+      }
+
+      const payload = await response.json();
+      const source = payload?.connections || {};
+
+      setPlatformConnections({
+        linkedin: source?.linkedin?.connected ?? false,
+        facebook: source?.facebook?.connected ?? false,
+        telegram: source?.telegram?.connected ?? false
+      });
+    } catch (err) {
+      console.error("Connection fetch error:", err);
+      setPlatformConnections({ linkedin: false, facebook: false, telegram: false });
+    }
+  };
+
+  useEffect(() => {
+    fetchConnections();
+  }, [currentHR]);
+
+  // ========== ANALYTICS DATA FETCHING ==========
+  const fetchAnalyticsData = async () => {
+    setLoadingAnalytics(true);
+    try {
+      // Read posts and contact registry from backend.
+      const [postsRes, socialRes] = await Promise.all([
+        fetch("http://localhost:5000/api/posts"),
+        fetch("http://localhost:5000/api/social")
+      ]);
+
+      if (!postsRes.ok || !socialRes.ok) {
+        throw new Error("Failed to fetch analytics sources");
+      }
+
+      const postsData = await postsRes.json();
+      const socialData = await socialRes.json();
+
+      const posts = Array.isArray(postsData) ? postsData : [];
+      const socialRecords = Array.isArray(socialData) ? socialData : [];
+
+      const totalPosts = posts.length;
+
+      const uniqueContactNumbers = new Set();
+      socialRecords.forEach((record) => {
+        const contacts = record?.socials?.whatsapp_contacts || [];
+        contacts.forEach((contact) => {
+          const normalized = String(contact?.number || "").replace(/\D/g, "");
+          if (normalized) uniqueContactNumbers.add(normalized);
+        });
+      });
+
+      const whatsappFollowers = uniqueContactNumbers.size;
+
+      // Calculate weekly growth (compare last 7 days vs previous 7 days)
+      const now = new Date();
+      const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+      const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+      
+      const lastWeekPosts = posts.filter((p) => {
+        const created = new Date(p.createdAt);
+        return created >= sevenDaysAgo;
+      }).length;
+
+      const prevWeekPosts = posts.filter((p) => {
+        const created = new Date(p.createdAt);
+        return created >= fourteenDaysAgo && created < sevenDaysAgo;
+      }).length;
+      
+      const weeklyGrowth = prevWeekPosts > 0 
+        ? Math.round(((lastWeekPosts - prevWeekPosts) / prevWeekPosts) * 100)
+        : lastWeekPosts > 0 ? 100 : 0;
+      
+      // Monthly posts distribution (last 12 months)
+      const monthlyPosts = Array(12).fill(0);
+      posts.forEach((post) => {
+        const created = new Date(post.createdAt);
+        const monthsAgo = Math.floor((now - created) / (30 * 24 * 60 * 60 * 1000));
+        if (monthsAgo >= 0 && monthsAgo < 12) {
+          monthlyPosts[11 - monthsAgo]++;
+        }
+      });
+
+      // Platform stats from actual stored post platforms.
+      const platformPostCounts = {};
+      posts.forEach((post) => {
+        const platforms = Array.isArray(post.platforms) ? post.platforms : [];
+        platforms.forEach((platformId) => {
+          const key = String(platformId || "").toLowerCase();
+          if (!key) return;
+          platformPostCounts[key] = (platformPostCounts[key] || 0) + 1;
+        });
+      });
+
+      const platformAggregates = {};
+
+      posts.forEach((post) => {
+        const metrics = Array.isArray(post.platformMetrics) ? post.platformMetrics : [];
+
+        metrics.forEach((metric) => {
+          const key = String(metric?.platform || "").toLowerCase();
+          if (!key) return;
+
+          if (!platformAggregates[key]) {
+            platformAggregates[key] = {
+              followers: 0,
+              engagement: 0,
+              snapshotCount: 0
+            };
+          }
+
+          platformAggregates[key].followers += Number(metric.followers) || 0;
+          platformAggregates[key].engagement += Number(metric.engagement) || 0;
+          platformAggregates[key].snapshotCount += 1;
+        });
+      });
+
+      const platformStats = Object.entries(platformPostCounts).map(([platformId, postsCount]) => {
+        const platformInfo = allPlatforms.find((p) => p.id === platformId);
+        const aggregate = platformAggregates[platformId];
+
+        // Prefer backend-saved metrics; fallback for legacy posts without platformMetrics.
+        const followers = aggregate
+          ? Math.round(aggregate.followers / Math.max(aggregate.snapshotCount, 1))
+          : platformId === "whatsapp"
+            ? whatsappFollowers
+            : 0;
+
+        const engagement = aggregate ? aggregate.engagement : 0;
+
+        return {
+          platform: platformInfo?.name || platformId,
+          posts: postsCount,
+          engagement,
+          followers
+        };
+      });
+      
+      // Find top platform
+      const topPlatform = platformStats.length > 0 
+        ? platformStats.reduce((max, p) => (p.posts > max.posts ? p : max), platformStats[0]).platform
+        : "WhatsApp";
+
+      const totalEngagement = platformStats.reduce((sum, stat) => sum + stat.engagement, 0);
+      
+      setAnalyticsData({
+        totalPosts,
+        totalEngagement,
+        avgEngagement: totalPosts > 0 ? Math.round(totalEngagement / totalPosts) : 0,
+        topPlatform,
+        weeklyGrowth,
+        monthlyPosts,
+        platformStats
+      });
+      
+      // Set post history from real posts collection.
+      const history = posts.map((post, index) => ({
+        id: post._id || index + 1,
+        message: post.message || "Social media post",
+        platforms: Array.isArray(post.platforms) ? post.platforms : ["whatsapp"],
+        sentAt: post.createdAt ? new Date(post.createdAt).toLocaleString() : new Date().toLocaleString(),
+        status: post.status || "sent",
+        engagement: {
+          likes: (Array.isArray(post.platformMetrics)
+            ? post.platformMetrics.reduce((sum, metric) => sum + (Number(metric.engagement) || 0), 0)
+            : 0),
+          comments: 0,
+          shares: 0
+        }
+      }));
+      
+      setPostHistory(history.reverse());
+      
+    } catch (err) {
+      console.error("Analytics fetch error:", err);
+      // Keep default values on error
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  // Fetch analytics on mount
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
+
   const normalizePhoneNumber = (phone) => {
     const digits = String(phone || "").replace(/\D/g, "");
     if (digits.length === 10) return `91${digits}`;
@@ -628,11 +890,43 @@ const SocialForm = () => {
 
   const getCharacterLimit = () => {
     if (selectedPlatforms.length === 0) return null;
-    const limits = selectedPlatforms.map(id => {
-      const platform = allPlatforms.find(p => p.id === id);
-      return platform ? platform.charLimit : Infinity;
+    const platform = allPlatforms.find((p) => p.id === selectedPlatforms[0]);
+    return platform ? platform.charLimit : null;
+  };
+
+  const getUniqueWhatsappFollowers = () => {
+    const unique = new Set(
+      contects
+        .map((contact) => normalizePhoneNumber(contact.number))
+        .filter(Boolean)
+    );
+    return unique.size;
+  };
+
+  const buildPlatformMetricsSnapshot = () => {
+    const whatsappFollowers = getUniqueWhatsappFollowers();
+
+    return selectedPlatforms.map((platformId) => {
+      const base = companyConfig.platformBenchmarks?.[platformId] || { followers: 0, engagement: 0 };
+
+      if (platformId === "whatsapp") {
+        const recipientsCount = selectedContacts.length > 0
+          ? selectedContacts.length
+          : whatsappFollowers;
+
+        return {
+          platform: platformId,
+          followers: whatsappFollowers,
+          engagement: recipientsCount
+        };
+      }
+
+      return {
+        platform: platformId,
+        followers: Number(base.followers) || 0,
+        engagement: Number(base.engagement) || 0
+      };
     });
-    return Math.min(...limits);
   };
 
   const characterLimit = getCharacterLimit();
@@ -641,19 +935,165 @@ const SocialForm = () => {
 
   // ========== EVENT HANDLERS ==========
   const togglePlatform = (platformId) => {
-    setSelectedPlatforms(prev =>
+    setSelectedPlatforms((prev) => (prev[0] === platformId ? [] : [platformId]));
+  };
+
+  const toggleDispatchPlatform = (platformId) => {
+    setDispatchPlatforms((prev) =>
       prev.includes(platformId)
-        ? prev.filter(p => p !== platformId)
+        ? prev.filter((id) => id !== platformId)
         : [...prev, platformId]
     );
   };
 
-  const selectAllPlatforms = () => {
-    if (selectedPlatforms.length === allPlatforms.length) {
-      setSelectedPlatforms([]);
-    } else {
-      setSelectedPlatforms(allPlatforms.map(p => p.id));
+  const toggleAllDispatchPlatforms = () => {
+    setDispatchPlatforms((prev) =>
+      prev.length === dispatchPlatformOptions.length
+        ? []
+        : dispatchPlatformOptions.map((platform) => platform.id)
+    );
+  };
+
+  const handleConnectAccount = async (platformId) => {
+    try {
+      setConnectingPlatform(platformId);
+
+      let accessToken = "";
+      if (platformId === "telegram") {
+        const botToken = String(window.prompt("Enter Telegram bot token", "") || "").trim();
+        const chatId = String(window.prompt("Enter Telegram chat id", "") || "").trim();
+
+        if (!botToken || !chatId) {
+          showNotification("Telegram bot token and chat id are required", "error");
+          return;
+        }
+
+        accessToken = JSON.stringify({ botToken, chatId });
+      } else {
+        accessToken = String(
+          window.prompt(`Enter ${platformId} access token`, "") || ""
+        ).trim();
+
+        if (!accessToken) {
+          showNotification(`${platformId} token is required to connect`, "error");
+          return;
+        }
+      }
+
+      const response = await fetch("http://localhost:5000/api/social/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentHR?.email || "anonymous",
+          platform: platformId,
+          accessToken
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showNotification(payload?.msg || `Could not connect ${platformId}`, "error");
+        return;
+      }
+
+      await fetchConnections();
+      const isConnected = Boolean(payload?.connection?.connected);
+      showNotification(
+        isConnected
+          ? `${platformId} connected successfully`
+          : `${platformId} connection could not be verified. Please check credentials/config.`,
+        isConnected ? "success" : "info"
+      );
+    } catch {
+      showNotification(`Failed to connect ${platformId}`, "error");
+    } finally {
+      setConnectingPlatform(null);
     }
+  };
+
+  const handleDisconnectAccount = async (platformId) => {
+    try {
+      setConnectingPlatform(platformId);
+      const response = await fetch("http://localhost:5000/api/social/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentHR?.email || "anonymous",
+          platform: platformId,
+          accessToken: "",
+          forceDisconnect: true
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showNotification(payload?.msg || `Could not disconnect ${platformId}`, "error");
+        return;
+      }
+
+      await fetchConnections();
+      showNotification(`${platformId} disconnected`, "info");
+    } catch {
+      showNotification(`Failed to disconnect ${platformId}`, "error");
+    } finally {
+      setConnectingPlatform(null);
+    }
+  };
+
+  const handleSocialApiSend = async (type) => {
+    if (!message.trim()) {
+      showNotification("Please enter a message", "error");
+      return;
+    }
+
+    if (dispatchPlatforms.length === 0) {
+      showNotification("Please select at least one platform", "error");
+      return;
+    }
+
+    try {
+      setSendingType(type);
+
+      const response = await fetch("http://localhost:5000/api/social/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentHR?.email || "anonymous",
+          message,
+          platforms: dispatchPlatforms,
+          type
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        showNotification(payload?.msg || "Failed to send via API", "error");
+        return;
+      }
+
+      const resultStatus = payload?.status || "failed";
+      if (resultStatus === "success") {
+        showNotification(`Sent successfully to ${dispatchPlatforms.length} platform(s)`, "success");
+      } else if (resultStatus === "partial") {
+        const firstFailure = payload?.results?.find((item) => !item.success)?.detail;
+        showNotification(
+          firstFailure || "Partially sent. Check connection/status details.",
+          "info"
+        );
+      } else {
+        const firstFailure = payload?.results?.find((item) => !item.success)?.detail;
+        showNotification(firstFailure || "Send failed for selected platforms", "error");
+      }
+    } catch {
+      showNotification("Server error while sending", "error");
+    } finally {
+      setSendingType(null);
+    }
+  };
+
+  const clearSelectedPlatform = () => {
+    setSelectedPlatforms([]);
   };
 
   const insertEmoji = (emoji) => {
@@ -829,9 +1269,23 @@ const SocialForm = () => {
   // ========== HR PROFILE HANDLERS ==========
   const [newHRProfile, setNewHRProfile] = useState({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
 
+  const openHRProfileModal = (initialTab = "signin") => {
+    setProfileModalTab(initialTab);
+    setEditingHRProfile(null);
+    setProfileLoginEmail("");
+    setShowHRProfileModal(true);
+  };
+
   const addHRProfile = () => {
     if (!newHRProfile.name || !newHRProfile.role || !newHRProfile.email) {
       showNotification("Please fill required fields", "error");
+      return;
+    }
+    const existing = hrProfiles.some(
+      (profile) => profile.email.toLowerCase() === newHRProfile.email.toLowerCase()
+    );
+    if (existing) {
+      showNotification("Profile with this email already exists", "error");
       return;
     }
     const avatar = newHRProfile.name.charAt(0).toUpperCase();
@@ -863,6 +1317,57 @@ const SocialForm = () => {
     showNotification(`Switched to ${profile.name}`);
   };
 
+  const signInHRProfile = () => {
+    const email = profileLoginEmail.trim().toLowerCase();
+    if (!email) {
+      showNotification("Enter profile email to sign in", "error");
+      return;
+    }
+
+    const profile = hrProfiles.find((item) => item.email.toLowerCase() === email);
+    if (!profile) {
+      showNotification("Profile not found. Use Sign Up tab to create one.", "error");
+      return;
+    }
+
+    setCurrentHR(profile);
+    setShowHRProfileModal(false);
+    showNotification(`Signed in as ${profile.name}`);
+  };
+
+  const startEditCurrentProfile = () => {
+    setEditingHRProfile({ ...currentHR });
+    setProfileModalTab("manage");
+  };
+
+  const saveCurrentProfile = () => {
+    if (!editingHRProfile?.name || !editingHRProfile?.role || !editingHRProfile?.email) {
+      showNotification("Name, role and email are required", "error");
+      return;
+    }
+
+    const duplicateEmail = hrProfiles.some(
+      (profile) =>
+        profile.id !== editingHRProfile.id &&
+        profile.email.toLowerCase() === editingHRProfile.email.toLowerCase()
+    );
+
+    if (duplicateEmail) {
+      showNotification("Another profile already uses this email", "error");
+      return;
+    }
+
+    const updatedProfile = {
+      ...editingHRProfile,
+      avatar: editingHRProfile.name.charAt(0).toUpperCase()
+    };
+
+    setHRProfiles((prev) => prev.map((profile) => (profile.id === updatedProfile.id ? updatedProfile : profile)));
+    setCurrentHR(updatedProfile);
+    setEditingHRProfile(null);
+    showNotification("Profile updated successfully");
+  };
+
   const handleSubmit = async () => {
   if (!message.trim()) {
     showNotification("Please enter a message", "error");
@@ -885,6 +1390,8 @@ const SocialForm = () => {
   }
 
   try {
+    let openedChannels = 0;
+
     if (selectedPlatforms.includes("whatsapp") && scheduleType === "now") {
       const recipients = selectedContacts.length > 0
         ? selectedContacts
@@ -895,8 +1402,10 @@ const SocialForm = () => {
         showNotification("No valid WhatsApp number found", "error");
       } else if (waResult.opened < waResult.total) {
         showNotification(`Opened ${waResult.opened}/${waResult.total} chats. Please allow popups for full send.`, "info");
+        openedChannels += waResult.opened;
       } else {
         showNotification(`Opened ${waResult.total} WhatsApp chat(s). Press send in WhatsApp.`, "success");
+        openedChannels += waResult.opened;
       }
     }
 
@@ -905,12 +1414,14 @@ const SocialForm = () => {
       if (normalizedNumber) {
         const url = `sms:${normalizedNumber}?body=${encodeURIComponent(message)}`;
         window.open(url, "_blank");
+        openedChannels += 1;
       }
     }
 
     if (selectedPlatforms.includes("email") && scheduleType === "now") {
       const url = `mailto:${companyConfig.email}?subject=${encodeURIComponent(companyConfig.companyName)}&body=${encodeURIComponent(message)}`;
       window.open(url, "_blank");
+      openedChannels += 1;
     }
 
     // Do not auto-open all other platforms on Publish.
@@ -919,6 +1430,7 @@ const SocialForm = () => {
     const data = {
       message,
       platforms: selectedPlatforms,
+      platformMetrics: buildPlatformMetricsSnapshot(),
       scheduleType,
       scheduleDate,
       scheduleTime,
@@ -949,11 +1461,13 @@ const SocialForm = () => {
     setContactSearch("");
 
     // ✅ SUCCESS
-    showNotification(
-      scheduleType === "now"
-        ? "Message sent successfully! 🚀"
-        : "Message scheduled successfully! 📅"
-    );
+    if (scheduleType === "scheduled") {
+      showNotification("Message scheduled and saved successfully! 📅", "success");
+    } else if (openedChannels > 0) {
+      showNotification(`Post saved. ${openedChannels} channel(s) opened for sending.`, "success");
+    } else {
+      showNotification("Post saved successfully! Use platform Share button to publish.", "info");
+    }
 
   } catch (err) {
     showNotification("Server error ❌", "error");
@@ -961,7 +1475,10 @@ const SocialForm = () => {
 };
   const duplicatePost = (post) => {
     setMessage(post.message);
-    setSelectedPlatforms(post.platforms);
+    const firstPlatform = Array.isArray(post.platforms) && post.platforms.length > 0
+      ? [post.platforms[0]]
+      : ["whatsapp"];
+    setSelectedPlatforms(firstPlatform);
     setActiveTab("compose");
     showNotification("Post content loaded for editing");
   };
@@ -1001,146 +1518,188 @@ const SocialForm = () => {
   const renderDashboard = () => (
     <div className="dashboard-view">
       <div className="dashboard-header">
-        <h1>📊 Dashboard Overview</h1>
-        <p>Welcome back! Here's your social media performance at a glance.</p>
+        <div className="header-content">
+          <h1>📊 Dashboard Overview</h1>
+          <p>Welcome back! Here's your social media performance at a glance.</p>
+        </div>
+        <button className="refresh-btn" onClick={fetchAnalyticsData} disabled={loadingAnalytics}>
+          <Icons.History />
+          {loadingAnalytics ? "Refreshing..." : "Refresh"}
+        </button>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon blue">
-            <Icons.Send />
-          </div>
-          <div className="stat-content">
-            <h3>{analyticsData.totalPosts}</h3>
-            <p>Total Posts</p>
-          </div>
+      {loadingAnalytics ? (
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading your analytics...</p>
         </div>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon blue">
+                <Icons.Send />
+              </div>
+              <div className="stat-content">
+                <h3>{analyticsData.totalPosts}</h3>
+                <p>Total Posts</p>
+              </div>
+            </div>
 
-        <div className="stat-card">
-          <div className="stat-icon green">
-            <Icons.Heart />
-          </div>
-          <div className="stat-content">
-            <h3>{analyticsData.totalEngagement.toLocaleString()}</h3>
-            <p>Total Engagement</p>
-          </div>
-        </div>
+            <div className="stat-card">
+              <div className="stat-icon green">
+                <Icons.Heart />
+              </div>
+              <div className="stat-content">
+                <h3>{analyticsData.totalEngagement.toLocaleString()}</h3>
+                <p>Total Contacts</p>
+              </div>
+            </div>
 
-        <div className="stat-card">
-          <div className="stat-icon purple">
-            <Icons.TrendUp />
-          </div>
-          <div className="stat-content">
-            <h3>{analyticsData.avgEngagement}</h3>
-            <p>Avg. Engagement</p>
-          </div>
-        </div>
+            <div className="stat-card">
+              <div className="stat-icon purple">
+                <Icons.TrendUp />
+              </div>
+              <div className="stat-content">
+                <h3>{analyticsData.avgEngagement}</h3>
+                <p>Avg. Contacts/Post</p>
+              </div>
+            </div>
 
-        <div className="stat-card">
-          <div className="stat-icon orange">
-            <Icons.Star />
+            <div className="stat-card">
+              <div className="stat-icon orange">
+                <Icons.Star />
+              </div>
+              <div className="stat-content">
+                <h3 className={analyticsData.weeklyGrowth >= 0 ? "positive" : "negative"}>
+                  {analyticsData.weeklyGrowth >= 0 ? "+" : ""}{analyticsData.weeklyGrowth}%
+                </h3>
+                <p>Weekly Growth</p>
+              </div>
+            </div>
           </div>
-          <div className="stat-content">
-            <h3>+{analyticsData.weeklyGrowth}%</h3>
-            <p>Weekly Growth</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="dashboard-grid">
-        <div className="dashboard-card platform-performance">
-          <h3>📈 Platform Performance</h3>
-          <div className="platform-stats">
-            {analyticsData.platformStats.map((stat, index) => {
-              const platform = allPlatforms.find(p => p.name === stat.platform);
-              const IconComponent = platform ? PlatformIcons[platform.icon] : null;
-              return (
-              <div key={index} className="platform-stat-row">
-                <div className="platform-info">
-                  <div className="platform-icon" style={{ background: platform?.color || '#6366f1' }}>
-                    {IconComponent && <IconComponent />}
+          <div className="dashboard-grid">
+            <div className="dashboard-card platform-performance">
+              <h3>📈 Platform Performance</h3>
+              {analyticsData.platformStats.length === 0 ? (
+                <div className="empty-state">
+                  <p>No platform data yet. Start posting to see analytics!</p>
+                </div>
+              ) : (
+                <div className="platform-stats">
+                  {analyticsData.platformStats.map((stat, index) => {
+                    const platform = allPlatforms.find(p => p.name === stat.platform || p.id === stat.platform);
+                    const IconComponent = platform ? PlatformIcons[platform.icon] : null;
+                    const maxEngagement = Math.max(...analyticsData.platformStats.map(s => s.engagement));
+                    return (
+                    <div key={index} className="platform-stat-row">
+                      <div className="platform-info">
+                        <div className="platform-icon" style={{ background: platform?.color || '#6366f1' }}>
+                          {IconComponent && <IconComponent />}
+                        </div>
+                        <span className="platform-name">{stat.platform}</span>
+                      </div>
+                      <div className="platform-metrics">
+                        <span className="metric">
+                          <Icons.Send /> {stat.posts} posts
+                        </span>
+                        <span className="metric">
+                          <Icons.Heart /> {stat.engagement}
+                        </span>
+                        <span className="metric">
+                          <Icons.Users /> {stat.followers}
+                        </span>
+                      </div>
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ width: `${maxEngagement > 0 ? (stat.engagement / maxEngagement) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )})}
+                </div>
+              )}
+            </div>
+
+            <div className="dashboard-card recent-posts">
+              <h3>📝 Recent Posts</h3>
+              {postHistory.length === 0 ? (
+                <div className="empty-state">
+                  <p>No posts yet. Create your first post!</p>
+                </div>
+              ) : (
+                <>
+                  <div className="recent-posts-list">
+                    {postHistory.slice(0, 3).map((post, index) => (
+                      <div key={index} className="recent-post-item">
+                        <div className="post-content-preview">
+                          {post.message?.substring(0, 60) || "Social media post"}...
+                        </div>
+                        <div className="post-meta">
+                          <span className={`status-badge ${post.status}`}>
+                            {post.status}
+                          </span>
+                          <span className="post-date">{post.sentAt}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="platform-name">{stat.platform}</span>
-                </div>
-                <div className="platform-metrics">
-                  <span className="metric">
-                    <Icons.Send /> {stat.posts}
-                  </span>
-                  <span className="metric">
-                    <Icons.Heart /> {stat.engagement.toLocaleString()}
-                  </span>
-                  <span className="metric">
-                    <Icons.Users /> {stat.followers.toLocaleString()}
-                  </span>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${(stat.engagement / 20000) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            )})}
-          </div>
-        </div>
+                  <button className="view-all-btn" onClick={() => setActiveTab("history")}>
+                    View All Posts →
+                  </button>
+                </>
+              )}
+            </div>
 
-        <div className="dashboard-card recent-posts">
-          <h3>📝 Recent Posts</h3>
-          <div className="recent-posts-list">
-            {postHistory.slice(0, 3).map((post, index) => (
-              <div key={index} className="recent-post-item">
-                <div className="post-content-preview">
-                  {post.message.substring(0, 60)}...
-                </div>
-                <div className="post-meta">
-                  <span className={`status-badge ${post.status}`}>
-                    {post.status}
-                  </span>
-                  <span className="post-date">{post.sentAt}</span>
-                </div>
+            <div className="dashboard-card quick-actions">
+              <h3>⚡ Quick Actions</h3>
+              <div className="quick-action-buttons">
+                <button onClick={() => setActiveTab("compose")}>
+                  <Icons.Compose /> New Post
+                </button>
+                <button onClick={() => setActiveTab("templates")}>
+                  <Icons.Templates /> Templates
+                </button>
+                <button onClick={() => setActiveTab("schedule")}>
+                  <Icons.Schedule /> Schedule
+                </button>
+                <button onClick={() => setActiveTab("analytics")}>
+                  <Icons.Analytics /> Analytics
+                </button>
               </div>
-            ))}
-          </div>
-          <button className="view-all-btn" onClick={() => setActiveTab("history")}>
-            View All Posts →
-          </button>
-        </div>
+            </div>
 
-        <div className="dashboard-card quick-actions">
-          <h3>⚡ Quick Actions</h3>
-          <div className="quick-action-buttons">
-            <button onClick={() => setActiveTab("compose")}>
-              <Icons.Compose /> New Post
-            </button>
-            <button onClick={() => setActiveTab("templates")}>
-              <Icons.Templates /> Templates
-            </button>
-            <button onClick={() => setActiveTab("schedule")}>
-              <Icons.Schedule /> Schedule
-            </button>
-            <button onClick={() => setActiveTab("analytics")}>
-              <Icons.Analytics /> Analytics
-            </button>
+            <div className="dashboard-card engagement-chart">
+              <h3>📊 Monthly Posts</h3>
+              {analyticsData.monthlyPosts.every((v) => v === 0) ? (
+                <div className="empty-state">
+                  <p>No monthly data available yet.</p>
+                </div>
+              ) : (
+                <div className="simple-chart">
+                  {analyticsData.monthlyPosts.map((value, index) => {
+                    const maxValue = Math.max(...analyticsData.monthlyPosts, 1);
+                    return (
+                      <div key={index} className="chart-bar-container">
+                        <div
+                          className="chart-bar"
+                          style={{ height: `${(value / maxValue) * 100}%` }}
+                          title={`${value} posts`}
+                        ></div>
+                        <span className="chart-label">
+                          {["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"][index]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="dashboard-card engagement-chart">
-          <h3>📊 Monthly Engagement</h3>
-          <div className="simple-chart">
-            {analyticsData.monthlyPosts.map((value, index) => (
-              <div key={index} className="chart-bar-container">
-                <div 
-                  className="chart-bar" 
-                  style={{ height: `${(value / 45) * 100}%` }}
-                ></div>
-                <span className="chart-label">
-                  {["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"][index]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 
@@ -1255,7 +1814,7 @@ const SocialForm = () => {
               </span>
               {isOverLimit && (
                 <span className="warning">
-                  ⚠️ Exceeds limit for selected platforms
+                  ⚠️ Exceeds limit for selected platform
                 </span>
               )}
             </div>
@@ -1264,9 +1823,9 @@ const SocialForm = () => {
           {/* Platform Selection */}
           <div className="compose-card platforms-card">
             <div className="card-header">
-              <h3>📱 Platforms</h3>
-              <button className="select-all-btn" onClick={selectAllPlatforms}>
-                {selectedPlatforms.length === allPlatforms.length ? "Clear" : "All"}
+              <h3>📱 Select One Platform</h3>
+              <button className="select-all-btn" onClick={clearSelectedPlatform}>
+                Clear
               </button>
             </div>
 
@@ -1296,6 +1855,16 @@ const SocialForm = () => {
                     <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                       <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
                     </svg>
+                  </button>
+                  <button
+                    className="copy-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyMessage(platform.name);
+                    }}
+                    title="Copy message"
+                  >
+                    <Icons.Copy />
                   </button>
                 </div>
               )})}
@@ -1444,6 +2013,48 @@ const SocialForm = () => {
           )}
 
           {/* Submit Button */}
+          <div className="compose-card dispatch-card">
+            <div className="card-header">
+              <h3>🚀 API Dispatch (LinkedIn/Facebook/Telegram)</h3>
+              <button className="select-all-btn" onClick={toggleAllDispatchPlatforms}>
+                {dispatchPlatforms.length === dispatchPlatformOptions.length ? "Unselect All" : "Select All"}
+              </button>
+            </div>
+
+            <div className="dispatch-platform-list">
+              {dispatchPlatformOptions.map((platform) => (
+                <label key={platform.id} className="dispatch-platform-item">
+                  <input
+                    type="checkbox"
+                    checked={dispatchPlatforms.includes(platform.id)}
+                    onChange={() => toggleDispatchPlatform(platform.id)}
+                  />
+                  <span className="dispatch-platform-name">{platform.name}</span>
+                  <span className={`dispatch-status ${platformConnections[platform.id] ? "connected" : "disconnected"}`}>
+                    {platformConnections[platform.id] ? "Connected" : "Not Connected"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="dispatch-actions">
+              <button
+                className="dispatch-btn post"
+                onClick={() => handleSocialApiSend("post")}
+                disabled={sendingType !== null}
+              >
+                {sendingType === "post" ? "Posting..." : "Post"}
+              </button>
+              <button
+                className="dispatch-btn message"
+                onClick={() => handleSocialApiSend("message")}
+                disabled={sendingType !== null}
+              >
+                {sendingType === "message" ? "Sending..." : "Send Message"}
+              </button>
+            </div>
+          </div>
+
           <button 
             className="submit-button"
             onClick={handleSubmit}
@@ -1654,8 +2265,10 @@ const SocialForm = () => {
 
             <div className="modal-body">
               <div className="form-group">
-                <label>Template Title</label>
+                <label htmlFor="template-title">Template Title</label>
                 <input
+                  id="template-title"
+                  name="templateTitle"
                   type="text"
                   placeholder="e.g., Job Opening Announcement"
                   value={newTemplate.title}
@@ -1664,8 +2277,10 @@ const SocialForm = () => {
               </div>
 
               <div className="form-group">
-                <label>Category</label>
+                <label htmlFor="template-category">Category</label>
                 <select
+                  id="template-category"
+                  name="templateCategory"
                   value={newTemplate.category}
                   onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
                 >
@@ -1678,8 +2293,10 @@ const SocialForm = () => {
               </div>
 
               <div className="form-group">
-                <label>Template Content</label>
+                <label htmlFor="template-content">Template Content</label>
                 <textarea
+                  id="template-content"
+                  name="templateContent"
                   placeholder="Write your template message here..."
                   value={newTemplate.content}
                   onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
@@ -1688,8 +2305,10 @@ const SocialForm = () => {
               </div>
 
               <div className="form-group">
-                <label>Tags (comma separated)</label>
+                <label htmlFor="template-tags">Tags (comma separated)</label>
                 <input
+                  id="template-tags"
+                  name="templateTags"
                   type="text"
                   placeholder="e.g., hiring, jobs, careers"
                   value={newTemplate.tags?.join(", ") || ""}
@@ -1735,8 +2354,10 @@ const SocialForm = () => {
                 <h3>Company Information</h3>
                 <div className="settings-grid">
                   <div className="input-group">
-                    <label>Company Name</label>
+                    <label htmlFor="company-name-modal">Company Name</label>
                     <input 
+                      id="company-name-modal"
+                      name="companyName"
                       type="text" 
                       value={companyConfig.companyName}
                       onChange={(e) => setCompanyConfig({...companyConfig, companyName: e.target.value})}
@@ -1744,8 +2365,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>Tagline</label>
+                    <label htmlFor="company-tagline-modal">Tagline</label>
                     <input 
+                      id="company-tagline-modal"
+                      name="companyTagline"
                       type="text" 
                       value={companyConfig.tagline}
                       onChange={(e) => setCompanyConfig({...companyConfig, tagline: e.target.value})}
@@ -1753,8 +2376,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>📱 Phone Number</label>
+                    <label htmlFor="company-phone-modal">📱 Phone Number</label>
                     <input 
+                      id="company-phone-modal"
+                      name="companyPhone"
                       type="text" 
                       value={companyConfig.phone}
                       onChange={(e) => setCompanyConfig({...companyConfig, phone: e.target.value})}
@@ -1762,8 +2387,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>📧 Email</label>
+                    <label htmlFor="company-email-modal">📧 Email</label>
                     <input 
+                      id="company-email-modal"
+                      name="companyEmail"
                       type="email" 
                       value={companyConfig.email}
                       onChange={(e) => setCompanyConfig({...companyConfig, email: e.target.value})}
@@ -1771,8 +2398,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group full-width">
-                    <label>🌐 Website</label>
+                    <label htmlFor="company-website-modal">🌐 Website</label>
                     <input 
+                      id="company-website-modal"
+                      name="companyWebsite"
                       type="url" 
                       value={companyConfig.website}
                       onChange={(e) => setCompanyConfig({...companyConfig, website: e.target.value})}
@@ -1780,8 +2409,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group full-width">
-                    <label>📍 Address</label>
+                    <label htmlFor="company-address-modal">📍 Address</label>
                     <input 
+                      id="company-address-modal"
+                      name="companyAddress"
                       type="text" 
                       value={companyConfig.address}
                       onChange={(e) => setCompanyConfig({...companyConfig, address: e.target.value})}
@@ -1795,8 +2426,10 @@ const SocialForm = () => {
                 <h3>🔗 Social Media Links</h3>
                 <div className="settings-grid">
                   <div className="input-group">
-                    <label>Facebook</label>
+                    <label htmlFor="company-facebook-modal">Facebook</label>
                     <input 
+                      id="company-facebook-modal"
+                      name="companyFacebook"
                       type="url" 
                       value={companyConfig.socialLinks.facebook}
                       onChange={(e) => setCompanyConfig({
@@ -1807,8 +2440,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>Instagram</label>
+                    <label htmlFor="company-instagram-modal">Instagram</label>
                     <input 
+                      id="company-instagram-modal"
+                      name="companyInstagram"
                       type="url" 
                       value={companyConfig.socialLinks.instagram}
                       onChange={(e) => setCompanyConfig({
@@ -1819,8 +2454,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>LinkedIn</label>
+                    <label htmlFor="company-linkedin-modal">LinkedIn</label>
                     <input 
+                      id="company-linkedin-modal"
+                      name="companyLinkedIn"
                       type="url" 
                       value={companyConfig.socialLinks.linkedin}
                       onChange={(e) => setCompanyConfig({
@@ -1831,8 +2468,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>Twitter/X</label>
+                    <label htmlFor="company-twitter-modal">Twitter/X</label>
                     <input 
+                      id="company-twitter-modal"
+                      name="companyTwitter"
                       type="url" 
                       value={companyConfig.socialLinks.twitter}
                       onChange={(e) => setCompanyConfig({
@@ -1843,8 +2482,10 @@ const SocialForm = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label>YouTube</label>
+                    <label htmlFor="company-youtube-modal">YouTube</label>
                     <input 
+                      id="company-youtube-modal"
+                      name="companyYouTube"
                       type="url" 
                       value={companyConfig.socialLinks.youtube}
                       onChange={(e) => setCompanyConfig({
@@ -1854,6 +2495,77 @@ const SocialForm = () => {
                       placeholder="https://youtube.com/@yourcompany"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>📊 Platform Benchmarks</h3>
+                <div className="settings-grid">
+                  {[
+                    { id: "facebook", label: "Facebook" },
+                    { id: "instagram", label: "Instagram" },
+                    { id: "linkedin", label: "LinkedIn" },
+                    { id: "twitter", label: "Twitter/X" },
+                    { id: "youtube", label: "YouTube" },
+                    { id: "telegram", label: "Telegram" },
+                    { id: "pinterest", label: "Pinterest" },
+                    { id: "tiktok", label: "TikTok" }
+                  ].map((platform) => (
+                    <div key={platform.id} className="input-group">
+                      <label htmlFor={`benchmark-followers-${platform.id}`}>{platform.label} Followers</label>
+                      <input
+                        id={`benchmark-followers-${platform.id}`}
+                        name={`benchmarkFollowers${platform.id}`}
+                        type="number"
+                        min="0"
+                        value={companyConfig.platformBenchmarks?.[platform.id]?.followers ?? 0}
+                        onChange={(e) => setCompanyConfig({
+                          ...companyConfig,
+                          platformBenchmarks: {
+                            ...companyConfig.platformBenchmarks,
+                            [platform.id]: {
+                              followers: Number(e.target.value) || 0,
+                              engagement: companyConfig.platformBenchmarks?.[platform.id]?.engagement || 0
+                            }
+                          }
+                        })}
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+
+                  {[
+                    { id: "facebook", label: "Facebook" },
+                    { id: "instagram", label: "Instagram" },
+                    { id: "linkedin", label: "LinkedIn" },
+                    { id: "twitter", label: "Twitter/X" },
+                    { id: "youtube", label: "YouTube" },
+                    { id: "telegram", label: "Telegram" },
+                    { id: "pinterest", label: "Pinterest" },
+                    { id: "tiktok", label: "TikTok" }
+                  ].map((platform) => (
+                    <div key={`${platform.id}-eng`} className="input-group">
+                      <label htmlFor={`benchmark-engagement-${platform.id}`}>{platform.label} Engagement/Post</label>
+                      <input
+                        id={`benchmark-engagement-${platform.id}`}
+                        name={`benchmarkEngagement${platform.id}`}
+                        type="number"
+                        min="0"
+                        value={companyConfig.platformBenchmarks?.[platform.id]?.engagement ?? 0}
+                        onChange={(e) => setCompanyConfig({
+                          ...companyConfig,
+                          platformBenchmarks: {
+                            ...companyConfig.platformBenchmarks,
+                            [platform.id]: {
+                              followers: companyConfig.platformBenchmarks?.[platform.id]?.followers || 0,
+                              engagement: Number(e.target.value) || 0
+                            }
+                          }
+                        })}
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -2068,27 +2780,37 @@ const SocialForm = () => {
       </div>
 
       <div className="analytics-charts">
-        <div className="analytics-card">
+          <div className="analytics-card">
           <h3>📈 Engagement by Platform</h3>
           <div className="platform-bars">
-            {analyticsData.platformStats.map((stat, index) => (
+            {analyticsData.platformStats.map((stat, index) => {
+              const platformMeta =
+                allPlatforms.find((p) => p.name === stat.platform) ||
+                allPlatforms.find((p) => p.id.toLowerCase() === String(stat.platform).toLowerCase()) ||
+                null;
+              const maxEngagement = Math.max(
+                ...analyticsData.platformStats.map((s) => Number(s.engagement) || 0),
+                1
+              );
+              const width = ((Number(stat.engagement) || 0) / maxEngagement) * 100;
+              return (
               <div key={index} className="platform-bar-row">
                 <div className="bar-label">
-                  {allPlatforms.find(p => p.name === stat.platform)?.icon}
+                  {platformMeta ? platformMeta.icon : "🌐"}
                   {stat.platform}
                 </div>
                 <div className="bar-container">
                   <div 
                     className="bar-fill"
                     style={{ 
-                      width: `${(stat.engagement / Math.max(...analyticsData.platformStats.map(s => s.engagement))) * 100}%`,
-                      backgroundColor: allPlatforms.find(p => p.name === stat.platform)?.color
+                      width: `${width}%`,
+                      backgroundColor: platformMeta?.color || "#6366f1"
                     }}
                   ></div>
                 </div>
-                <div className="bar-value">{stat.engagement.toLocaleString()}</div>
+                <div className="bar-value">{(Number(stat.engagement) || 0).toLocaleString()}</div>
               </div>
-            ))}
+            );})}
           </div>
         </div>
 
@@ -2099,7 +2821,7 @@ const SocialForm = () => {
               <div key={index} className="bar-item">
                 <div 
                   className="bar" 
-                  style={{ height: `${(value / Math.max(...analyticsData.monthlyPosts)) * 100}%` }}
+                  style={{ height: `${(value / Math.max(...analyticsData.monthlyPosts, 1)) * 100}%` }}
                 >
                   <span className="bar-tooltip">{value}</span>
                 </div>
@@ -2126,11 +2848,30 @@ const SocialForm = () => {
         <div className="settings-card">
           <h3>🔗 Connected Accounts</h3>
           <div className="connected-accounts">
-            {allPlatforms.slice(0, 6).map((platform) => (
+            {dispatchPlatformOptions.map((platform) => (
               <div key={platform.id} className="account-item">
-                <span className="account-icon">{platform.icon}</span>
+                <span className="account-icon">{platform.name.slice(0, 1)}</span>
                 <span className="account-name">{platform.name}</span>
-                <button className="connect-btn">Connect</button>
+                <span className={`dispatch-status ${platformConnections[platform.id] ? "connected" : "disconnected"}`}>
+                  {platformConnections[platform.id] ? "Connected" : "Not Connected"}
+                </span>
+                {platformConnections[platform.id] ? (
+                  <button
+                    className="connect-btn"
+                    onClick={() => handleDisconnectAccount(platform.id)}
+                    disabled={connectingPlatform === platform.id}
+                  >
+                    {connectingPlatform === platform.id ? "Please wait..." : "Disconnect"}
+                  </button>
+                ) : (
+                  <button
+                    className="connect-btn"
+                    onClick={() => handleConnectAccount(platform.id)}
+                    disabled={connectingPlatform === platform.id}
+                  >
+                    {connectingPlatform === platform.id ? "Connecting..." : "Connect"}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -2139,16 +2880,34 @@ const SocialForm = () => {
         <div className="settings-card">
           <h3>🔔 Notifications</h3>
           <div className="settings-options">
-            <label className="setting-option">
-              <input type="checkbox" defaultChecked />
+            <label className="setting-option" htmlFor="settings-notify-email-scheduled">
+              <input
+                id="settings-notify-email-scheduled"
+                name="settingsNotifyEmailScheduled"
+                type="checkbox"
+                checked={settingsNotifications.emailScheduled}
+                onChange={(e) => setSettingsNotifications((prev) => ({ ...prev, emailScheduled: e.target.checked }))}
+              />
               <span>Email notifications for scheduled posts</span>
             </label>
-            <label className="setting-option">
-              <input type="checkbox" defaultChecked />
+            <label className="setting-option" htmlFor="settings-notify-push-engagement">
+              <input
+                id="settings-notify-push-engagement"
+                name="settingsNotifyPushEngagement"
+                type="checkbox"
+                checked={settingsNotifications.pushEngagement}
+                onChange={(e) => setSettingsNotifications((prev) => ({ ...prev, pushEngagement: e.target.checked }))}
+              />
               <span>Push notifications for engagement alerts</span>
             </label>
-            <label className="setting-option">
-              <input type="checkbox" />
+            <label className="setting-option" htmlFor="settings-notify-weekly-report">
+              <input
+                id="settings-notify-weekly-report"
+                name="settingsNotifyWeeklyReport"
+                type="checkbox"
+                checked={settingsNotifications.weeklyReport}
+                onChange={(e) => setSettingsNotifications((prev) => ({ ...prev, weeklyReport: e.target.checked }))}
+              />
               <span>Weekly analytics report</span>
             </label>
           </div>
@@ -2158,14 +2917,33 @@ const SocialForm = () => {
           <h3>👤 Profile</h3>
           <div className="profile-settings">
             <div className="form-group">
-              <label>Company Name</label>
-              <input type="text" placeholder="Your Company" />
+              <label htmlFor="settings-company-name">Company Name</label>
+              <input
+                id="settings-company-name"
+                name="settingsCompanyName"
+                type="text"
+                value={companyConfig.companyName}
+                onChange={(e) => setCompanyConfig({ ...companyConfig, companyName: e.target.value })}
+                placeholder="Your Company"
+              />
             </div>
             <div className="form-group">
-              <label>Email</label>
-              <input type="email" placeholder="hr@company.com" />
+              <label htmlFor="settings-company-email">Email</label>
+              <input
+                id="settings-company-email"
+                name="settingsCompanyEmail"
+                type="email"
+                value={companyConfig.email}
+                onChange={(e) => setCompanyConfig({ ...companyConfig, email: e.target.value })}
+                placeholder="hr@company.com"
+              />
             </div>
-            <button className="save-settings-btn">Save Changes</button>
+            <button
+              className="save-settings-btn"
+              onClick={() => showNotification("Settings saved", "success")}
+            >
+              Save Changes
+            </button>
           </div>
         </div>
       </div>
@@ -2260,7 +3038,7 @@ const SocialForm = () => {
   };
 
   return (
-    <div className={`hr-dashboard ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`hr-dashboard ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
       <Helmet>
         <title>HR Social Dashboard | WhatsApp & Multi Platform Publisher</title>
         <meta
@@ -2283,61 +3061,66 @@ const SocialForm = () => {
           </button>
         </div>
 
-        <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              className={`nav-item ${activeTab === item.id ? "active" : ""}`}
-              onClick={() => setActiveTab(item.id)}
-              title={item.label}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {!sidebarCollapsed && <span className="nav-label">{item.label}</span>}
-            </button>
-          ))}
-        </nav>
+        <div className="sidebar-scroll">
+          <nav className="sidebar-nav">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                className={`nav-item ${activeTab === item.id ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setMobileSidebarOpen(false);
+                }}
+                title={item.label}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                {!sidebarCollapsed && <span className="nav-label">{item.label}</span>}
+              </button>
+            ))}
+          </nav>
 
-        <div className="sidebar-footer">
-          {!sidebarCollapsed ? (
-            <div className="hr-profile-section">
-              <div className="current-hr-profile" onClick={() => setShowHRProfileModal(true)}>
-                <div className="hr-avatar" style={{ background: currentHR.color }}>
-                  {currentHR.avatar}
+          <div className="sidebar-footer">
+            {!sidebarCollapsed ? (
+              <div className="hr-profile-section">
+                <div className="current-hr-profile" onClick={() => setShowHRProfileModal(true)}>
+                  <div className="hr-avatar" style={{ background: currentHR.color }}>
+                    {currentHR.avatar}
+                  </div>
+                  <div className="hr-details">
+                    <span className="hr-name">{currentHR.name}</span>
+                    <span className="hr-role">{currentHR.role}</span>
+                  </div>
+                  <span className="switch-profile-icon">🔄</span>
                 </div>
-                <div className="hr-details">
-                  <span className="hr-name">{currentHR.name}</span>
-                  <span className="hr-role">{currentHR.role}</span>
-                </div>
-                <span className="switch-profile-icon">🔄</span>
-              </div>
-              {hrProfiles.length > 1 && (
-                <div className="hr-profiles-dropdown">
-                  {hrProfiles.filter(p => p.id !== currentHR.id).map(profile => (
+                {hrProfiles.length > 1 && (
+                  <div className="hr-profiles-dropdown">
+                    {hrProfiles.filter(p => p.id !== currentHR.id).map(profile => (
+                      <button 
+                        key={profile.id} 
+                        className="hr-profile-option"
+                        onClick={() => switchHRProfile(profile)}
+                      >
+                        <div className="hr-avatar small" style={{ background: profile.color }}>
+                          {profile.avatar}
+                        </div>
+                        <span>{profile.name}</span>
+                      </button>
+                    ))}
                     <button 
-                      key={profile.id} 
-                      className="hr-profile-option"
-                      onClick={() => switchHRProfile(profile)}
+                      className="add-new-hr-btn"
+                      onClick={() => { setEditingHRProfile(null); setShowHRProfileModal(true); }}
                     >
-                      <div className="hr-avatar small" style={{ background: profile.color }}>
-                        {profile.avatar}
-                      </div>
-                      <span>{profile.name}</span>
+                      <Icons.Plus /> Add New HR
                     </button>
-                  ))}
-                  <button 
-                    className="add-new-hr-btn"
-                    onClick={() => { setEditingHRProfile(null); setShowHRProfileModal(true); }}
-                  >
-                    <Icons.Plus /> Add New HR
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="collapsed-hr-avatar" onClick={() => setShowHRProfileModal(true)} style={{ background: currentHR.color }}>
-              {currentHR.avatar}
-            </div>
-          )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="collapsed-hr-avatar" onClick={() => openHRProfileModal("signin")} style={{ background: currentHR.color }}>
+                {currentHR.avatar}
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -2346,6 +3129,14 @@ const SocialForm = () => {
         {/* Top Bar */}
         <header className="top-bar">
           <div className="top-bar-left">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              onClick={() => setMobileSidebarOpen((prev) => !prev)}
+              aria-label="Toggle navigation menu"
+            >
+              ☰
+            </button>
             <h2>{navItems.find(n => n.id === activeTab)?.label}</h2>
           </div>
           <div className="top-bar-right">
@@ -2361,9 +3152,15 @@ const SocialForm = () => {
               <Icons.Bell />
               <span className="notification-badge">3</span>
             </button>
-            <div className="user-menu">
-              <div className="user-avatar small">HR</div>
-            </div>
+            <button className="user-menu profile-trigger" onClick={() => openHRProfileModal("signin")}>
+              <div className="user-avatar small" style={{ background: currentHR.color }}>
+                {currentHR.avatar}
+              </div>
+              <div className="user-menu-text">
+                <span className="user-menu-name">{currentHR.name}</span>
+                <span className="user-menu-role">{currentHR.role}</span>
+              </div>
+            </button>
           </div>
         </header>
 
@@ -2380,83 +3177,194 @@ const SocialForm = () => {
         </div>
       )}
 
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-backdrop"
+          aria-label="Close sidebar"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* HR Profile Modal */}
       {showHRProfileModal && (
         <div className="modal-overlay" onClick={() => setShowHRProfileModal(false)}>
-          <div className="modal-content hr-profile-modal" onClick={e => e.stopPropagation()}>
+          <div className="modal hr-profile-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>👤 HR Profile Management</h2>
+              <h2>👤 HR Profile Center</h2>
               <button className="modal-close" onClick={() => setShowHRProfileModal(false)}>
                 <Icons.Close />
               </button>
             </div>
             <div className="modal-body">
-              {/* Current Profiles List */}
-              <div className="hr-profiles-list">
-                <h3>Your HR Profiles</h3>
-                {hrProfiles.map(profile => (
-                  <div key={profile.id} className={`hr-profile-card ${currentHR.id === profile.id ? 'active' : ''}`}>
-                    <div className="hr-profile-avatar" style={{ background: profile.color }}>
-                      {profile.avatar}
-                    </div>
-                    <div className="hr-profile-info">
-                      <span className="hr-profile-name">{profile.name}</span>
-                      <span className="hr-profile-role">{profile.role}</span>
-                      <span className="hr-profile-email">{profile.email}</span>
-                    </div>
-                    {currentHR.id === profile.id && <span className="current-badge">Current</span>}
-                    {hrProfiles.length > 1 && (
-                      <button className="delete-hr-btn" onClick={() => deleteHRProfile(profile.id)}>
-                        <Icons.Delete />
-                      </button>
-                    )}
-                  </div>
-                ))}
+              <div className="profile-tab-switcher">
+                <button
+                  className={profileModalTab === "signin" ? "active" : ""}
+                  onClick={() => setProfileModalTab("signin")}
+                >
+                  Sign In
+                </button>
+                <button
+                  className={profileModalTab === "signup" ? "active" : ""}
+                  onClick={() => setProfileModalTab("signup")}
+                >
+                  Sign Up
+                </button>
+                <button
+                  className={profileModalTab === "manage" ? "active" : ""}
+                  onClick={() => {
+                    setProfileModalTab("manage");
+                    setEditingHRProfile(null);
+                  }}
+                >
+                  Manage
+                </button>
               </div>
 
-              {/* Add New Profile Form */}
-              <div className="add-hr-form">
-                <h3>➕ Add New HR Profile</h3>
-                <div className="form-row">
-                  <input
-                    type="text"
-                    placeholder="Name *"
-                    value={newHRProfile.name}
-                    onChange={e => setNewHRProfile({...newHRProfile, name: e.target.value})}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Role *"
-                    value={newHRProfile.role}
-                    onChange={e => setNewHRProfile({...newHRProfile, role: e.target.value})}
-                  />
-                </div>
-                <div className="form-row">
+              {profileModalTab === "signin" && (
+                <div className="profile-auth-panel">
+                  <h3>Welcome Back</h3>
+                  <p>Sign in with your HR email profile</p>
                   <input
                     type="email"
-                    placeholder="Email *"
-                    value={newHRProfile.email}
-                    onChange={e => setNewHRProfile({...newHRProfile, email: e.target.value})}
+                    placeholder="Enter HR email"
+                    value={profileLoginEmail}
+                    onChange={(e) => setProfileLoginEmail(e.target.value)}
                   />
-                  <input
-                    type="text"
-                    placeholder="Phone"
-                    value={newHRProfile.phone}
-                    onChange={e => setNewHRProfile({...newHRProfile, phone: e.target.value})}
-                  />
+                  <button className="auth-btn" onClick={signInHRProfile}>Sign In Profile</button>
+                  <div className="quick-signin-list">
+                    {hrProfiles.map((profile) => (
+                      <button key={profile.id} className="quick-profile-chip" onClick={() => switchHRProfile(profile)}>
+                        <span className="chip-avatar" style={{ background: profile.color }}>{profile.avatar}</span>
+                        <span>{profile.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="form-row">
-                  <input
-                    type="color"
-                    value={newHRProfile.color}
-                    onChange={e => setNewHRProfile({...newHRProfile, color: e.target.value})}
-                    title="Avatar Color"
-                  />
-                  <button className="add-hr-submit-btn" onClick={addHRProfile}>
-                    <Icons.Plus /> Add Profile
-                  </button>
+              )}
+
+              {profileModalTab === "signup" && (
+                <div className="add-hr-form">
+                  <h3>Create HR Profile</h3>
+                  <p>Sign up a new HR profile for this dashboard</p>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Full Name *"
+                      value={newHRProfile.name}
+                      onChange={e => setNewHRProfile({...newHRProfile, name: e.target.value})}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Role *"
+                      value={newHRProfile.role}
+                      onChange={e => setNewHRProfile({...newHRProfile, role: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <input
+                      type="email"
+                      placeholder="Email *"
+                      value={newHRProfile.email}
+                      onChange={e => setNewHRProfile({...newHRProfile, email: e.target.value})}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone"
+                      value={newHRProfile.phone}
+                      onChange={e => setNewHRProfile({...newHRProfile, phone: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <input
+                      type="color"
+                      value={newHRProfile.color}
+                      onChange={e => setNewHRProfile({...newHRProfile, color: e.target.value})}
+                      title="Avatar Color"
+                    />
+                    <button className="add-hr-submit-btn" onClick={addHRProfile}>
+                      <Icons.Plus /> Create Profile
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {profileModalTab === "manage" && (
+                <>
+                  <div className="hr-profiles-list">
+                    <h3>Your HR Profiles</h3>
+                    {hrProfiles.map(profile => (
+                      <div key={profile.id} className={`hr-profile-card ${currentHR.id === profile.id ? 'active' : ''}`}>
+                        <div className="hr-profile-avatar" style={{ background: profile.color }}>
+                          {profile.avatar}
+                        </div>
+                        <div className="hr-profile-info">
+                          <span className="hr-profile-name">{profile.name}</span>
+                          <span className="hr-profile-role">{profile.role}</span>
+                          <span className="hr-profile-email">{profile.email}</span>
+                        </div>
+                        <div className="profile-card-actions">
+                          {currentHR.id === profile.id && <span className="current-badge">Current</span>}
+                          <button className="connect-btn" onClick={() => switchHRProfile(profile)}>Use</button>
+                          {hrProfiles.length > 1 && (
+                            <button className="delete-hr-btn" onClick={() => deleteHRProfile(profile.id)}>
+                              <Icons.Delete />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="current-profile-editor">
+                    <div className="editor-header">
+                      <h3>Edit Current Profile</h3>
+                      {!editingHRProfile && (
+                        <button className="connect-btn" onClick={startEditCurrentProfile}>Edit</button>
+                      )}
+                    </div>
+                    {editingHRProfile ? (
+                      <div className="form-row form-grid">
+                        <input
+                          type="text"
+                          placeholder="Name"
+                          value={editingHRProfile.name}
+                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, name: e.target.value })}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Role"
+                          value={editingHRProfile.role}
+                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, role: e.target.value })}
+                        />
+                        <input
+                          type="email"
+                          placeholder="Email"
+                          value={editingHRProfile.email}
+                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, email: e.target.value })}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Phone"
+                          value={editingHRProfile.phone}
+                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, phone: e.target.value })}
+                        />
+                        <input
+                          type="color"
+                          value={editingHRProfile.color}
+                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, color: e.target.value })}
+                        />
+                        <div className="editor-actions">
+                          <button className="cancel-btn" onClick={() => setEditingHRProfile(null)}>Cancel</button>
+                          <button className="save-btn" onClick={saveCurrentProfile}>Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="editor-placeholder">Click Edit to update your active profile.</p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -95,41 +95,43 @@ function Dashboard() {
           {data.length === 0 ? (
             <p>No data found</p>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Platforms</th>
-                  <th>Date</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {data.map((item, index) => (
-                  <tr key={item._id}>
-                    <td>{index + 1}</td>
-
-                    <td>
-                      {item.platforms.join(", ")}
-                    </td>
-
-                    <td>
-                      {new Date(item.createdAt).toLocaleString()}
-                    </td>
-
-                    <td>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(item._id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Platforms</th>
+                    <th>Date</th>
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {data.map((item, index) => (
+                    <tr key={item._id}>
+                      <td>{index + 1}</td>
+
+                      <td>
+                        {item.platforms.join(", ")}
+                      </td>
+
+                      <td>
+                        {new Date(item.createdAt).toLocaleString()}
+                      </td>
+
+                      <td>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDelete(item._id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
         </div>
