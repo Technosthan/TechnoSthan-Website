@@ -8,7 +8,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    identifier: "", // 🔥 email OR phone
+    identifier: "", // email OR phone
     password: ""
   });
 
@@ -60,9 +60,9 @@ const Login = () => {
       navigate(res.data.user.role === "admin" ? "/admin" : "/");
 
     } catch (err) {
-      // 🔥 SIGNUP SUGGESTION
+      //  SIGNUP SUGGESTION
       setError(
-        "Invalid Email/Phone or Password ❌. Don’t have an account? Sign up first."
+        "Invalid Email/Phone or Password . Don’t have an account? Sign up first."
       );
     } finally {
       setLoading(false);
@@ -81,7 +81,7 @@ const Login = () => {
           <div className="error-box">
             <p>{error}</p>
 
-            {/* 🔥 ONLY SUGGESTION LINK */}
+            {/*ONLY SUGGESTION LINK */}
             <span
               className="signup-link"
               onClick={() => navigate("/register")}
@@ -93,7 +93,7 @@ const Login = () => {
 
         <form onSubmit={handleLogin}>
 
-          {/* 🔥 EMAIL / PHONE INPUT */}
+          {/* EMAIL / PHONE INPUT */}
           <input
             type="text"
             placeholder="Email or Phone Number"

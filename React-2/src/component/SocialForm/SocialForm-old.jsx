@@ -3,6 +3,17 @@ import React, { useState, useEffect } from "react";
 import "./SocialForm.css";
 import logo from "../../assets/logo.png";
 import { Helmet } from "react-helmet-async";
+const platformConfig = {
+  id: 13,
+  name: "Facebook",
+  icon: "Facebook",
+  color: "#1877F2",
+  charLimit: 63206
+};
+
+const { id: configId, name: configName, icon: configIcon, color: configColor, charLimit: configCharLimit } = platformConfig;
+
+
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const apiUrl = (path) => `${API_BASE}${path}`;
@@ -249,21 +260,21 @@ const PlatformIcons = {
 
 // ========== PLATFORM DATA ==========
 const allPlatforms = [
-  { id: "facebook", name: "Facebook", icon: "Facebook", color: "#1877F2", charLimit: 63206 },
-  { id: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200 },
-  { id: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000 },
-  { id: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280 },
-  { id: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536 },
-  { id: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096 },
-  { id: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000 },
-  { id: "pinterest", name: "Pinterest", icon: "Pinterest", color: "#BD081C", charLimit: 500 },
-  { id: "tiktok", name: "TikTok", icon: "TikTok", color: "#000000", charLimit: 2200 },
-  { id: "snapchat", name: "Snapchat", icon: "Snapchat", color: "#FFFC00", charLimit: 250 },
-  { id: "reddit", name: "Reddit", icon: "Reddit", color: "#FF4500", charLimit: 40000 },
-  { id: "discord", name: "Discord", icon: "Discord", color: "#5865F2", charLimit: 2000 },
-  { id: "slack", name: "Slack", icon: "Slack", color: "#4A154B", charLimit: 40000 },
-  { id: "email", name: "Email Blast", icon: "Email", color: "#EA4335", charLimit: 100000 },
-  { id: "sms", name: "SMS", icon: "SMS", color: "#34B7F1", charLimit: 160 }
+  { id: configId, name: configName, icon: configIcon, color: configColor, charLimit: configCharLimit },
+  // { id: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200 },
+  // { id: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000 },
+  // { id: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280 },
+  // { id: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536 },
+  // { id: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096 },
+  // { id: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000 },
+  // { id: "pinterest", name: "Pinterest", icon: "Pinterest", color: "#BD081C", charLimit: 500 },
+  // { id: "tiktok", name: "TikTok", icon: "TikTok", color: "#000000", charLimit: 2200 },
+  // { id: "snapchat", name: "Snapchat", icon: "Snapchat", color: "#FFFC00", charLimit: 250 },
+  // { id: "reddit", name: "Reddit", icon: "Reddit", color: "#FF4500", charLimit: 40000 },
+  // { id: "discord", name: "Discord", icon: "Discord", color: "#5865F2", charLimit: 2000 },
+  // { id: "slack", name: "Slack", icon: "Slack", color: "#4A154B", charLimit: 40000 },
+  // { id: "email", name: "Email Blast", icon: "Email", color: "#EA4335", charLimit: 100000 },
+  // { id: "sms", name: "SMS", icon: "SMS", color: "#34B7F1", charLimit: 160 }
 ];
 
 // ========== TEMPLATE CATEGORIES ==========
@@ -422,7 +433,6 @@ const SocialForm = () => {
   const [showCompanySettings, setShowCompanySettings] = useState(false);
   
   // Message composition state - Popular 5 platforms enabled by default for HR
-  const [platformOptions, setPlatformOptions] = useState(allPlatforms);
   const [selectedPlatforms, setSelectedPlatforms] = useState(["whatsapp"]);
   const [dispatchPlatforms, setDispatchPlatforms] = useState(["linkedin", "facebook", "telegram"]);
   const [platformConnections, setPlatformConnections] = useState({
@@ -431,55 +441,6 @@ const SocialForm = () => {
     telegram: false
   });
   const [connectingPlatform, setConnectingPlatform] = useState(null);
-  const [newPlatformName, setNewPlatformName] = useState("");
-  const [newPlatformId, setNewPlatformId] = useState("");
-  const [newPlatformColor, setNewPlatformColor] = useState("#1DA1F2");
-  const [newPlatformIcon, setNewPlatformIcon] = useState("Link");
-
-  const addPlatformOption = () => {
-    const name = String(newPlatformName).trim();
-    const id = String(newPlatformId || name)
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9\-]/g, "");
-
-    if (!name) {
-      showNotification("Platform name is required", "error");
-      return;
-    }
-
-    if (!id) {
-      showNotification("Platform ID is required", "error");
-      return;
-    }
-
-    if (platformOptions.some((platform) => platform.id === id)) {
-      showNotification("This platform already exists", "error");
-      return;
-    }
-
-    const newPlatform = {
-      id,
-      name,
-      icon: newPlatformIcon || "Link",
-      color: newPlatformColor || "#1DA1F2",
-      charLimit: 5000
-    };
-
-    setPlatformOptions((prev) => [...prev, newPlatform]);
-    setNewPlatformName("");
-    setNewPlatformId("");
-    setNewPlatformColor("#1DA1F2");
-    setNewPlatformIcon("Link");
-    showNotification(`${name} added`, "success");
-  };
-
-  const removePlatformOption = (platformId) => {
-    setPlatformOptions((prev) => prev.filter((platform) => platform.id !== platformId));
-    setSelectedPlatforms((prev) => prev.filter((id) => id !== platformId));
-    showNotification("Platform removed", "info");
-  };
   const [sendingType, setSendingType] = useState(null);
   const [settingsNotifications, setSettingsNotifications] = useState({
     emailScheduled: true,
@@ -1913,97 +1874,51 @@ const SocialForm = () => {
           {/* Platform Selection */}
           <div className="compose-card platforms-card">
             <div className="card-header">
-              <h3>📱 Select Platform</h3>
+              <h3>📱 Select One Platform</h3>
               <button className="select-all-btn" onClick={clearSelectedPlatform}>
                 Clear
               </button>
             </div>
 
-            <div className="platform-manager-row">
-              <input
-                type="text"
-                placeholder="New platform name"
-                value={newPlatformName}
-                onChange={(e) => setNewPlatformName(e.target.value)}
-              />
-              <input
-                type="text"
-                placeholder="Platform id"
-                value={newPlatformId}
-                onChange={(e) => setNewPlatformId(e.target.value)}
-              />
-              <input
-                type="color"
-                value={newPlatformColor}
-                onChange={(e) => setNewPlatformColor(e.target.value)}
-                title="Platform color"
-              />
-              <button className="add-platform-btn" onClick={addPlatformOption}>
-                Add
-              </button>
-            </div>
-
             <div className="platforms-grid">
-              {platformOptions.map((platform) => {
-                const IconComponent = PlatformIcons[platform.icon] || PlatformIcons.Link;
+              {allPlatforms.map((platform) => {
+                const IconComponent = PlatformIcons[platform.icon];
                 return (
-                  <div
-                    key={platform.id}
-                    className={`platform-item ${selectedPlatforms.includes(platform.id) ? "selected" : ""}`}
-                    onClick={() => togglePlatform(platform.id)}
-                    style={{ "--platform-color": platform.color }}
-                  >
-                    <button
-                      type="button"
-                      className="remove-platform-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removePlatformOption(platform.id);
-                      }}
-                      title="Remove platform"
-                    >
-                      ×
-                    </button>
-
-                    <div className="platform-icon-wrapper" style={{ background: platform.color }}>
-                      {IconComponent && <IconComponent />}
-                    </div>
-                    <span className="platform-name">{platform.name}</span>
-                    <span className="platform-limit">{platform.charLimit.toLocaleString()} chars</span>
-                    {selectedPlatforms.includes(platform.id) && (
-                      <span className="check-mark">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                        </svg>
-                      </span>
-                    )}
-
-                    <div className="platform-actions">
-                      <button
-                        className="copy-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyMessage(platform.name);
-                        }}
-                        title="Copy message"
-                      >
-                        <Icons.Copy />
-                      </button>
-
-                      <button
-                        className="share-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          shareToPlatform(platform.id);
-                        }}
-                        title="Share"
-                      >
-                        <Icons.Share />
-                      </button>
-                    </div>
+                <div
+                  key={platform.id}
+                  className={`platform-item ${selectedPlatforms.includes(platform.id) ? "selected" : ""}`}
+                  onClick={() => togglePlatform(platform.id)}
+                  style={{ "--platform-color": platform.color }}
+                >
+                  <div className="platform-icon-wrapper" style={{ background: platform.color }}>
+                    {IconComponent && <IconComponent />}
                   </div>
-                );
-              })}
+                  <span className="platform-name">{platform.name}</span>
+                  <span className="platform-limit">{platform.charLimit.toLocaleString()} chars</span>
+                  {selectedPlatforms.includes(platform.id) && (
+                    <span className="check-mark">
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                      </svg>
+                    </span>
+                  )}
+                  <button className="share-btn" onClick={(e) => { e.stopPropagation(); shareToPlatform(platform.id); }}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                    </svg>
+                  </button>
+                  <button
+                    className="copy-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyMessage(platform.name);
+                    }}
+                    title="Copy message"
+                  >
+                    <Icons.Copy />
+                  </button>
+                </div>
+              )})}
             </div>
           </div>
 

@@ -125,29 +125,6 @@ const sendSocial = async (req, res) => {
       const token = connection?.connected ? connection.accessToken : "";
 
       try {
-        // 🔥 TELEGRAM (direct)
-        if (platform === "telegram") {
-          const TELEGRAM_TOKEN = "8775415258:AAEsvqWgo94fYWbhZFK6pbb2MlMRUS5Ktss";
-          const CHAT_ID = "1918290844";
-
-          if (!TELEGRAM_TOKEN || !CHAT_ID) {
-            throw new Error("Telegram token/chatId missing");
-          }
-
-          await axios.post(
-            `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
-            { chat_id: CHAT_ID, text: message }
-          );
-
-          results.push({
-            platform,
-            success: true,
-            detail: "Telegram message sent"
-          });
-          continue;
-        }
-
-        // other platforms
         const outcome = await dispatchByPlatform({
           platform,
           message,

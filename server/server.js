@@ -7,6 +7,9 @@ const passport = require("passport");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const platformRoutes = require("./routes/platformRoutes");
+const iconGridRoutes = require("./routes/iconGridRoutes");
+
 require("dotenv").config({
   path: "c:\\Users\\vk226\\OneDrive\\Desktop\\React-2project\\server\\.env",
 });
@@ -148,12 +151,16 @@ app.use("/api", require("./routes/contactRoutes"));
 // Protected
 app.use("/api", require("./routes/protectedRoutes"));
 
-// ✅ SOCIAL ROUTES (FINAL FIX)
+// ✅ SOCIAL ROUTES
 const socialRoutes = require("./routes/socialRoutes");
 app.use("/api/social", socialRoutes);
 
+// Icon grid / HR platform management routes
+app.use("/api/icon-grid", iconGridRoutes);
+
 // Posts
 app.use("/api/posts", postRoutes);
+app.use("/api/platform", platformRoutes);
 
 /* ================= DB ================= */
 

@@ -16,10 +16,10 @@ const Navbar = () => {
     }
   }, []);
 
-  // 🔥 active link helper
+  //  active link helper
   const isActive = (path) => location.pathname === path;
 
-  // 🔥 mobile menu close
+  //  mobile menu close
   const handleClick = () => {
     setMenuOpen(false);
   };
@@ -59,17 +59,21 @@ const Navbar = () => {
           Contact
         </Link>
 
-        <Link to="/social" onClick={handleClick} className={isActive("/social") ? "active" : ""}>
-          📱 Social Post
-        </Link>
-                <Link to="/socialform2" onClick={handleClick} className={isActive("/socialform") ? "active" : ""}>
-          📱 SocialForm2 Post
-        </Link>
+         <Link to="/social" onClick={handleClick} className={isActive("/social") ? "active" : ""}>
+           Social Post
+        </Link> 
         
-
+         {/* <Link to="/social" onClick={handleClick} className={isActive("/social-old") ? "active" : ""}>
+           Social old
+        </Link> */}
+                {/* <Link to="/socialform2" onClick={handleClick} className={isActive("/socialform") ? "active" : ""}>
+           SocialForm2 Post
+        </Link> */}
+        
+{/* 
         <Link to="/explore" onClick={handleClick} className={isActive("/explore") ? "active" : ""}>
           🔍 Search
-        </Link>
+        </Link> */}
 
         {isAdmin && (
           <Link to="/admin" className="admin-link" onClick={handleClick}>

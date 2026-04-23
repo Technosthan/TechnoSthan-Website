@@ -28,10 +28,13 @@ import AdminRoute from "./component/Protected/AdminRoute";
 
 /* PAGES */
  import Home from "./component/Home/Home";
+//import SocialForm from "./component/SocialForm/SocialForm";
+
 import SocialForm from "./component/SocialForm/SocialForm";
 import HRSocial from "./component/HRSocial/HRSocial";
 
 import ExplorePage from "./Tab/ExplorePage";
+// import SocialFormOld from "./component/SocialForm/SocialForm-old";
 
 
 /* WRAPPER */
@@ -86,7 +89,9 @@ function App() {
 
         {/* SOCIAL FORM */}
         <Route path="/social" element={<SocialForm />} />
-        <Route path="/socialform2" element={<SocialForm />} />
+        
+        {/* <Route path="/social" element={<SocialForm-Old />} />
+        <Route path="/socialform2" element={<SocialForm />} /> */}
         <Route path="/hr-social" element={<HRSocial />} />
         <Route path="/HRSocial" element={<HRSocial />} />
 
