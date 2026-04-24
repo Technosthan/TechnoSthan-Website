@@ -34,8 +34,34 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "admin"],
+      enum: ["admin", "editor", "viewer", "student"],
       default: "student",
+    },
+    permissions: {
+      editContent: {
+        type: Boolean,
+        default: false,
+      },
+      deleteContent: {
+        type: Boolean,
+        default: false,
+      },
+      manageUsers: {
+        type: Boolean,
+        default: false,
+      },
+      manageQuizzes: {
+        type: Boolean,
+        default: false,
+      },
+      viewAnalytics: {
+        type: Boolean,
+        default: false,
+      },
+      manageSettings: {
+        type: Boolean,
+        default: false,
+      },
     },
     status: {
       type: String,

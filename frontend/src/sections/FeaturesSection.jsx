@@ -27,11 +27,11 @@ const features = [
 const FeatureCard = ({ icon, title, desc, theme }) => (
   <motion.div
     whileHover={{ scale: 1.07, boxShadow: "0 8px 32px 0 rgba(34,197,94,0.15)" }}
-    className={`${theme.cardOpacity} backdrop-blur-lg p-6 rounded-2xl shadow-lg text-center transition`}
+    className={`${theme.cardOpacity} ${theme.text} backdrop-blur-lg p-6 rounded-2xl shadow-lg text-center transition`}
   >
     <div className="text-4xl mb-2">{icon}</div>
     <h3 className={`font-semibold text-lg ${theme.accent}`}>{title}</h3>
-    <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{desc}</p>
+    <p className={`text-sm ${theme.textSecondary} mt-2`}>{desc}</p>
   </motion.div>
 );
 
@@ -46,7 +46,7 @@ const FeaturesSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className={`py-20 px-6 md:px-16 ${theme.bgGradient}`}
+        className={`py-20 px-6 md:px-16 ${theme.bgGradient} ${theme.text}`}
       >
         <h2 className={`text-3xl font-bold text-center mb-12 ${theme.accent}`}>
           What You Can Do
@@ -77,7 +77,7 @@ const FeaturesSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="py-20 px-6 md:px-16 text-center"
+        className={`py-20 px-6 md:px-16 text-center ${theme.text}`}
       >
         <h2 className={`text-3xl font-bold mb-12 ${theme.accent}`}>
           How It Works ⚡
@@ -98,7 +98,7 @@ const FeaturesSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="grid md:grid-cols-2 gap-10 items-center px-6 md:px-16 py-20 max-w-7xl mx-auto"
+        className={`grid md:grid-cols-2 gap-10 items-center px-6 md:px-16 py-20 max-w-7xl mx-auto ${theme.text}`}
       >
         <img
           src="/farm-tech.png"
@@ -109,7 +109,7 @@ const FeaturesSection = () => {
           <h2 className={`text-3xl font-bold mb-4 ${theme.accent}`}>
             AI + IoT for Smart Farming
           </h2>
-          <p className={`${theme.text} dark:text-gray-200`}>
+          <p className={`${theme.text}`}>
             Use modern technology like sensors, AI, and data analytics to
             improve productivity and decision-making.
           </p>

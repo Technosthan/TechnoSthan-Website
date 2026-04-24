@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import HeroSection from "../sections/HeroSection";
@@ -9,6 +10,7 @@ import ContactSection from "../sections/ContactSection";
 
 const Home = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -21,7 +23,7 @@ const Home = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${theme.bgGradient} ${theme.text}`}>
       <Navbar />
       <HeroSection />
       <AboutSection />

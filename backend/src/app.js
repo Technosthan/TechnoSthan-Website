@@ -38,9 +38,6 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
-
-
-
 // ✅ connect routes
 app.use("/api/auth", authRoutes);
 app.use("/api/content", contentRoutes);
@@ -48,4 +45,6 @@ app.use("/api/quiz", quizRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/iot", iotRoutes);
 app.use("/api/admin", adminRoutes);
+
+console.log("Routes mounted");
 export default app;

@@ -1,55 +1,82 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { VertexAI } from "@google-cloud/vertexai";
+import Settings from "../admin/settings.model.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+// Initialize Vertex AI
+const vertexAI = new VertexAI({
+  project: process.env.GOOGLE_PROJECT_ID,
+  location: "us-central1",
+});
 
-const systemPrompt = `
-You are an AI assistant specialized in agriculture (AgriTech).
+const getSettings = async () => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({});
+    }
+    return settings;
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+    return {
+      aiSettings: {
+        systemPrompt: `You are an AI assistant specialized in agriculture (AgriTech).
 Only answer agriculture-related questions like farming, soil, crops, irrigation.
-If question is unrelated, politely refuse.
-`;
+If question is unrelated, politely refuse.`,
+        temperature: 0.7,
+        maxTokens: 3000,
+      },
+    };
+  }
+};
 
 export const getAIResponse = async (message, history = []) => {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-      },
+    const settings = await getSettings();
+    const { systemPrompt, temperature, maxTokens } = settings.aiSettings;
+
+    const model = vertexAI.getGenerativeModel({
+      model: "gemini-2.5-pro",
+      systemInstruction: systemPrompt,
     });
 
-    // Start with system prompt
-    let prompt = systemPrompt;
+    let contents = [];
 
-    // Add history if provided
+    // Add history
     if (history.length > 0) {
       history.forEach((msg) => {
-        prompt += `\n${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
+        contents.push({
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text: msg.content }],
+        });
       });
     }
 
-    // Add current user message
-    prompt += `\nUser: ${message}`;
+    // Add current message
+    contents.push({
+      role: "user",
+      parts: [{ text: message }],
+    });
 
-    console.log("Prompt:", prompt); // Add logging
+    console.log("Contents:", contents);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const result = await model.generateContent({
+      contents,
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens,
+      },
+    });
+
+    const response = result.response;
+    return response.candidates[0].content.parts[0].text;
   } catch (error) {
-    console.error("Gemini API error:", error);
+    console.error("Vertex AI error:", error);
 
-    // Handle specific error codes
-    if (error.status === 403) {
+    if (error.code === 7) {
       throw new Error(
-        "API access forbidden. Please check your Google Cloud API key and ensure the Generative Language API is enabled.",
+        "API access forbidden. Check IAM roles or enable Vertex AI API.",
       );
-    } else if (error.status === 429) {
-      throw new Error("API quota exceeded. Please try again later.");
-    } else if (error.status === 500) {
-      throw new Error(
-        "Internal server error from Google Cloud API. Please try again later.",
-      );
+    } else if (error.code === 8) {
+      throw new Error("API quota exceeded. Try later.");
     } else {
       throw new Error("Failed to get AI response: " + error.message);
     }

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../contexts/ThemeContext";
+
 import {
   Plus,
   Edit,
@@ -31,6 +33,7 @@ import {
 
 const ContentManagement = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [contents, setContents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,16 +42,21 @@ const ContentManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [resourcesCollapsed, setResourcesCollapsed] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [filterType, setFilterType] = useState("all");
   const [openRows, setOpenRows] = useState({});
   const [showContent, setShowContent] = useState(false);
   const [searchContent, setSearchContent] = useState("");
+  const [activeSearchColumn, setActiveSearchColumn] = useState(null);
+  const [searchName, setSearchName] = useState("");
+  const [searchUrl, setSearchUrl] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     subtopics: [{ heading: "", body: "" }],
-    resources: [{ label: "", url: "", type: "video" }],
+    resources: [{ name: "", url: "", type: "video" }],
     quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }],
   });
 
@@ -73,7 +81,7 @@ const ContentManagement = () => {
       title: "",
       description: "",
       subtopics: [{ heading: "", body: "" }],
-      resources: [{ label: "", url: "", type: "video" }],
+      resources: [{ name: "", url: "", type: "video" }],
       quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }],
     });
     setEditingContent(null);
@@ -92,9 +100,10 @@ const ContentManagement = () => {
         content.resources.length > 0
           ? content.resources.map((resource) => ({
               ...resource,
+              name: resource.name || resource.label || "", // Backward compatibility
               type: resource.type || "video", // Default to video if type is missing
             }))
-          : [{ label: "", url: "", type: "video" }],
+          : [{ name: "", url: "", type: "video" }],
       quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }], // Initialize with default quiz
     });
     setEditingContent(content);
@@ -194,16 +203,66 @@ const ContentManagement = () => {
     }
   };
 
+  const validateResource = (resource) => {
+    if (!resource.name || !resource.name.trim()) {
+      return "Resource name is required";
+    }
+    if (!resource.url || !resource.url.trim()) {
+      return "URL is required";
+    }
+    try {
+      new URL(resource.url);
+    } catch {
+      return "Please enter a valid URL";
+    }
+    // Check for duplicate URLs
+    const duplicate = formData.resources.find(
+      (r, idx) =>
+        idx !== formData.resources.indexOf(resource) &&
+        r.url.toLowerCase() === resource.url.toLowerCase(),
+    );
+    if (duplicate) {
+      return "This URL already exists";
+    }
+    return null;
+  };
+
   const addResource = () => {
+    const newResource = { name: "", url: "", type: "video" };
+    const error = validateResource(newResource);
+    if (error) {
+      setError(error);
+      return;
+    }
     setFormData({
       ...formData,
-      resources: [...formData.resources, { label: "", url: "", type: "video" }],
+      resources: [...formData.resources, newResource],
     });
+    setError("");
   };
 
   const updateResource = (index, field, value) => {
     const updatedResources = [...formData.resources];
     updatedResources[index][field] = value;
+
+    // Auto-detect type from URL
+    if (field === "url" && value) {
+      let detectedType = "link";
+      const url = value.toLowerCase();
+      if (
+        url.includes("youtube.com") ||
+        url.includes("youtu.be") ||
+        url.includes("vimeo.com")
+      ) {
+        detectedType = "video";
+      } else if (url.endsWith(".pdf")) {
+        detectedType = "pdf";
+      } else if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+        detectedType = "image";
+      }
+      updatedResources[index].type = detectedType;
+    }
+
     setFormData({ ...formData, resources: updatedResources });
   };
 
@@ -252,19 +311,39 @@ const ContentManagement = () => {
     }));
   };
 
-  // Filter resources based on search query and filter type
-  const filteredResources = formData.resources.filter((resource, index) => {
-    // Search filter: check label and url (case-insensitive)
-    const matchesSearch =
-      !searchQuery ||
-      resource.label?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      resource.url?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter resources based on search and filter
+  const filteredResources = useMemo(() => {
+    let filtered = formData.resources.filter((resource) => {
+      // Name search filter
+      const matchesName =
+        !searchName ||
+        resource.name?.toLowerCase().includes(searchName.toLowerCase());
 
-    // Type filter: check resource type
-    const matchesFilter = filterType === "all" || resource.type === filterType;
+      // URL search filter
+      const matchesUrl =
+        !searchUrl ||
+        resource.url?.toLowerCase().includes(searchUrl.toLowerCase());
 
-    return matchesSearch && matchesFilter;
-  });
+      // Type filter
+      const matchesType = filterType === "all" || resource.type === filterType;
+
+      return matchesName && matchesUrl && matchesType;
+    });
+
+    return filtered;
+  }, [formData.resources, searchName, searchUrl, filterType]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredResources.length / itemsPerPage);
+  const paginatedResources = filteredResources.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchName, searchUrl, filterType]);
 
   // Filter content based on search and filter status
   const filteredContent = contents.filter((item) => {
@@ -283,24 +362,26 @@ const ContentManagement = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="p-6 w-full flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading content...</p>
+          <p className={`${theme.textSecondary} font-medium`}>
+            Loading content...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className={`p-6 w-full space-y-8 ${theme.text}`}>
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className={`text-3xl font-bold ${theme.text} mb-2`}>
             Content Management
           </h1>
-          <p className="text-gray-600">
+          <p className={`${theme.textSecondary}`}>
             Create and manage learning materials for your students
           </p>
         </div>
@@ -314,24 +395,28 @@ const ContentManagement = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+      <div
+        className={`${theme.card} rounded-2xl shadow-lg p-6 border ${theme.border}`}
+      >
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search
+              className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme.textSecondary} h-5 w-5`}
+            />
             <input
               type="text"
               placeholder="Search content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-600"
+              className={`w-full pl-10 pr-4 py-3 border ${theme.border} rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-600 ${theme.input}`}
             />
           </div>
           <div className="flex items-center gap-2">
-            <Filter className="text-gray-400 h-5 w-5" />
+            <Filter className={`${theme.textSecondary} h-5 w-5`} />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+              className={`px-4 py-3 border ${theme.border} rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200`}
             >
               <option value="all">All Content</option>
               <option value="with-resources">With Resources</option>
@@ -356,15 +441,17 @@ const ContentManagement = () => {
       {/* Content Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
+          <div
+            className={`${theme.card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto`}
+          >
+            <div className={`p-6 border-b ${theme.border}`}>
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className={`text-2xl font-bold ${theme.text}`}>
                   {editingContent ? "Edit Content" : "Create New Content"}
                 </h2>
                 <button
                   onClick={resetForm}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                  className={`p-2 ${theme.textSecondary} hover:text-red-600 hover:${theme.card} rounded-lg transition-colors duration-200`}
                 >
                   <X className="h-6 w-6" />
                 </button>
@@ -374,7 +461,9 @@ const ContentManagement = () => {
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    className={`block text-sm font-semibold ${theme.text} mb-2`}
+                  >
                     Title
                   </label>
                   <input
@@ -383,14 +472,16 @@ const ContentManagement = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
                     }
-                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-800"
+                    className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200`}
                     placeholder="Enter content title..."
                     required
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    className={`block text-sm font-semibold ${theme.text} mb-2`}
+                  >
                     Description
                   </label>
                   <textarea
@@ -399,7 +490,7 @@ const ContentManagement = () => {
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows={4}
-                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none placeholder-gray-400 dark:placeholder-gray-800"
+                    className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none`}
                     placeholder="Enter content description..."
                     required
                   />
@@ -409,7 +500,9 @@ const ContentManagement = () => {
               {/* Subtopics */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <label className="block text-lg font-semibold text-gray-700">
+                  <label
+                    className={`block text-lg font-semibold ${theme.text}`}
+                  >
                     Subtopics
                   </label>
                   <button
@@ -425,10 +518,12 @@ const ContentManagement = () => {
                   {formData.subtopics.map((subtopic, index) => (
                     <div
                       key={index}
-                      className="bg-gray-50 rounded-xl p-4 border border-gray-200"
+                      className={`${theme.card} rounded-xl p-4 border ${theme.border}`}
                     >
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-semibold text-gray-600 bg-white px-3 py-1 rounded-full">
+                        <span
+                          className={`text-sm font-semibold ${theme.textSecondary} ${theme.card} px-3 py-1 rounded-full`}
+                        >
                           Subtopic {index + 1}
                         </span>
                         {formData.subtopics.length > 1 && (
@@ -449,7 +544,7 @@ const ContentManagement = () => {
                           onChange={(e) =>
                             updateSubtopic(index, "heading", e.target.value)
                           }
-                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400 dark:placeholder-gray-800"
+                          className={`${theme.input} w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200`}
                         />
                         <textarea
                           placeholder="Subtopic content..."
@@ -458,7 +553,7 @@ const ContentManagement = () => {
                             updateSubtopic(index, "body", e.target.value)
                           }
                           rows={3}
-                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none placeholder-gray-400 dark:placeholder-gray-800"
+                          className={`${theme.input} w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 resize-none`}
                         />
                       </div>
                     </div>
@@ -467,58 +562,36 @@ const ContentManagement = () => {
               </div>
 
               {/* Resources */}
-              <div className="border border-gray-200 rounded-lg">
-                <div className="px-4 py-3 border-b border-gray-200">
+              <div className={`border ${theme.border} rounded-lg`}>
+                <div className={`px-4 py-3 border-b ${theme.border}`}>
                   <div className="flex justify-between items-center">
                     <button
                       type="button"
                       onClick={() => setResourcesCollapsed(!resourcesCollapsed)}
-                      className="flex items-center hover:bg-gray-50 rounded px-2 py-1 transition-colors duration-200"
+                      className={`flex items-center hover:${theme.card} rounded px-2 py-1 transition-colors duration-200`}
                     >
                       {resourcesCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-gray-600 mr-2" />
+                        <ChevronRight
+                          className={`h-4 w-4 ${theme.textSecondary} mr-2`}
+                        />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-gray-600 mr-2" />
+                        <ChevronDown
+                          className={`h-4 w-4 ${theme.textSecondary} mr-2`}
+                        />
                       )}
-                      <span className="text-lg font-semibold text-gray-700">
+                      <span className={`text-lg font-semibold ${theme.text}`}>
                         Resources ({formData.resources.length})
                       </span>
                     </button>
                     {!resourcesCollapsed && (
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <input
-                              type="text"
-                              placeholder="Search by label or URL..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-64"
-                            />
-                          </div>
-                          <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <select
-                              value={filterType}
-                              onChange={(e) => setFilterType(e.target.value)}
-                              className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 w-48"
-                            >
-                              <option value="all">All Types</option>
-                              <option value="video">🎥 Video</option>
-                              <option value="pdf">📄 PDF</option>
-                              <option value="link">🔗 Link</option>
-                              <option value="image">🖼️ Image</option>
-                            </select>
-                          </div>
-                        </div>
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={addResource}
-                          className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center font-medium"
+                          className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center font-medium"
                         >
                           <Plus className="h-4 w-4 mr-1" />
-                          Add
+                          Add Resource
                         </button>
                       </div>
                     )}
@@ -527,280 +600,435 @@ const ContentManagement = () => {
 
                 {!resourcesCollapsed && (
                   <div className="p-4">
-                    {filteredResources.length === 0 ? (
-                      <div className="text-center py-8">
-                        <LinkIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          No resources found
-                        </h3>
-                        <p className="text-gray-600">
-                          {searchQuery || filterType !== "all"
-                            ? "Try adjusting your search or filter criteria."
-                            : "Add your first resource to get started."}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-gray-50">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead
+                          className={`${theme.card} ${theme.textSecondary}`}
+                        >
+                          <tr>
+                            <th
+                              className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider`}
+                            >
+                              S.No
+                            </th>
+                            <th
+                              className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>Type</span>
+                                <select
+                                  value={filterType}
+                                  onChange={(e) =>
+                                    setFilterType(e.target.value)
+                                  }
+                                  className={`text-xs px-2 py-1 border ${theme.border} rounded focus:ring-1 focus:ring-green-500 focus:border-transparent ${theme.card}`}
+                                >
+                                  <option value="all">All</option>
+                                  <option value="video">Video</option>
+                                  <option value="pdf">PDF</option>
+                                  <option value="link">Link</option>
+                                  <option value="image">Image</option>
+                                </select>
+                              </div>
+                            </th>
+                            <th
+                              className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>Resource Name</span>
+                                <Search
+                                  className={`h-4 w-4 ${theme.textSecondary} cursor-pointer hover:text-green-600`}
+                                  onClick={() =>
+                                    setActiveSearchColumn(
+                                      activeSearchColumn === "name"
+                                        ? null
+                                        : "name",
+                                    )
+                                  }
+                                />
+                              </div>
+                              {activeSearchColumn === "name" && (
+                                <div className="mt-2 transition-all duration-300 ease-in-out">
+                                  <input
+                                    type="text"
+                                    placeholder="Search names..."
+                                    value={searchName}
+                                    onChange={(e) =>
+                                      setSearchName(e.target.value)
+                                    }
+                                    className={`w-full px-2 py-1 text-xs border ${theme.border} rounded focus:ring-1 focus:ring-green-500 focus:border-transparent ${theme.input}`}
+                                    autoFocus
+                                  />
+                                </div>
+                              )}
+                            </th>
+                            <th
+                              className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>URL</span>
+                                <Search
+                                  className={`h-4 w-4 ${theme.textSecondary} cursor-pointer hover:text-green-600`}
+                                  onClick={() =>
+                                    setActiveSearchColumn(
+                                      activeSearchColumn === "url"
+                                        ? null
+                                        : "url",
+                                    )
+                                  }
+                                />
+                              </div>
+                              {activeSearchColumn === "url" && (
+                                <div className="mt-2 transition-all duration-300 ease-in-out">
+                                  <input
+                                    type="text"
+                                    placeholder="Search URLs..."
+                                    value={searchUrl}
+                                    onChange={(e) =>
+                                      setSearchUrl(e.target.value)
+                                    }
+                                    className={`w-full px-2 py-1 text-xs border ${theme.border} rounded focus:ring-1 focus:ring-green-500 focus:border-transparent ${theme.input}`}
+                                    autoFocus
+                                  />
+                                </div>
+                              )}
+                            </th>
+                            <th
+                              className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider`}
+                            >
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody
+                          className={`${theme.card} divide-y ${theme.border.replace("border-", "divide-")}`}
+                        >
+                          {paginatedResources.length === 0 ? (
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Resource
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Type
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Label
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                URL
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                              </th>
+                              <td colSpan="5" className="px-4 py-8 text-center">
+                                <div className="flex flex-col items-center justify-center space-y-3">
+                                  <LinkIcon
+                                    className={`h-12 w-12 ${theme.textSecondary}`}
+                                  />
+                                  <div>
+                                    <h3
+                                      className={`text-lg font-medium ${theme.text} mb-1`}
+                                    >
+                                      {filteredResources.length === 0
+                                        ? "No resources found"
+                                        : "No resources on this page"}
+                                    </h3>
+                                    <p
+                                      className={`text-sm ${theme.textSecondary} mb-4`}
+                                    >
+                                      {filteredResources.length === 0
+                                        ? searchName ||
+                                          searchUrl ||
+                                          filterType !== "all"
+                                          ? "No resources match your current search and filter criteria."
+                                          : "Get started by adding your first resource above."
+                                        : "Try navigating to a different page or adjusting your filters."}
+                                    </p>
+                                    {(searchName ||
+                                      searchUrl ||
+                                      filterType !== "all") && (
+                                      <button
+                                        onClick={() => {
+                                          setSearchName("");
+                                          setSearchUrl("");
+                                          setFilterType("all");
+                                          setActiveSearchColumn(null);
+                                          setCurrentPage(1);
+                                        }}
+                                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center font-medium"
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Clear Filters
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredResources.map((resource) => {
+                          ) : (
+                            paginatedResources.map((resource, displayIndex) => {
                               const actualIndex = formData.resources.findIndex(
                                 (r) => r === resource,
                               );
                               return (
-                                <React.Fragment key={actualIndex}>
-                                  {/* Resource Header Row - Always Visible */}
-                                  <tr
-                                    className="hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => toggleRow(actualIndex)}
+                                <tr
+                                  key={actualIndex}
+                                  className={`hover:${theme.card}`}
+                                >
+                                  <td
+                                    className={`px-4 py-3 whitespace-nowrap text-sm ${theme.text}`}
                                   >
-                                    <td colSpan="5" className="px-4 py-3">
-                                      <div className="flex items-center">
-                                        {openRows[actualIndex] ? (
-                                          <ChevronDown className="h-4 w-4 text-gray-600 mr-2" />
-                                        ) : (
-                                          <ChevronRight className="h-4 w-4 text-gray-600 mr-2" />
-                                        )}
-                                        <span className="text-sm font-medium text-gray-900">
-                                          Resource {actualIndex + 1}
-                                        </span>
-                                        <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                          {resource.type
-                                            ? resource.type
-                                                .charAt(0)
-                                                .toUpperCase() +
-                                              resource.type.slice(1)
-                                            : "Video"}
-                                        </span>
-                                        {resource.label &&
-                                          !openRows[actualIndex] && (
-                                            <span className="ml-2 text-xs text-gray-600 truncate max-w-xs">
-                                              - {resource.label}
-                                            </span>
-                                          )}
-                                      </div>
-                                    </td>
-                                  </tr>
-
-                                  {/* Resource Details Row - Only when open */}
-                                  {openRows[actualIndex] && (
-                                    <tr className="bg-gray-50">
-                                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {actualIndex + 1}
-                                      </td>
-                                      <td className="px-4 py-3 whitespace-nowrap">
-                                        <select
-                                          value={resource.type}
-                                          onChange={(e) =>
-                                            updateResource(
-                                              actualIndex,
-                                              "type",
-                                              e.target.value,
-                                            )
+                                    {(currentPage - 1) * itemsPerPage +
+                                      displayIndex +
+                                      1}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <select
+                                      value={resource.type}
+                                      onChange={(e) =>
+                                        updateResource(
+                                          actualIndex,
+                                          "type",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className={`text-sm px-2 py-1 border ${theme.border} rounded focus:ring-1 focus:ring-green-500 focus:border-transparent`}
+                                    >
+                                      <option value="video">🎥 Video</option>
+                                      <option value="pdf">📄 PDF</option>
+                                      <option value="link">🔗 Link</option>
+                                      <option value="image">🖼️ Image</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <input
+                                      type="text"
+                                      value={resource.name}
+                                      onChange={(e) =>
+                                        updateResource(
+                                          actualIndex,
+                                          "name",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className={`${theme.input} w-full px-2 py-1 border ${theme.border} rounded focus:ring-1 focus:ring-green-500 focus:border-transparent`}
+                                      placeholder="Resource name..."
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <input
+                                      type="url"
+                                      value={resource.url}
+                                      onChange={(e) =>
+                                        updateResource(
+                                          actualIndex,
+                                          "url",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className={`${theme.input} w-full px-2 py-1 border ${theme.border} rounded focus:ring-1 focus:ring-green-500 focus:border-transparent`}
+                                      placeholder="Resource URL..."
+                                    />
+                                  </td>
+                                  <td
+                                    className={`px-4 py-3 whitespace-nowrap text-sm ${theme.textSecondary}`}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      {resource.url && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            window.open(resource.url, "_blank")
                                           }
-                                          className="text-sm px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                          className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded"
+                                          title="Preview resource"
                                         >
-                                          <option value="video">
-                                            🎥 Video
-                                          </option>
-                                          <option value="pdf">📄 PDF</option>
-                                          <option value="link">🔗 Link</option>
-                                          <option value="image">
-                                            🖼️ Image
-                                          </option>
-                                        </select>
-                                      </td>
-                                      <td className="px-4 py-3 whitespace-nowrap">
-                                        <input
-                                          type="text"
-                                          value={resource.label}
-                                          onChange={(e) =>
-                                            updateResource(
-                                              actualIndex,
-                                              "label",
-                                              e.target.value,
-                                            )
+                                          <Eye className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                      {formData.resources.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            removeResource(actualIndex)
                                           }
-                                          className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                                          placeholder="Resource label..."
-                                        />
-                                      </td>
-                                      <td className="px-4 py-3 whitespace-nowrap">
-                                        <input
-                                          type="url"
-                                          value={resource.url}
-                                          onChange={(e) =>
-                                            updateResource(
-                                              actualIndex,
-                                              "url",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                                          placeholder="Resource URL..."
-                                        />
-                                      </td>
-                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                        <div className="flex items-center space-x-2">
-                                          {resource.url && (
-                                            <a
-                                              href={resource.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
-                                              title="View resource"
-                                              onClick={(e) =>
-                                                e.stopPropagation()
-                                              }
-                                            >
-                                              <ExternalLink className="h-4 w-4" />
-                                            </a>
-                                          )}
-                                          {formData.resources.length > 1 && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeResource(actualIndex);
-                                              }}
-                                              className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
-                                              title="Delete resource"
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </React.Fragment>
+                                          className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                                          title="Delete resource"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
                               );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                            })
+                          )}
+                        </tbody>
+                      </table>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && paginatedResources.length > 0 && (
+                        <div
+                          className={`flex items-center justify-between px-4 py-3 ${theme.card} border-t ${theme.border}`}
+                        >
+                          <div className={`text-sm ${theme.textSecondary}`}>
+                            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                            {Math.min(
+                              currentPage * itemsPerPage,
+                              filteredResources.length,
+                            )}{" "}
+                            of {filteredResources.length} resources
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() =>
+                                setCurrentPage((prev) => Math.max(prev - 1, 1))
+                              }
+                              disabled={currentPage === 1}
+                              className={`px-3 py-1 text-sm border ${theme.border} rounded-md ${theme.card} hover:${theme.card} disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              Previous
+                            </button>
+                            <span className={`text-sm ${theme.text}`}>
+                              Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                              onClick={() =>
+                                setCurrentPage((prev) =>
+                                  Math.min(prev + 1, totalPages),
+                                )
+                              }
+                              disabled={currentPage === totalPages}
+                              className={`px-3 py-1 text-sm border ${theme.border} rounded-md ${theme.card} hover:${theme.card} disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Quizzes */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-lg font-semibold text-gray-700">
-                    Attach Quiz
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addQuiz}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center font-medium"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {(formData.quizzes || []).map((quiz, index) => (
-                    <div
-                      key={index}
-                      className="bg-indigo-50 rounded-xl p-4 border border-indigo-200"
+              <div className={`border ${theme.border} rounded-lg`}>
+                <div className={`px-4 py-3 border-b ${theme.border}`}>
+                  <div className="flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsQuizOpen(!isQuizOpen)}
+                      className={`flex items-center hover:${theme.card} rounded px-2 py-1 transition-colors duration-200`}
                     >
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-semibold text-gray-600 bg-white px-3 py-1 rounded-full">
-                          Question {index + 1}
-                        </span>
-                        {formData.quizzes.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeQuiz(index)}
-                            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors duration-200"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          placeholder="Question..."
-                          value={quiz.question}
-                          onChange={(e) =>
-                            updateQuiz(index, "question", e.target.value)
-                          }
-                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400"
+                      {isQuizOpen ? (
+                        <ChevronDown
+                          className={`h-4 w-4 ${theme.textSecondary} mr-2`}
                         />
-                        {(quiz.options || []).map((option, optIndex) => (
-                          <div
-                            key={optIndex}
-                            className="flex items-center space-x-2"
-                          >
-                            <span className="text-sm font-medium text-gray-600 w-8">
-                              {String.fromCharCode(65 + optIndex)}.
+                      ) : (
+                        <ChevronRight
+                          className={`h-4 w-4 ${theme.textSecondary} mr-2`}
+                        />
+                      )}
+                      <span className={`text-lg font-semibold ${theme.text}`}>
+                        Attach Quiz ({formData.quizzes.length})
+                      </span>
+                    </button>
+                    {isQuizOpen && (
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={addQuiz}
+                          className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center font-medium"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Question
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isQuizOpen && (
+                  <div className="p-4 transition-all duration-300 ease-in-out">
+                    <div className="space-y-4">
+                      {(formData.quizzes || []).map((quiz, index) => (
+                        <div
+                          key={index}
+                          className="bg-indigo-50 rounded-xl p-4 border border-indigo-200"
+                        >
+                          <div className="flex justify-between items-center mb-3">
+                            <span
+                              className={`text-sm font-semibold ${theme.textSecondary} ${theme.card} px-3 py-1 rounded-full`}
+                            >
+                              Question {index + 1}
                             </span>
+                            {formData.quizzes.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeQuiz(index)}
+                                className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors duration-200"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-3">
                             <input
                               type="text"
-                              placeholder={`Option ${optIndex + 1}...`}
-                              value={option}
-                              onChange={(e) => {
-                                const newOptions = [...quiz.options];
-                                newOptions[optIndex] = e.target.value;
-                                updateQuiz(index, "options", newOptions);
-                              }}
-                              className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400"
+                              placeholder="Question..."
+                              value={quiz.question}
+                              onChange={(e) =>
+                                updateQuiz(index, "question", e.target.value)
+                              }
+                              className={`${theme.input} w-full px-3 py-2 border ${theme.border} rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400`}
                             />
+                            {(quiz.options || []).map((option, optIndex) => (
+                              <div
+                                key={optIndex}
+                                className="flex items-center space-x-2"
+                              >
+                                <span
+                                  className={`text-sm font-medium ${theme.textSecondary} w-8`}
+                                >
+                                  {String.fromCharCode(65 + optIndex)}.
+                                </span>
+                                <input
+                                  type="text"
+                                  placeholder={`Option ${optIndex + 1}...`}
+                                  value={option}
+                                  onChange={(e) => {
+                                    const newOptions = [...quiz.options];
+                                    newOptions[optIndex] = e.target.value;
+                                    updateQuiz(index, "options", newOptions);
+                                  }}
+                                  className={`${theme.input} flex-1 px-3 py-2 border ${theme.border} rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400`}
+                                />
+                              </div>
+                            ))}
+                            <div className="flex items-center space-x-2">
+                              <label
+                                className={`text-sm font-medium ${theme.textSecondary}`}
+                              >
+                                Correct Answer:
+                              </label>
+                              <select
+                                value={quiz.correctAnswer}
+                                onChange={(e) =>
+                                  updateQuiz(
+                                    index,
+                                    "correctAnswer",
+                                    parseInt(e.target.value),
+                                  )
+                                }
+                                className={`px-3 py-2 border ${theme.border} rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200`}
+                              >
+                                <option value={0}>A</option>
+                                <option value={1}>B</option>
+                                <option value={2}>C</option>
+                                <option value={3}>D</option>
+                              </select>
+                            </div>
                           </div>
-                        ))}
-                        <div className="flex items-center space-x-2">
-                          <label className="text-sm font-medium text-gray-600">
-                            Correct Answer:
-                          </label>
-                          <select
-                            value={quiz.correctAnswer}
-                            onChange={(e) =>
-                              updateQuiz(
-                                index,
-                                "correctAnswer",
-                                parseInt(e.target.value),
-                              )
-                            }
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
-                          >
-                            <option value={0}>A</option>
-                            <option value={1}>B</option>
-                            <option value={2}>C</option>
-                            <option value={3}>D</option>
-                          </select>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+              <div
+                className={`flex justify-end space-x-4 pt-6 border-t ${theme.border}`}
+              >
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors duration-200 font-medium"
+                  className={`px-6 py-3 border ${theme.border} rounded-xl ${theme.text} hover:${theme.card} transition-colors duration-200 font-medium`}
                 >
                   Cancel
                 </button>
@@ -818,22 +1046,30 @@ const ContentManagement = () => {
       )}
 
       {/* Content List */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-        <div className="px-6 py-5 border-b border-gray-200">
+      <div
+        className={`${theme.card} rounded-2xl shadow-lg overflow-hidden border ${theme.border}`}
+      >
+        <div className={`px-6 py-5 border-b ${theme.border}`}>
           <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={() => setShowContent(!showContent)}
-              className="flex items-center hover:bg-gray-50 rounded px-2 py-1 transition-colors duration-200"
+              className={`flex items-center hover:${theme.card} rounded px-2 py-1 transition-colors duration-200`}
             >
               {showContent ? (
-                <ChevronDown className="h-5 w-5 text-gray-600 mr-2" />
+                <ChevronDown
+                  className={`h-5 w-5 ${theme.textSecondary} mr-2`}
+                />
               ) : (
-                <ChevronRight className="h-5 w-5 text-gray-600 mr-2" />
+                <ChevronRight
+                  className={`h-5 w-5 ${theme.textSecondary} mr-2`}
+                />
               )}
               <div>
-                <h2 className="text-xl font-bold text-gray-900">All Content</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <h2 className={`text-xl font-bold ${theme.text}`}>
+                  All Content
+                </h2>
+                <p className={`text-sm ${theme.textSecondary} mt-1`}>
                   {filteredContent.length} of {contents.length} items
                 </p>
               </div>
@@ -841,13 +1077,15 @@ const ContentManagement = () => {
             {showContent && (
               <div className="flex items-center space-x-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search
+                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme.textSecondary} h-4 w-4`}
+                  />
                   <input
                     type="text"
                     placeholder="Search by title..."
                     value={searchContent}
                     onChange={(e) => setSearchContent(e.target.value)}
-                    className="text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 w-64"
+                    className={`${theme.input} pl-10 pr-4 py-2 border ${theme.border} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 w-64`}
                   />
                 </div>
               </div>
@@ -859,11 +1097,13 @@ const ContentManagement = () => {
           <div className="divide-y divide-gray-200">
             {filteredContent.length === 0 ? (
               <div className="p-12 text-center">
-                <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <BookOpen
+                  className={`h-16 w-16 ${theme.textSecondary} mx-auto mb-4`}
+                />
+                <h3 className={`text-lg font-medium ${theme.text} mb-2`}>
                   No content found
                 </h3>
-                <p className="text-gray-600 mb-6">
+                <p className={`${theme.textSecondary} mb-6`}>
                   {searchContent || filterStatus !== "all"
                     ? "Try adjusting your search or filter criteria."
                     : "Get started by creating your first learning content."}
@@ -880,29 +1120,37 @@ const ContentManagement = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border border-gray-200 rounded-lg">
-                  <thead className="bg-gray-50">
+                <table className={`w-full border ${theme.border} rounded-lg`}>
+                  <thead className={`${theme.card}`}>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                      <th
+                        className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider w-16`}
+                      >
                         S.No
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider`}
+                      >
                         Title
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                      <th
+                        className={`px-4 py-3 text-left text-xs font-medium ${theme.textSecondary} uppercase tracking-wider w-24`}
+                      >
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className={`${theme.card} divide-y ${theme.border}`}>
                     {filteredContent.map((content, index) => (
                       <React.Fragment key={content._id}>
                         {/* Main Row */}
-                        <tr className="hover:bg-gray-50 transition-colors duration-200">
+                        <tr
+                          className={`hover:${theme.card} transition-colors duration-200`}
+                        >
                           <td className="px-4 py-3 whitespace-nowrap">
                             <button
                               onClick={() => toggleRow(content._id)}
-                              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                              className={`flex items-center ${theme.textSecondary} hover:${theme.text} transition-colors duration-200`}
                             >
                               {openRows[content._id] ? (
                                 <ChevronDown className="h-4 w-4 mr-1" />
@@ -920,10 +1168,14 @@ const ContentManagement = () => {
                                 <BookOpen className="h-4 w-4 text-white" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-gray-900 truncate">
+                                <div
+                                  className={`text-sm font-medium ${theme.text} truncate`}
+                                >
                                   {content.title}
                                 </div>
-                                <div className="flex items-center text-xs text-gray-500 mt-1">
+                                <div
+                                  className={`flex items-center text-xs ${theme.textSecondary} mt-1`}
+                                >
                                   <Calendar className="h-3 w-3 mr-1" />
                                   {new Date(
                                     content.createdAt,
@@ -934,7 +1186,9 @@ const ContentManagement = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                          <td
+                            className={`px-4 py-3 whitespace-nowrap text-sm ${theme.textSecondary}`}
+                          >
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => handleEdit(content)}
@@ -956,15 +1210,19 @@ const ContentManagement = () => {
 
                         {/* Expanded Row */}
                         {openRows[content._id] && (
-                          <tr className="bg-gray-50">
+                          <tr className={`${theme.card}`}>
                             <td colSpan="3" className="px-4 py-4">
                               <div className="space-y-4">
                                 {/* Description */}
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                  <h4
+                                    className={`text-sm font-medium ${theme.text} mb-2`}
+                                  >
                                     Description
                                   </h4>
-                                  <p className="text-sm text-gray-600 leading-relaxed">
+                                  <p
+                                    className={`text-sm ${theme.textSecondary} leading-relaxed`}
+                                  >
                                     {content.description}
                                   </p>
                                 </div>
@@ -973,7 +1231,9 @@ const ContentManagement = () => {
                                 {content.subtopics &&
                                   content.subtopics.length > 0 && (
                                     <div>
-                                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                      <h4
+                                        className={`text-sm font-medium ${theme.text} mb-2`}
+                                      >
                                         Subtopics ({content.subtopics.length})
                                       </h4>
                                       <div className="flex flex-wrap gap-2">
@@ -995,7 +1255,9 @@ const ContentManagement = () => {
                                 {content.resources &&
                                   content.resources.length > 0 && (
                                     <div>
-                                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                      <h4
+                                        className={`text-sm font-medium ${theme.text} mb-2`}
+                                      >
                                         Resources ({content.resources.length})
                                       </h4>
                                       <div className="flex flex-wrap gap-2">

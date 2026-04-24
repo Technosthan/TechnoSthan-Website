@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useNavigate, Outlet, useLocation, NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -50,14 +50,45 @@ const menuItems = [
     label: "User Management",
     icon: Users,
     path: "users",
-    description: "User Accounts",
+    description: "User Accounts & Roles",
     color: "from-orange-500 to-red-600",
+  },
+  {
+    id: "ai-control",
+    label: "AI Control Panel",
+    icon: TrendingUp,
+    path: "ai-control",
+    description: "AI Settings & Prompts",
+    color: "from-purple-500 to-pink-600",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    path: "settings",
+    description: "App Configuration",
+    color: "from-gray-500 to-slate-600",
+  },
+  {
+    id: "announcements",
+    label: "Announcements",
+    icon: Bell,
+    path: "announcements",
+    description: "System Messages",
+    color: "from-yellow-500 to-orange-600",
+  },
+  {
+    id: "search",
+    label: "Global Search",
+    icon: Search,
+    path: "search",
+    description: "Search Everything",
+    color: "from-indigo-500 to-blue-600",
   },
 ];
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("dashboard");
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,26 +96,9 @@ const AdminDashboard = () => {
 
   const darkMode = currentTheme === "red-black";
 
-  useEffect(() => {
-    // Set active tab based on current path
-    const currentItem = menuItems.find(
-      (item) => item.path === location.pathname,
-    );
-    if (currentItem) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveTab(currentItem.id);
-    }
-  }, [location.pathname]);
-
   const handleLogout = () => {
     logout();
     navigate("/login");
-  };
-
-  const handleMenuClick = (item) => {
-    setActiveTab(item.id);
-    navigate(item.path);
-    setSidebarOpen(false);
   };
 
   const containerVariants = {
@@ -109,7 +123,7 @@ const AdminDashboard = () => {
 
   return (
     <div
-      className={`min-h-screen ${theme.bgGradient} transition-colors duration-500`}
+      className={`min-h-screen ${theme.bgGradient} ${theme.text} transition-colors duration-500`}
     >
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
@@ -129,7 +143,7 @@ const AdminDashboard = () => {
           initial={{ x: -300 }}
           animate={{ x: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-72 ${theme.cardOpacity} backdrop-blur-xl border-r ${theme.border} shadow-2xl transform ${
+          className={`fixed lg:static inset-y-0 left-0 z-50 w-72 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl transform ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           } transition-transform duration-300 ease-in-out lg:translate-x-0`}
         >
@@ -156,7 +170,7 @@ const AdminDashboard = () => {
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors duration-200"
             >
-              <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+              <X className={`h-5 w-5 ${theme.textSecondary}`} />
             </button>
           </div>
 
@@ -165,67 +179,66 @@ const AdminDashboard = () => {
             <div className="space-y-3">
               {menuItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id;
                 return (
-                  <motion.button
+                  <NavLink
                     key={item.id}
-                    onClick={() => handleMenuClick(item)}
-                    className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-300 group relative overflow-hidden ${
-                      isActive
-                        ? `bg-gradient-to-r ${item.color} text-white shadow-xl transform scale-105`
-                        : `${theme.navItem} hover:${theme.navItemHover}`
-                    }`}
-                    whileHover={{ scale: isActive ? 1.05 : 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="visible"
+                    to={item.path}
+                    className={({ isActive: navIsActive }) =>
+                      `w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+                        navIsActive
+                          ? `bg-gradient-to-r ${item.color} text-white shadow-xl transform scale-105`
+                          : `${theme.navItem} hover:${theme.navItemHover}`
+                      }`
+                    }
+                    onClick={() => setSidebarOpen(false)}
                   >
-                    {isActive && (
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
-                        initial={{ x: "-100%" }}
-                        animate={{ x: "100%" }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          repeatDelay: 3,
-                        }}
-                      />
+                    {({ isActive: navIsActive }) => (
+                      <>
+                        {navIsActive && (
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                            initial={{ x: "-100%" }}
+                            animate={{ x: "100%" }}
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity,
+                              repeatDelay: 3,
+                            }}
+                          />
+                        )}
+                        <Icon
+                          className={`h-6 w-6 mr-4 transition-colors duration-200 ${
+                            navIsActive
+                              ? "text-white"
+                              : `${theme.textSecondary} group-hover:text-white`
+                          }`}
+                        />
+                        <div className="flex-1">
+                          <div
+                            className={`font-semibold ${navIsActive ? "text-white" : ""}`}
+                          >
+                            {item.label}
+                          </div>
+                          <div
+                            className={`text-xs mt-0.5 ${
+                              navIsActive
+                                ? "text-white/80"
+                                : `${theme.textSecondary} group-hover:text-white`
+                            }`}
+                          >
+                            {item.description}
+                          </div>
+                        </div>
+                        {navIsActive && (
+                          <motion.div
+                            className="w-2 h-2 bg-white rounded-full"
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        )}
+                      </>
                     )}
-                    <Icon
-                      className={`h-6 w-6 mr-4 transition-colors duration-200 ${
-                        isActive
-                          ? "text-white"
-                          : "text-gray-500 group-hover:text-gray-700 dark:group-hover:text-white"
-                      }`}
-                    />
-                    <div className="flex-1">
-                      <div
-                        className={`font-semibold ${isActive ? "text-white" : ""}`}
-                      >
-                        {item.label}
-                      </div>
-                      <div
-                        className={`text-xs mt-0.5 ${
-                          isActive
-                            ? "text-white/80"
-                            : darkMode
-                              ? "text-gray-500 group-hover:text-gray-300"
-                              : "text-gray-400 group-hover:text-gray-500"
-                        }`}
-                      >
-                        {item.description}
-                      </div>
-                    </div>
-                    {isActive && (
-                      <motion.div
-                        className="w-2 h-2 bg-white rounded-full"
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
-                    )}
-                  </motion.button>
+                  </NavLink>
                 );
               })}
             </div>
@@ -250,19 +263,19 @@ const AdminDashboard = () => {
               </motion.div>
               <div className="ml-4 flex-1">
                 <p
-                  className={`text-sm font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}
+                  className={`text-sm font-semibold ${darkMode ? "text-white" : theme.text}`}
                 >
                   {user?.name}
                 </p>
                 <p
-                  className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                  className={`text-xs ${darkMode ? theme.textSecondary : "text-gray-500"}`}
                 >
                   {user?.email}
                 </p>
                 <div className="flex items-center mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                   <span
-                    className={`text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+                    className={`text-xs font-medium ${darkMode ? theme.textSecondary : "text-gray-600"}`}
                   >
                     Admin Online
                   </span>
@@ -292,7 +305,9 @@ const AdminDashboard = () => {
           {/* Top Navigation Bar - Mobile Only */}
           <motion.div
             className={`lg:hidden sticky top-0 z-30 ${
-              darkMode ? "bg-gray-900/90" : "bg-white/80"
+              darkMode
+                ? `${theme.card} ${theme.text}`
+                : `bg-white/80 ${theme.text}`
             } backdrop-blur-xl border-b border-white/20 shadow-lg`}
             initial={{ y: -100 }}
             animate={{ y: 0 }}
@@ -307,15 +322,16 @@ const AdminDashboard = () => {
                     : "bg-white/60 hover:bg-white/80"
                 } transition-colors duration-200`}
               >
-                <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                <Menu className={`h-6 w-6 ${theme.text}`} />
               </button>
 
               <div className="flex items-center">
                 <h1
-                  className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}
+                  className={`text-lg font-semibold ${darkMode ? "text-white" : theme.text}`}
                 >
-                  {menuItems.find((item) => item.id === activeTab)?.label ||
-                    "Admin Panel"}
+                  {menuItems.find((item) =>
+                    location.pathname.endsWith(item.path),
+                  )?.label || "Admin Panel"}
                 </h1>
               </div>
 
@@ -325,7 +341,7 @@ const AdminDashboard = () => {
 
           {/* Page Content */}
           <motion.main
-            className="flex-1 p-6 lg:p-8 overflow-auto"
+            className="flex-1 overflow-y-auto"
             variants={containerVariants}
             initial="hidden"
             animate="visible"

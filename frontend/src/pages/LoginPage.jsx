@@ -91,7 +91,7 @@ const LoginPage = () => {
 
   return (
     <div
-      className={`min-h-screen flex flex-col items-center justify-center ${theme.bgGradient} dark:${theme.darkBgGradient} transition-colors duration-500 px-4`}
+      className={`min-h-screen flex flex-col items-center justify-center ${theme.bgGradient} ${theme.text} transition-colors duration-500 px-4`}
     >
       {/* 🌱 Branding */}
       <div className="flex items-center gap-3 mb-6">
@@ -109,20 +109,20 @@ const LoginPage = () => {
 
       {/* 💎 Card */}
       <div
-        className={`${theme.cardOpacity} backdrop-blur-xl border border-white/40 dark:border-gray-800/40 p-8 rounded-3xl shadow-2xl transition-all duration-300 hover:shadow-green-200 dark:hover:shadow-yellow-900`}
+        className={`${theme.cardOpacity} ${theme.text} backdrop-blur-xl border border-white/40 dark:border-gray-800/40 p-8 rounded-3xl shadow-2xl transition-all duration-300 hover:shadow-green-200 dark:hover:shadow-yellow-900`}
       >
         {/* Tabs */}
         <div className="flex justify-center mb-6">
           <button
             onClick={() => setIsLogin(true)}
-            className={`px-4 py-2 rounded-l-xl transition ${isLogin ? `${theme.button} text-white` : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}
+            className={`px-4 py-2 rounded-l-xl transition ${isLogin ? `${theme.button} text-white` : `bg-gray-200 dark:bg-gray-700 ${theme.textSecondary}`}`}
           >
             <User size={18} className="inline mr-2" />
             Login
           </button>
           <button
             onClick={() => setIsLogin(false)}
-            className={`px-4 py-2 rounded-r-xl transition ${!isLogin ? `${theme.button} text-white` : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}
+            className={`px-4 py-2 rounded-r-xl transition ${!isLogin ? `${theme.button} text-white` : `bg-gray-200 dark:bg-gray-700 ${theme.textSecondary}`}`}
           >
             <UserPlus size={18} className="inline mr-2" />
             Register
@@ -137,7 +137,7 @@ const LoginPage = () => {
             {isLogin ? "Login" : "Register"}
           </h2>
         </div>
-        <p className="text-center text-gray-500 dark:text-gray-300 mb-6 text-sm">
+        <p className={`text-center ${theme.textSecondary} mb-6 text-sm`}>
           {isLogin ? "Welcome back! 🌱" : "Join us! 🌱"}
         </p>
 
@@ -160,7 +160,7 @@ const LoginPage = () => {
                 type="text"
                 placeholder="Full Name"
                 value={form.name}
-                className={`text-black w-full pl-10 pr-10 p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder-gray-400 dark:placeholder-gray-300 text-gray-900 dark:text-gray-100 ${fieldError.name ? theme.error : theme.input}`}
+                className={`w-full pl-10 pr-10 p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder-gray-400 dark:placeholder-gray-300 ${fieldError.name ? theme.error : theme.input}`}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
               {fieldError.name && (
@@ -182,7 +182,7 @@ const LoginPage = () => {
               type="text"
               placeholder="Email or Phone"
               value={form.contact}
-              className={`text-black w-full pl-10 pr-10 p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder-gray-400 dark:placeholder-gray-300 text-gray-900 dark:text-gray-100 ${fieldError.contact ? theme.error : theme.input}`}
+              className={`w-full pl-10 pr-10 p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder-gray-400 dark:placeholder-gray-300 ${fieldError.contact ? theme.error : theme.input}`}
               onChange={(e) => setForm({ ...form, contact: e.target.value })}
             />
             {fieldError.contact && (
@@ -203,7 +203,7 @@ const LoginPage = () => {
               type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={form.password}
-              className={`text-black w-full pl-10 pr-10 p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder-gray-400 dark:placeholder-gray-300 text-gray-900 dark:text-gray-100 ${fieldError.password ? theme.error : theme.input}`}
+              className={`w-full pl-10 pr-10 p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder-gray-400 dark:placeholder-gray-300 ${fieldError.password ? theme.error : theme.input}`}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
 
@@ -241,7 +241,7 @@ const LoginPage = () => {
           {/* 🌐 Google Login */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 hover:scale-105 transition transform px-8 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md"
+            className={`w-full bg-white hover:bg-gray-50 ${theme.text} border border-gray-300 hover:scale-105 transition transform px-8 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path

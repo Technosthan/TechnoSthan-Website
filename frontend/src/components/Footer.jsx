@@ -5,7 +5,7 @@ const Footer = () => {
   const { theme } = useTheme();
 
   return (
-    <footer className={`${theme.navbar} text-gray-300 py-8`}>
+    <footer className={`${theme.navbar} ${theme.textSecondary} py-8`}>
       <div className="max-w-7xl mx-auto px-6 md:px-16">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -23,24 +23,30 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/" className="hover:text-green-400 transition">
+                <Link to="/" className={`hover:${theme.accent} transition`}>
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-green-400 transition">
+                <Link
+                  to="/about"
+                  className={`hover:${theme.accent} transition`}
+                >
                   About
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-green-400 transition">
+                <Link
+                  to="/contact"
+                  className={`hover:${theme.accent} transition`}
+                >
                   Contact
                 </Link>
               </li>
               <li>
                 <Link
                   to="/learning"
-                  className="hover:text-green-400 transition"
+                  className={`hover:${theme.accent} transition`}
                 >
                   Learning
                 </Link>

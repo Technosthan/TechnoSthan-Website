@@ -48,7 +48,7 @@ const AdminDashboardHome = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="p-6 w-full flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div
             className={`animate-spin rounded-full h-16 w-16 border-4 ${theme.primary} border-t-transparent mx-auto mb-4`}
@@ -63,23 +63,25 @@ const AdminDashboardHome = () => {
 
   if (error) {
     return (
-      <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center mb-4">
-          <div className="p-2 bg-red-100 rounded-lg mr-3">
-            <Activity className="h-5 w-5 text-red-600" />
+      <div className="p-6 w-full">
+        <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-red-100 rounded-lg mr-3">
+              <Activity className="h-5 w-5 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-red-800">
+              Error Loading Dashboard
+            </h3>
           </div>
-          <h3 className="text-lg font-semibold text-red-800">
-            Error Loading Dashboard
-          </h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={fetchStats}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center font-medium"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </button>
         </div>
-        <p className="text-red-700 mb-4">{error}</p>
-        <button
-          onClick={fetchStats}
-          className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center font-medium"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Retry
-        </button>
       </div>
     );
   }
@@ -134,7 +136,7 @@ const AdminDashboardHome = () => {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="p-6 w-full space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>

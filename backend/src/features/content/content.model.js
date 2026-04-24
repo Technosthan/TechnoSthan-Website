@@ -18,7 +18,7 @@ const contentSchema = new mongoose.Schema(
     ],
     resources: [
       {
-        label: String,
+        name: String,
         url: String,
         type: {
           type: String,

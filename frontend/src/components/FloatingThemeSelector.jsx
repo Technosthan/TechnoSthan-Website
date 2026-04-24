@@ -52,7 +52,7 @@ const FloatingThemeSelector = () => {
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.8, x: 100 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed bottom-24 right-6 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 min-w-64 z-50 theme-dropdown"
+              className={`fixed bottom-24 right-6 bg-white dark:bg-gray-800 ${theme.text} rounded-2xl shadow-2xl p-6 min-w-64 z-50 theme-dropdown`}
             >
               <div className="flex items-center gap-3 mb-4">
                 <Palette size={20} className={theme.accent} />
@@ -70,7 +70,7 @@ const FloatingThemeSelector = () => {
                     className={`relative p-4 rounded-xl font-medium text-sm transition-all duration-200 transform hover:scale-105 theme-button flex flex-col items-center gap-2 ${
                       themeKey === currentTheme
                         ? `${theme.primary} text-white shadow-lg ring-2 ring-offset-2 ring-current`
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        : `bg-gray-100 dark:bg-gray-700 ${theme.textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
                     }`}
                   >
                     <div className="text-2xl">

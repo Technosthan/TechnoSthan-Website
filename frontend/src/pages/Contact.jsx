@@ -7,7 +7,7 @@ const Contact = () => {
 
   return (
     <div
-      className={`min-h-screen ${theme.bgGradient} transition-colors duration-500`}
+      className={`min-h-screen ${theme.bgGradient} ${theme.text} transition-colors duration-500`}
     >
       <Navbar />
       <div className="px-6 md:px-16 py-20 max-w-7xl mx-auto">
@@ -20,13 +20,11 @@ const Contact = () => {
           journey!
         </p>
         <div className="mt-8 text-center">
-          <p className={`text-gray-600 dark:text-gray-300 ${theme.text}`}>
+          <p className={`${theme.textSecondary}`}>
             Email: agritech@technosthan.com
           </p>
-          <p className={`text-gray-600 dark:text-gray-300 ${theme.text}`}>
-            Phone: +91-9477288288
-          </p>
-          <p className={`text-gray-600 dark:text-gray-300 ${theme.text}`}>
+          <p className={`${theme.textSecondary}`}>Phone: +91-9477288288</p>
+          <p className={`${theme.textSecondary}`}>
             Address: 47/1 New Sanganer Road, Sodala, Jaipur, Rajasthan 302019
           </p>
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Users,
   Edit,
@@ -15,14 +16,24 @@ import {
   Shield,
   Check,
   X,
+  Eye,
+  PenTool,
+  Settings as SettingsIcon,
 } from "lucide-react";
-import { getAllUsers, updateUserRole, deleteUser } from "./adminApi";
+import {
+  getAllUsers,
+  updateUserRole,
+  deleteUser,
+  updateUserPermissions,
+} from "./adminApi";
 
 const UserManager = () => {
+  const { theme } = useTheme();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingUser, setEditingUser] = useState(null);
+  const [editingPermissions, setEditingPermissions] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
 
@@ -42,13 +53,15 @@ const UserManager = () => {
     }
   };
 
-  const handleRoleChange = async (userId, newRole) => {
+  const handlePermissionsChange = async (userId, role, permissions) => {
     try {
-      await updateUserRole(userId, newRole);
+      await updateUserPermissions(userId, { role, permissions });
       await fetchUsers();
-      setEditingUser(null);
+      setEditingPermissions(null);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update user role");
+      setError(
+        err.response?.data?.message || "Failed to update user permissions",
+      );
     }
   };
 
@@ -73,6 +86,10 @@ const UserManager = () => {
     switch (role) {
       case "admin":
         return <Crown className="h-5 w-5 text-yellow-600" />;
+      case "editor":
+        return <PenTool className="h-5 w-5 text-purple-600" />;
+      case "viewer":
+        return <Eye className="h-5 w-5 text-green-600" />;
       case "student":
         return <GraduationCap className="h-5 w-5 text-blue-600" />;
       default:
@@ -84,6 +101,10 @@ const UserManager = () => {
     switch (role) {
       case "admin":
         return "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200";
+      case "editor":
+        return "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border-purple-200";
+      case "viewer":
+        return "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200";
       case "student":
         return "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border-blue-200";
       default:
@@ -154,6 +175,8 @@ const UserManager = () => {
             >
               <option value="all">All Roles</option>
               <option value="admin">Admins Only</option>
+              <option value="editor">Editors Only</option>
+              <option value="viewer">Viewers Only</option>
               <option value="student">Students Only</option>
             </select>
           </div>
@@ -173,7 +196,7 @@ const UserManager = () => {
       )}
 
       {/* User Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border border-blue-100">
           <div className="flex items-center">
             <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600">
@@ -197,6 +220,20 @@ const UserManager = () => {
               </p>
               <p className="text-3xl font-bold text-gray-900">
                 {users.filter((user) => user.role === "admin").length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-lg p-6 border border-purple-100">
+          <div className="flex items-center">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-600">
+              <PenTool className="h-7 w-7 text-white" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-semibold text-gray-600">Editors</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {users.filter((user) => user.role === "editor").length}
               </p>
             </div>
           </div>
@@ -289,34 +326,103 @@ const UserManager = () => {
                   </div>
 
                   <div className="flex items-center space-x-3">
-                    {editingUser === user._id ? (
-                      <div className="flex items-center space-x-2">
-                        <select
-                          value={user.role}
-                          onChange={(e) =>
-                            handleRoleChange(user._id, e.target.value)
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        >
-                          <option value="student">Student</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        <button
-                          onClick={() => setEditingUser(null)}
-                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                          title="Cancel editing"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                    {editingPermissions === user._id ? (
+                      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-lg">
+                        <h4 className="font-medium text-gray-900 mb-3">
+                          Edit Permissions
+                        </h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Role
+                            </label>
+                            <select
+                              value={user.role}
+                              onChange={(e) => {
+                                const updatedUser = {
+                                  ...user,
+                                  role: e.target.value,
+                                };
+                                setUsers(
+                                  users.map((u) =>
+                                    u._id === user._id ? updatedUser : u,
+                                  ),
+                                );
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            >
+                              <option value="student">Student</option>
+                              <option value="viewer">Viewer</option>
+                              <option value="editor">Editor</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Permissions
+                            </label>
+                            {Object.entries(user.permissions || {}).map(
+                              ([key, value]) => (
+                                <label key={key} className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={value}
+                                    onChange={(e) => {
+                                      const updatedPermissions = {
+                                        ...user.permissions,
+                                        [key]: e.target.checked,
+                                      };
+                                      const updatedUser = {
+                                        ...user,
+                                        permissions: updatedPermissions,
+                                      };
+                                      setUsers(
+                                        users.map((u) =>
+                                          u._id === user._id ? updatedUser : u,
+                                        ),
+                                      );
+                                    }}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                                  />
+                                  <span className="text-sm text-gray-700 capitalize">
+                                    {key
+                                      .replace(/([A-Z])/g, " $1")
+                                      .toLowerCase()}
+                                  </span>
+                                </label>
+                              ),
+                            )}
+                          </div>
+                          <div className="flex space-x-2 pt-2">
+                            <button
+                              onClick={() =>
+                                handlePermissionsChange(
+                                  user._id,
+                                  user.role,
+                                  user.permissions,
+                                )
+                              }
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingPermissions(null)}
+                              className="px-3 py-1 bg-gray-300 text-gray-700 text-sm rounded hover:bg-gray-400"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <>
                         <button
-                          onClick={() => setEditingUser(user._id)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                          title="Edit user role"
+                          onClick={() => setEditingPermissions(user._id)}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors duration-200"
+                          title="Edit permissions"
                         >
-                          <Edit className="h-5 w-5" />
+                          <SettingsIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user._id, user.name)}

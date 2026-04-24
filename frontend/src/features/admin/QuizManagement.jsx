@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Plus,
   Edit,
@@ -21,6 +22,7 @@ import {
 import { getAllContent } from "../content/contentApi";
 
 const QuizManagement = () => {
+  const { theme } = useTheme();
   const [contents, setContents] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +160,7 @@ const QuizManagement = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-100">
+      <div className="p-6 w-full flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading questions...</p>
@@ -168,14 +170,14 @@ const QuizManagement = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className={`p-6 w-full space-y-8 ${theme.text}`}>
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className={`text-3xl font-bold ${theme.text} mb-2`}>
             Quiz Management
           </h1>
-          <p className="text-gray-600">
+          <p className={`${theme.textSecondary}`}>
             Create and manage quiz questions for your content
           </p>
         </div>

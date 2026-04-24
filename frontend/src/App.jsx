@@ -14,6 +14,10 @@ import AdminDashboardHome from "./features/admin/AdminDashboardHome";
 import ContentManagement from "./features/admin/ContentManagement";
 import QuizManagement from "./features/admin/QuizManagement";
 import UserManagement from "./features/admin/UserManagement";
+import AIControlPanel from "./features/admin/AIControlPanel";
+import SettingsPanel from "./features/admin/SettingsPanel";
+import AnnouncementManager from "./features/admin/AnnouncementManager";
+import GlobalSearch from "./features/admin/GlobalSearch";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import FloatingThemeSelector from "./components/FloatingThemeSelector";
 
@@ -70,6 +74,10 @@ function App() {
             <Route path="content" element={<ContentManagement />} />
             <Route path="quiz" element={<QuizManagement />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="ai-control" element={<AIControlPanel />} />
+            <Route path="settings" element={<SettingsPanel />} />
+            <Route path="announcements" element={<AnnouncementManager />} />
+            <Route path="search" element={<GlobalSearch />} />
           </Route>
         </Routes>
       </BrowserRouter>

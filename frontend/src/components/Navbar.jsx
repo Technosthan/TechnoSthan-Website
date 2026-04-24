@@ -46,32 +46,20 @@ const Navbar = () => {
       <div className="flex items-center gap-4">
         <button
           onClick={handleHomeClick}
-          className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
+          className={`${theme.navItem} transition`}
         >
           Home
         </button>
-        <Link
-          to="/about"
-          className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
-        >
+        <Link to="/about" className={`${theme.navItem} transition`}>
           About
         </Link>
-        <Link
-          to="/contact"
-          className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
-        >
+        <Link to="/contact" className={`${theme.navItem} transition`}>
           Contact
         </Link>
-        <Link
-          to="/learning"
-          className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
-        >
+        <Link to="/learning" className={`${theme.navItem} transition`}>
           Learning
         </Link>
-        <Link
-          to="/chat"
-          className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition`}
-        >
+        <Link to="/chat" className={`${theme.navItem} transition`}>
           AI Chat
         </Link>
 
@@ -80,13 +68,13 @@ const Navbar = () => {
             {isAdmin && (
               <Link
                 to="/admin/dashboard"
-                className={`text-gray-700 dark:text-gray-300 hover:${theme.accent} transition flex items-center gap-1`}
+                className={`${theme.navItem} transition flex items-center gap-1`}
               >
                 <Shield size={16} />
                 Admin Panel
               </Link>
             )}
-            <span className="text-gray-700 dark:text-gray-300">
+            <span className={`${theme.textSecondary}`}>
               Welcome, {user.name}
             </span>
             <motion.button

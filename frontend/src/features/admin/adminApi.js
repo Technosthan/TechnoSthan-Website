@@ -21,6 +21,34 @@ export const updateContent = (contentId, contentData) =>
 export const deleteContent = (contentId) =>
   axiosInstance.delete(`/api/content/${contentId}`);
 
+// Settings management
+export const getSettings = () => axiosInstance.get("/api/admin/settings");
+export const updateSettings = (settingsData) =>
+  axiosInstance.post("/api/admin/settings", settingsData);
+
+// User permissions
+export const updateUserPermissions = (userId, permissionsData) =>
+  axiosInstance.put(`/api/admin/users/${userId}/permissions`, permissionsData);
+
+// Announcement management
+export const getAnnouncements = () =>
+  axiosInstance.get("/api/admin/announcements");
+export const createAnnouncement = (announcementData) =>
+  axiosInstance.post("/api/admin/announcements", announcementData);
+export const updateAnnouncement = (announcementId, announcementData) =>
+  axiosInstance.put(
+    `/api/admin/announcements/${announcementId}`,
+    announcementData,
+  );
+export const deleteAnnouncement = (announcementId) =>
+  axiosInstance.delete(`/api/admin/announcements/${announcementId}`);
+
+// Global search
+export const globalSearch = (query, type) =>
+  axiosInstance.get(
+    `/api/admin/search?query=${encodeURIComponent(query)}${type ? `&type=${type}` : ""}`,
+  );
+
 // Quiz management (admin)
 export const getAllQuestions = () => axiosInstance.get("/api/quiz/questions");
 export const createQuestion = (questionData) =>
@@ -29,8 +57,6 @@ export const updateQuestion = (questionId, questionData) =>
   axiosInstance.put(`/api/quiz/questions/${questionId}`, questionData);
 export const deleteQuestion = (questionId) =>
   axiosInstance.delete(`/api/quiz/questions/${questionId}`);
-
-// Content-based quiz
 export const getQuestionsByContentId = (contentId) =>
   axiosInstance.get(`/api/quiz/content/${contentId}`);
 export const deleteQuestionsByContentId = (contentId) =>

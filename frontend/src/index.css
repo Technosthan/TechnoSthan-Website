@@ -25,3 +25,54 @@ input,
 textarea {
   color: black !important;
 }
+
+/* Custom styles for React Markdown */
+.prose pre {
+  background-color: #1f2937 !important;
+  border-radius: 0.5rem !important;
+  padding: 1rem !important;
+  overflow-x: auto !important;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+
+.prose code {
+  background-color: #374151 !important;
+  padding: 0.125rem 0.25rem !important;
+  border-radius: 0.25rem !important;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace !important;
+  font-size: 0.875em !important;
+}
+
+.prose pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: inherit !important;
+}
+
+.prose table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid #4b5563 !important;
+  padding: 0.5rem !important;
+  text-align: left !important;
+}
+
+.prose th {
+  background-color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+.prose blockquote {
+  border-left: 4px solid #3b82f6 !important;
+  padding-left: 1rem !important;
+  margin: 1rem 0 !important;
+  color: #9ca3af !important;
+  font-style: italic !important;
+}
