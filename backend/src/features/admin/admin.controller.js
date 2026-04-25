@@ -7,6 +7,9 @@ import Announcement from "./announcement.model.js";
 
 export const getAdminStats = async (req, res) => {
   try {
+    // Clean up old invalid data (one-time operation)
+    await QuizResult.deleteMany({ userId: null });
+
     // Get total counts
     const [totalUsers, totalContent, totalQuestions, totalQuizResults] =
       await Promise.all([
@@ -23,10 +26,16 @@ export const getAdminStats = async (req, res) => {
 
     // Get recent quiz results with user info
     const recentQuizResults = await QuizResult.find()
-      .populate("userId", "name email")
+      .populate({
+        path: "userId",
+        select: "name email",
+      })
       .sort({ createdAt: -1 })
       .limit(10)
-      .select("score totalQuestions createdAt userId");
+      .select("score total createdAt userId");
+
+    // Debug logging
+    console.log("Quiz Results:", JSON.stringify(recentQuizResults, null, 2));
 
     // Get quiz performance stats
     const quizStats = await QuizResult.aggregate([
@@ -35,18 +44,18 @@ export const getAdminStats = async (req, res) => {
           _id: null,
           averageScore: {
             $avg: {
-              $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100],
+              $multiply: [{ $divide: ["$score", "$total"] }, 100],
             },
           },
           totalAttempts: { $sum: 1 },
           highestScore: {
             $max: {
-              $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100],
+              $multiply: [{ $divide: ["$score", "$total"] }, 100],
             },
           },
           lowestScore: {
             $min: {
-              $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100],
+              $multiply: [{ $divide: ["$score", "$total"] }, 100],
             },
           },
         },
@@ -69,11 +78,14 @@ export const getAdminStats = async (req, res) => {
         lowestScore: 0,
       },
       recentActivity: recentQuizResults.map((result) => ({
-        userName: result.userId?.name || "Unknown",
-        userEmail: result.userId?.email || "Unknown",
+        userName: result.userId?.name ?? "Deleted User",
+        userEmail: result.userId?.email ?? "No Email",
         score: result.score,
-        totalQuestions: result.totalQuestions,
-        percentage: Math.round((result.score / result.totalQuestions) * 100),
+        totalQuestions: result.total,
+        percentage:
+          result.total > 0
+            ? Math.round((result.score / result.total) * 100)
+            : 0,
         date: result.createdAt,
       })),
     };
@@ -87,6 +99,74 @@ export const getAdminStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch admin statistics",
+    });
+  }
+};
+
+export const getMonitoringStats = async (req, res) => {
+  console.log("Monitoring API HIT - getMonitoringStats called");
+
+  try {
+    // Get total counts for monitoring
+    const [totalUsers, totalContent, totalQuizzes, totalQuizAttempts] =
+      await Promise.all([
+        User.countDocuments(),
+        Content.countDocuments(),
+        Question.countDocuments(), // Assuming Question is the quiz model
+        QuizResult.countDocuments(),
+      ]);
+
+    console.log("Monitoring stats counts:", {
+      totalUsers,
+      totalContent,
+      totalQuizzes,
+      totalQuizAttempts,
+    });
+
+    // Get recent quiz activities with user data
+    const recentQuizResults = await QuizResult.find()
+      .populate({
+        path: "userId",
+        select: "name email",
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    console.log("Recent quiz results found:", recentQuizResults.length);
+
+    // Clean up any results with null userId
+    const validRecentActivities = recentQuizResults
+      .filter((result) => result.userId)
+      .map((result) => ({
+        type: "quiz_completed",
+        userName: result.userId.name || "Unknown",
+        userEmail: result.userId.email || "",
+        score: result.score,
+        timestamp: result.createdAt,
+      }));
+
+    console.log("Valid recent activities:", validRecentActivities.length);
+
+    const stats = {
+      totalUsers,
+      totalContent,
+      totalQuizzes,
+      totalQuizAttempts,
+      recentActivities: validRecentActivities,
+    };
+
+    console.log("Sending monitoring stats response");
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Monitoring stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch monitoring statistics",
     });
   }
 };

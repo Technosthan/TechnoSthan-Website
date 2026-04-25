@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 const features = [
   {
     icon: "🌱",
-    title: "Learning",
+    title: "AgriTech Wiki",
     desc: "Explore smart farming techniques and modern agriculture.",
   },
   {
@@ -20,7 +20,7 @@ const features = [
   {
     icon: "📈",
     title: "Progress Tracking",
-    desc: "Monitor your learning progress and achievements.",
+    desc: "Monitor your AgriTech Wiki progress and achievements.",
   },
 ];
 
@@ -49,7 +49,7 @@ const FeaturesSection = () => {
         className={`py-20 px-6 md:px-16 ${theme.bgGradient} ${theme.text}`}
       >
         <h2 className={`text-3xl font-bold text-center mb-12 ${theme.accent}`}>
-          What You Can Do
+          What are our Services
         </h2>
         <motion.div
           className="grid sm:grid-cols-2 md:grid-cols-4 gap-8"

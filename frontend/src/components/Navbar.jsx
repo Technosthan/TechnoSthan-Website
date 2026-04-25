@@ -35,10 +35,10 @@ const Navbar = () => {
       <Link to="/" className="flex items-center gap-3">
         <img
           src="/hero.png"
-          className="w-12 h-12 rounded-full border-2 border-green-500 shadow"
+          className={`w-12 h-12 rounded-full border-2 ${theme.border} shadow`}
           alt="TECHNOSTHAN AGRITECH Logo"
         />
-        <h1 className={`font-bold text-lg ${theme.text} ${theme.textDark}`}>
+        <h1 className={`font-bold text-lg ${theme.text}`}>
           TECHNOSTHAN AGRITECH
         </h1>
       </Link>
@@ -56,8 +56,8 @@ const Navbar = () => {
         <Link to="/contact" className={`${theme.navItem} transition`}>
           Contact
         </Link>
-        <Link to="/learning" className={`${theme.navItem} transition`}>
-          Learning
+        <Link to="/AgriTech Wiki" className={`${theme.navItem} transition`}>
+          AgriTech Wiki
         </Link>
         <Link to="/chat" className={`${theme.navItem} transition`}>
           AI Chat
@@ -81,7 +81,7 @@ const Navbar = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleLogout}
-              className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300"
+              className={`${theme.logoutButton} px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300`}
             >
               <LogOut size={18} />
               Logout

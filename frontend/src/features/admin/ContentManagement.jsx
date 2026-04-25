@@ -59,9 +59,22 @@ const ContentManagement = () => {
     resources: [{ name: "", url: "", type: "video" }],
     quizzes: [{ question: "", options: ["", "", "", ""], correctAnswer: 0 }],
   });
+  const [openMenu, setOpenMenu] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null);
 
   useEffect(() => {
     fetchContents();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".menu-container")) {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchContents = async () => {
@@ -136,12 +149,28 @@ const ContentManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate resources
+    for (const resource of formData.resources) {
+      // Skip validation for completely empty resources (user added but didn't fill)
+      if (!resource.name.trim() && !resource.url.trim()) {
+        continue;
+      }
+      const error = validateResource(resource);
+      if (error) {
+        setError(error);
+        return;
+      }
+    }
+
     try {
       const contentData = {
         title: formData.title,
         description: formData.description,
         subtopics: formData.subtopics,
-        resources: formData.resources,
+        resources: formData.resources.filter(
+          (r) => r.name.trim() && r.url.trim(),
+        ),
       };
       const content = editingContent
         ? await updateContent(editingContent._id, contentData)
@@ -229,11 +258,6 @@ const ContentManagement = () => {
 
   const addResource = () => {
     const newResource = { name: "", url: "", type: "video" };
-    const error = validateResource(newResource);
-    if (error) {
-      setError(error);
-      return;
-    }
     setFormData({
       ...formData,
       resources: [...formData.resources, newResource],
@@ -382,12 +406,12 @@ const ContentManagement = () => {
             Content Management
           </h1>
           <p className={`${theme.textSecondary}`}>
-            Create and manage learning materials for your students
+            Create and manage AgriTech Wiki materials for your students
           </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="mt-4 lg:mt-0 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className={`mt-4 lg:mt-0 px-6 py-3 ${theme.button} rounded-xl hover:scale-105 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5`}
         >
           <Plus className="h-5 w-5 mr-2" />
           Add New Content
@@ -508,7 +532,7 @@ const ContentManagement = () => {
                   <button
                     type="button"
                     onClick={addSubtopic}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center font-medium"
+                    className={`px-4 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 flex items-center font-medium`}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Subtopic
@@ -588,7 +612,7 @@ const ContentManagement = () => {
                         <button
                           type="button"
                           onClick={addResource}
-                          className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center font-medium"
+                          className={`px-3 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 flex items-center font-medium`}
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Add Resource
@@ -740,7 +764,7 @@ const ContentManagement = () => {
                                           setActiveSearchColumn(null);
                                           setCurrentPage(1);
                                         }}
-                                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center font-medium"
+                                        className={`px-4 py-2 ${theme.buttonSecondary} text-sm rounded-lg hover:scale-105 transition-colors duration-200 flex items-center font-medium`}
                                       >
                                         <X className="h-4 w-4 mr-2" />
                                         Clear Filters
@@ -924,7 +948,7 @@ const ContentManagement = () => {
                         <button
                           type="button"
                           onClick={addQuiz}
-                          className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center font-medium"
+                          className={`px-3 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 flex items-center font-medium`}
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Add Question
@@ -1106,12 +1130,12 @@ const ContentManagement = () => {
                 <p className={`${theme.textSecondary} mb-6`}>
                   {searchContent || filterStatus !== "all"
                     ? "Try adjusting your search or filter criteria."
-                    : "Get started by creating your first learning content."}
+                    : "Get started by creating your first AgriTech Wiki content."}
                 </p>
                 {!searchContent && filterStatus === "all" && (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    className={`px-6 py-3 ${theme.button} rounded-xl hover:scale-105 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5`}
                   >
                     <Plus className="h-5 w-5 mr-2" />
                     Create First Content
@@ -1165,7 +1189,7 @@ const ContentManagement = () => {
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                                <BookOpen className="h-4 w-4 text-white" />
+                                <BookOpen className="h-4 w-4" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div
@@ -1190,20 +1214,53 @@ const ContentManagement = () => {
                             className={`px-4 py-3 whitespace-nowrap text-sm ${theme.textSecondary}`}
                           >
                             <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleEdit(content)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors duration-200"
-                                title="Edit content"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(content._id)}
-                                className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
-                                title="Delete content"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <div className="relative menu-container">
+                                <button
+                                  onClick={(e) => {
+                                    const rect =
+                                      e.currentTarget.getBoundingClientRect();
+                                    setMenuPosition({
+                                      top: rect.bottom + window.scrollY,
+                                      left: rect.right - 192 + window.scrollX,
+                                    });
+                                    setOpenMenu(
+                                      openMenu === content._id
+                                        ? null
+                                        : content._id,
+                                    );
+                                  }}
+                                  className="p-1 text-gray-600 hover:bg-gray-50 rounded transition-colors duration-200"
+                                  title="More options"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                                {openMenu === content._id && (
+                                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                    <div className="py-1">
+                                      <button
+                                        onClick={() => {
+                                          handleEdit(content);
+                                          setOpenMenu(null);
+                                        }}
+                                        className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+                                      >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit Content
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          handleDelete(content._id);
+                                          setOpenMenu(null);
+                                        }}
+                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete Content
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>

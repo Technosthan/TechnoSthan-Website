@@ -187,7 +187,7 @@ const ContentPage = () => {
           className={`text-4xl font-bold mb-6 ${theme.accent} flex items-center justify-center`}
         >
           <BookOpen className="mr-3" size={40} />
-          Learning Center
+          AgriTech Wiki Center
           <motion.span
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -213,7 +213,7 @@ const ContentPage = () => {
             placeholder="Search topics..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 shadow-lg"
+            className={`w-full pl-10 pr-4 py-3 ${theme.border} rounded-full ${theme.card} text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 shadow-lg`}
           />
         </motion.div>
 
@@ -237,7 +237,7 @@ const ContentPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * index }}
                   onClick={() => setSelectedContent(content)}
-                  className={`bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg cursor-pointer transition-all hover:scale-105 hover:shadow-xl border-l-4 ${
+                  className={`${theme.card} p-4 rounded-xl shadow-lg cursor-pointer transition-all hover:scale-105 hover:shadow-xl border-l-4 ${
                     selectedContent?.title === content.title
                       ? "border-green-500 ring-2 ring-green-500"
                       : "border-transparent hover:border-green-300"
@@ -271,7 +271,7 @@ const ContentPage = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-h-screen overflow-y-auto border border-gray-200 dark:border-gray-700"
+                className={`${theme.card} p-6 rounded-xl shadow-lg max-h-screen overflow-y-auto border border-gray-200 dark:border-gray-700`}
               >
                 <h2 className="text-3xl font-bold mb-4 text-green-600 dark:text-green-400 flex items-center">
                   {getTopicIcon(selectedContent.title)}
@@ -291,7 +291,7 @@ const ContentPage = () => {
                   {hasQuiz ? (
                     <Link
                       to={`/quiz/${selectedContent._id}`}
-                      className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105"
+                      className={`inline-flex items-center ${theme.button} font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105`}
                     >
                       <Target className="mr-2" size={20} />
                       Take Knowledge Quiz
@@ -377,7 +377,9 @@ const ContentPage = () => {
                                 ></iframe>
                               </div>
                             ) : isPDF(resource) ? (
-                              <div className="bg-white dark:bg-gray-600 p-4 rounded-lg">
+                              <div
+                                className={`${theme.surface} p-4 rounded-lg`}
+                              >
                                 <iframe
                                   src={resource.url}
                                   title={resource.label}
@@ -389,7 +391,7 @@ const ContentPage = () => {
                                     href={resource.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    className={`inline-flex items-center px-4 py-2 ${theme.button} rounded-lg transition-colors`}
                                   >
                                     <BookOpen className="mr-2" size={16} />
                                     Open PDF in New Tab
@@ -397,7 +399,9 @@ const ContentPage = () => {
                                 </div>
                               </div>
                             ) : isImage(resource) ? (
-                              <div className="bg-white dark:bg-gray-600 p-4 rounded-lg">
+                              <div
+                                className={`${theme.surface} p-4 rounded-lg`}
+                              >
                                 <img
                                   src={resource.url}
                                   alt={resource.label}
@@ -411,7 +415,7 @@ const ContentPage = () => {
                                     href={resource.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                                    className={`inline-flex items-center px-4 py-2 ${theme.button} rounded-lg transition-colors`}
                                   >
                                     <ImageIcon className="mr-2" size={16} />
                                     View Full Image
@@ -419,7 +423,9 @@ const ContentPage = () => {
                                 </div>
                               </div>
                             ) : (
-                              <div className="p-4 bg-white dark:bg-gray-600 rounded-lg">
+                              <div
+                                className={`p-4 ${theme.surface} rounded-lg`}
+                              >
                                 <a
                                   href={resource.url}
                                   target="_blank"
@@ -442,7 +448,7 @@ const ContentPage = () => {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 1 }}
-                className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-300 dark:border-gray-600"
+                className={`${theme.card} p-6 rounded-xl shadow-lg flex flex-col items-center justify-center h-64 border-2 border-dashed ${theme.border}`}
               >
                 <motion.div
                   animate={{ rotate: [0, 10, -10, 0] }}
@@ -451,8 +457,8 @@ const ContentPage = () => {
                   <BookOpen className="mx-auto mb-4 text-gray-400" size={64} />
                 </motion.div>
                 <p className="text-gray-500 dark:text-gray-400 text-center text-lg">
-                  Select a topic from the left to start your learning journey!
-                  🚀
+                  Select a topic from the left to start your AgriTech Wiki
+                  journey! 🚀
                 </p>
               </motion.div>
             )}

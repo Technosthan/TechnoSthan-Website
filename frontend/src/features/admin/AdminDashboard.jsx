@@ -20,79 +20,87 @@ import {
 import { useAuth } from "../auth/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 
-const menuItems = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    path: "",
-    description: "Overview & Analytics",
-    color: "from-green-500 to-emerald-600",
-  },
-  {
-    id: "content",
-    label: "Content Management",
-    icon: BookOpen,
-    path: "content",
-    description: "Learning Materials",
-    color: "from-blue-500 to-cyan-600",
-  },
-  {
-    id: "quiz",
-    label: "Quiz Management",
-    icon: Brain,
-    path: "quiz",
-    description: "Questions & Tests",
-    color: "from-purple-500 to-pink-600",
-  },
-  {
-    id: "users",
-    label: "User Management",
-    icon: Users,
-    path: "users",
-    description: "User Accounts & Roles",
-    color: "from-orange-500 to-red-600",
-  },
-  {
-    id: "ai-control",
-    label: "AI Control Panel",
-    icon: TrendingUp,
-    path: "ai-control",
-    description: "AI Settings & Prompts",
-    color: "from-purple-500 to-pink-600",
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    path: "settings",
-    description: "App Configuration",
-    color: "from-gray-500 to-slate-600",
-  },
-  {
-    id: "announcements",
-    label: "Announcements",
-    icon: Bell,
-    path: "announcements",
-    description: "System Messages",
-    color: "from-yellow-500 to-orange-600",
-  },
-  {
-    id: "search",
-    label: "Global Search",
-    icon: Search,
-    path: "search",
-    description: "Search Everything",
-    color: "from-indigo-500 to-blue-600",
-  },
-];
-
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, currentTheme } = useTheme();
+
+  const menuItems = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      path: "",
+      description: "Overview & Analytics",
+      color: `from-${theme.gradient.split("-")[0]}-${theme.gradient.split("-")[1]} to-${theme.gradient.split("-")[2]}-${theme.gradient.split("-")[3]}`,
+    },
+    {
+      id: "content",
+      label: "Content Management",
+      icon: BookOpen,
+      path: "content",
+      description: "AgriTech Wiki Materials",
+      color: "from-blue-500 to-cyan-600",
+    },
+    {
+      id: "quiz",
+      label: "Quiz Management",
+      icon: Brain,
+      path: "quiz",
+      description: "Questions & Tests",
+      color: "from-purple-500 to-pink-600",
+    },
+    {
+      id: "users",
+      label: "User Management",
+      icon: Users,
+      path: "users",
+      description: "User Accounts & Roles",
+      color: "from-orange-500 to-red-600",
+    },
+    {
+      id: "ai-control",
+      label: "AI Control Panel",
+      icon: TrendingUp,
+      path: "ai-control",
+      description: "AI Settings & Prompts",
+      color: "from-purple-500 to-pink-600",
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Settings,
+      path: "settings",
+      description: "App Configuration",
+      color: "from-gray-500 to-slate-600",
+    },
+    {
+      id: "announcements",
+      label: "Announcements",
+      icon: Bell,
+      path: "announcements",
+      description: "System Messages",
+      color: "from-yellow-500 to-orange-600",
+    },
+    {
+      id: "search",
+      label: "Global Search",
+      icon: Search,
+      path: "search",
+      description: "Search Everything",
+      color: "from-indigo-500 to-blue-600",
+    },
+    {
+      id: "monitoring",
+      label: "Monitoring",
+      icon: Activity,
+      path: "monitoring",
+      description: "System Monitoring",
+      color: "from-green-500 to-teal-600",
+    },
+  ];
 
   const darkMode = currentTheme === "red-black";
 
@@ -123,7 +131,7 @@ const AdminDashboard = () => {
 
   return (
     <div
-      className={`min-h-screen ${theme.bgGradient} ${theme.text} transition-colors duration-500`}
+      className={`flex h-screen overflow-hidden ${theme.bgGradient} ${theme.text} transition-colors duration-500`}
     >
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
@@ -136,19 +144,16 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* Main Layout */}
-      <div className="flex min-h-screen">
-        {/* Sidebar */}
-        <motion.div
-          initial={{ x: -300 }}
-          animate={{ x: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-72 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl transform ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-transform duration-300 ease-in-out lg:translate-x-0`}
-        >
+      {/* Sidebar - Fixed Position */}
+      <aside
+        className={`fixed left-0 top-0 h-screen w-72 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl flex flex-col justify-between z-30 transform ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } transition-transform duration-300 ease-in-out lg:translate-x-0 flex-shrink-0`}
+      >
+        {/* Top Section - Logo and Navigation */}
+        <div className="flex flex-col h-full">
           {/* Logo and Brand */}
-          <div className="flex items-center justify-between h-20 px-6 border-b border-white/20">
+          <div className="flex items-center justify-between h-20 px-6 border-b border-white/20 flex-shrink-0">
             <motion.div
               className="flex items-center"
               whileHover={{ scale: 1.02 }}
@@ -157,7 +162,7 @@ const AdminDashboard = () => {
               <div
                 className={`w-12 h-12 ${theme.primary} rounded-2xl flex items-center justify-center mr-4 shadow-lg`}
               >
-                <Shield className="text-white" size={24} />
+                <Shield size={24} />
               </div>
               <div>
                 <h1 className={`text-xl font-bold ${theme.accent}`}>
@@ -174,8 +179,8 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="mt-8 px-4">
+          {/* Navigation - Scrollable */}
+          <nav className="flex-1 overflow-y-auto px-4 py-6">
             <div className="space-y-3">
               {menuItems.map((item) => {
                 const Icon = item.icon;
@@ -243,113 +248,109 @@ const AdminDashboard = () => {
               })}
             </div>
           </nav>
+        </div>
 
+        {/* Bottom Section - User Profile and Logout */}
+        <div className="flex-shrink-0 border-t border-white/20 p-6">
           {/* User Profile Section */}
-          <motion.div
-            className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/20"
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <div className="flex items-center mb-4">
-              <motion.div
-                className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                transition={{ duration: 0.2 }}
+          <div className="flex items-center mb-4">
+            <motion.div
+              className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ duration: 0.2 }}
+            >
+              <span className="text-white font-bold text-lg">
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </span>
+            </motion.div>
+            <div className="ml-4 flex-1 min-w-0">
+              <p
+                className={`text-sm font-semibold truncate ${darkMode ? "text-white" : theme.text}`}
               >
-                <span className="text-white font-bold text-lg">
-                  {user?.name?.charAt(0)?.toUpperCase()}
+                {user?.name}
+              </p>
+              <p
+                className={`text-xs truncate ${darkMode ? theme.textSecondary : "text-gray-500"}`}
+              >
+                {user?.email}
+              </p>
+              <div className="flex items-center mt-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <span
+                  className={`text-xs font-medium ${darkMode ? theme.textSecondary : "text-gray-600"}`}
+                >
+                  Admin Online
                 </span>
-              </motion.div>
-              <div className="ml-4 flex-1">
-                <p
-                  className={`text-sm font-semibold ${darkMode ? "text-white" : theme.text}`}
-                >
-                  {user?.name}
-                </p>
-                <p
-                  className={`text-xs ${darkMode ? theme.textSecondary : "text-gray-500"}`}
-                >
-                  {user?.email}
-                </p>
-                <div className="flex items-center mt-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                  <span
-                    className={`text-xs font-medium ${darkMode ? theme.textSecondary : "text-gray-600"}`}
-                  >
-                    Admin Online
-                  </span>
-                </div>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <motion.button
-                onClick={handleLogout}
-                className="w-full flex items-center px-4 py-3 text-left text-red-600 hover:bg-red-50/80 hover:text-red-700 rounded-xl transition-all duration-200 font-medium backdrop-blur-sm"
-                whileHover={{
-                  scale: 1.02,
-                  backgroundColor: "rgba(239, 68, 68, 0.1)",
-                }}
-                whileTap={{ scale: 0.98 }}
+          {/* Logout Button */}
+          <motion.button
+            onClick={handleLogout}
+            className="w-full flex items-center px-4 py-3 text-left text-red-600 hover:bg-red-50/80 hover:text-red-700 rounded-xl transition-all duration-200 font-medium backdrop-blur-sm"
+            whileHover={{
+              scale: 1.02,
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+            }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <LogOut className="h-5 w-5 mr-3" />
+            Logout
+          </motion.button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="ml-0 lg:ml-72 flex-1 overflow-y-auto h-screen bg-transparent">
+        {/* Mobile Navigation Bar */}
+        <motion.div
+          className={`lg:hidden sticky top-0 z-20 ${
+            darkMode
+              ? `${theme.card} ${theme.text}`
+              : `bg-white/80 ${theme.text}`
+          } backdrop-blur-xl border-b border-white/20 shadow-lg`}
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="flex items-center justify-between h-16 px-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className={`p-2 rounded-xl ${
+                darkMode
+                  ? "bg-gray-800/50 hover:bg-gray-700/50"
+                  : "bg-white/60 hover:bg-white/80"
+              } transition-colors duration-200`}
+            >
+              <Menu className={`h-6 w-6 ${theme.text}`} />
+            </button>
+
+            <div className="flex items-center">
+              <h1
+                className={`text-lg font-semibold ${darkMode ? "text-white" : theme.text}`}
               >
-                <LogOut className="h-5 w-5 mr-3" />
-                Logout
-              </motion.button>
+                {menuItems.find((item) => location.pathname.endsWith(item.path))
+                  ?.label || "Admin Panel"}
+              </h1>
             </div>
-          </motion.div>
+
+            <div className="w-10"></div>
+          </div>
         </motion.div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Navigation Bar - Mobile Only */}
+        {/* Page Content */}
+        <div className="flex-1">
           <motion.div
-            className={`lg:hidden sticky top-0 z-30 ${
-              darkMode
-                ? `${theme.card} ${theme.text}`
-                : `bg-white/80 ${theme.text}`
-            } backdrop-blur-xl border-b border-white/20 shadow-lg`}
-            initial={{ y: -100 }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="flex items-center justify-between h-16 px-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className={`p-2 rounded-xl ${
-                  darkMode
-                    ? "bg-gray-800/50 hover:bg-gray-700/50"
-                    : "bg-white/60 hover:bg-white/80"
-                } transition-colors duration-200`}
-              >
-                <Menu className={`h-6 w-6 ${theme.text}`} />
-              </button>
-
-              <div className="flex items-center">
-                <h1
-                  className={`text-lg font-semibold ${darkMode ? "text-white" : theme.text}`}
-                >
-                  {menuItems.find((item) =>
-                    location.pathname.endsWith(item.path),
-                  )?.label || "Admin Panel"}
-                </h1>
-              </div>
-
-              <div className="w-10"></div>
-            </div>
-          </motion.div>
-
-          {/* Page Content */}
-          <motion.main
-            className="flex-1 overflow-y-auto"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
+            className="h-full"
           >
             <Outlet />
-          </motion.main>
+          </motion.div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

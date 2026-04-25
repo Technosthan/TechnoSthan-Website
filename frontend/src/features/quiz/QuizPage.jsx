@@ -225,7 +225,7 @@ const QuizPage = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
               onClick={handleRetake}
-              className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center"
+              className={`mt-6 w-full ${theme.button} font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center`}
             >
               <RotateCcw className="mr-2" size={20} />
               Take Quiz Again
@@ -267,7 +267,7 @@ const QuizPage = () => {
           transition={{ delay: 0.4 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+          <div className={`${theme.card} p-6 rounded-xl shadow-lg`}>
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
@@ -294,7 +294,7 @@ const QuizPage = () => {
                       {question.options.map((option, optIdx) => (
                         <label
                           key={optIdx}
-                          className="flex items-center p-3 bg-white dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+                          className={`flex items-center p-3 ${theme.card} rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors`}
                         >
                           <input
                             type="radio"
@@ -326,7 +326,7 @@ const QuizPage = () => {
               transition={{ delay: 0.6 }}
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center"
+              className={`w-full ${theme.button} disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center`}
             >
               {submitting ? (
                 <>

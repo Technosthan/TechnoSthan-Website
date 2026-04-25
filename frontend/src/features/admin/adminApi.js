@@ -2,6 +2,7 @@ import axiosInstance from "../../shared/lib/axiosInstance";
 
 // Admin stats and analytics
 export const getAdminStats = () => axiosInstance.get("/api/admin/stats");
+export const getMonitoringStats = () => axiosInstance.get("/api/admin/monitoring");
 
 // User management
 export const getAllUsers = () => axiosInstance.get("/api/admin/users");

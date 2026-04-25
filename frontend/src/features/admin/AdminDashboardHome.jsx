@@ -101,7 +101,7 @@ const AdminDashboardHome = () => {
       trendUp: true,
     },
     {
-      title: "Learning Content",
+      title: "AgriTech Wiki Content",
       value: stats?.totalContent || 0,
       icon: BookOpen,
       color: "from-emerald-500 to-emerald-600",
@@ -211,7 +211,7 @@ const AdminDashboardHome = () => {
                   Quiz Performance
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Student learning analytics
+                  Student AgriTech Wiki analytics
                 </p>
               </div>
             </div>
@@ -307,7 +307,7 @@ const AdminDashboardHome = () => {
                 <GraduationCap className="h-5 w-5 text-blue-600 mr-3" />
                 <div>
                   <p className="font-semibold text-gray-900">Students</p>
-                  <p className="text-sm text-gray-600">Learning users</p>
+                  <p className="text-sm text-gray-600">AgriTech Wiki users</p>
                 </div>
               </div>
               <span className="text-2xl font-bold text-blue-700">

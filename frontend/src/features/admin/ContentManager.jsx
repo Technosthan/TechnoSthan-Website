@@ -41,9 +41,21 @@ const ContentManager = () => {
     subtopics: [{ heading: "", body: "" }],
     resources: [{ label: "", url: "" }],
   });
+  const [openMenu, setOpenMenu] = useState(null);
 
   useEffect(() => {
     fetchContents();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".menu-container")) {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchContents = async () => {
@@ -194,7 +206,7 @@ const ContentManager = () => {
             Content Management
           </h1>
           <p className="text-gray-600">
-            Create and manage learning materials for your students
+            Create and manage AgriTech Wiki materials for your students
           </p>
         </div>
         <button
@@ -422,7 +434,7 @@ const ContentManager = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Resource 
+                                Resource
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Label
@@ -550,7 +562,7 @@ const ContentManager = () => {
             <div className="flex items-center space-x-2">
               <BookOpen className="h-5 w-5 text-green-600" />
               <span className="text-sm font-medium text-gray-600">
-                Learning Materials
+                AgriTech Wiki Materials
               </span>
             </div>
           </div>
@@ -566,7 +578,7 @@ const ContentManager = () => {
               <p className="text-gray-600 mb-6">
                 {searchTerm || filterStatus !== "all"
                   ? "Try adjusting your search or filter criteria."
-                  : "Get started by creating your first learning content."}
+                  : "Get started by creating your first AgriTech Wiki content."}
               </p>
               {!searchTerm && filterStatus === "all" && (
                 <button
@@ -658,20 +670,45 @@ const ContentManager = () => {
                   </div>
 
                   <div className="flex items-center space-x-2 ml-6">
-                    <button
-                      onClick={() => handleEdit(content)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                      title="Edit content"
-                    >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(content._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                      title="Delete content"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                    <div className="relative menu-container">
+                      <button
+                        onClick={() =>
+                          setOpenMenu(
+                            openMenu === content._id ? null : content._id,
+                          )
+                        }
+                        className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                        title="More options"
+                      >
+                        <MoreVertical className="h-5 w-5" />
+                      </button>
+                      {openMenu === content._id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                handleEdit(content);
+                                setOpenMenu(null);
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Content
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDelete(content._id);
+                                setOpenMenu(null);
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Content
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

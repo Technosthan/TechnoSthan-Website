@@ -20,10 +20,10 @@ const ContactSection = () => {
       <motion.button
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.96 }}
-        onClick={() => navigate("/learning")}
+        onClick={() => navigate("/AgriTech Wiki")}
         className={`${theme.buttonSecondary} font-bold px-8 py-4 rounded-2xl shadow-xl text-lg`}
       >
-        Start Learning
+        Demo
       </motion.button>
     </motion.section>
   );

@@ -69,7 +69,7 @@ const DashboardPage = () => {
             totalQuizzes: 12,
             averageScore: 78,
             totalContent: 25,
-            learningProgress: 65,
+            AgriTech WikiProgress: 65,
           },
           recentActivity: [
             { score: 8, total: 10, createdAt: new Date(Date.now() - 86400000) },
@@ -196,7 +196,7 @@ const DashboardPage = () => {
                   Welcome back, {dashboardData?.profile?.name || "Farmer"}! 👋
                 </h2>
                 <p className={`${theme.text} opacity-80`}>
-                  Ready to continue your agricultural learning journey?
+                  Ready to continue your agricultural AgriTech Wiki journey?
                 </p>
               </div>
             </div>
@@ -225,7 +225,7 @@ const DashboardPage = () => {
               },
               {
                 icon: BookOpen,
-                title: "Learning Content",
+                title: "AgriTech Wiki Content",
                 value: dashboardData?.stats?.totalContent || 0,
                 color: "from-green-400 to-teal-500",
                 bgColor:
@@ -234,7 +234,7 @@ const DashboardPage = () => {
               {
                 icon: TrendingUp,
                 title: "Progress",
-                value: `${dashboardData?.stats?.learningProgress || 0}%`,
+                value: `${dashboardData?.stats?.AgriTech WikiProgress || 0}%`,
                 color: "from-purple-400 to-pink-500",
                 bgColor:
                   "from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20",
@@ -369,9 +369,9 @@ const DashboardPage = () => {
                 {[
                   {
                     icon: BookOpen,
-                    title: "Continue Learning",
+                    title: "Continue AgriTech Wiki",
                     desc: "Explore new agricultural topics",
-                    path: "/learning",
+                    path: "/AgriTech Wiki",
                     color: "from-green-400 to-emerald-500",
                     hoverColor: "hover:from-green-500 hover:to-emerald-600",
                   },

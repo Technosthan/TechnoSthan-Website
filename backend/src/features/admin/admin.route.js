@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getAdminStats,
+  getMonitoringStats,
   getAllUsers,
   updateUserRole,
   deleteUser,
@@ -28,6 +29,7 @@ console.log("Admin routes registered");
 
 // Stats and analytics
 router.get("/stats", getAdminStats);
+router.get("/monitoring", getMonitoringStats);
 
 // User management
 router.get("/users", getAllUsers);

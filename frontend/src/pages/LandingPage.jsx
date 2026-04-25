@@ -57,7 +57,7 @@ const LandingPage = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 bg-white rounded-xl shadow-2xl p-4 min-w-64 z-10 theme-dropdown"
+                className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-4 ${theme.card} rounded-xl shadow-2xl p-4 min-w-64 z-10 theme-dropdown`}
               >
                 <div className="grid grid-cols-2 gap-3">
                   {themeOptions.map((themeKey, index) => (
@@ -89,27 +89,21 @@ const LandingPage = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="grid md:grid-cols-3 gap-8"
         >
-          <div
-            className={`p-6 rounded-xl ${theme.bg === "bg-black" ? "bg-gray-800" : "bg-white"} shadow-lg`}
-          >
+          <div className={`p-6 rounded-xl ${theme.card} shadow-lg`}>
             <h3 className="text-xl font-semibold mb-3">Smart Farming</h3>
             <p className="opacity-80">
               AI-powered insights for optimal crop management and yield
               prediction.
             </p>
           </div>
-          <div
-            className={`p-6 rounded-xl ${theme.bg === "bg-black" ? "bg-gray-800" : "bg-white"} shadow-lg`}
-          >
+          <div className={`p-6 rounded-xl ${theme.card} shadow-lg`}>
             <h3 className="text-xl font-semibold mb-3">IoT Integration</h3>
             <p className="opacity-80">
               Real-time monitoring of soil conditions, weather, and equipment
               status.
             </p>
           </div>
-          <div
-            className={`p-6 rounded-xl ${theme.bg === "bg-black" ? "bg-gray-800" : "bg-white"} shadow-lg`}
-          >
+          <div className={`p-6 rounded-xl ${theme.card} shadow-lg`}>
             <h3 className="text-xl font-semibold mb-3">Data Analytics</h3>
             <p className="opacity-80">
               Comprehensive analytics to make data-driven farming decisions.

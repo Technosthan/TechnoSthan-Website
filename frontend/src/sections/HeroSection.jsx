@@ -25,10 +25,10 @@ const HeroSection = () => {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => navigate("/learning")}
+          onClick={() => navigate("/AgriTech Wiki")}
           className={`${theme.button} hover:scale-105 transition transform px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold`}
         >
-          Start Learning
+          Demo
         </motion.button>
       </motion.div>
       <motion.img

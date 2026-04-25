@@ -45,10 +45,10 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  to="/learning"
+                  to="/AgriTech Wiki"
                   className={`hover:${theme.accent} transition`}
                 >
-                  Learning
+                  AgriTech Wiki
                 </Link>
               </li>
             </ul>
@@ -60,7 +60,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li>AI Chatbot</li>
               <li>IoT Dashboard</li>
-              <li>Learning Modules</li>
+              <li>AgriTech Wiki Modules</li>
               <li>Knowledge Assessment</li>
             </ul>
           </div>

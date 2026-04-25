@@ -36,9 +36,21 @@ const UserManager = () => {
   const [editingPermissions, setEditingPermissions] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
+  const [openMenu, setOpenMenu] = useState(null);
 
   useEffect(() => {
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".menu-container")) {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchUsers = async () => {
@@ -163,7 +175,7 @@ const UserManager = () => {
               placeholder="Search users by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-black w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className={`text-black w-full pl-10 pr-4 py-3 ${theme.border} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -416,22 +428,43 @@ const UserManager = () => {
                         </div>
                       </div>
                     ) : (
-                      <>
+                      <div className="relative menu-container">
                         <button
-                          onClick={() => setEditingPermissions(user._id)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors duration-200"
-                          title="Edit permissions"
+                          onClick={() =>
+                            setOpenMenu(openMenu === user._id ? null : user._id)
+                          }
+                          className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                          title="More options"
                         >
-                          <SettingsIcon className="h-5 w-5" />
+                          <MoreVertical className="h-5 w-5" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteUser(user._id, user.name)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                          title="Delete user"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </>
+                        {openMenu === user._id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                            <div className="py-1">
+                              <button
+                                onClick={() => {
+                                  setEditingPermissions(user._id);
+                                  setOpenMenu(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 transition-colors duration-200"
+                              >
+                                <SettingsIcon className="h-4 w-4 mr-2" />
+                                Edit Permissions
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleDeleteUser(user._id, user.name);
+                                  setOpenMenu(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete User
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

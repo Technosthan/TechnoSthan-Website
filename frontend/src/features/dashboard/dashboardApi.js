@@ -30,8 +30,8 @@ export const getDashboardStats = async () => {
   // Recent activity (last 5 quiz results)
   const recentQuizzes = quizResults.data.data?.slice(-5).reverse() || [];
 
-  // Learning progress (mock for now - could be based on viewed content)
-  const learningProgress = Math.min(totalQuizzes * 10, 100); // Simple calculation
+  // AgriTech Wiki progress (mock for now - could be based on viewed content)
+  const AgriTech WikiProgress = Math.min(totalQuizzes * 10, 100); // Simple calculation
 
   return {
     profile: profile.data.data,
@@ -39,7 +39,7 @@ export const getDashboardStats = async () => {
       totalQuizzes,
       averageScore: Math.round(averageScore),
       totalContent,
-      learningProgress,
+      AgriTech WikiProgress,
     },
     recentActivity: recentQuizzes,
     contentCount: totalContent,

@@ -18,6 +18,7 @@ import AIControlPanel from "./features/admin/AIControlPanel";
 import SettingsPanel from "./features/admin/SettingsPanel";
 import AnnouncementManager from "./features/admin/AnnouncementManager";
 import GlobalSearch from "./features/admin/GlobalSearch";
+import MonitoringPage from "./features/admin/MonitoringPage";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import FloatingThemeSelector from "./components/FloatingThemeSelector";
 
@@ -34,7 +35,7 @@ function App() {
 
           {/* Protected User Routes */}
           <Route
-            path="/learning"
+            path="/AgriTech Wiki"
             element={
               <ProtectedRoute>
                 <ContentPage />
@@ -78,6 +79,7 @@ function App() {
             <Route path="settings" element={<SettingsPanel />} />
             <Route path="announcements" element={<AnnouncementManager />} />
             <Route path="search" element={<GlobalSearch />} />
+            <Route path="monitoring" element={<MonitoringPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
