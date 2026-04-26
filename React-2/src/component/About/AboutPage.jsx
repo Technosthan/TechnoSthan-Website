@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion"; // Commented out - not used
+import { motion } from "framer-motion";
 import { Hotel, Rocket, Leaf, Code, CheckCircle2 } from "lucide-react";
 import "./AboutPage.css";
 import bgImage from "../../assets/about-bg.jpg";
@@ -57,7 +57,7 @@ const AboutPage = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="gradient-text color-white-900">About TechnoSthan</h1>
+          <h1 className="gradient-text">About TechnoSthan</h1>
           <p className="subtitle">
             Innovation Tomorrow. Building Digital Excellence.
           </p>
@@ -82,7 +82,7 @@ const AboutPage = () => {
         <div className="bento-grid">
           {services.map((service, index) => (
             <motion.div 
-              className="service-card" 
+              className={`service-card service-${index}`}
               key={index}
               whileHover={{ scale: 1.05 }}
               initial={{ opacity: 0, y: 30 }}

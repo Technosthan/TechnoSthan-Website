@@ -1,36 +1,138 @@
+/* ================= BASE ================= */
 .solution {
-  padding: 60px 20px;
+  padding: 80px 20px;
   text-align: center;
+  background: radial-gradient(circle at top, #020617, #020617 60%, #000);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
 }
 
+/* 🔥 BACKGROUND GLOW */
+.solution::before,
+.solution::after {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  filter: blur(120px);
+  z-index: 0;
+}
+
+.solution::before {
+  background: rgba(99,102,241,0.35);
+  top: -100px;
+  left: -100px;
+}
+
+.solution::after {
+  background: rgba(34,197,94,0.25);
+  bottom: -100px;
+  right: -100px;
+}
+
+/* ================= HEADER ================= */
+.solution h1 {
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  font-weight: 900;
+  margin-bottom: 10px;
+
+  background: linear-gradient(90deg, #38bdf8, #6366f1, #22c55e);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.solution p {
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto 40px;
+}
+
+/* ================= GRID ================= */
 .solution-grid {
+  position: relative;
+  z-index: 1;
+
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 30px;
-  grid-auto-rows: minmax(auto, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 25px;
+
   max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto;
 }
 
+/* ================= CARD ================= */
 .solution-card {
-  padding: 20px;
-  background: #0f2027;
-  color: white;
-  border-radius: 10px;
+  padding: 30px;
+  border-radius: 18px;
+
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+
   cursor: pointer;
-  transition: 0.3s;
+  transition: 0.4s;
+  position: relative;
+  overflow: hidden;
 }
 
+/* 🔥 LIGHT SWEEP */
+.solution-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.2), transparent);
+  opacity: 0;
+  transition: 0.4s;
+}
+
+.solution-card:hover::before {
+  opacity: 1;
+}
+
+/* HOVER */
 .solution-card:hover {
-  background: #203a43;
-  transform: translateY(-5px);
+  transform: translateY(-10px) scale(1.03);
 }
 
-/* Responsive */
+/* ================= TITLE ================= */
+.solution-card h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* TEXT */
+.solution-card p {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+/* ================= COLOR IDENTITY ================= */
+
+/* 🏨 Hospitality */
+.solution-card:nth-child(1):hover {
+  box-shadow: 0 0 40px rgba(255,170,120,0.4);
+}
+
+/* 🚀 Innovation */
+.solution-card:nth-child(2):hover {
+  box-shadow: 0 0 40px rgba(168,85,247,0.4);
+}
+
+/* 🌱 Agritech */
+.solution-card:nth-child(3):hover {
+  box-shadow: 0 0 40px rgba(34,197,94,0.4);
+}
+
+/* 💻 IT */
+.solution-card:nth-child(4):hover {
+  box-shadow: 0 0 40px rgba(14,165,233,0.4);
+}
+
+/* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
   .solution {
-    padding: 40px 15px;
+    padding: 50px 15px;
   }
 }

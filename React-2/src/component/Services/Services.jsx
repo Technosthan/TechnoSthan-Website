@@ -51,27 +51,63 @@ const Services = () => {
 
       <Helmet>
         <title>Our Verticals - TechnoSthan</title>
-        <meta
-          name="description"
-          content="TechnoSthan Verticals: Hospitality, Innovations Hub, AgriTech & IT Services."
-        />
       </Helmet>
 
       <div className="bg-glow"></div>
 
+      {/* 🔥 HERO */}
       <motion.div
-        className="services-header"
+        className="services-header hero-pro"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <span className="badge">Expertise</span>
-        <h1>Our Business Verticals</h1>
-        <p>
-          Pushing boundaries with innovative digital solutions tailored for your success.
-        </p>
+        <div className="hero-left">
+          <span className="badge">EXPERTISE</span>
+
+          <h1>
+            Our Business <br /> Verticals
+          </h1>
+
+          <p>
+            Pushing boundaries with innovative digital solutions tailored for your success.
+          </p>
+
+          <div className="hero-buttons">
+
+            {/* ✅ Explore → Scroll */}
+            <button
+              className="btn primary"
+              onClick={() => {
+                const section = document.getElementById("services-section");
+                section?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Explore
+            </button>
+
+            {/* ✅ Contact → Page */}
+            <button
+              className="btn secondary"
+              onClick={() => navigate("/contact")}
+            >
+              Contact
+            </button>
+
+          </div>
+        </div>
+
+        {/* RIGHT VISUAL */}
+        <div className="hero-right">
+          <div className="card-stack">
+            <div className="card-layer"></div>
+            <div className="card-layer"></div>
+            <div className="card-layer main"></div>
+          </div>
+        </div>
       </motion.div>
 
-      <motion.div className="services-grid">
+      {/* 🔥 SERVICES GRID */}
+      <motion.div className="services-grid" id="services-section">
         {services.map((item, index) => (
           <motion.div
             key={index}
@@ -79,16 +115,13 @@ const Services = () => {
             onClick={() => navigate(item.path)}
           >
 
-            {/* 🔥 IMAGE LAYER */}
             <div
               className="card-bg"
               style={{ backgroundImage: `url(${item.img})` }}
             ></div>
 
-            {/* 🔥 OVERLAY */}
             <div className="overlay"></div>
 
-            {/* 🔥 CONTENT */}
             <div className="content">
               <div className="card-top">
                 <div
@@ -120,6 +153,7 @@ const Services = () => {
           </motion.div>
         ))}
       </motion.div>
+
     </section>
   );
 };

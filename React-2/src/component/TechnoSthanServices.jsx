@@ -31,25 +31,24 @@ const services = [
 const TechnoSthanServices = () => {
   return (
     <section className="services-section">
-      <h1>Our Verticals</h1>
+      <h1>Our <span>Verticals</span></h1>
+
       <p className="subtitle">
-        TechnoSthan delivers focused vertical expertise across Hospitality, Innovation, AgriTech and IT services.
+        TechnoSthan delivers focused vertical expertise across Hospitality,
+        Innovation, AgriTech and IT services.
       </p>
 
       <div className="services-grid">
         {services.map((item, index) => (
-          <div className="service-card" key={index}>
-
-            {/* 🔥 IMAGE LAYER */}
+          <div className={`service-card service-${index}`} key={index}>
+            
             <div
               className="card-bg"
               style={{ backgroundImage: `url(${item.img})` }}
             ></div>
 
-            {/* 🔥 OVERLAY */}
             <div className="overlay"></div>
 
-            {/* 🔥 CONTENT */}
             <div className="content">
               <div className="icon">{item.icon}</div>
               <h3>{item.title}</h3>

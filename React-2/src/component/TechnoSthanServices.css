@@ -1,102 +1,141 @@
+/* ================= SECTION ================= */
 .services-section {
-  padding: 80px 50px;
-  background: linear-gradient(135deg, #050f1a, #071c2f);
-  color: #fff;
+  padding: 100px 40px;
   text-align: center;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: #fff;
 }
 
+/* ================= HEADING ================= */
 .services-section h1 {
-  font-size: 2.6rem;
-  margin-bottom: 10px;
+  font-size: clamp(2.8rem, 6vw, 3.5rem);
   font-weight: 800;
+  color: #e2e8f0;
 }
 
+.services-section h1 span {
+  background: linear-gradient(90deg, #818cf8, #38bdf8);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.services-section h1::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 3px;
+  margin: 10px auto;
+  background: linear-gradient(90deg, #6366f1, #22c55e);
+  border-radius: 10px;
+}
+
+/* ================= SUBTITLE ================= */
 .subtitle {
-  color: #9aa4b2;
-  margin-bottom: 50px;
+  color: #94a3b8;
+  max-width: 650px;
+  margin: auto;
+  margin-bottom: 60px;
 }
 
-/* GRID */
+/* ================= GRID ================= */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+  max-width: 1100px;
+  margin: auto;
 }
 
-/* CARD */
+/* ================= CARD ================= */
 .service-card {
   position: relative;
-  height: 300px;
+  height: 320px;
   border-radius: 20px;
   overflow: hidden;
   cursor: pointer;
+  background: #0f172a;
+  transition: 0.4s;
 }
 
-/* 🔥 IMAGE */
+/* IMAGE */
 .card-bg {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
-
-  filter: brightness(0.8) contrast(1.1);
-  transform: scale(1.05);
-
-  transition: 0.6s ease;
+  filter: brightness(0.75);
+  transition: 0.5s;
 }
 
-/* ZOOM */
-.service-card:hover .card-bg {
-  transform: scale(1.1);
-}
-
-/* 🔥 OVERLAY */
+/* OVERLAY */
 .overlay {
   position: absolute;
   inset: 0;
-  background: rgba(5, 15, 26, 0.85);
-  transition: 0.4s ease;
+  background: linear-gradient(
+    to top,
+    rgba(2,6,23,0.9),
+    rgba(2,6,23,0.5)
+  );
 }
 
-/* HOVER LIGHT */
-.service-card:hover .overlay {
-  background: rgba(5, 15, 26, 0.6);
+/* 🎨 COLOR TINT */
+.service-0 .overlay {
+  background: linear-gradient(to top, rgba(245,158,11,0.3), rgba(2,6,23,0.8));
+}
+.service-1 .overlay {
+  background: linear-gradient(to top, rgba(168,85,247,0.3), rgba(2,6,23,0.8));
+}
+.service-2 .overlay {
+  background: linear-gradient(to top, rgba(34,197,94,0.3), rgba(2,6,23,0.8));
+}
+.service-3 .overlay {
+  background: linear-gradient(to top, rgba(14,165,233,0.3), rgba(2,6,23,0.8));
 }
 
 /* CONTENT */
 .content {
-  position: relative;
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  text-align: left;
   z-index: 2;
-  color: white;
-  text-align: center;
-  padding: 20px;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
+/* ICON */
 .icon {
-  font-size: 36px;
-  margin-bottom: 10px;
-}
-
-.service-card h3 {
-  font-size: 18px;
+  font-size: 26px;
   margin-bottom: 8px;
 }
 
+/* TEXT */
+.service-card h3 {
+  font-size: 16px;
+}
+
 .service-card p {
-  font-size: 14px;
-  opacity: 0.8;
+  font-size: 13px;
+  color: #cbd5f5;
 }
 
 /* HOVER */
 .service-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-10px);
 }
 
-/* RESPONSIVE */
-@media (max-width: 768px) {
-  .services-section {
-    padding: 60px 20px;
+.service-card:hover .card-bg {
+  transform: scale(1.1);
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 900px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .services-grid {
+    grid-template-columns: 1fr;
   }
 }
