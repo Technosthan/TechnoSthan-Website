@@ -59,9 +59,17 @@ const parseTelegramConnectionToken = (token = "") => {
   };
 };
 
+const normalizeTelegramBotToken = (value = "") => {
+  const raw = String(value || "").trim();
+  // Users often paste token as `bot<token>`; Telegram API URL already adds `bot`.
+  return raw.replace(/^bot/i, "");
+};
+
 const sendToTelegram = async ({ token, message, type }) => {
   const connectionTelegram = parseTelegramConnectionToken(token);
-  const botToken = connectionTelegram.botToken || (isUsableSecret(process.env.TELEGRAM_BOT_TOKEN) ? process.env.TELEGRAM_BOT_TOKEN : "");
+  const botToken = normalizeTelegramBotToken(
+    connectionTelegram.botToken || (isUsableSecret(process.env.TELEGRAM_BOT_TOKEN) ? process.env.TELEGRAM_BOT_TOKEN : "")
+  );
   const chatId = connectionTelegram.chatId || (isUsableSecret(process.env.TELEGRAM_CHAT_ID) ? process.env.TELEGRAM_CHAT_ID : "");
 
   if (!botToken || !chatId) {
@@ -85,9 +93,18 @@ const sendToTelegram = async ({ token, message, type }) => {
 
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
+      const description = String(errorPayload?.description || "Telegram API request failed");
+
+      if (/unauthorized/i.test(description)) {
+        return {
+          success: false,
+          detail: "Telegram Unauthorized: Bot token invalid hai. BotFather se correct token copy karo (without leading `bot`)."
+        };
+      }
+
       return {
         success: false,
-        detail: errorPayload?.description || "Telegram API request failed"
+        detail: description
       };
     }
 

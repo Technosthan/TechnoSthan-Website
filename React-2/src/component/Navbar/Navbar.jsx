@@ -1,19 +1,44 @@
 import React, { useState, useEffect } from "react";
 import "./Navbar.css";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const readAuthState = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const token = localStorage.getItem("token");
+      return token && user ? user : null;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = readAuthState();
+    setCurrentUser(user);
     if (user && user.role === "admin") {
       setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
     }
+
+    const onStorageChange = () => {
+      const latestUser = readAuthState();
+      setCurrentUser(latestUser);
+      setIsAdmin(latestUser?.role === "admin");
+    };
+
+    window.addEventListener("storage", onStorageChange);
+    return () => window.removeEventListener("storage", onStorageChange);
   }, []);
 
   //  active link helper
@@ -23,6 +48,17 @@ const Navbar = () => {
   const handleClick = () => {
     setMenuOpen(false);
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setCurrentUser(null);
+    setShowProfileMenu(false);
+    setMenuOpen(false);
+    navigate("/login");
+  };
+
+  const avatarLabel = (currentUser?.name || "U").trim().charAt(0).toUpperCase();
 
   return (
     <nav className="navbar">
@@ -81,16 +117,48 @@ const Navbar = () => {
           </Link>
         )}
 
-        {/* MOBILE LOGIN */}
-        {/* <div className="mobile-auth">
-          <Link to="/login" onClick={handleClick}>Login</Link>
-        </div> */}
+        {!currentUser && (
+          <div className="mobile-auth">
+            <Link to="/register" onClick={handleClick}>Signup</Link>
+            <Link to="/login" onClick={handleClick}>Login</Link>
+          </div>
+        )}
+
+        {currentUser && (
+          <div className="mobile-auth logged-in">
+            <span className="mobile-user-name">{currentUser.name}</span>
+            <button type="button" className="mobile-logout-btn" onClick={handleLogout}>Logout</button>
+          </div>
+        )}
 
       </div>
 
       {/* DESKTOP BUTTON */}
       <div className="auth-buttons">
-        <Link to="/login" className="login-btn">Login</Link>
+        {!currentUser ? (
+          <>
+            <Link to="/register" className="signup-btn">Signup</Link>
+            <Link to="/login" className="login-btn">Login</Link>
+          </>
+        ) : (
+          <div className="profile-menu-wrap">
+            <button
+              type="button"
+              className="profile-avatar-btn"
+              onClick={() => setShowProfileMenu((prev) => !prev)}
+            >
+              <span className="profile-avatar">{avatarLabel}</span>
+              <span className="profile-name">{currentUser.name}</span>
+            </button>
+
+            {showProfileMenu && (
+              <div className="profile-dropdown">
+                <div className="profile-dropdown-user">{currentUser.email}</div>
+                <button type="button" onClick={handleLogout}>Logout</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </nav>

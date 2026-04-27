@@ -1437,10 +1437,21 @@ body {
   justify-content: center;
   gap: 8px;
   margin-top: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.platform-item:hover .platform-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .platform-item .share-btn,
-.platform-item .copy-btn {
+.platform-item .copy-btn,
+.platform-item .delete-btn {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   width: 28px;
@@ -1455,7 +1466,8 @@ body {
 }
 
 .platform-item .share-btn:hover,
-.platform-item .copy-btn:hover {
+.platform-item .copy-btn:hover,
+.platform-item .delete-btn:hover {
   transform: translateY(-1px);
 }
 
@@ -1471,8 +1483,15 @@ body {
   color: white;
 }
 
+.platform-item .delete-btn:hover {
+  background: var(--accent-danger);
+  border-color: var(--accent-danger);
+  color: white;
+}
+
 .platform-item .copy-btn svg,
-.platform-item .share-btn svg {
+.platform-item .share-btn svg,
+.platform-item .delete-btn svg {
   width: 14px;
   height: 14px;
 }
@@ -2473,6 +2492,23 @@ body {
   border-radius: 14px;
   color: var(--text-primary);
   font-size: 14px;
+}
+
+.add-hr-form input[type="file"],
+.current-profile-editor input[type="file"] {
+  padding: 10px;
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.profile-image-preview {
+  grid-column: span 2;
+  width: 100%;
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background-size: cover;
+  background-position: center;
 }
 
 .profile-auth-panel input:focus,

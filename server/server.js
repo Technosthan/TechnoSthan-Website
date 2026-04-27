@@ -155,6 +155,10 @@ app.use("/api", require("./routes/protectedRoutes"));
 const socialRoutes = require("./routes/socialRoutes");
 app.use("/api/social", socialRoutes);
 
+// HR profile routes
+const hrRoutes = require("./routes/hrRoutes");
+app.use("/api/hr", hrRoutes);
+
 // Icon grid / HR platform management routes
 app.use("/api/icon-grid", iconGridRoutes);
 

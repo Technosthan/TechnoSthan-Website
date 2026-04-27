@@ -4,13 +4,19 @@ const jwt = require("jsonwebtoken");
 exports.protect = (req, res, next) => {
   try {
     let token;
+    const authHeader = req.headers.authorization || req.headers.Authorization;
 
     // ✅ Authorization header se token lena (Bearer format)
     if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
+      authHeader &&
+      /^Bearer\s+/i.test(authHeader)
     ) {
-      token = req.headers.authorization.split(" ")[1];
+      token = authHeader.split(" ")[1];
+    }
+
+    // Legacy fallback headers
+    if (!token && req.headers["x-access-token"]) {
+      token = String(req.headers["x-access-token"]).trim();
     }
 
     // ❌ Agar token nahi mila

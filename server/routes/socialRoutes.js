@@ -5,6 +5,8 @@ const {
   saveSocial,
   getSocial,
   deleteSocial,
+  getSocialPlatforms,
+  addSocialPlatform,
   addWhatsAppContact,
   getWhatsAppContacts,
   searchWhatsAppContacts,
@@ -17,6 +19,8 @@ const {
 // ================= EXISTING ROUTES =================
 router.post("/", saveSocial);
 router.get("/", getSocial);
+router.get("/platforms", getSocialPlatforms);
+router.post("/platforms", addSocialPlatform);
 router.delete("/:id", deleteSocial);
 
 // ================= NEW WHATSAPP CONTACT ROUTES =================

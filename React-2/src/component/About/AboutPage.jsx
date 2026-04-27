@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Hotel, Rocket, Leaf, Code, CheckCircle2 } from "lucide-react";
 import "./AboutPage.css";
 import bgImage from "../../assets/about-bg.jpg";
 
 const AboutPage = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const fadeIn = {
     initial: { opacity: 0, y: 30 },
@@ -36,6 +37,14 @@ const AboutPage = () => {
     },
   ];
 
+  // Auto-slide carousel every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % services.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [services.length]);
+
   return (
     <div className="about-container">
 
@@ -51,17 +60,40 @@ const AboutPage = () => {
       >
         <div className="overlay"></div>
 
-        <motion.div 
-          className="hero-content"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h1 className="gradient-text">About TechnoSthan</h1>
-          <p className="subtitle">
-            Innovation Tomorrow. Building Digital Excellence.
-          </p>
-        </motion.div>
+        <div className="hero-wrapper">
+          <motion.div 
+            className="hero-content"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h1 className="gradient-text">About TechnoSthan</h1>
+            <p className="subtitle">
+              Innovation Tomorrow. Building Digital Excellence.
+            </p>
+          </motion.div>
+
+          {/* 🎬 PREMIUM VIDEO SECTION */}
+          <motion.div 
+            className="premium-video-container"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+          >
+            <div className="video-frame">
+              <video 
+                className="premium-video"
+                controls 
+                width="100%"
+                poster="/hero-video.jpg"
+              >
+                <source src="/hero-video.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              <div className="video-glow"></div>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
       {/* WHO WE ARE */}

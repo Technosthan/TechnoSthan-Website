@@ -1,4 +1,5 @@
 const Social = require("../models/socialModel");
+const { Platform } = require("../models/Platform");
 const SocialConnection = require("../models/SocialConnection");
 const SocialPostLog = require("../models/SocialPostLog");
 const axios = require("axios");
@@ -18,6 +19,46 @@ const resolveUserId = (req) =>
   req.user?._id || req.body?.userId || "anonymous";
 
 const getErrorStatus = (err) => err.statusCode || 500;
+
+const defaultPlatformSeed = [
+  { platformId: "facebook", name: "Facebook", icon: "Facebook", color: "#1877F2", charLimit: 63206, category: "social" },
+  { platformId: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200, category: "social" },
+  { platformId: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000, category: "professional" },
+  { platformId: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280, category: "social" },
+  { platformId: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536, category: "messaging" },
+  { platformId: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096, category: "messaging" },
+  { platformId: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000, category: "content" }
+];
+
+const ensureDefaultPlatforms = async () => {
+  const count = await Platform.countDocuments({ deletedAt: null });
+  if (count > 0) return;
+
+  const docs = defaultPlatformSeed.map((platform, index) => ({
+    ...platform,
+    isActive: true,
+    isVisibleToUsers: true,
+    isCustom: false,
+    gridPosition: index,
+    metadata: {
+      category: platform.category,
+      features: ["copy", "share", "delete"],
+      requiresAuth: false,
+      description: `${platform.name} publishing channel`
+    }
+  }));
+
+  await Platform.insertMany(docs, { ordered: false });
+};
+
+const toPlatformDTO = (record) => ({
+  _id: record._id,
+  id: record.platformId,
+  name: record.name,
+  icon: record.icon,
+  color: record.color,
+  charLimit: record.charLimit
+});
 
 // ================= SAVE =================
 const saveSocial = async (req, res) => {
@@ -175,6 +216,69 @@ const sendSocial = async (req, res) => {
   }
 };
 
+// ================= PLATFORM GRID =================
+const getSocialPlatforms = async (req, res) => {
+  try {
+    await ensureDefaultPlatforms();
+
+    const platforms = await Platform.find({
+      deletedAt: null,
+      isVisibleToUsers: true,
+      isActive: true
+    })
+      .sort({ gridPosition: 1, createdAt: 1 })
+      .lean();
+
+    res.json(platforms.map(toPlatformDTO));
+  } catch (err) {
+    res.status(getErrorStatus(err)).json({ msg: err.message });
+  }
+};
+
+const addSocialPlatform = async (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim();
+    const incomingId = String(req.body?.id || req.body?.platformId || name)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "");
+
+    if (!name || !incomingId) {
+      return res.status(400).json({ msg: "name and id are required" });
+    }
+
+    const existing = await Platform.findOne({ platformId: incomingId, deletedAt: null }).lean();
+    if (existing) {
+      return res.status(409).json({ msg: "Platform already exists" });
+    }
+
+    const maxGrid = await Platform.findOne({ deletedAt: null }).sort({ gridPosition: -1 }).lean();
+
+    const platform = await Platform.create({
+      platformId: incomingId,
+      name,
+      icon: String(req.body?.icon || "Link"),
+      color: String(req.body?.color || "#1DA1F2"),
+      charLimit: Number(req.body?.charLimit) || 5000,
+      isActive: true,
+      isVisibleToUsers: true,
+      isCustom: true,
+      gridPosition: Number(maxGrid?.gridPosition || 0) + 1,
+      metadata: {
+        category: "custom",
+        features: ["copy", "share", "delete"],
+        requiresAuth: false,
+        description: `${name} custom platform`
+      }
+    });
+
+    res.status(201).json(toPlatformDTO(platform));
+  } catch (err) {
+    res.status(getErrorStatus(err)).json({ msg: err.message });
+  }
+};
+
 // ================= GET =================
 const getSocial = async (req, res) => {
   try {
@@ -190,8 +294,13 @@ const getSocial = async (req, res) => {
 const deleteSocial = async (req, res) => {
   try {
     const { id } = req.params;
+    const platformDeleted = await Platform.findOneAndDelete({ _id: id });
+    if (platformDeleted) {
+      return res.json({ msg: "Platform deleted successfully", entity: "platform" });
+    }
+
     await Social.findByIdAndDelete(id);
-    res.json({ msg: "Deleted successfully" });
+    res.json({ msg: "Deleted successfully", entity: "social" });
   } catch (err) {
     res.status(getErrorStatus(err)).json({ msg: err.message });
   }
@@ -284,5 +393,7 @@ module.exports = {
   deleteWhatsAppContact,
   getPlatformConnections,
   upsertPlatformConnection,
-  sendSocial
+  sendSocial,
+  getSocialPlatforms,
+  addSocialPlatform
 };

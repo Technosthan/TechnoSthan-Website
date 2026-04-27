@@ -401,6 +401,8 @@ const dispatchPlatformOptions = [
   { id: "telegram", name: "Telegram" }
 ];
 
+const toAvatarLabel = (name = "") => String(name).trim().charAt(0).toUpperCase() || "H";
+
 // ========== MAIN COMPONENT ==========
 const SocialForm = () => {
   const CONTACTS_STORAGE_KEY = "hr_social_whatsapp_contacts";
@@ -410,8 +412,15 @@ const SocialForm = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   // HR Profile Management
-  const [hrProfiles, setHRProfiles] = useState(defaultHRProfiles);
+  const [hrProfiles, setHRProfiles] = useState([]);
   const [currentHR, setCurrentHR] = useState(defaultHRProfiles[0]);
+  const [authenticatedUser, setAuthenticatedUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      return null;
+    }
+  });
   const [showHRProfileModal, setShowHRProfileModal] = useState(false);
   const [editingHRProfile, setEditingHRProfile] = useState(null);
   const [profileModalTab, setProfileModalTab] = useState("signin");
@@ -422,7 +431,7 @@ const SocialForm = () => {
   const [showCompanySettings, setShowCompanySettings] = useState(false);
   
   // Message composition state - Popular 5 platforms enabled by default for HR
-  const [platformOptions, setPlatformOptions] = useState(allPlatforms);
+  const [platformOptions, setPlatformOptions] = useState([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState(["whatsapp"]);
   const [dispatchPlatforms, setDispatchPlatforms] = useState(["linkedin", "facebook", "telegram"]);
   const [platformConnections, setPlatformConnections] = useState({
@@ -436,7 +445,18 @@ const SocialForm = () => {
   const [newPlatformColor, setNewPlatformColor] = useState("#1DA1F2");
   const [newPlatformIcon, setNewPlatformIcon] = useState("Link");
 
-  const addPlatformOption = () => {
+  const resolveHRScopeUserId = () => {
+    if (authenticatedUser?.id) return String(authenticatedUser.id);
+    if (authenticatedUser?.email) return String(authenticatedUser.email);
+    return String(currentHR?.email || "anonymous");
+  };
+
+  const withAvatarMeta = (profile) => ({
+    ...profile,
+    avatar: toAvatarLabel(profile?.name)
+  });
+
+  const addPlatformOption = async () => {
     const name = String(newPlatformName).trim();
     const id = String(newPlatformId || name)
       .trim()
@@ -459,26 +479,57 @@ const SocialForm = () => {
       return;
     }
 
-    const newPlatform = {
-      id,
-      name,
-      icon: newPlatformIcon || "Link",
-      color: newPlatformColor || "#1DA1F2",
-      charLimit: 5000
-    };
+    try {
+      const response = await fetch(apiUrl("/api/social/platforms"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          name,
+          icon: newPlatformIcon || "Link",
+          color: newPlatformColor || "#1DA1F2",
+          charLimit: 5000
+        })
+      });
 
-    setPlatformOptions((prev) => [...prev, newPlatform]);
-    setNewPlatformName("");
-    setNewPlatformId("");
-    setNewPlatformColor("#1DA1F2");
-    setNewPlatformIcon("Link");
-    showNotification(`${name} added`, "success");
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.msg || "Unable to add platform");
+      }
+
+      const created = await response.json();
+      setPlatformOptions((prev) => [...prev, created]);
+      setNewPlatformName("");
+      setNewPlatformId("");
+      setNewPlatformColor("#1DA1F2");
+      setNewPlatformIcon("Link");
+      showNotification(`${name} added`, "success");
+    } catch (err) {
+      showNotification(err.message || "Failed to add platform", "error");
+    }
   };
 
-  const removePlatformOption = (platformId) => {
-    setPlatformOptions((prev) => prev.filter((platform) => platform.id !== platformId));
+  const removePlatformOption = async (platform) => {
+    const platformMongoId = platform?._id;
+    const platformId = platform?.id;
+
+    setPlatformOptions((prev) => prev.filter((item) => item._id !== platformMongoId));
     setSelectedPlatforms((prev) => prev.filter((id) => id !== platformId));
-    showNotification("Platform removed", "info");
+
+    try {
+      const response = await fetch(apiUrl(`/api/social/${platformMongoId}`), {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("Delete API failed");
+      }
+
+      showNotification("Platform removed", "success");
+    } catch {
+      setPlatformOptions((prev) => [...prev, platform]);
+      showNotification("Could not delete platform. Restored in UI.", "error");
+    }
   };
   const [sendingType, setSendingType] = useState(null);
   const [settingsNotifications, setSettingsNotifications] = useState({
@@ -688,6 +739,85 @@ const SocialForm = () => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
+
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        setAuthenticatedUser(JSON.parse(localStorage.getItem("user") || "null"));
+      } catch {
+        setAuthenticatedUser(null);
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
+    const fetchPlatformOptions = async () => {
+      try {
+        const response = await fetch(apiUrl("/api/social/platforms"));
+        if (!response.ok) {
+          throw new Error("Platform API unavailable");
+        }
+
+        const payload = await response.json();
+        if (Array.isArray(payload) && payload.length > 0) {
+          setPlatformOptions(payload);
+          return;
+        }
+
+        setPlatformOptions(allPlatforms.map((platform) => ({ ...platform, _id: platform.id })));
+      } catch {
+        setPlatformOptions(allPlatforms.map((platform) => ({ ...platform, _id: platform.id })));
+      }
+    };
+
+    fetchPlatformOptions();
+  }, []);
+
+  useEffect(() => {
+    const loadHRProfiles = async () => {
+      const userId = encodeURIComponent(resolveHRScopeUserId());
+
+      try {
+        const response = await fetch(apiUrl(`/api/hr?userId=${userId}`));
+        if (!response.ok) {
+          throw new Error("Unable to fetch HR profiles");
+        }
+
+        const records = await response.json();
+        const mapped = Array.isArray(records)
+          ? records.map(withAvatarMeta)
+          : [];
+
+        if (mapped.length > 0) {
+          setHRProfiles(mapped);
+
+          const selectedId = localStorage.getItem("hr_current_profile_id");
+          const selectedProfile = mapped.find((profile) => profile._id === selectedId);
+          setCurrentHR(selectedProfile || mapped[0]);
+          return;
+        }
+
+        const fallbackProfiles = defaultHRProfiles.map(withAvatarMeta);
+        setHRProfiles(fallbackProfiles);
+        setCurrentHR(fallbackProfiles[0]);
+      } catch {
+        const fallbackProfiles = defaultHRProfiles.map(withAvatarMeta);
+        setHRProfiles(fallbackProfiles);
+        setCurrentHR(fallbackProfiles[0]);
+      }
+    };
+
+    loadHRProfiles();
+  }, [authenticatedUser]);
+
+  useEffect(() => {
+    if (currentHR?._id) {
+      localStorage.setItem("hr_current_profile_id", currentHR._id);
+    }
+  }, [currentHR]);
 
   useEffect(() => {
     try {
@@ -1335,7 +1465,7 @@ const SocialForm = () => {
   };
 
   // ========== HR PROFILE HANDLERS ==========
-  const [newHRProfile, setNewHRProfile] = useState({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
+  const [newHRProfile, setNewHRProfile] = useState({ name: "", role: "", email: "", phone: "", avatarUrl: "", color: "#6366f1" });
 
   const openHRProfileModal = (initialTab = "signin") => {
     setProfileModalTab(initialTab);
@@ -1344,7 +1474,7 @@ const SocialForm = () => {
     setShowHRProfileModal(true);
   };
 
-  const addHRProfile = () => {
+  const addHRProfile = async () => {
     if (!newHRProfile.name || !newHRProfile.role || !newHRProfile.email) {
       showNotification("Please fill required fields", "error");
       return;
@@ -1356,27 +1486,55 @@ const SocialForm = () => {
       showNotification("Profile with this email already exists", "error");
       return;
     }
-    const avatar = newHRProfile.name.charAt(0).toUpperCase();
-    const newProfile = { ...newHRProfile, id: Date.now(), avatar };
-    setHRProfiles([...hrProfiles, newProfile]);
-    setNewHRProfile({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
-    showNotification("HR Profile added! 👤");
+
+    try {
+      const response = await fetch(apiUrl("/api/hr"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newHRProfile,
+          userId: resolveHRScopeUserId()
+        })
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.msg || "Could not create profile");
+      }
+
+      const created = withAvatarMeta(await response.json());
+      setHRProfiles((prev) => [...prev, created]);
+      setCurrentHR(created);
+      setNewHRProfile({ name: "", role: "", email: "", phone: "", avatarUrl: "", color: "#6366f1" });
+      showNotification("HR Profile added", "success");
+    } catch (err) {
+      showNotification(err.message || "Could not create profile", "error");
+    }
   };
 
-  const deleteHRProfile = (profileId) => {
+  const deleteHRProfile = async (profileId) => {
     if (hrProfiles.length <= 1) {
       showNotification("Cannot delete the last profile", "error");
       return;
     }
     if (window.confirm("Delete this HR profile?")) {
-      setHRProfiles(prevProfiles => {
-        const updatedProfiles = prevProfiles.filter(p => p.id !== profileId);
-        if (currentHR.id === profileId && updatedProfiles.length > 0) {
-          setCurrentHR(updatedProfiles[0]);
-        }
-        return updatedProfiles;
-      });
-      showNotification("Profile deleted!");
+      const previous = hrProfiles;
+      const updatedProfiles = hrProfiles.filter((profile) => profile._id !== profileId);
+      setHRProfiles(updatedProfiles);
+      if (currentHR._id === profileId && updatedProfiles.length > 0) {
+        setCurrentHR(updatedProfiles[0]);
+      }
+
+      try {
+        const response = await fetch(apiUrl(`/api/hr/${profileId}?userId=${encodeURIComponent(resolveHRScopeUserId())}`), {
+          method: "DELETE"
+        });
+        if (!response.ok) throw new Error("Delete failed");
+        showNotification("Profile deleted", "success");
+      } catch {
+        setHRProfiles(previous);
+        showNotification("Could not delete profile", "error");
+      }
     }
   };
 
@@ -1408,7 +1566,7 @@ const SocialForm = () => {
     setProfileModalTab("manage");
   };
 
-  const saveCurrentProfile = () => {
+  const saveCurrentProfile = async () => {
     if (!editingHRProfile?.name || !editingHRProfile?.role || !editingHRProfile?.email) {
       showNotification("Name, role and email are required", "error");
       return;
@@ -1416,7 +1574,7 @@ const SocialForm = () => {
 
     const duplicateEmail = hrProfiles.some(
       (profile) =>
-        profile.id !== editingHRProfile.id &&
+        profile._id !== editingHRProfile._id &&
         profile.email.toLowerCase() === editingHRProfile.email.toLowerCase()
     );
 
@@ -1425,15 +1583,56 @@ const SocialForm = () => {
       return;
     }
 
-    const updatedProfile = {
-      ...editingHRProfile,
-      avatar: editingHRProfile.name.charAt(0).toUpperCase()
-    };
+    try {
+      const response = await fetch(apiUrl(`/api/hr/${editingHRProfile._id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editingHRProfile,
+          userId: resolveHRScopeUserId()
+        })
+      });
 
-    setHRProfiles((prev) => prev.map((profile) => (profile.id === updatedProfile.id ? updatedProfile : profile)));
-    setCurrentHR(updatedProfile);
-    setEditingHRProfile(null);
-    showNotification("Profile updated successfully");
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.msg || "Could not update profile");
+      }
+
+      const updatedProfile = withAvatarMeta(await response.json());
+      setHRProfiles((prev) =>
+        prev.map((profile) => (profile._id === updatedProfile._id ? updatedProfile : profile))
+      );
+      setCurrentHR(updatedProfile);
+      setEditingHRProfile(null);
+      showNotification("Profile updated successfully", "success");
+    } catch (err) {
+      showNotification(err.message || "Could not update profile", "error");
+    }
+  };
+
+  const handleHRAvatarUpload = (event, mode = "new") => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showNotification("Please select an image file", "error");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showNotification("Profile image should be under 2MB", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (mode === "edit") {
+        setEditingHRProfile((prev) => ({ ...prev, avatarUrl: reader.result }));
+      } else {
+        setNewHRProfile((prev) => ({ ...prev, avatarUrl: reader.result }));
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -1948,7 +2147,7 @@ const SocialForm = () => {
                 const IconComponent = PlatformIcons[platform.icon] || PlatformIcons.Link;
                 return (
                   <div
-                    key={platform.id}
+                    key={platform._id || platform.id}
                     className={`platform-item ${selectedPlatforms.includes(platform.id) ? "selected" : ""}`}
                     onClick={() => togglePlatform(platform.id)}
                     style={{ "--platform-color": platform.color }}
@@ -1958,7 +2157,7 @@ const SocialForm = () => {
                       className="remove-platform-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        removePlatformOption(platform.id);
+                        removePlatformOption(platform);
                       }}
                       title="Remove platform"
                     >
