@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
 import {
-  Building, Lightbulb, Sprout, Monitor,
+  Building,
+  Monitor,
   ArrowRight
 } from "lucide-react";
 import "./Services.css";
+import agritechIcon from "../../assets/techno-agre.png";
+import innovationIcon from "../../assets/techno-innfra.png";
 
 const Services = () => {
   const navigate = useNavigate();
@@ -16,7 +19,7 @@ const Services = () => {
       title: "TECHNOSTHAN HOSPITALITY",
       path: "/services/technosthan-hospitality",
       desc: "Hospitality platforms, booking systems, and management tools built for hotels and resorts.",
-      icon: <Building size={32} />,
+      icon: <Building size={36} strokeWidth={2.2} />,
       color: "#10b981",
       img: "https://images.unsplash.com/photo-1566073771259-6a8506099945"
     },
@@ -24,7 +27,7 @@ const Services = () => {
       title: "TECHNOSTHAN INNOVATIONS HUB",
       path: "/services/technosthan-innovations-hub",
       desc: "Product innovation, custom app development, and digital transformation solutions.",
-      icon: <Lightbulb size={32} />,
+      icon: innovationIcon,
       color: "#f59e0b",
       img: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0"
     },
@@ -32,7 +35,7 @@ const Services = () => {
       title: "TECHNOSTHAN AGRITECH",
       path: "/services/technosthan-agritech",
       desc: "Agri-tech solutions, farm automation, and data-driven agriculture growth services.",
-      icon: <Sprout size={32} />,
+      icon: agritechIcon,
       color: "#22c55e",
       img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449"
     },
@@ -40,7 +43,7 @@ const Services = () => {
       title: "TECHNOSTHAN IT SERVICES",
       path: "/services/technosthan-it-services",
       desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
-      icon: <Monitor size={32} />,
+      icon: <Monitor size={36} strokeWidth={2.2} />,
       color: "#6366f1",
       img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
     }
@@ -111,7 +114,7 @@ const Services = () => {
         {services.map((item, index) => (
           <motion.div
             key={index}
-            className="service-card"
+            className={`service-card service-${index}`}
             onClick={() => navigate(item.path)}
           >
 
@@ -126,12 +129,12 @@ const Services = () => {
               <div className="card-top">
                 <div
                   className="icon-box"
-                  style={{
-                    color: item.color,
-                    backgroundColor: `${item.color}15`
-                  }}
                 >
-                  {item.icon}
+                  {typeof item.icon === "string" ? (
+                    <img src={item.icon} alt={item.title} className="service-logo" loading="lazy" />
+                  ) : (
+                    <span className="service-logo-fallback" aria-hidden="true">{item.icon}</span>
+                  )}
                 </div>
 
                 <div className="arrow-icon">

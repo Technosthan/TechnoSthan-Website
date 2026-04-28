@@ -157,8 +157,22 @@ const Contact = () => {
           </p>
 
           <h3>Quick Contact</h3>
-          <p>Email: info@technosthan.com</p>
-          <p>Phone: +91 9477-288-288</p>
+          <p>
+            Email:{" "}
+            <a href="mailto:info@technosthan.com">
+              info@technosthan.com
+
+            </a>
+            </p>
+            {/*phone */}
+            
+          <p>
+            phone:{" "}
+            <a href="tel:+919477288288">
+              +91 9477-288-288
+
+            </a>
+           </p>
 
           <h3>Opening Hours</h3>
           <p>Monday - Saturday</p>

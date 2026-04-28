@@ -1,29 +1,32 @@
 import React from "react";
+import { Building, Monitor } from "lucide-react";
 import "./TechnoSthanServices.css";
+import agritechIcon from "../assets/techno-agre.png";
+import innovationIcon from "../assets/techno-innfra.png";
 
 const services = [
   {
     title: "TECHNOSTHAN HOSPITALITY",
     desc: "Hospitality platforms, booking systems, and management tools built for hotels and resorts.",
-    icon: "🏨",
+    icon: <Building size={36} strokeWidth={2.2} />,
     img: "https://images.unsplash.com/photo-1566073771259-6a8506099945"
   },
   {
     title: "TECHNOSTHAN INNOVATIONS HUB",
     desc: "Product innovation, custom app development, and digital transformation solutions.",
-    icon: "💡",
+    icon: innovationIcon,
     img: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0"
   },
   {
     title: "TECHNOSTHAN AGRITECH",
     desc: "Agri-tech solutions, farm automation, and data-driven agriculture growth services.",
-    icon: "🌱",
+    icon: agritechIcon,
     img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449"
   },
   {
     title: "TECHNOSTHAN IT SERVICES",
     desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
-    icon: "🖥️",
+    icon: <Monitor size={36} strokeWidth={2.2} />,
     img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
   }
 ];
@@ -50,7 +53,13 @@ const TechnoSthanServices = () => {
             <div className="overlay"></div>
 
             <div className="content">
-              <div className="icon">{item.icon}</div>
+              <div className="icon">
+                {typeof item.icon === "string" ? (
+                  <img src={item.icon} alt={item.title} className="service-logo" loading="lazy" />
+                ) : (
+                  <span className="service-logo-fallback" aria-hidden="true">{item.icon}</span>
+                )}
+              </div>
               <h3>{item.title}</h3>
               <p>{item.desc}</p>
             </div>

@@ -3,9 +3,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 50px;
+  gap: clamp(24px, 4vw, 50px);
   text-align: left;
-  margin-bottom: 100px;
+  margin-bottom: clamp(48px, 7vw, 100px);
+  position: relative;
 }
 
 /* LEFT SIDE */
@@ -14,11 +15,12 @@
 }
 
 .hero-left h1 {
-  font-size: clamp(2.8rem, 6vw, 4rem);
+  font-size: clamp(2.2rem, 5vw, 4rem);
   font-weight: 900;
-  margin: 20px 0;
+  margin: 18px 0 14px;
 
   background: linear-gradient(90deg, #ffffff, #94a3b8);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -27,12 +29,15 @@
   color: #94a3b8;
   max-width: 500px;
   margin-bottom: 20px;
+  font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+  line-height: 1.7;
 }
 
 /* BUTTONS */
 .hero-buttons {
   display: flex;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -76,8 +81,8 @@
 /* CARD STACK */
 .card-stack {
   position: relative;
-  width: 320px;
-  height: 200px;
+  width: min(100%, 320px);
+  aspect-ratio: 16 / 10;
 }
 
 .card-layer {
@@ -89,6 +94,7 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.1);
   transition: 0.4s;
+  will-change: transform;
 }
 
 /* layers */
@@ -123,6 +129,7 @@
   right: 0;
   filter: blur(120px);
   z-index: -1;
+  pointer-events: none;
 }
 
 /* ================= RESPONSIVE ================= */
@@ -138,5 +145,170 @@
 
   .hero-left p {
     margin: 0 auto 20px;
+  }
+}
+
+/* ================= SERVICES GRID ================= */
+.services-page {
+  padding: clamp(28px, 4vw, 40px) clamp(14px, 2vw, 20px) clamp(56px, 7vw, 80px);
+  background: radial-gradient(circle at 20% 20%, #0f172a, #020617);
+  color: #fff;
+}
+
+.services-header {
+  max-width: 1260px;
+  margin: 0 auto clamp(24px, 4vw, 40px);
+}
+
+.services-page .services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: clamp(12px, 1.5vw, 16px);
+  max-width: 1260px;
+  margin: 0 auto;
+}
+
+.services-page .service-card {
+  position: relative;
+  min-height: clamp(220px, 24vw, 260px);
+  aspect-ratio: 4 / 3;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.35s ease;
+  contain: layout paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 260px 195px;
+}
+
+.services-page .card-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.65);
+  transition: transform 0.45s ease;
+}
+
+.services-page .overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.45));
+}
+
+.services-page .content {
+  position: absolute;
+  inset: clamp(12px, 1.5vw, 14px) clamp(14px, 1.6vw, 16px) clamp(14px, 1.6vw, 16px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.services-page .card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.services-page .icon-box {
+  width: clamp(52px, 5vw, 64px);
+  height: clamp(52px, 5vw, 64px);
+  padding: 4px;
+  background: transparent;
+}
+
+.services-page .service-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
+}
+
+.services-page .service-logo-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8fafc;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
+}
+
+.services-page .service-1 .icon-box,
+.services-page .service-2 .icon-box {
+  width: clamp(60px, 6vw, 76px);
+  height: clamp(60px, 6vw, 76px);
+}
+
+.services-page .arrow-icon {
+  color: #cbd5f5;
+}
+
+.services-page .card-body h2 {
+  font-size: clamp(0.94rem, 1vw, 1rem);
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+.services-page .card-body {
+  margin-top: auto;
+}
+
+.services-page .card-body p {
+  font-size: clamp(0.8rem, 0.9vw, 0.86rem);
+  line-height: 1.55;
+  color: #cbd5f5;
+  margin: 0;
+}
+
+.services-page .card-footer {
+  height: 3px;
+  margin-top: 10px;
+  border-radius: 999px;
+}
+
+.services-page .service-card:hover {
+  transform: translateY(-8px);
+}
+
+.services-page .service-card:hover .card-bg {
+  transform: scale(1.07);
+}
+
+@media (max-width: 1180px) {
+  .hero-pro {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .hero-pro {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-left p {
+    margin: 0 auto 20px;
+  }
+
+  .hero-buttons {
+    justify-content: center;
+  }
+
+  .services-page .services-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .services-page .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .services-page .service-card {
+    aspect-ratio: auto;
+    min-height: 220px;
   }
 }

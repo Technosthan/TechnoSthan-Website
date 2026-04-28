@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Hotel, Rocket, Leaf, Code, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import "./AboutPage.css";
 import bgImage from "../../assets/about-bg.jpg";
+import agritechIcon from "../../assets/techno-agre.png";
+import hospitalityIcon from "../../assets/techno-hosp.img.png";
+import innovationIcon from "../../assets/techno-innfra.png";
+import itServicesIcon from "../../assets/software.png";
 
 const AboutPage = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -16,23 +20,27 @@ const AboutPage = () => {
 
   const services = [
     {
+      title: "TECHNOSTHAN AGRITECH",
+      icon: agritechIcon,
+      theme: 2,
+      desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."
+    },
+    {
       title: "TECHNOSTHAN HOSPITALITY",
-      icon: <Hotel />,
+      icon: hospitalityIcon,
+      theme: 0,
       desc: "Advanced hospitality platforms, booking systems, and management tools for hotels and resorts."
     },
     {
       title: "TECHNOSTHAN INNOVATIONS HUB",
-      icon: <Rocket />,
+      icon: innovationIcon,
+      theme: 1,
       desc: "Product innovation, custom application development, and digital transformation solutions."
     },
     {
-      title: "TECHNOSTHAN AGRITECH",
-      icon: <Leaf />,
-      desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."
-    },
-    {
       title: "TECHNOSTHAN IT SERVICES",
-      icon: <Code />,
+      icon: itServicesIcon,
+      theme: 3,
       desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services."
     },
   ];
@@ -48,18 +56,25 @@ const AboutPage = () => {
   return (
     <div className="about-container">
 
-      {/* HERO */}
-      <section 
-        className="about-hero"
-        style={{
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat"
-        }}
-      >
-        <div className="overlay"></div>
+      {/* HERO - VIDEO BACKGROUND */}
+      <section className="about-hero">
+        {/* 🎬 FULL WIDTH VIDEO BACKGROUND */}
+        <video 
+          className="hero-video-bg"
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster="/hero-video.jpg"
+        >
+          <source src="/hero-video.webm" type="video/webm" />
+          <source src="/hero-video.mp4" type="video/mp4" />
+        </video>
 
+        {/* Dark overlay for text readability */}
+        <div className="video-overlay"></div>
+
+        {/* Hero Content Overlay */}
         <div className="hero-wrapper">
           <motion.div 
             className="hero-content"
@@ -67,31 +82,10 @@ const AboutPage = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="gradient-text">About TechnoSthan</h1>
+            {/* <h1 className="gradient-text">About TechnoSthan</h1>
             <p className="subtitle">
               Innovation Tomorrow. Building Digital Excellence.
-            </p>
-          </motion.div>
-
-          {/* 🎬 PREMIUM VIDEO SECTION */}
-          <motion.div 
-            className="premium-video-container"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-          >
-            <div className="video-frame">
-              <video 
-                className="premium-video"
-                controls 
-                width="100%"
-                poster="/hero-video.jpg"
-              >
-                <source src="/hero-video.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-              <div className="video-glow"></div>
-            </div>
+            </p> */}
           </motion.div>
         </div>
       </section>
@@ -114,14 +108,16 @@ const AboutPage = () => {
         <div className="bento-grid">
           {services.map((service, index) => (
             <motion.div 
-              className={`service-card service-${index}`}
+              className={`service-card service-${service.theme}`}
               key={index}
               whileHover={{ scale: 1.05 }}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <div className="icon-box">{service.icon}</div>
+              <div className="icon-box">
+                <img src={service.icon} alt={service.title} className="service-icon-img" loading="lazy" />
+              </div>
               <h3>{service.title}</h3>
               <p>{service.desc}</p>
             </motion.div>
