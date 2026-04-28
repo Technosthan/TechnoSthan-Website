@@ -38,8 +38,19 @@ const Footer = () => {
         {/* Contact */}
         <div className="footer-section">
           <h3>Contact</h3>
-          <p>Email: info@technosthan.com</p>
-          <p>Phone: +91 9477-288-288</p>
+          <p>
+            Email:{" "}
+            <a href="mailto:info@technosthan.com">
+              info@technosthan.com
+
+            </a>
+            </p>
+          <p>
+            Phone:{" "}
+            <a href="tel:+919477288288">
+             +91 9477-288-288
+            </a>
+            </p>
           <p>India</p>
         </div>
 

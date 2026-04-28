@@ -21,24 +21,28 @@ const AboutPage = () => {
   const services = [
     {
       title: "TECHNOSTHAN AGRITECH",
+      path: "/services/technosthan-agritech",
       icon: agritechIcon,
       theme: 2,
       desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."
     },
     {
       title: "TECHNOSTHAN HOSPITALITY",
+      path: "/services/technosthan-hospitality",
       icon: hospitalityIcon,
       theme: 0,
       desc: "Advanced hospitality platforms, booking systems, and management tools for hotels and resorts."
     },
     {
       title: "TECHNOSTHAN INNOVATIONS HUB",
+      path: "/services/technosthan-innovations-hub",
       icon: innovationIcon,
       theme: 1,
       desc: "Product innovation, custom application development, and digital transformation solutions."
     },
     {
       title: "TECHNOSTHAN IT SERVICES",
+      path: "/services/technosthan-it-services",
       icon: itServicesIcon,
       theme: 3,
       desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services."
@@ -104,23 +108,27 @@ const AboutPage = () => {
       {/* SERVICES */}
       <section className="services-grid-wrapper">
         <motion.h2 {...fadeIn}>Our Business Verticals</motion.h2>
+        <br />
+        <br />
 
         <div className="bento-grid">
           {services.map((service, index) => (
-            <motion.div 
+            <motion.a 
               className={`service-card service-${service.theme}`}
               key={index}
+              href={service.path}
               whileHover={{ scale: 1.05 }}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
+              style={{ display: "block", color: "inherit", textDecoration: "none" }}
             >
               <div className="icon-box">
                 <img src={service.icon} alt={service.title} className="service-icon-img" loading="lazy" />
               </div>
               <h3>{service.title}</h3>
               <p>{service.desc}</p>
-            </motion.div>
+            </motion.a>
           ))}
         </div>
       </section>

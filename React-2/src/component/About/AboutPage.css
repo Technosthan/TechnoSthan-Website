@@ -146,10 +146,24 @@ width: 100%;
   margin: 0 auto 60px;
 }
 
+.services-grid-wrapper h2 {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  margin-bottom: 10px;
+  letter-spacing: 0.2px;
+}
+
+.services-intro {
+  max-width: 720px;
+  color: #93a4c2;
+  margin: 0 0 22px;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 22px;
 }
 
 /* ================= CAROUSEL ================= */
@@ -229,31 +243,58 @@ width: 100%;
 
 /* 🔥 CARD BASE */
 .service-card {
-  background: linear-gradient(145deg, #0f172a, #020617);
-  border-radius: 20px;
-  padding: 18px;
-  transition: 0.4s;
-  border: 1px solid rgba(255,255,255,0.05);
+  --service-accent: rgba(148, 163, 184, 0.35);
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.1), transparent 45%),
+    linear-gradient(160deg, rgba(15,23,42,0.95), rgba(2,6,23,0.98));
+  border-radius: 22px;
+  padding: 22px 20px;
+  transition: transform 0.45s ease, box-shadow 0.45s ease, border-color 0.45s ease;
+  border: 1px solid rgba(255,255,255,0.1);
   position: relative;
-  min-height: 240px;
+  min-height: 270px;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 /* ✨ STRONG HOVER */
 .service-card:hover {
-  transform: translateY(-12px) scale(1.04);
+  transform: translateY(-12px) scale(1.01);
+}
+
+.service-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.card-glow {
+  position: absolute;
+  inset: -80px -40px auto auto;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, var(--service-accent), transparent 72%);
+  opacity: 0.55;
+  transition: opacity 0.4s ease;
+  z-index: -1;
 }
 
 /* ICON */
 .icon-box {
-  width: 62px;
-  height: 62px;
-  border-radius: 16px;
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
-  padding: 4px;
-  background: transparent;
+  margin-bottom: 14px;
+  padding: 8px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
 }
 
 .service-icon-img {
@@ -263,14 +304,50 @@ width: 100%;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
 }
 
+.service-count {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  backdrop-filter: blur(4px);
+}
+
+.service-tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 0.74rem;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+}
+
+.service-card.is-active {
+  border-color: rgba(255,255,255,0.28);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.65);
+}
+
+.service-card.is-active .card-glow,
+.service-card:hover .card-glow {
+  opacity: 0.9;
+}
+
 /* ================= 🎨 COLOR SYSTEM ================= */
 
 /* 🏨 Hospitality */
 .service-0 {
+  --service-accent: rgba(245, 158, 11, 0.52);
   border-top: 3px solid var(--hospitality);
 }
 .service-0 .icon-box {
-  background: transparent;
+  background: linear-gradient(145deg, rgba(245,158,11,0.26), rgba(245,158,11,0.07));
 }
 .service-0:hover {
   box-shadow: 0 20px 50px rgba(245,158,11,0.3);
@@ -278,10 +355,11 @@ width: 100%;
 
 /* 🚀 Innovation */
 .service-1 {
+  --service-accent: rgba(168, 85, 247, 0.5);
   border-top: 3px solid var(--innovation);
 }
 .service-1 .icon-box {
-  background: transparent;
+  background: linear-gradient(145deg, rgba(168,85,247,0.26), rgba(168,85,247,0.07));
 }
 .service-1:hover {
   box-shadow: 0 20px 50px rgba(168,85,247,0.3);
@@ -289,10 +367,11 @@ width: 100%;
 
 /* 🌱 Agritech */
 .service-2 {
+  --service-accent: rgba(34, 197, 94, 0.52);
   border-top: 3px solid var(--agritech);
 }
 .service-2 .icon-box {
-  background: transparent;
+  background: linear-gradient(145deg, rgba(34,197,94,0.26), rgba(34,197,94,0.07));
 }
 .service-2:hover {
   box-shadow: 0 20px 50px rgba(34,197,94,0.3);
@@ -300,10 +379,11 @@ width: 100%;
 
 /* 💻 IT */
 .service-3 {
+  --service-accent: rgba(14, 165, 233, 0.52);
   border-top: 3px solid var(--it);
 }
 .service-3 .icon-box {
-  background: transparent;
+  background: linear-gradient(145deg, rgba(14,165,233,0.26), rgba(14,165,233,0.07));
 }
 .service-3:hover {
   box-shadow: 0 20px 50px rgba(14,165,233,0.3);
@@ -311,13 +391,15 @@ width: 100%;
 
 /* ================= TEXT ================= */
 .service-card h3 {
-  font-size: 1rem;
-  margin-bottom: 8px;
+  font-size: 1.02rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 .service-card p {
   color: #94a3b8;
-  font-size: 0.86rem;
+  font-size: 0.91rem;
   line-height: 1.55;
 }
 
@@ -328,12 +410,12 @@ width: 100%;
   }
 
   .service-card {
-    min-height: 220px;
+    min-height: 235px;
   }
 
   .icon-box {
-    width: 56px;
-    height: 56px;
+    width: 58px;
+    height: 58px;
   }
 }
 
@@ -370,13 +452,17 @@ width: 100%;
   }
 
   .service-card {
-    min-height: 210px;
+    min-height: 220px;
     padding: 16px;
   }
 
   .icon-box {
-    width: 50px;
-    height: 50px;
+    width: 52px;
+    height: 52px;
+  }
+
+  .service-tag {
+    font-size: 0.68rem;
   }
 
   /* Carousel Mobile */
@@ -409,7 +495,17 @@ width: 100%;
 }
 
 @media (max-width: 640px) {
+  .services-intro {
+    margin-bottom: 16px;
+    font-size: 0.92rem;
+  }
+
   .bento-grid {
     grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .service-card {
+    min-height: 200px;
   }
 }
