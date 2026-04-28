@@ -3,6 +3,7 @@ import {
   getAdminStats,
   getMonitoringStats,
   getAllUsers,
+  createUser,
   updateUserRole,
   deleteUser,
   updateUserStatus,
@@ -33,16 +34,13 @@ router.get("/monitoring", getMonitoringStats);
 
 // User management
 router.get("/users", getAllUsers);
+router.post("/users", createUser);
 router.put("/users/:userId/role", updateUserRole);
 router.put("/users/:userId/status", updateUserStatus);
 router.put("/users/:userId/permissions", updateUserPermissions);
 router.delete("/users/:userId", deleteUser);
 
 // Settings management
-router.get("/settings", getSettings);
-router.post("/settings", updateSettings);
-
-// Temporary test without middleware
 router.get("/settings", getSettings);
 router.post("/settings", updateSettings);
 

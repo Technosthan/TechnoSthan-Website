@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   getAllUsers,
+  createUser,
   updateUserRole,
   updateUserStatus,
   deleteUser,
@@ -28,6 +29,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -35,6 +37,7 @@ const UserManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     role: "student",
     status: "active",
   });
@@ -59,17 +62,21 @@ const UserManagement = () => {
     setFormData({
       name: "",
       email: "",
+      password: "",
       role: "student",
       status: "active",
     });
     setEditingUser(null);
     setShowForm(false);
+    setError("");
+    setSuccess("");
   };
 
   const handleEdit = (user) => {
     setFormData({
       name: user.name,
       email: user.email,
+      password: "", // Don't prefill password for security
       role: user.role,
       status: user.status || "active",
     });
@@ -105,12 +112,37 @@ const UserManagement = () => {
       return;
     }
 
+    if (!editingUser && !formData.password.trim()) {
+      setError("Password is required for new users");
+      return;
+    }
+
     try {
-      // For now, we'll just update existing users
-      // In a full implementation, you'd have create user functionality
+      setError("");
+      setSuccess("");
+
       if (editingUser) {
-        await updateUserRole(editingUser._id, formData.role);
+        // For editing, update role and status separately
+        if (formData.role !== editingUser.role) {
+          await updateUserRole(editingUser._id, formData.role);
+        }
+        if (formData.status !== (editingUser.status || "active")) {
+          await updateUserStatus(editingUser._id, formData.status);
+        }
         await fetchUsers();
+        setSuccess("User updated successfully!");
+        resetForm();
+      } else {
+        // Creating new user
+        await createUser({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+          role: formData.role,
+          status: formData.status,
+        });
+        await fetchUsers();
+        setSuccess("User created successfully!");
         resetForm();
       }
     } catch (err) {
@@ -204,6 +236,18 @@ const UserManagement = () => {
         </div>
       )}
 
+      {success && (
+        <div className="bg-linear-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-green-100 rounded-lg mr-3">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-green-800">Success</h3>
+          </div>
+          <p className="text-green-700">{success}</p>
+        </div>
+      )}
+
       {/* User Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -255,6 +299,24 @@ const UserManagement = () => {
                     required
                   />
                 </div>
+
+                {!editingUser && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 placeholder-gray-400"
+                      placeholder="Enter password..."
+                      required={!editingUser}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">

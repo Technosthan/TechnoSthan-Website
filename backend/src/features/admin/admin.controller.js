@@ -4,6 +4,7 @@ import Question from "../quiz/question.model.js";
 import QuizResult from "../quiz/quizResult.model.js";
 import Settings from "./settings.model.js";
 import Announcement from "./announcement.model.js";
+import bcrypt from "bcryptjs";
 
 export const getAdminStats = async (req, res) => {
   try {
@@ -187,6 +188,77 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+export const createUser = async (req, res) => {
+  try {
+    const { name, email, password, role, status } = req.body;
+
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, and password are required",
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    // Validate role
+    const validRoles = ["admin", "editor", "viewer", "student"];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role. Must be one of: admin, editor, viewer, student",
+      });
+    }
+
+    // Validate status
+    const validStatuses = ["active", "blocked"];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be 'active' or 'blocked'",
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = new User({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password: hashedPassword,
+      role: role || "student",
+      status: status || "active",
+    });
+
+    await user.save();
+
+    // Return user without password
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: userResponse,
+    });
+  } catch (error) {
+    console.error("Create user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create user",
+    });
+  }
+};
+
 export const updateUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -330,17 +402,93 @@ export const getSettings = async (req, res) => {
 
 export const updateSettings = async (req, res) => {
   try {
-    const updateData = req.body;
-    let settings = await Settings.findOne();
+    console.log(
+      "updateSettings called with body:",
+      JSON.stringify(req.body, null, 2),
+    );
 
-    if (!settings) {
-      settings = await Settings.create(updateData);
-    } else {
-      settings = await Settings.findByIdAndUpdate(settings._id, updateData, {
-        new: true,
+    const updateData = req.body;
+
+    // Basic validation
+    if (!updateData || typeof updateData !== "object") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request body. Expected an object.",
       });
     }
 
+    // Validate required fields if provided
+    if (updateData.appName && typeof updateData.appName !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "appName must be a string",
+      });
+    }
+
+    if (
+      updateData.theme &&
+      !["default", "dark", "red-black"].includes(updateData.theme)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "theme must be one of: default, dark, red-black",
+      });
+    }
+
+    if (
+      updateData.defaultLanguage &&
+      typeof updateData.defaultLanguage !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "defaultLanguage must be a string",
+      });
+    }
+
+    console.log("Validation passed, looking for existing settings...");
+
+    // Find existing settings
+    let settings = await Settings.findOne();
+    console.log("Existing settings found:", !!settings);
+
+    if (!settings) {
+      console.log("Creating new settings document...");
+      try {
+        // Check if any settings exist before creating
+        const existingCount = await Settings.countDocuments();
+        if (existingCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Settings document already exists. Use update instead.",
+          });
+        }
+        settings = await Settings.create(updateData);
+        console.log("Settings created successfully:", settings._id);
+      } catch (createError) {
+        console.error("Error creating settings:", createError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to create settings: " + createError.message,
+        });
+      }
+    } else {
+      console.log("Updating existing settings...");
+      try {
+        settings = await Settings.findByIdAndUpdate(settings._id, updateData, {
+          new: true,
+          runValidators: true,
+        });
+        console.log("Settings updated successfully");
+      } catch (updateError) {
+        console.error("Error updating settings:", updateError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update settings: " + updateError.message,
+        });
+      }
+    }
+
+    console.log("Returning success response");
     res.json({
       success: true,
       message: "Settings updated successfully",
@@ -350,7 +498,7 @@ export const updateSettings = async (req, res) => {
     console.error("Update settings error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to update settings",
+      message: "Failed to update settings: " + error.message,
     });
   }
 };

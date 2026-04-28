@@ -43,9 +43,14 @@ const SettingsPanel = () => {
     try {
       setSaving(true);
       setError("");
+      console.log("Saving settings:", settings);
       const response = await updateSettings(settings);
+      console.log("Settings saved successfully:", response.data);
       setSettings(response.data.data);
+      // Show success message
+      alert("Settings saved successfully!");
     } catch (err) {
+      console.error("Save error:", err);
       setError(err.response?.data?.message || "Failed to save settings");
     } finally {
       setSaving(false);

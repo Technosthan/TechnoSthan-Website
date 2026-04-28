@@ -2,10 +2,13 @@ import axiosInstance from "../../shared/lib/axiosInstance";
 
 // Admin stats and analytics
 export const getAdminStats = () => axiosInstance.get("/api/admin/stats");
-export const getMonitoringStats = () => axiosInstance.get("/api/admin/monitoring");
+export const getMonitoringStats = () =>
+  axiosInstance.get("/api/admin/monitoring");
 
 // User management
 export const getAllUsers = () => axiosInstance.get("/api/admin/users");
+export const createUser = (userData) =>
+  axiosInstance.post("/api/admin/users", userData);
 export const updateUserRole = (userId, role) =>
   axiosInstance.put(`/api/admin/users/${userId}/role`, { role });
 export const updateUserStatus = (userId, status) =>

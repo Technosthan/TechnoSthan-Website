@@ -65,8 +65,8 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "blocked"],
-      default: "active",
+      enum: ["inactive", "active", "blocked"],
+      default: "inactive",
     },
     googleId: {
       type: String,
@@ -75,6 +75,14 @@ const userSchema = new mongoose.Schema(
     picture: {
       type: String,
       default: null,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true },

@@ -11,6 +11,9 @@ import chatRoutes from "./features/chat/chat.route.js";
 import iotRoutes from "./features/iot/iot.route.js";
 import adminRoutes from "./features/admin/admin.route.js";
 
+// Rate limiting
+import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
+
 const app = express();
 
 // ✅ middleware
@@ -21,6 +24,9 @@ app.use(
 );
 
 app.use(express.json());
+
+// General rate limiting
+app.use(generalRateLimit);
 
 // Passport middleware
 app.use(

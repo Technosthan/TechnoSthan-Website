@@ -75,17 +75,6 @@ If question is unrelated, politely refuse.`,
   { timestamps: true },
 );
 
-// Ensure only one settings document exists
-settingsSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    const existing = await this.constructor.findOne();
-    if (existing) {
-      throw new Error("Only one settings document can exist");
-    }
-  }
-  next();
-});
-
 const Settings = mongoose.model("Settings", settingsSchema);
 
 export default Settings;

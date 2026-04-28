@@ -1,15 +1,20 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
+import LandingPage from "./pages/LandingPage";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import LoginPage from "./pages/LoginPage";
-import LandingPage from "./pages/LandingPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import VerifyPhonePage from "./pages/VerifyPhonePage";
 import ContentPage from "./features/content/ContentPage";
 import QuizPage from "./features/quiz/QuizPage";
 import ChatPage from "./features/chat/ChatPage";
+import DashboardPage from "./features/dashboard/DashboardPage";
 import AdminRoute from "./shared/components/AdminRoute";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
-import AdminDashboard from "./features/admin/AdminDashboard";
+import AdminLayout from "./features/admin/AdminLayout";
 import AdminDashboardHome from "./features/admin/AdminDashboardHome";
 import ContentManagement from "./features/admin/ContentManagement";
 import QuizManagement from "./features/admin/QuizManagement";
@@ -32,6 +37,11 @@ function App() {
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/verify-phone" element={<VerifyPhonePage />} />
 
           {/* Protected User Routes */}
           <Route
@@ -58,16 +68,28 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/verify-phone" element={<VerifyPhonePage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Admin Routes */}
           <Route
             path="/admin/dashboard"
             element={
               <AdminRoute>
-                <AdminDashboard />
+                <AdminLayout />
               </AdminRoute>
             }
           >
