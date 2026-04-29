@@ -19,14 +19,9 @@ const AboutPage = () => {
   };
 
   const services = [
+   
     {
-      title: "TECHNOSTHAN AGRITECH",
-      path: "/services/technosthan-agritech",
-      icon: agritechIcon,
-      theme: 2,
-      desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."
-    },
-    {
+       
       title: "TECHNOSTHAN HOSPITALITY",
       path: "/services/technosthan-hospitality",
       icon: hospitalityIcon,
@@ -40,6 +35,15 @@ const AboutPage = () => {
       theme: 1,
       desc: "Product innovation, custom application development, and digital transformation solutions."
     },
+
+     {
+      title: "TECHNOSTHAN AGRITECH",
+      path: "/services/technosthan-agritech",
+      icon: agritechIcon,
+      theme: 2,
+      desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."
+    },
+    
     {
       title: "TECHNOSTHAN IT SERVICES",
       path: "/services/technosthan-it-services",

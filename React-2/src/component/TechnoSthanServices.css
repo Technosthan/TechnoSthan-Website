@@ -92,7 +92,7 @@
   background: linear-gradient(to top, rgba(14,165,233,0.3), rgba(2,6,23,0.8));
 }
 
-/* CONTENT */
+/* ================= CONTENT ================= */
 .content {
   position: absolute;
   inset: 14px 16px 16px;
@@ -102,20 +102,28 @@
   flex-direction: column;
 }
 
-/* ICON */
+/* ================= ICON (FINAL FIX) ================= */
 .icon {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   margin-bottom: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Logo Image */
 .service-logo {
   width: 100%;
   height: 100%;
   object-fit: contain;
+
+  background: transparent;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
 }
 
+/* Fallback Icon */
 .service-logo-fallback {
   width: 100%;
   height: 100%;
@@ -123,16 +131,11 @@
   align-items: center;
   justify-content: center;
   color: #f8fafc;
+
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
 }
 
-.service-1 .icon,
-.service-2 .icon {
-  width: 76px;
-  height: 76px;
-}
-
-/* TEXT */
+/* ================= TEXT ================= */
 .service-card h3 {
   font-size: 1rem;
   margin: auto 0 8px;
@@ -144,7 +147,7 @@
   color: #cbd5f5;
 }
 
-/* HOVER */
+/* ================= HOVER ================= */
 .service-card:hover {
   transform: translateY(-10px);
 }
@@ -164,14 +167,8 @@
   }
 
   .icon {
-    width: 58px;
-    height: 58px;
-  }
-
-  .service-1 .icon,
-  .service-2 .icon {
-    width: 66px;
-    height: 66px;
+    width: 55px;
+    height: 55px;
   }
 }
 
@@ -185,13 +182,7 @@
   }
 
   .icon {
-    width: 52px;
-    height: 52px;
-  }
-
-  .service-1 .icon,
-  .service-2 .icon {
-    width: 58px;
-    height: 58px;
+    width: 50px;
+    height: 50px;
   }
 }

@@ -1,32 +1,39 @@
 import React from "react";
-import { Building, Monitor } from "lucide-react";
+import { Link } from "react-router-dom";
 import "./TechnoSthanServices.css";
+
 import agritechIcon from "../assets/techno-agre.png";
-import innovationIcon from "../assets/techno-innfra.png";
+import innovationIcon from "../assets/Innvationhub-icon.png";
+import itIcon from "../assets/Tech-services.png";
+import hospitalityIcon from "../assets/Techno-hosp.png";
 
 const services = [
   {
     title: "TECHNOSTHAN HOSPITALITY",
+    path: "/services/technosthan-hospitality",
     desc: "Hospitality platforms, booking systems, and management tools built for hotels and resorts.",
-    icon: <Building size={36} strokeWidth={2.2} />,
+    icon: hospitalityIcon,
     img: "https://images.unsplash.com/photo-1566073771259-6a8506099945"
   },
   {
     title: "TECHNOSTHAN INNOVATIONS HUB",
+    path: "/services/technosthan-innovations-hub",
     desc: "Product innovation, custom app development, and digital transformation solutions.",
     icon: innovationIcon,
     img: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0"
   },
   {
     title: "TECHNOSTHAN AGRITECH",
+    path: "/services/technosthan-agritech",
     desc: "Agri-tech solutions, farm automation, and data-driven agriculture growth services.",
     icon: agritechIcon,
     img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449"
   },
   {
     title: "TECHNOSTHAN IT SERVICES",
+    path: "/services/technosthan-it-services",
     desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
-    icon: <Monitor size={36} strokeWidth={2.2} />,
+    icon: itIcon,
     img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
   }
 ];
@@ -43,28 +50,36 @@ const TechnoSthanServices = () => {
 
       <div className="services-grid">
         {services.map((item, index) => (
-          <div className={`service-card service-${index}`} key={index}>
-            
-            <div
-              className="card-bg"
-              style={{ backgroundImage: `url(${item.img})` }}
-            ></div>
+          
+          <Link to={item.path} className="service-link" key={index}>
+            <div className={`service-card service-${index}`}>
 
-            <div className="overlay"></div>
+              <div
+                className="card-bg"
+                style={{ backgroundImage: `url(${item.img})` }}
+              ></div>
 
-            <div className="content">
-              <div className="icon">
-                {typeof item.icon === "string" ? (
-                  <img src={item.icon} alt={item.title} className="service-logo" loading="lazy" />
-                ) : (
-                  <span className="service-logo-fallback" aria-hidden="true">{item.icon}</span>
-                )}
+              <div className="overlay"></div>
+
+              <div className="content">
+
+                {/* 🔥 Logo added */}
+                <div className="icon">
+                  <img
+                    src={item.icon}
+                    alt={item.title}
+                    className="service-logo"
+                  />
+                </div>
+
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+
               </div>
-              <h3>{item.title}</h3>
-              <p>{item.desc}</p>
-            </div>
 
-          </div>
+            </div>
+          </Link>
+
         ))}
       </div>
     </section>
