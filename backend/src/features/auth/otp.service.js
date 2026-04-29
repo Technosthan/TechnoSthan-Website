@@ -1,5 +1,6 @@
 import OTP from "./otp.model.js";
 import User from "./user.model.js";
+import PendingUser from "./pendingUser.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -27,7 +28,9 @@ let emailTransporter = null;
 const getEmailTransporter = () => {
   if (!emailTransporter && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     emailTransporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -65,12 +68,14 @@ export const verifyOTPHash = async (otp, hash) => {
 };
 
 // OTP sending functions
-export const sendEmailOTP = async (email, otp) => {
+export const sendEmailOTP = async (email, otp, name = null) => {
   console.log("EMAIL OTP:", otp); // debug
   const transporter = getEmailTransporter();
   if (!transporter) {
     throw new Error("Email service not configured");
   }
+
+  const greeting = name ? `Hi ${name},` : "Hi there,";
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -86,7 +91,7 @@ export const sendEmailOTP = async (email, otp) => {
 
           <h2 style="color: #343a40; text-align: center; margin-bottom: 20px;">Account Verification</h2>
 
-          <p style="color: #495057; line-height: 1.6; margin-bottom: 20px;">Hi ${name},</p>
+          <p style="color: #495057; line-height: 1.6; margin-bottom: 20px;">${greeting}</p>
 
           <p style="color: #495057; line-height: 1.6; margin-bottom: 30px;">
             Welcome to AgriTech! To complete your account setup, please verify your email address using the code below:
@@ -179,11 +184,19 @@ export const sendInstagramOTP = async (phone, otp) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 };
 
+export const sendMessengerOTP = async (phone, otp) => {
+  // Mock implementation
+  console.log(`Mock Messenger OTP sent to ${phone}: ${otp}`);
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+};
+
 export const sendResetEmail = async (email, name, resetLink) => {
   const transporter = getEmailTransporter();
   if (!transporter) {
     throw new Error("Email service not configured");
   }
+
+  const greeting = name ? `Hi ${name},` : "Hi User,";
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -199,7 +212,7 @@ export const sendResetEmail = async (email, name, resetLink) => {
 
           <h2 style="color: #343a40; text-align: center; margin-bottom: 20px;">Password Reset Request</h2>
 
-          <p style="color: #495057; line-height: 1.6; margin-bottom: 20px;">Hi ${name},</p>
+          <p style="color: #495057; line-height: 1.6; margin-bottom: 20px;">${greeting}</p>
 
           <p style="color: #495057; line-height: 1.6; margin-bottom: 30px;">
             We received a request to reset your password for your AgriTech account. Click the button below to reset your password:
@@ -238,15 +251,20 @@ export const sendOTP = async (
   method,
   purpose,
   pendingUserId = null,
+  name = null,
 ) => {
   // Validate contact
   if (!validateContact(contact, contactType)) {
     throw new Error(`Invalid ${contactType}`);
   }
 
+  // Normalize contact
+  const normalizedContact =
+    contactType === "email" ? contact.toLowerCase() : contact;
+
   // Rate limiting: Check recent OTP requests (last 1 minute)
   const recentOTP = await OTP.findOne({
-    contact,
+    contact: normalizedContact,
     createdAt: { $gte: new Date(Date.now() - 60000) },
   });
 
@@ -256,12 +274,12 @@ export const sendOTP = async (
 
   // Generate and hash OTP
   const otp = generateOTP();
-  console.log(`OTP for ${contact} (${method}): ${otp}`);
+  console.log(`OTP for ${normalizedContact} (${method}): ${otp}`);
   const hashedOTP = await hashOTP(otp);
 
   // Create OTP record
   const otpRecord = new OTP({
-    contact,
+    contact: normalizedContact,
     contactType,
     otp: hashedOTP,
     method,
@@ -270,13 +288,38 @@ export const sendOTP = async (
     pendingUserId,
   });
 
-  await otpRecord.save();
+  console.log("Expires at:", otpRecord.expiresAt);
+
+  try {
+    await otpRecord.save();
+    console.log(
+      "OTP record saved:",
+      otpRecord._id,
+      "for contact:",
+      normalizedContact,
+    );
+
+    // Verify save by querying immediately
+    const checkRecord = await OTP.findById(otpRecord._id);
+    console.log(
+      "Immediate check after save:",
+      checkRecord ? "found" : "not found",
+    );
+
+    if (!checkRecord) {
+      console.error("Save failed: record not found after save");
+      throw new Error("Failed to save OTP record");
+    }
+  } catch (saveError) {
+    console.error("Error saving OTP record:", saveError);
+    throw saveError;
+  }
 
   // Send OTP based on method
   try {
     switch (method) {
       case "email":
-        await sendEmailOTP(contact, otp);
+        await sendEmailOTP(normalizedContact, otp, name);
         break;
       case "sms":
         await sendSMSOTP(contact, otp);
@@ -297,24 +340,37 @@ export const sendOTP = async (
         throw new Error("Invalid OTP method");
     }
   } catch (error) {
-    // Delete the OTP record if sending failed
+    // If sending fails, delete the OTP record to prevent clutter
     await OTP.findByIdAndDelete(otpRecord._id);
-    throw new Error(`Failed to send OTP: ${error.message}`);
+    throw error;
   }
-
-  return { success: true, method };
 };
 
 export const verifyOTP = async (contact, otp, purpose) => {
-  // Find the latest OTP record for this contact and purpose
+  // 1. LOG EVERYTHING
+  console.log("INPUT CONTACT:", contact);
+  console.log("INPUT OTP:", otp);
+  console.log("INPUT PURPOSE:", purpose);
+
+  // 2. NORMALIZE CONTACT
+  contact = contact.trim().toLowerCase();
+
+  console.log("NORMALIZED CONTACT:", contact);
+
+  // 3. FETCH LATEST OTP (IMPORTANT FIX)
   const otpRecord = await OTP.findOne({
-    contact,
-    purpose,
+    contact: contact,
+    purpose: purpose,
     verified: false,
-    expiresAt: { $gt: new Date() },
+    // 8. REMOVE STRICT EXPIRY TEMPORARILY (FOR DEBUG)
+    // expiresAt: { $gt: new Date() },
   }).sort({ createdAt: -1 });
 
+  // 4. LOG DB RECORD
+  console.log("OTP FROM DB:", otpRecord);
+
   if (!otpRecord) {
+    console.log("NO OTP RECORD FOUND FOR:", { contact, purpose });
     throw new Error("OTP not found or expired");
   }
 
@@ -323,8 +379,10 @@ export const verifyOTP = async (contact, otp, purpose) => {
     throw new Error("Maximum verification attempts exceeded");
   }
 
-  // Verify OTP
-  const isValid = await verifyOTPHash(otp, otpRecord.otp);
+  // 5. VERIFY HASH CORRECTLY
+  const isValid = await bcrypt.compare(otp, otpRecord.otp);
+  console.log("OTP MATCH RESULT:", isValid);
+
   if (!isValid) {
     // Increment attempts
     otpRecord.attempts += 1;

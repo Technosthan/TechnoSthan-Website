@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
+import { sendOTP, verifyOTP } from "../features/auth/authApi";
 
 const LoginPage = () => {
   const {
@@ -48,6 +49,56 @@ const LoginPage = () => {
 
   const [isLogin, setIsLogin] = useState(true);
   const [isOtpLogin, setIsOtpLogin] = useState(false); // Toggle between password and OTP login
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [contact, setContact] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+
+  const handleSendOtp = async () => {
+    if (!contact.trim()) {
+      setError("Please enter email or phone number");
+      return;
+    }
+    setOtpLoading(true);
+    setError("");
+    try {
+      const method = contact.includes("@") ? "email" : "sms";
+      await sendOTP({
+        contact,
+        method,
+        purpose: "login",
+      });
+      setIsOtpSent(true);
+    } catch (err) {
+      setError(err.message || "Failed to send OTP");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      setError("Please enter OTP");
+      return;
+    }
+    setOtpLoading(true);
+    setError("");
+    try {
+      const res = await verifyOTP({
+        contact,
+        otp,
+      });
+      const { token, user: userData } = res.data.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData);
+      navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
+    } catch (err) {
+      setError(err.message || "Invalid OTP");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
   const [form, setForm] = useState({
     name: "",
     contact: "",
@@ -219,58 +270,40 @@ const LoginPage = () => {
 
   const toggleOtpLogin = () => {
     setIsOtpLogin(!isOtpLogin);
-    resetFlow();
-    setForm({ ...form, otp: "" });
+    setIsOtpSent(false);
+    setContact("");
+    setOtp("");
+    setError("");
+    if (isOtpLogin) {
+      resetFlow();
+      setForm({ ...form, otp: "" });
+    }
   };
 
   const getStepTitle = () => {
-    if (!isOtpLogin) {
-      if (isLogin) return "Welcome Back";
-      if (step === "input") return "Create Account";
-      if (step === "verify-otp") return "Verify Contact";
-      if (step === "input-second-field") return "Complete Registration";
-      return "Create Account";
+    if (isOtpLogin) {
+      return isOtpSent ? "Enter OTP" : "OTP Login";
     }
-
-    switch (step) {
-      case "input":
-        return isRegister ? "Create Account" : "Welcome Back";
-      case "otp":
-        return `Send OTP via ${inputType === "email" ? "Email" : "Phone"}`;
-      case "verify-otp":
-        return "Enter OTP";
-      case "input-second-field":
-        return inputType === "email" ? "Add Phone Number" : "Add Email";
-      default:
-        return "Authentication";
-    }
+    if (isLogin) return "Welcome Back";
+    if (step === "input") return "Create Account";
+    if (step === "verify-otp") return "Verify Contact";
+    if (step === "input-second-field") return "Complete Registration";
+    return "Create Account";
   };
 
   const getStepDescription = () => {
-    if (!isOtpLogin) {
-      if (isLogin) return "Sign in to your account";
-      if (step === "input") return "Create your account with dual verification";
-      if (step === "verify-otp")
-        return `Enter the 6-digit code sent to your ${inputType}`;
-      if (step === "input-second-field")
-        return `Add your ${inputType === "email" ? "phone number" : "email"} to complete registration`;
-      return "Create your account";
+    if (isOtpLogin) {
+      return isOtpSent
+        ? `Enter the 6-digit code sent to your ${contact.includes("@") ? "email" : "phone"}`
+        : "Enter your email or phone number to login";
     }
-
-    switch (step) {
-      case "input":
-        return "Enter your email or phone number to continue";
-      case "otp":
-        return `Choose how you'd like to receive your OTP code`;
-      case "verify-otp":
-        return `Enter the 6-digit code sent to your ${inputType}`;
-      case "input-second-field":
-        return inputType === "email"
-          ? "Add your phone number to complete registration"
-          : "Add your email to complete registration";
-      default:
-        return "";
-    }
+    if (isLogin) return "Sign in to your account";
+    if (step === "input") return "Create your account with dual verification";
+    if (step === "verify-otp")
+      return `Enter the 6-digit code sent to your ${inputType}`;
+    if (step === "input-second-field")
+      return `Add your ${inputType === "email" ? "phone number" : "email"} to complete registration`;
+    return "Create your account";
   };
 
   const otpMethods = [
@@ -333,40 +366,67 @@ const LoginPage = () => {
           </div>
         )}
 
-        {/* Progress Indicator - Only show for OTP flow */}
-        {isOtpLogin && (
-          <div className="mb-6">
-            <div className="flex justify-between text-xs text-gray-500">
-              <span
-                className={
-                  step === "input" ? "text-blue-500 font-semibold" : ""
-                }
-              >
-                Input
-              </span>
-              <span
-                className={step === "otp" ? "text-blue-500 font-semibold" : ""}
-              >
-                Method
-              </span>
-              <span
-                className={
-                  step === "verify-otp" ? "text-blue-500 font-semibold" : ""
-                }
-              >
-                OTP
-              </span>
+        {/* Progress Indicator - Removed for simple OTP */}
+
+        {/* OTP Login Form */}
+        {isOtpLogin && !isOtpSent && (
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-3 flex items-center">
+                <Mail className="text-gray-400" size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter email or phone number"
+                value={contact}
+                className={`${theme.input} pl-10`}
+                onChange={(e) => setContact(e.target.value)}
+              />
             </div>
-            <div className="mt-2 bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                style={{
-                  width: `${
-                    step === "input" ? 33 : step === "otp" ? 66 : 100
-                  }%`,
-                }}
-              ></div>
+            <button
+              type="button"
+              onClick={handleSendOtp}
+              disabled={otpLoading}
+              className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+            >
+              {otpLoading ? (
+                <RefreshCw className="animate-spin" size={18} />
+              ) : (
+                <MessageSquare size={18} />
+              )}
+              Send OTP
+            </button>
+          </div>
+        )}
+
+        {isOtpLogin && isOtpSent && (
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-3 flex items-center">
+                <Shield className="text-gray-400" size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={otp}
+                className={`${theme.input} pl-10`}
+                onChange={(e) => setOtp(e.target.value)}
+                maxLength={6}
+              />
             </div>
+            <button
+              type="button"
+              onClick={handleVerifyOtp}
+              disabled={otpLoading}
+              className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+            >
+              {otpLoading ? (
+                <RefreshCw className="animate-spin" size={18} />
+              ) : (
+                <CheckCircle size={18} />
+              )}
+              Verify OTP
+            </button>
           </div>
         )}
 

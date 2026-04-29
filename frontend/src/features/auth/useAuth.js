@@ -158,10 +158,14 @@ export const useAuth = () => {
     setLoading(true);
     try {
       const res = await verifyOTP({
-        otp,
-        pendingUserId: tempData.pendingUserId,
-        method: otpMethod,
-      });
+  contact: inputValue,
+  otp,
+  purpose: isRegister
+    ? otpMethod === "email"
+      ? "verify-email"
+      : "verify-phone"
+    : "login",
+});
 
       setTempData((prev) => ({
         ...prev,

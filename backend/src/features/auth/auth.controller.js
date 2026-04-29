@@ -5,6 +5,7 @@ import {
   forgotPassword,
   resetPassword,
 } from "./auth.service.js";
+
 import {
   sendOTP,
   verifyOTP,
@@ -13,32 +14,41 @@ import {
   generateQRLogin,
   verifyQRLogin,
   detectContactType,
+  sendResetEmail,
 } from "./otp.service.js";
 
+// ================= REGISTER =================
 export const register = async (req, res) => {
   try {
-    const { name, contact, password } = req.body;
+    const { name, email, contact, password } = req.body;
 
-    if (!name || !contact || !password) {
+    // Allow either email or contact
+    const contactValue = contact || email;
+
+    if (!name || !name.trim() || !contactValue || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, contact, and password are required",
+        message: "Name, contact/email, and password are required",
       });
     }
 
-    const result = await registerUser({ name, contact, password });
+    const result = await registerUser({
+      name,
+      contact: contactValue,
+      password,
+    });
 
-    // Start verification process
     const contactType = result.contactType;
     const method = contactType === "email" ? "email" : "sms";
     const purpose = contactType === "email" ? "verify-email" : "verify-phone";
 
-    const otpResult = await sendOTP(
-      contact,
+    await sendOTP(
+      contactValue,
       contactType,
       method,
       purpose,
       result.pendingUserId,
+      name,
     );
 
     res.status(201).json({
@@ -58,6 +68,7 @@ export const register = async (req, res) => {
   }
 };
 
+// ================= LOGIN =================
 export const login = async (req, res) => {
   try {
     const result = await loginUser(req.body);
@@ -75,10 +86,10 @@ export const login = async (req, res) => {
   }
 };
 
-// OTP-based authentication
+// ================= SEND OTP =================
 export const sendOTPController = async (req, res) => {
   try {
-    const { contact, method, purpose, pendingUserId } = req.body;
+    const { contact, method, purpose, pendingUserId, name } = req.body;
 
     if (!contact || !method || !purpose) {
       return res.status(400).json({
@@ -89,17 +100,44 @@ export const sendOTPController = async (req, res) => {
 
     const contactType = detectContactType(contact);
 
-    const result = await sendOTP(
+    await sendOTP(
       contact,
       contactType,
       method,
       purpose,
       pendingUserId || null,
+      name || "User",
     );
 
     res.json({
       success: true,
       message: `OTP sent successfully via ${method}`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= VERIFY OTP =================
+export const verifyOTPController = async (req, res) => {
+  try {
+    const { contact, otp, purpose } = req.body;
+
+    if (!contact || !otp || !purpose) {
+      return res.status(400).json({
+        success: false,
+        message: "Contact, OTP, and purpose are required",
+      });
+    }
+
+    const result = await verifyOTP(contact, otp, purpose);
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
       data: result,
     });
   } catch (error) {
@@ -110,55 +148,12 @@ export const sendOTPController = async (req, res) => {
   }
 };
 
-export const verifyOTPController = async (req, res) => {
-  try {
-    const { otp, pendingUserId, method } = req.body;
-
-    if (!otp || !pendingUserId || !method) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP, pendingUserId, and method are required",
-      });
-    }
-
-    const result = await verifyOTPForPending(pendingUserId, otp, method);
-
-    // Check if this completes registration
-    let registrationComplete = false;
-    let userData = null;
-    let token = null;
-
-    const pendingUser = await PendingUser.findById(pendingUserId);
-    if (pendingUser && pendingUser.emailVerified && pendingUser.phoneVerified) {
-      // Finalize registration
-      const finalResult = await finalizeRegistration(pendingUserId);
-      registrationComplete = true;
-      userData = finalResult.user;
-      token = finalResult.token;
-    }
-
-    res.json({
-      success: true,
-      message: "OTP verified successfully",
-      data: {
-        ...result,
-        registrationComplete,
-        ...(registrationComplete && { token, user: userData }),
-      },
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
+// ================= REGISTER OTP =================
 export const registerOTP = async (req, res) => {
   try {
     const { email, phone, name } = req.body;
 
-    if (!name || (!email && !phone)) {
+    if (!name || !name.trim() || (!email && !phone)) {
       return res.status(400).json({
         success: false,
         message: "Name and either email or phone are required",
@@ -180,6 +175,7 @@ export const registerOTP = async (req, res) => {
   }
 };
 
+// ================= LOGIN OTP =================
 export const loginOTP = async (req, res) => {
   try {
     const { contact } = req.body;
@@ -207,14 +203,15 @@ export const loginOTP = async (req, res) => {
   }
 };
 
+// ================= VERIFY LOGIN OTP =================
 export const verifyLoginOTPController = async (req, res) => {
   try {
-    const { contact, otp, method } = req.body;
+    const { contact, otp } = req.body;
 
-    if (!contact || !otp || !method) {
+    if (!contact || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Contact, OTP, and method are required",
+        message: "Contact and OTP are required",
       });
     }
 
@@ -233,6 +230,7 @@ export const verifyLoginOTPController = async (req, res) => {
   }
 };
 
+// ================= QR LOGIN =================
 export const generateQRLoginController = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -278,6 +276,7 @@ export const verifyQRLoginController = async (req, res) => {
   }
 };
 
+// ================= FORGOT PASSWORD =================
 export const forgotPasswordController = async (req, res) => {
   try {
     const { email } = req.body;
@@ -290,14 +289,13 @@ export const forgotPasswordController = async (req, res) => {
     }
 
     const result = await forgotPassword(email);
+    const resetLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${result.resetToken}`;
 
-    // Send reset email
-    const resetLink = `http://localhost:5173/reset-password?token=${result.resetToken}`;
-    await sendResetEmail(result.user.email, result.user.name, resetLink);
+    await sendResetEmail(email, result.user.name, resetLink);
 
     res.json({
       success: true,
-      message: "Password reset email sent",
+      message: "Password reset email sent successfully",
     });
   } catch (error) {
     res.status(400).json({
@@ -307,6 +305,7 @@ export const forgotPasswordController = async (req, res) => {
   }
 };
 
+// ================= RESET PASSWORD =================
 export const resetPasswordController = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -332,6 +331,7 @@ export const resetPasswordController = async (req, res) => {
   }
 };
 
+// ================= GET ME =================
 export const getMe = (req, res) => {
   res.json({
     success: true,

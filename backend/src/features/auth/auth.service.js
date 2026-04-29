@@ -20,6 +20,10 @@ const isMobile = (contact) => {
 export const registerUser = async (data) => {
   const { name, contact, password } = data;
 
+  if (!name || !name.trim()) {
+    throw new Error("Name is required");
+  }
+
   if (!isEmail(contact) && !isMobile(contact)) {
     throw new Error("Invalid email or mobile number");
   }
@@ -213,6 +217,10 @@ export const resetPassword = async (token, newPassword) => {
 // Google OAuth
 export const googleAuth = async (profile) => {
   const { id, displayName, emails, photos } = profile;
+
+  if (!displayName) {
+    throw new Error("Display name is required for Google login");
+  }
 
   let user = await User.findOne({ googleId: id });
 
