@@ -122,12 +122,6 @@ const Hero = () => {
 
         <h2 className="hero-subtitle gradient-text">Building Digital Excellence</h2>
 
-        <p className="hero-description">
-  TechnoSthan operates across multiple powerful business verticals 
-  Innovations Hub, Hospitality, Agritech, and Information & Technology Services 
-  delivering diverse solutions that drive growth, innovation, and digital transformation.
-</p>
-
         <div className="hero-buttons">
           <Link to="/services" className="btn primary">
             Business Verticals

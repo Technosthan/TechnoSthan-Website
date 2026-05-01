@@ -1,12 +1,11 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   Code2,
   Cloud,
-  Palette,
   TrendingUp,
-  Smartphone,
-  ShieldCheck,
+  Briefcase,
   Rocket
 } from "lucide-react";
 import "./TechnoSthanITServices.css";
@@ -22,46 +21,40 @@ const TechnoSthanITServices = () => {
   };
 
   const cardVariants = {
-    hidden: { opacity: 0, scale: 0.8, rotate: -2 },
+    hidden: { opacity: 0, scale: 0.85, y: 20 },
     visible: {
       opacity: 1,
       scale: 1,
-      rotate: 0,
+      y: 0,
       transition: { type: "spring", stiffness: 120 }
     }
   };
 
-  // UPDATED SERVICES (IT SOLUTIONS)
-  const strategies = [
+  // 🔥 FINAL 4 SERVICES (ORGANIZATION STRUCTURE)
+  const services = [
     {
       icon: <Code2 size={28} />,
-      title: "Web Development",
-      desc: "Modern websites using React, MERN stack, and scalable architecture."
+      title: "Engineering & Development",
+      desc: "Web, Mobile, API, and secure scalable systems.",
+      path: "/engineering"
     },
     {
       icon: <Cloud size={28} />,
       title: "Cloud & DevOps",
-      desc: "Secure cloud hosting, CI/CD pipelines, and infrastructure automation."
-    },
-    {
-      icon: <Palette size={28} />,
-      title: "Branding & UI/UX",
-      desc: "Creative design, branding, and user-friendly interfaces."
+      desc: "Cloud infrastructure, CI/CD, and deployment automation.",
+      path: "/cloud"
     },
     {
       icon: <TrendingUp size={28} />,
       title: "Digital Growth",
-      desc: "SEO, marketing, and analytics to scale your business online."
+      desc: "SEO, marketing, and data-driven growth strategies.",
+      path: "/digital-growth"
     },
     {
-      icon: <Smartphone size={28} />,
-      title: "Mobile App Development",
-      desc: "Android & iOS apps with high performance and user experience."
-    },
-    {
-      icon: <ShieldCheck size={28} />,
-      title: "Security & Optimization",
-      desc: "Performance optimization, security audits, and fast loading systems."
+      icon: <Briefcase size={28} />,
+      title: "IT Consulting",
+      desc: "Technology strategy, architecture, and business solutions.",
+      path: "/consulting"
     }
   ];
 
@@ -86,14 +79,12 @@ const TechnoSthanITServices = () => {
           </div>
 
           <h1 className="growth-title">
-            TechnoSthan IT Solutions
+            Our Core Services
           </h1>
 
           <p className="growth-lead">
-            TechnoSthan IT Solutions provides complete digital services including 
-            web development, cloud & DevOps, branding, and digital marketing. 
-            We help businesses build scalable, secure, and high-performance 
-            digital products with modern technologies.
+            We provide end-to-end technology solutions including development, 
+            cloud infrastructure, digital growth, and IT consulting.
           </p>
         </motion.div>
 
@@ -105,27 +96,25 @@ const TechnoSthanITServices = () => {
           whileInView="visible"
           viewport={{ once: true }}
         >
-          {strategies.map((item, index) => (
-            <motion.div 
-              key={index} 
-              className="strategy-card"
+          {services.map((item, index) => (
+            <motion.div
+              key={index}
               variants={cardVariants}
-              whileHover={{ 
-                y: -12, 
-                backgroundColor: "rgba(99, 102, 241, 0.15)"
-              }}
+              whileHover={{ y: -10 }}
             >
-              <div className="strategy-icon">{item.icon}</div>
-              <h3>{item.title}</h3>
-              <p>{item.desc}</p>
-              <div className="card-arrow">
-                <TrendingUp size={16} />
-              </div>
+              <Link to={item.path} className="strategy-card">
+                <div className="strategy-icon">{item.icon}</div>
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+                <div className="card-arrow">
+                  <span>Explore</span>
+                </div>
+              </Link>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* STATS + TRUST SECTION */}
+        {/* STATS */}
         <motion.div 
           className="stats-banner"
           initial={{ opacity: 0, y: 30 }}

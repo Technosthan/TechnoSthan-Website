@@ -213,10 +213,12 @@
 }
 
 .services-page .icon-box {
-  width: clamp(52px, 5vw, 64px);
-  height: clamp(52px, 5vw, 64px);
-  padding: 4px;
+  width: clamp(68px, 6vw, 84px);
+  height: clamp(68px, 6vw, 84px);
+  padding: 0;
   background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .services-page .service-logo {
@@ -238,8 +240,8 @@
 
 .services-page .service-1 .icon-box,
 .services-page .service-2 .icon-box {
-  width: clamp(60px, 6vw, 76px);
-  height: clamp(60px, 6vw, 76px);
+  width: clamp(72px, 6.5vw, 88px);
+  height: clamp(72px, 6.5vw, 88px);
 }
 
 .services-page .arrow-icon {
@@ -287,6 +289,16 @@
   .hero-pro {
     flex-direction: column;
     text-align: center;
+    gap: 28px;
+  }
+
+  .hero-left,
+  .hero-right {
+    width: 100%;
+  }
+
+  .hero-left h1 {
+    font-size: clamp(2rem, 8vw, 3rem);
   }
 
   .hero-left p {
@@ -295,11 +307,51 @@
 
   .hero-buttons {
     justify-content: center;
+    max-width: 640px;
+  }
+
+  .hero-right {
+    min-height: 240px;
+  }
+
+  .card-stack {
+    width: min(100%, 280px);
   }
 
   .services-page .services-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .hero-pro {
+    gap: 22px;
+    margin-bottom: 40px;
+  }
+
+  .hero-left h1 {
+    font-size: clamp(1.8rem, 10vw, 2.4rem);
+    margin-top: 8px;
+  }
+
+  .hero-left p {
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+
+  .hero-buttons {
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1 1 140px;
+  }
+
+  .hero-right {
+    min-height: 210px;
+  }
+
+  .card-stack {
+    width: min(100%, 240px);
+  }
+
 }
 
 @media (max-width: 640px) {

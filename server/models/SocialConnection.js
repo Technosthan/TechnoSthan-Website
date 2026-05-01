@@ -10,7 +10,7 @@ const socialConnectionSchema = new mongoose.Schema(
     platform: {
       type: String,
       required: true,
-      enum: ["linkedin", "facebook", "telegram"],
+      enum: ["linkedin", "facebook", "telegram", "whatsapp", "twitter", "instagram", "custom"],
       lowercase: true,
       trim: true
     },

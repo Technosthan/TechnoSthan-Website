@@ -6,6 +6,7 @@ const session = require("express-session");
 const passport = require("passport");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const path = require("path");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const platformRoutes = require("./routes/platformRoutes");
 const iconGridRoutes = require("./routes/iconGridRoutes");
@@ -26,7 +27,7 @@ app.use(
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https:"],
+        imgSrc: ["'self'", "data:", "https:", "http://localhost:5000", "blob:"],
         scriptSrc: ["'self'"],
         connectSrc: ["'self'", "http://localhost:5173"],
       },
@@ -60,6 +61,14 @@ app.use(
 // Body parser
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploads - CORS already handled by main cors middleware above
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  setHeaders: (res, path, stat) => {
+    res.set("Cross-Origin-Resource-Policy", "cross-origin");
+    res.set("Cache-Control", "public, max-age=3600");
+  }
+}));
 
 /* ================= SESSION ================= */
 

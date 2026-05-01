@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
 import "./AboutPage.css";
-import bgImage from "../../assets/about-bg.jpg";
-import agritechIcon from "../../assets/techno-agre.png";
-import hospitalityIcon from "../../assets/techno-hosp.img.png";
-import innovationIcon from "../../assets/techno-innfra.png";
-import itServicesIcon from "../../assets/software.png";
+
+/* ✅ Correct Icons */
+import agritechIcon from "../../assets/agri.png";
+import innovationIcon from "../../assets/innovation.png";
+import itIcon from "../../assets/it.png";
+import hospitalityIcon from "../../assets/hospitality.png";
 
 const AboutPage = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,9 +19,7 @@ const AboutPage = () => {
   };
 
   const services = [
-   
     {
-       
       title: "TECHNOSTHAN HOSPITALITY",
       path: "/services/technosthan-hospitality",
       icon: hospitalityIcon,
@@ -35,25 +33,23 @@ const AboutPage = () => {
       theme: 1,
       desc: "Product innovation, custom application development, and digital transformation solutions."
     },
-
-     {
+    {
       title: "TECHNOSTHAN AGRITECH",
       path: "/services/technosthan-agritech",
       icon: agritechIcon,
       theme: 2,
       desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."
     },
-    
     {
       title: "TECHNOSTHAN IT SERVICES",
       path: "/services/technosthan-it-services",
-      icon: itServicesIcon,
+      icon: itIcon,
       theme: 3,
       desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services."
-    },
+    }
   ];
 
-  // Auto-slide carousel every 4 seconds
+  /* Auto-slide (optional) */
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % services.length);
@@ -64,25 +60,21 @@ const AboutPage = () => {
   return (
     <div className="about-container">
 
-      {/* HERO - VIDEO BACKGROUND */}
+      {/* HERO */}
       <section className="about-hero">
-        {/* 🎬 FULL WIDTH VIDEO BACKGROUND */}
         <video 
           className="hero-video-bg"
           autoPlay
           loop
           muted
           playsInline
-          poster="/hero-video.jpg"
         >
           <source src="/hero-video.webm" type="video/webm" />
           <source src="/hero-video.mp4" type="video/mp4" />
         </video>
 
-        {/* Dark overlay for text readability */}
         <div className="video-overlay"></div>
 
-        {/* Hero Content Overlay */}
         <div className="hero-wrapper">
           <motion.div 
             className="hero-content"
@@ -90,10 +82,6 @@ const AboutPage = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
           >
-            {/* <h1 className="gradient-text">About TechnoSthan</h1>
-            <p className="subtitle">
-              Innovation Tomorrow. Building Digital Excellence.
-            </p> */}
           </motion.div>
         </div>
       </section>
@@ -104,16 +92,12 @@ const AboutPage = () => {
         <p>
           TechnoSthan is a diversified, technology-driven enterprise operating across multiple verticals including Hospitality,
           Agritech, Innovations Hub, and Information & Technology Services.
-          We create impactful solutions ranging from digital platforms and smart farming systems to advanced cloud infrastructure,
-          enabling businesses to innovate, grow, and thrive in a rapidly evolving world.
         </p>
       </motion.section>
 
       {/* SERVICES */}
       <section className="services-grid-wrapper">
         <motion.h2 {...fadeIn}>Our Business Verticals</motion.h2>
-        <br />
-        <br />
 
         <div className="bento-grid">
           {services.map((service, index) => (
@@ -128,8 +112,14 @@ const AboutPage = () => {
               style={{ display: "block", color: "inherit", textDecoration: "none" }}
             >
               <div className="icon-box">
-                <img src={service.icon} alt={service.title} className="service-icon-img" loading="lazy" />
+                <img 
+                  src={service.icon} 
+                  alt={service.title} 
+                  className="service-icon-img" 
+                  loading="lazy" 
+                />
               </div>
+
               <h3>{service.title}</h3>
               <p>{service.desc}</p>
             </motion.a>
@@ -142,19 +132,19 @@ const AboutPage = () => {
         <motion.div className="glass-card mission" {...fadeIn}>
           <h2>Our Mission</h2>
           <p>
-            To empower businesses with innovative digital solutions that drive real growth and long-term success.
+            To empower businesses with innovative digital solutions that drive real growth.
           </p>
         </motion.div>
 
         <motion.div className="glass-card vision" {...fadeIn}>
           <h2>Our Vision</h2>
           <p>
-            To become a global technology partner, shaping the future of digital innovation and excellence.
+            To become a global technology partner, shaping the future of digital innovation.
           </p>
         </motion.div>
       </section>
 
-      {/* WHY CHOOSE US */}
+      {/* WHY US */}
       <motion.section className="why-us-section" {...fadeIn}>
         <h2>Why Choose Us</h2>
 
@@ -166,14 +156,15 @@ const AboutPage = () => {
             "Fast Delivery"
           ].map((item, i) => (
             <motion.div 
-              className="check-item" 
+              className="check-box" 
               key={i}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ delay: i * 0.2 }}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.12 }}
             >
-              <CheckCircle2 className="check-icon" />
-              <span>{item}</span>
+              <div className="check-box-inner">
+                <span className="check-text">{item}</span>
+              </div>
             </motion.div>
           ))}
         </div>

@@ -27,15 +27,16 @@ import ProtectedRoute from "./component/Protected/ProtectedRoute";
 import AdminRoute from "./component/Protected/AdminRoute";
 
 /* PAGES */
- import Home from "./component/Home/Home";
-//import SocialForm from "./component/SocialForm/SocialForm";
-
+import Home from "./component/Home/Home";
 import SocialForm from "./component/SocialForm/SocialForm";
 import HRSocial from "./component/HRSocial/HRSocial";
-
 import ExplorePage from "./Tab/ExplorePage";
-// import SocialFormOld from "./component/SocialForm/SocialForm-old";
 
+/* 🔥 NEW PAGE */
+import EngineeringPage from "./pages/EngineeringPage";
+import CloudPage from "./pages/CloudPage";
+import DigitalGrowth from "./pages/DigitalGrowth";
+import ConsultingPage from "./pages/ConsultingPage";
 
 /* WRAPPER */
 function AppWrapper() {
@@ -49,15 +50,12 @@ function AppWrapper() {
   );
 }
 
-
 /* MAIN APP */
 function App() {
-
   const location = useLocation();
 
   const noGlobalLayoutPaths = ["/login", "/register", "/dashboard", "/admin"];
-  const hideLayout =
-    noGlobalLayoutPaths.includes(location.pathname);
+  const hideLayout = noGlobalLayoutPaths.includes(location.pathname);
 
   return (
     <>
@@ -79,6 +77,12 @@ function App() {
         <Route path="/services/technosthan-agritech" element={<TechnoSthanAgritech />} />
         <Route path="/services/technosthan-it-services" element={<TechnoSthanITServices />} />
 
+        {/* 🔥 NEW ENGINEERING ROUTE */}
+        <Route path="/engineering" element={<EngineeringPage />} />
+        <Route path="/cloud" element={<CloudPage />} />
+        <Route path="/digital-growth" element={<DigitalGrowth />} />
+        <Route path="/consulting" element={<ConsultingPage />} />
+
         {/* OTHER */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/solution" element={<Solution />} />
@@ -87,15 +91,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* SOCIAL FORM */}
+        {/* SOCIAL */}
         <Route path="/social" element={<SocialForm />} />
-        
-        {/* <Route path="/social" element={<SocialForm-Old />} />
-        <Route path="/socialform2" element={<SocialForm />} /> */}
         <Route path="/hr-social" element={<HRSocial />} />
-        <Route path="/HRSocial" element={<HRSocial />} />
 
-        {/* USER DASHBOARD */}
+        {/* DASHBOARD */}
         <Route
           path="/dashboard"
           element={
@@ -105,11 +105,7 @@ function App() {
           }
         />
 
-        {/* explore page  */}
-                <Route path="/explore" element={<ExplorePage />} />
-
-
-        {/* ADMIN DASHBOARD FIXED */}
+        {/* ADMIN */}
         <Route
           path="/admin"
           element={
@@ -118,6 +114,9 @@ function App() {
             </AdminRoute>
           }
         />
+
+        {/* EXPLORE */}
+        <Route path="/explore" element={<ExplorePage />} />
 
       </Routes>
 

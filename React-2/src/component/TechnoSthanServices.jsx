@@ -2,10 +2,10 @@ import React from "react";
 import { Link } from "react-router-dom";
 import "./TechnoSthanServices.css";
 
-import agritechIcon from "../assets/techno-agre.png";
-import innovationIcon from "../assets/Innvationhub-icon.png";
-import itIcon from "../assets/Tech-services.png";
-import hospitalityIcon from "../assets/Techno-hosp.png";
+import agritechIcon from "../assets/agri.png";
+import innovationIcon from "../assets/innovation.png";
+import itIcon from "../assets/it.png";
+import hospitalityIcon from "../assets/hospitality.png";
 
 const services = [
   {

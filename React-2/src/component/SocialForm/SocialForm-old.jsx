@@ -3,17 +3,6 @@ import React, { useState, useEffect } from "react";
 import "./SocialForm.css";
 import logo from "../../assets/logo.png";
 import { Helmet } from "react-helmet-async";
-const platformConfig = {
-  id: 13,
-  name: "Facebook",
-  icon: "Facebook",
-  color: "#1877F2",
-  charLimit: 63206
-};
-
-const { id: configId, name: configName, icon: configIcon, color: configColor, charLimit: configCharLimit } = platformConfig;
-
-
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const apiUrl = (path) => `${API_BASE}${path}`;
@@ -260,21 +249,21 @@ const PlatformIcons = {
 
 // ========== PLATFORM DATA ==========
 const allPlatforms = [
-  { id: configId, name: configName, icon: configIcon, color: configColor, charLimit: configCharLimit },
-  // { id: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200 },
-  // { id: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000 },
-  // { id: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280 },
-  // { id: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536 },
-  // { id: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096 },
-  // { id: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000 },
-  // { id: "pinterest", name: "Pinterest", icon: "Pinterest", color: "#BD081C", charLimit: 500 },
-  // { id: "tiktok", name: "TikTok", icon: "TikTok", color: "#000000", charLimit: 2200 },
-  // { id: "snapchat", name: "Snapchat", icon: "Snapchat", color: "#FFFC00", charLimit: 250 },
-  // { id: "reddit", name: "Reddit", icon: "Reddit", color: "#FF4500", charLimit: 40000 },
-  // { id: "discord", name: "Discord", icon: "Discord", color: "#5865F2", charLimit: 2000 },
-  // { id: "slack", name: "Slack", icon: "Slack", color: "#4A154B", charLimit: 40000 },
-  // { id: "email", name: "Email Blast", icon: "Email", color: "#EA4335", charLimit: 100000 },
-  // { id: "sms", name: "SMS", icon: "SMS", color: "#34B7F1", charLimit: 160 }
+  { id: "facebook", name: "Facebook", icon: "Facebook", color: "#1877F2", charLimit: 63206 },
+  { id: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200 },
+  { id: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000 },
+  { id: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280 },
+  { id: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536 },
+  { id: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096 },
+  { id: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000 },
+  { id: "pinterest", name: "Pinterest", icon: "Pinterest", color: "#BD081C", charLimit: 500 },
+  { id: "tiktok", name: "TikTok", icon: "TikTok", color: "#000000", charLimit: 2200 },
+  { id: "snapchat", name: "Snapchat", icon: "Snapchat", color: "#FFFC00", charLimit: 250 },
+  { id: "reddit", name: "Reddit", icon: "Reddit", color: "#FF4500", charLimit: 40000 },
+  { id: "discord", name: "Discord", icon: "Discord", color: "#5865F2", charLimit: 2000 },
+  { id: "slack", name: "Slack", icon: "Slack", color: "#4A154B", charLimit: 40000 },
+  { id: "email", name: "Email Blast", icon: "Email", color: "#EA4335", charLimit: 100000 },
+  { id: "sms", name: "SMS", icon: "SMS", color: "#34B7F1", charLimit: 160 }
 ];
 
 // ========== TEMPLATE CATEGORIES ==========
@@ -401,16 +390,61 @@ const defaultCompanyConfig = {
 };
 
 // ========== HR PROFILES DATA ==========
-const defaultHRProfiles = [
-  { id: 1, name: "Vikas Kumar", role: "Senior HR Manager", email: "vikas@technosthan.com", phone: "9507562013", avatar: "V", color: "#6366f1" },
-  { id: 2, name: "Priya Sharma", role: "HR Recruiter", email: "priya@technosthan.com", phone: "9876543210", avatar: "P", color: "#8b5cf6" }
-];
+const defaultHRProfiles = [];
+
+const defaultCurrentHR = {
+  id: "guest",
+  name: "HR Account",
+  role: "Sign in to continue",
+  email: "",
+  phone: "",
+  avatar: "H",
+  color: "#6366f1",
+  avatarUrl: ""
+};
 
 const dispatchPlatformOptions = [
   { id: "linkedin", name: "LinkedIn" },
   { id: "facebook", name: "Facebook" },
-  { id: "telegram", name: "Telegram" }
+  { id: "telegram", name: "Telegram" },
+  { id: "twitter", name: "Twitter/X" },
+  // { id: "youtube", name: "YouTube" },
+  // { id: "pinterest", name: "Pinterest" },
+  // { id: "tiktok", name: "TikTok" },
+  // { id: "snapchat", name: "Snapchat" },
+  // { id: "reddit", name: "Reddit" },
+  // { id: "discord", name: "Discord" },
+  // { id: "slack", name: "Slack" },
+  { id: "email", name: "Email Blast" },
+  { id: "sms", name: "SMS" },
+  { id: "whatsapp", name: "WhatsApp" } // WhatsApp is the core platform, always enabled for dispatch
 ];
+
+const toAvatarLabel = (name = "") => String(name).trim().charAt(0).toUpperCase() || "H";
+
+const resolveAvatarUrl = (value = "") => {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+  if (rawValue.startsWith("http://") || rawValue.startsWith("https://") || rawValue.startsWith("data:")) {
+    return rawValue;
+  }
+  return `${API_BASE}${rawValue.startsWith("/") ? rawValue : `/${rawValue}`}`;
+};
+
+const renderHRAvatarContent = (profile) => {
+  const avatarUrl = resolveAvatarUrl(profile?.avatarUrl);
+  if (avatarUrl) {
+    return (
+      <span
+        className="profile-avatar-image"
+        style={{ backgroundImage: `url("${avatarUrl}")` }}
+        aria-hidden="true"
+      />
+    );
+  }
+
+  return profile?.avatar || toAvatarLabel(profile?.name);
+};
 
 // ========== MAIN COMPONENT ==========
 const SocialForm = () => {
@@ -421,8 +455,15 @@ const SocialForm = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   // HR Profile Management
-  const [hrProfiles, setHRProfiles] = useState(defaultHRProfiles);
-  const [currentHR, setCurrentHR] = useState(defaultHRProfiles[0]);
+  const [hrProfiles, setHRProfiles] = useState([]);
+  const [currentHR, setCurrentHR] = useState(defaultCurrentHR);
+  const [authenticatedUser, setAuthenticatedUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      return null;
+    }
+  });
   const [showHRProfileModal, setShowHRProfileModal] = useState(false);
   const [editingHRProfile, setEditingHRProfile] = useState(null);
   const [profileModalTab, setProfileModalTab] = useState("signin");
@@ -433,14 +474,108 @@ const SocialForm = () => {
   const [showCompanySettings, setShowCompanySettings] = useState(false);
   
   // Message composition state - Popular 5 platforms enabled by default for HR
+  const [platformOptions, setPlatformOptions] = useState([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState(["whatsapp"]);
-  const [dispatchPlatforms, setDispatchPlatforms] = useState(["linkedin", "facebook", "telegram"]);
+  const [dispatchPlatforms, setDispatchPlatforms] = useState(["linkedin", "facebook", "telegram","whatsapp"]);
   const [platformConnections, setPlatformConnections] = useState({
     linkedin: false,
     facebook: false,
-    telegram: false
+    telegram: false,
+    whatsapp: false
   });
   const [connectingPlatform, setConnectingPlatform] = useState(null);
+  const [newPlatformName, setNewPlatformName] = useState("");
+  const [newPlatformId, setNewPlatformId] = useState("");
+  const [newPlatformColor, setNewPlatformColor] = useState("#1DA1F2");
+  const [newPlatformIcon, setNewPlatformIcon] = useState("Link");
+
+  const resolveHRScopeUserId = () => {
+    if (authenticatedUser?.id) return String(authenticatedUser.id);
+    if (authenticatedUser?.email) return String(authenticatedUser.email);
+    return String(currentHR?.email || "anonymous");
+  };
+
+  const withAvatarMeta = (profile) => ({
+    ...profile,
+    avatar: toAvatarLabel(profile?.name),
+    avatarUrl: resolveAvatarUrl(profile?.avatarUrl)
+  });
+
+  const addPlatformOption = async () => {
+    const name = String(newPlatformName).trim();
+    const id = String(newPlatformId || name)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "");
+
+    if (!name) {
+      showNotification("Platform name is required", "error");
+      return;
+    }
+
+    if (!id) {
+      showNotification("Platform ID is required", "error");
+      return;
+    }
+
+    if (platformOptions.some((platform) => platform.id === id)) {
+      showNotification("This platform already exists", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch(apiUrl("/api/social/platforms"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          name,
+          icon: newPlatformIcon || "Link",
+          color: newPlatformColor || "#1DA1F2",
+          charLimit: 5000
+        })
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.msg || "Unable to add platform");
+      }
+
+      const created = await response.json();
+      setPlatformOptions((prev) => [...prev, created]);
+      setNewPlatformName("");
+      setNewPlatformId("");
+      setNewPlatformColor("#1DA1F2");
+      setNewPlatformIcon("Link");
+      showNotification(`${name} added`, "success");
+    } catch (err) {
+      showNotification(err.message || "Failed to add platform", "error");
+    }
+  };
+
+  const removePlatformOption = async (platform) => {
+    const platformMongoId = platform?._id;
+    const platformId = platform?.id;
+
+    setPlatformOptions((prev) => prev.filter((item) => item._id !== platformMongoId));
+    setSelectedPlatforms((prev) => prev.filter((id) => id !== platformId));
+
+    try {
+      const response = await fetch(apiUrl(`/api/social/${platformMongoId}`), {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("Delete API failed");
+      }
+
+      showNotification("Platform removed", "success");
+    } catch {
+      setPlatformOptions((prev) => [...prev, platform]);
+      showNotification("Could not delete platform. Restored in UI.", "error");
+    }
+  };
   const [sendingType, setSendingType] = useState(null);
   const [settingsNotifications, setSettingsNotifications] = useState({
     emailScheduled: true,
@@ -651,6 +786,83 @@ const SocialForm = () => {
   };
 
   useEffect(() => {
+    const handleStorage = () => {
+      try {
+        setAuthenticatedUser(JSON.parse(localStorage.getItem("user") || "null"));
+      } catch {
+        setAuthenticatedUser(null);
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
+    const fetchPlatformOptions = async () => {
+      try {
+        const response = await fetch(apiUrl("/api/social/platforms"));
+        if (!response.ok) {
+          throw new Error("Platform API unavailable");
+        }
+
+        const payload = await response.json();
+        if (Array.isArray(payload) && payload.length > 0) {
+          setPlatformOptions(payload);
+          return;
+        }
+
+        setPlatformOptions(allPlatforms.map((platform) => ({ ...platform, _id: platform.id })));
+      } catch {
+        setPlatformOptions(allPlatforms.map((platform) => ({ ...platform, _id: platform.id })));
+      }
+    };
+
+    fetchPlatformOptions();
+  }, []);
+
+  useEffect(() => {
+    const loadHRProfiles = async () => {
+      const userId = encodeURIComponent(resolveHRScopeUserId());
+
+      try {
+        const response = await fetch(apiUrl(`/api/hr?userId=${userId}`));
+        if (!response.ok) {
+          throw new Error("Unable to fetch HR profiles");
+        }
+
+        const records = await response.json();
+        const mapped = Array.isArray(records)
+          ? records.map(withAvatarMeta)
+          : [];
+
+        if (mapped.length > 0) {
+          setHRProfiles(mapped);
+
+          const selectedId = localStorage.getItem("hr_current_profile_id");
+          const selectedProfile = mapped.find((profile) => profile._id === selectedId);
+          setCurrentHR(selectedProfile || mapped[0]);
+          return;
+        }
+
+        setHRProfiles([]);
+        setCurrentHR(defaultCurrentHR);
+      } catch {
+        setHRProfiles([]);
+        setCurrentHR(defaultCurrentHR);
+      }
+    };
+
+    loadHRProfiles();
+  }, [authenticatedUser]);
+
+  useEffect(() => {
+    if (currentHR?._id) {
+      localStorage.setItem("hr_current_profile_id", currentHR._id);
+    }
+  }, [currentHR]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(contacts));
     } catch {
@@ -720,11 +932,12 @@ const SocialForm = () => {
       setPlatformConnections({
         linkedin: source?.linkedin?.connected ?? false,
         facebook: source?.facebook?.connected ?? false,
-        telegram: source?.telegram?.connected ?? false
+        telegram: source?.telegram?.connected ?? false,
+        whatsapp: source?.whatsapp?.connected ?? false
       });
     } catch (err) {
       console.error("Connection fetch error:", err);
-      setPlatformConnections({ linkedin: false, facebook: false, telegram: false });
+      setPlatformConnections({ linkedin: false, facebook: false, telegram: false, whatsapp: false });
     }
   };
 
@@ -738,7 +951,7 @@ const SocialForm = () => {
     try {
       // Read posts and contact registry from backend.
       const [postsRes, socialRes] = await Promise.all([
-        fetch(apiUrl("/api/posts")),
+        fetch(apiUrl(`/api/posts?userId=${encodeURIComponent(resolveHRScopeUserId())}`)),
         fetch(apiUrl("/api/social"))
       ]);
 
@@ -792,13 +1005,19 @@ const SocialForm = () => {
         ? Math.round(((lastWeekPosts - prevWeekPosts) / prevWeekPosts) * 100)
         : lastWeekPosts > 0 ? 100 : 0;
       
-      // Monthly posts distribution (last 12 months)
+      // Monthly posts distribution (calendar year: Jan-Dec)
       const monthlyPosts = Array(12).fill(0);
+      const currentYear = now.getFullYear();
+      
       posts.forEach((post) => {
         const created = new Date(post.createdAt);
-        const monthsAgo = Math.floor((now - created) / (30 * 24 * 60 * 60 * 1000));
-        if (monthsAgo >= 0 && monthsAgo < 12) {
-          monthlyPosts[11 - monthsAgo]++;
+        const postMonth = created.getMonth();  // 0=Jan, 3=Apr, 11=Dec
+        const postYear = created.getFullYear();
+        
+        // Count posts from current year only (Jan-Dec 2026)
+        // Posts from other years won't be counted
+        if (postYear === currentYear) {
+          monthlyPosts[postMonth]++;
         }
       });
 
@@ -1296,7 +1515,7 @@ const SocialForm = () => {
   };
 
   // ========== HR PROFILE HANDLERS ==========
-  const [newHRProfile, setNewHRProfile] = useState({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
+  const [newHRProfile, setNewHRProfile] = useState({ name: "", role: "", email: "", phone: "", avatarUrl: "", color: "#6366f1" });
 
   const openHRProfileModal = (initialTab = "signin") => {
     setProfileModalTab(initialTab);
@@ -1305,7 +1524,7 @@ const SocialForm = () => {
     setShowHRProfileModal(true);
   };
 
-  const addHRProfile = () => {
+  const addHRProfile = async () => {
     if (!newHRProfile.name || !newHRProfile.role || !newHRProfile.email) {
       showNotification("Please fill required fields", "error");
       return;
@@ -1317,27 +1536,55 @@ const SocialForm = () => {
       showNotification("Profile with this email already exists", "error");
       return;
     }
-    const avatar = newHRProfile.name.charAt(0).toUpperCase();
-    const newProfile = { ...newHRProfile, id: Date.now(), avatar };
-    setHRProfiles([...hrProfiles, newProfile]);
-    setNewHRProfile({ name: "", role: "", email: "", phone: "", avatar: "", color: "#6366f1" });
-    showNotification("HR Profile added! 👤");
+
+    try {
+      const response = await fetch(apiUrl("/api/hr"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newHRProfile,
+          userId: resolveHRScopeUserId()
+        })
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.msg || "Could not create profile");
+      }
+
+      const created = withAvatarMeta(await response.json());
+      setHRProfiles((prev) => [...prev, created]);
+      setCurrentHR(created);
+      setNewHRProfile({ name: "", role: "", email: "", phone: "", avatarUrl: "", color: "#6366f1" });
+      showNotification("HR Profile added", "success");
+    } catch (err) {
+      showNotification(err.message || "Could not create profile", "error");
+    }
   };
 
-  const deleteHRProfile = (profileId) => {
+  const deleteHRProfile = async (profileId) => {
     if (hrProfiles.length <= 1) {
       showNotification("Cannot delete the last profile", "error");
       return;
     }
     if (window.confirm("Delete this HR profile?")) {
-      setHRProfiles(prevProfiles => {
-        const updatedProfiles = prevProfiles.filter(p => p.id !== profileId);
-        if (currentHR.id === profileId && updatedProfiles.length > 0) {
-          setCurrentHR(updatedProfiles[0]);
-        }
-        return updatedProfiles;
-      });
-      showNotification("Profile deleted!");
+      const previous = hrProfiles;
+      const updatedProfiles = hrProfiles.filter((profile) => profile._id !== profileId);
+      setHRProfiles(updatedProfiles);
+      if (currentHR._id === profileId && updatedProfiles.length > 0) {
+        setCurrentHR(updatedProfiles[0]);
+      }
+
+      try {
+        const response = await fetch(apiUrl(`/api/hr/${profileId}?userId=${encodeURIComponent(resolveHRScopeUserId())}`), {
+          method: "DELETE"
+        });
+        if (!response.ok) throw new Error("Delete failed");
+        showNotification("Profile deleted", "success");
+      } catch {
+        setHRProfiles(previous);
+        showNotification("Could not delete profile", "error");
+      }
     }
   };
 
@@ -1355,7 +1602,8 @@ const SocialForm = () => {
 
     const profile = hrProfiles.find((item) => item.email.toLowerCase() === email);
     if (!profile) {
-      showNotification("Profile not found. Use Sign Up tab to create one.", "error");
+      showNotification("No HR account found. Please sign up first.", "error");
+      setProfileModalTab("signup");
       return;
     }
 
@@ -1366,10 +1614,9 @@ const SocialForm = () => {
 
   const startEditCurrentProfile = () => {
     setEditingHRProfile({ ...currentHR });
-    setProfileModalTab("manage");
   };
 
-  const saveCurrentProfile = () => {
+  const saveCurrentProfile = async () => {
     if (!editingHRProfile?.name || !editingHRProfile?.role || !editingHRProfile?.email) {
       showNotification("Name, role and email are required", "error");
       return;
@@ -1377,7 +1624,7 @@ const SocialForm = () => {
 
     const duplicateEmail = hrProfiles.some(
       (profile) =>
-        profile.id !== editingHRProfile.id &&
+        profile._id !== editingHRProfile._id &&
         profile.email.toLowerCase() === editingHRProfile.email.toLowerCase()
     );
 
@@ -1386,15 +1633,139 @@ const SocialForm = () => {
       return;
     }
 
-    const updatedProfile = {
-      ...editingHRProfile,
-      avatar: editingHRProfile.name.charAt(0).toUpperCase()
-    };
+    try {
+      let response;
 
-    setHRProfiles((prev) => prev.map((profile) => (profile.id === updatedProfile.id ? updatedProfile : profile)));
-    setCurrentHR(updatedProfile);
-    setEditingHRProfile(null);
-    showNotification("Profile updated successfully");
+      // If this editing object has an _id, update. Otherwise create new profile.
+      if (editingHRProfile._id) {
+        response = await fetch(apiUrl(`/api/hr/${editingHRProfile._id}`), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...editingHRProfile, userId: resolveHRScopeUserId() })
+        });
+      } else {
+        response = await fetch(apiUrl(`/api/hr`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...editingHRProfile, userId: resolveHRScopeUserId() })
+        });
+      }
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.msg || "Could not save profile");
+      }
+
+      const saved = withAvatarMeta(await response.json());
+
+      // Upsert into profiles list
+      setHRProfiles((prev) => {
+        const exists = prev.some(p => p._id === saved._id);
+        if (exists) return prev.map((p) => (p._id === saved._id ? saved : p));
+        return [...prev, saved];
+      });
+
+      setCurrentHR(saved);
+      setEditingHRProfile(null);
+      showNotification("Profile saved successfully", "success");
+    } catch (err) {
+      showNotification(err.message || "Could not save profile", "error");
+    }
+  };
+
+  const handleHRAvatarUpload = (event, mode = "new") => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showNotification("Please select an image file", "error");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showNotification("Profile image should be under 2MB", "error");
+      return;
+    }
+
+    // Client-side resize/crop to square and convert to JPEG for consistent avatar
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.src = reader.result;
+      img.onload = async () => {
+        try {
+          // Crop to square centered and resize to 512px
+          const size = Math.min(img.width, img.height);
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+          const target = 512;
+          const canvas = document.createElement('canvas');
+          canvas.width = target;
+          canvas.height = target;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, target, target);
+
+          // Convert to JPEG with 0.85 quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          const response = await fetch(apiUrl('/api/hr/upload-avatar'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataUrl })
+          });
+
+          if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            throw new Error(errBody?.msg || 'Could not upload image');
+          }
+
+          const uploaded = await response.json();
+          if (mode === 'edit') {
+            // Capture the current profile ID before async operations
+            const profileId = editingHRProfile?._id;
+            setEditingHRProfile((prev) => ({ ...prev, avatarUrl: uploaded.url }));
+            
+            // If editing and profile exists, auto-save avatar change
+            if (profileId) {
+              try {
+                console.log(`📸 Auto-saving avatar for profile: ${profileId}`);
+                const updateRes = await fetch(apiUrl(`/api/hr/${profileId}`), {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    ...editingHRProfile,
+                    avatarUrl: uploaded.url,
+                    userId: resolveHRScopeUserId() 
+                  })
+                });
+                
+                if (!updateRes.ok) {
+                  const err = await updateRes.json().catch(() => ({}));
+                  console.warn(`⚠️ Auto-save failed:`, err?.msg || updateRes.status);
+                } else {
+                  console.log(`✅ Avatar auto-saved successfully`);
+                  // Refresh local profiles list
+                  const listRes = await fetch(apiUrl('/api/hr'));
+                  if (listRes.ok) {
+                    const list = await listRes.json();
+                    setHRProfiles(list.map(withAvatarMeta));
+                  }
+                }
+              } catch (e) {
+                console.warn('Auto-save avatar failed', e);
+                showNotification('Note: Avatar uploaded but profile save requires manual click', 'info');
+              }
+            }
+          } else {
+            setNewHRProfile((prev) => ({ ...prev, avatarUrl: uploaded.url }));
+          }
+        } catch (err) {
+          showNotification(err.message || 'Could not upload image', 'error');
+        }
+      };
+      img.onerror = () => showNotification('Invalid image file', 'error');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -1467,16 +1838,24 @@ const SocialForm = () => {
     };
 
     // ✅ BACKEND SAVE
-    await fetch(apiUrl("/api/posts"), {
+    const postResponse = await fetch(apiUrl("/api/posts"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({ ...data, userId: resolveHRScopeUserId() })
     });
 
+    if (!postResponse.ok) {
+      const err = await postResponse.json().catch(() => ({}));
+      throw new Error(err?.msg || `Failed to save post (${postResponse.status})`);
+    }
+
     // ✅ FETCH UPDATED DATA
-    const res = await fetch(apiUrl("/api/posts"));
+    const res = await fetch(apiUrl(`/api/posts?userId=${encodeURIComponent(resolveHRScopeUserId())}`));
+    if (!res.ok) {
+      throw new Error("Failed to fetch updated posts");
+    }
     const updated = await res.json();
     const normalizedHistory = Array.isArray(updated)
       ? updated
@@ -1874,51 +2253,97 @@ const SocialForm = () => {
           {/* Platform Selection */}
           <div className="compose-card platforms-card">
             <div className="card-header">
-              <h3>📱 Select One Platform</h3>
+              <h3>📱 Select Platform</h3>
               <button className="select-all-btn" onClick={clearSelectedPlatform}>
                 Clear
               </button>
             </div>
 
+            <div className="platform-manager-row">
+              <input
+                type="text"
+                placeholder="New platform name"
+                value={newPlatformName}
+                onChange={(e) => setNewPlatformName(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Platform id"
+                value={newPlatformId}
+                onChange={(e) => setNewPlatformId(e.target.value)}
+              />
+              <input
+                type="color"
+                value={newPlatformColor}
+                onChange={(e) => setNewPlatformColor(e.target.value)}
+                title="Platform color"
+              />
+              <button className="add-platform-btn" onClick={addPlatformOption}>
+                Add
+              </button>
+            </div>
+
             <div className="platforms-grid">
-              {allPlatforms.map((platform) => {
-                const IconComponent = PlatformIcons[platform.icon];
+              {platformOptions.map((platform) => {
+                const IconComponent = PlatformIcons[platform.icon] || PlatformIcons.Link;
                 return (
-                <div
-                  key={platform.id}
-                  className={`platform-item ${selectedPlatforms.includes(platform.id) ? "selected" : ""}`}
-                  onClick={() => togglePlatform(platform.id)}
-                  style={{ "--platform-color": platform.color }}
-                >
-                  <div className="platform-icon-wrapper" style={{ background: platform.color }}>
-                    {IconComponent && <IconComponent />}
-                  </div>
-                  <span className="platform-name">{platform.name}</span>
-                  <span className="platform-limit">{platform.charLimit.toLocaleString()} chars</span>
-                  {selectedPlatforms.includes(platform.id) && (
-                    <span className="check-mark">
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                      </svg>
-                    </span>
-                  )}
-                  <button className="share-btn" onClick={(e) => { e.stopPropagation(); shareToPlatform(platform.id); }}>
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-                    </svg>
-                  </button>
-                  <button
-                    className="copy-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopyMessage(platform.name);
-                    }}
-                    title="Copy message"
+                  <div
+                    key={platform._id || platform.id}
+                    className={`platform-item ${selectedPlatforms.includes(platform.id) ? "selected" : ""}`}
+                    onClick={() => togglePlatform(platform.id)}
+                    style={{ "--platform-color": platform.color }}
                   >
-                    <Icons.Copy />
-                  </button>
-                </div>
-              )})}
+                    <button
+                      type="button"
+                      className="remove-platform-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePlatformOption(platform);
+                      }}
+                      title="Remove platform"
+                    >
+                      ×
+                    </button>
+
+                    <div className="platform-icon-wrapper" style={{ background: platform.color }}>
+                      {IconComponent && <IconComponent />}
+                    </div>
+                    <span className="platform-name">{platform.name}</span>
+                    <span className="platform-limit">{platform.charLimit.toLocaleString()} chars</span>
+                    {selectedPlatforms.includes(platform.id) && (
+                      <span className="check-mark">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                        </svg>
+                      </span>
+                    )}
+
+                    <div className="platform-actions">
+                      <button
+                        className="copy-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyMessage(platform.name);
+                        }}
+                        title="Copy message"
+                      >
+                        <Icons.Copy />
+                      </button>
+
+                      <button
+                        className="share-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          shareToPlatform(platform.id);
+                        }}
+                        title="Share"
+                      >
+                        <Icons.Share />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -2066,7 +2491,7 @@ const SocialForm = () => {
           {/* Submit Button */}
           <div className="compose-card dispatch-card">
             <div className="card-header">
-              <h3>🚀 API Dispatch (LinkedIn/Facebook/Telegram)</h3>
+              <h3>🚀 API Dispatch (LinkedIn/Facebook/Telegram/WhatsApp)</h3>
               <button className="select-all-btn" onClick={toggleAllDispatchPlatforms}>
                 {dispatchPlatforms.length === dispatchPlatformOptions.length ? "Unselect All" : "Select All"}
               </button>
@@ -3135,7 +3560,7 @@ const SocialForm = () => {
               <div className="hr-profile-section">
                 <div className="current-hr-profile" onClick={() => setShowHRProfileModal(true)}>
                   <div className="hr-avatar" style={{ background: currentHR.color }}>
-                    {currentHR.avatar}
+                    {renderHRAvatarContent(currentHR)}
                   </div>
                   <div className="hr-details">
                     <span className="hr-name">{currentHR.name}</span>
@@ -3145,14 +3570,14 @@ const SocialForm = () => {
                 </div>
                 {hrProfiles.length > 1 && (
                   <div className="hr-profiles-dropdown">
-                    {hrProfiles.filter(p => p.id !== currentHR.id).map(profile => (
+                    {hrProfiles.filter(p => (p._id || p.id) !== (currentHR._id || currentHR.id)).map(profile => (
                       <button 
-                        key={profile.id} 
+                        key={profile._id || profile.id} 
                         className="hr-profile-option"
                         onClick={() => switchHRProfile(profile)}
                       >
                         <div className="hr-avatar small" style={{ background: profile.color }}>
-                          {profile.avatar}
+                          {renderHRAvatarContent(profile)}
                         </div>
                         <span>{profile.name}</span>
                       </button>
@@ -3168,7 +3593,7 @@ const SocialForm = () => {
               </div>
             ) : (
               <div className="collapsed-hr-avatar" onClick={() => openHRProfileModal("signin")} style={{ background: currentHR.color }}>
-                {currentHR.avatar}
+                {renderHRAvatarContent(currentHR)}
               </div>
             )}
           </div>
@@ -3216,7 +3641,7 @@ const SocialForm = () => {
             </button>
             <button className="user-menu profile-trigger" onClick={() => openHRProfileModal("signin")}>
               <div className="user-avatar small" style={{ background: currentHR.color }}>
-                {currentHR.avatar}
+                {renderHRAvatarContent(currentHR)}
               </div>
               <div className="user-menu-text">
                 <span className="user-menu-name">{currentHR.name}</span>
@@ -3254,8 +3679,8 @@ const SocialForm = () => {
           <div className="modal hr-profile-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>👤 HR Profile Center</h2>
-              <button className="modal-close" onClick={() => setShowHRProfileModal(false)}>
-                <Icons.Close />
+              <button className="modal-close modal-cancel-btn" onClick={() => setShowHRProfileModal(false)}>
+                Cancel
               </button>
             </div>
             <div className="modal-body">
@@ -3272,21 +3697,18 @@ const SocialForm = () => {
                 >
                   Sign Up
                 </button>
-                <button
-                  className={profileModalTab === "manage" ? "active" : ""}
-                  onClick={() => {
-                    setProfileModalTab("manage");
-                    setEditingHRProfile(null);
-                  }}
-                >
-                  Manage
-                </button>
+                {currentHR?._id && (
+                  <button
+                    className={profileModalTab === "edit" ? "active" : ""}
+                    onClick={() => setProfileModalTab("edit")}
+                  >
+                    ✏️ Edit Profile
+                  </button>
+                )}
               </div>
 
               {profileModalTab === "signin" && (
-                <div className="profile-auth-panel">
-                  <h3>Welcome Back</h3>
-                  <p>Sign in with your HR email profile</p>
+                <div className="profile-auth-panel premium-signin-panel">
                   <input
                     type="email"
                     placeholder="Enter HR email"
@@ -3294,21 +3716,44 @@ const SocialForm = () => {
                     onChange={(e) => setProfileLoginEmail(e.target.value)}
                   />
                   <button className="auth-btn" onClick={signInHRProfile}>Sign In Profile</button>
-                  <div className="quick-signin-list">
-                    {hrProfiles.map((profile) => (
-                      <button key={profile.id} className="quick-profile-chip" onClick={() => switchHRProfile(profile)}>
-                        <span className="chip-avatar" style={{ background: profile.color }}>{profile.avatar}</span>
-                        <span>{profile.name}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <button type="button" className="signin-link-btn" onClick={() => setProfileModalTab("signup")}>No account? Sign Up</button>
+                  {hrProfiles.length > 0 ? (
+                    <div className="quick-signin-list">
+                      {hrProfiles.map((profile) => (
+                        <button key={profile._id || profile.id} className="quick-profile-chip" onClick={() => switchHRProfile(profile)}>
+                          <span className="chip-avatar" style={{ background: profile.color }}>{renderHRAvatarContent(profile)}</span>
+                          <span>{profile.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-profile-state">
+                      No HR account yet. Use Sign Up to create your profile.
+                    </div>
+                  )}
                 </div>
               )}
 
               {profileModalTab === "signup" && (
-                <div className="add-hr-form">
-                  <h3>Create HR Profile</h3>
-                  <p>Sign up a new HR profile for this dashboard</p>
+                <div className="add-hr-form modal-signup-form">
+                  <div className="profile-image-block">
+                    <div className="profile-image-preview">
+                      {newHRProfile.avatarUrl ? (
+                        renderHRAvatarContent({ avatarUrl: newHRProfile.avatarUrl, name: newHRProfile.name })
+                      ) : (
+                        <span>No image selected</span>
+                      )}
+                    </div>
+                    <label className="avatar-upload-btn">
+                      <Icons.Image />
+                      Upload HR Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleHRAvatarUpload(e, "new")}
+                      />
+                    </label>
+                  </div>
                   <div className="form-row">
                     <input
                       type="text"
@@ -3351,81 +3796,72 @@ const SocialForm = () => {
                 </div>
               )}
 
-              {profileModalTab === "manage" && (
-                <>
-                  <div className="hr-profiles-list">
-                    <h3>Your HR Profiles</h3>
-                    {hrProfiles.map(profile => (
-                      <div key={profile.id} className={`hr-profile-card ${currentHR.id === profile.id ? 'active' : ''}`}>
-                        <div className="hr-profile-avatar" style={{ background: profile.color }}>
-                          {profile.avatar}
-                        </div>
-                        <div className="hr-profile-info">
-                          <span className="hr-profile-name">{profile.name}</span>
-                          <span className="hr-profile-role">{profile.role}</span>
-                          <span className="hr-profile-email">{profile.email}</span>
-                        </div>
-                        <div className="profile-card-actions">
-                          {currentHR.id === profile.id && <span className="current-badge">Current</span>}
-                          <button className="connect-btn" onClick={() => switchHRProfile(profile)}>Use</button>
-                          {hrProfiles.length > 1 && (
-                            <button className="delete-hr-btn" onClick={() => deleteHRProfile(profile.id)}>
-                              <Icons.Delete />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="current-profile-editor">
-                    <div className="editor-header">
-                      <h3>Edit Current Profile</h3>
-                      {!editingHRProfile && (
-                        <button className="connect-btn" onClick={startEditCurrentProfile}>Edit</button>
-                      )}
-                    </div>
-                    {editingHRProfile ? (
-                      <div className="form-row form-grid">
-                        <input
-                          type="text"
-                          placeholder="Name"
-                          value={editingHRProfile.name}
-                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, name: e.target.value })}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Role"
-                          value={editingHRProfile.role}
-                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, role: e.target.value })}
-                        />
-                        <input
-                          type="email"
-                          placeholder="Email"
-                          value={editingHRProfile.email}
-                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, email: e.target.value })}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Phone"
-                          value={editingHRProfile.phone}
-                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, phone: e.target.value })}
-                        />
-                        <input
-                          type="color"
-                          value={editingHRProfile.color}
-                          onChange={(e) => setEditingHRProfile({ ...editingHRProfile, color: e.target.value })}
-                        />
-                        <div className="editor-actions">
-                          <button className="cancel-btn" onClick={() => setEditingHRProfile(null)}>Cancel</button>
-                          <button className="save-btn" onClick={saveCurrentProfile}>Save</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="editor-placeholder">Click Edit to update your active profile.</p>
+              {currentHR?._id && (
+                <div className="current-profile-editor compact-editor" style={{ display: profileModalTab === "edit" ? "block" : "none" }}>
+                  <div className="editor-header">
+                    <h3>Edit Current Profile</h3>
+                    {!editingHRProfile && (
+                      <button className="connect-btn" onClick={startEditCurrentProfile}>Edit</button>
                     )}
                   </div>
-                </>
+                  {editingHRProfile ? (
+                    <div className="form-row form-grid">
+                      <div className="profile-image-block editor-image-block">
+                        <div className="profile-image-preview">
+                          {editingHRProfile.avatarUrl ? (
+                            renderHRAvatarContent({ avatarUrl: editingHRProfile.avatarUrl, name: editingHRProfile.name })
+                          ) : (
+                            <span>No image selected</span>
+                          )}
+                        </div>
+                        <label className="avatar-upload-btn">
+                          <Icons.Image />
+                          Change Photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleHRAvatarUpload(e, "edit")}
+                          />
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={editingHRProfile.name}
+                        onChange={(e) => setEditingHRProfile({ ...editingHRProfile, name: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Role"
+                        value={editingHRProfile.role}
+                        onChange={(e) => setEditingHRProfile({ ...editingHRProfile, role: e.target.value })}
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={editingHRProfile.email}
+                        onChange={(e) => setEditingHRProfile({ ...editingHRProfile, email: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Phone"
+                        value={editingHRProfile.phone}
+                        onChange={(e) => setEditingHRProfile({ ...editingHRProfile, phone: e.target.value })}
+                      />
+                      <input
+                        type="color"
+                        value={editingHRProfile.color}
+                        onChange={(e) => setEditingHRProfile({ ...editingHRProfile, color: e.target.value })}
+                      />
+                      <div className="editor-actions">
+                        <button className="cancel-btn" onClick={() => setEditingHRProfile(null)}>Cancel</button>
+                        <button className="save-btn" onClick={saveCurrentProfile}>Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="editor-placeholder">Click Edit to update your active profile.</p>
+                  )}
+                </div>
               )}
             </div>
           </div>

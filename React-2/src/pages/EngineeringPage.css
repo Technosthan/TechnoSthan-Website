@@ -1,0 +1,85 @@
+.eng-wrapper {
+  background: #0b0f19;
+  color: white;
+  padding: 80px 20px;
+}
+
+/* HERO */
+.eng-hero {
+  text-align: center;
+  max-width: 800px;
+  margin: auto;
+}
+
+.eng-hero h1 {
+  font-size: 3rem;
+  background: linear-gradient(to right, #fff, #00e5ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.eng-hero p {
+  color: #94a3b8;
+  margin-top: 20px;
+}
+
+/* SERVICES */
+.eng-services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  margin-top: 60px;
+  gap: 25px;
+}
+
+.eng-card {
+  background: rgba(255,255,255,0.04);
+  padding: 30px;
+  border-radius: 16px;
+  transition: 0.3s;
+  border: 1px solid rgba(0,229,255,0.1);
+}
+
+.eng-card:hover {
+  transform: translateY(-10px);
+  border-color: #00e5ff;
+  box-shadow: 0 10px 30px rgba(0,229,255,0.2);
+}
+
+.icon {
+  margin-bottom: 20px;
+}
+
+/* PROCESS */
+.eng-process {
+  margin-top: 80px;
+  text-align: center;
+}
+
+.process-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin-top: 30px;
+  gap: 15px;
+}
+
+.process-grid div {
+  background: #111827;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+/* CTA */
+.eng-cta {
+  margin-top: 100px;
+  text-align: center;
+}
+
+.eng-cta button {
+  margin-top: 20px;
+  padding: 12px 30px;
+  background: #00e5ff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}

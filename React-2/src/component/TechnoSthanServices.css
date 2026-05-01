@@ -7,7 +7,7 @@
 }
 
 /* ================= HEADING ================= */
-.services-section h1 {
+ .services-section h1 {
   font-size: clamp(2.8rem, 6vw, 3.5rem);
   font-weight: 800;
   color: #e2e8f0;
@@ -104,8 +104,8 @@
 
 /* ================= ICON (FINAL FIX) ================= */
 .icon {
-  width: 60px;
-  height: 60px;
+  width: 78px;
+  height: 78px;
   margin-bottom: 10px;
 
   display: flex;
@@ -167,8 +167,8 @@
   }
 
   .icon {
-    width: 55px;
-    height: 55px;
+    width: 68px;
+    height: 68px;
   }
 }
 
@@ -182,7 +182,7 @@
   }
 
   .icon {
-    width: 50px;
-    height: 50px;
+    width: 62px;
+    height: 62px;
   }
-}
+}  

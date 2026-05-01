@@ -141,6 +141,26 @@ const sendToLinkedIn = async ({ token, message, type }) => {
   };
 };
 
+const sendToWhatsApp = async ({ token, message, type }) => {
+  if (!token) {
+    return {
+      success: false,
+      detail: "WhatsApp is not connected. OAuth token missing."
+    };
+  }
+
+  const payload = {
+    message,
+    type
+  };
+
+  return {
+    success: true,
+    detail: "WhatsApp payload prepared for OAuth publish flow",
+    payload
+  };
+};
+
 const sendToFacebook = async ({ token, message, type }) => {
   if (!token) {
     return {
@@ -172,6 +192,9 @@ const dispatchByPlatform = async ({ platform, message, type, token }) => {
 
   if (platform === "facebook") {
     return sendToFacebook({ token, message, type });
+  }
+  if (platform === "whatsapp") {
+    return sendToWhatsApp({ token, message, type });
   }
 
   return {

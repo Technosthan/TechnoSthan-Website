@@ -1,0 +1,113 @@
+body {
+  margin: 0;
+  font-family: Arial;
+}
+
+.home {
+  background: #020617;
+  color: white;
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 100px 20px;
+}
+
+.hero h1 {
+  font-size: 3rem;
+}
+
+.hero p {
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+.hero-btns {
+  margin-top: 20px;
+}
+
+.btn-primary {
+  background: #6366f1;
+  padding: 10px 20px;
+  margin: 10px;
+  text-decoration: none;
+  color: white;
+  border-radius: 6px;
+}
+
+.btn-secondary {
+  border: 1px solid #6366f1;
+  padding: 10px 20px;
+  margin: 10px;
+  color: white;
+  text-decoration: none;
+}
+
+/* SERVICES */
+.services {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.card {
+  padding: 25px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  text-decoration: none;
+  color: white;
+  transition: 0.3s;
+}
+
+.card:hover {
+  background: rgba(99,102,241,0.2);
+}
+
+/* WHY */
+.why {
+  padding: 60px;
+  text-align: center;
+}
+
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+/* PROCESS */
+.process {
+  padding: 60px;
+  text-align: center;
+}
+
+.steps span {
+  margin: 10px;
+  display: inline-block;
+}
+
+/* STATS */
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 60px;
+}
+
+.stats strong {
+  font-size: 2rem;
+}
+
+/* CTA */
+.cta {
+  text-align: center;
+  padding: 80px;
+}

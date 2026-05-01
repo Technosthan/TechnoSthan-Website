@@ -2,14 +2,14 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
-import {
-  ArrowRight
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import "./Services.css";
-import agritechIcon from "../../assets/techno-agre.png";
-import hospitalityIcon from "../../assets/techno-hosp.img.png";
-import innovationIcon from "../../assets/techno-innfra.png";
-import itServicesIcon from "../../assets/software.png";
+
+/* ✅ Correct icons */
+import agritechIcon from "../../assets/agri.png";
+import innovationIcon from "../../assets/innovation.png";
+import itIcon from "../../assets/it.png";
+import hospitalityIcon from "../../assets/hospitality.png";
 
 const Services = () => {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ const Services = () => {
       title: "TECHNOSTHAN HOSPITALITY",
       path: "/services/technosthan-hospitality",
       desc: "Hospitality platforms, booking systems, and management tools built for hotels and resorts.",
-      icon: hospitalityIcon,
+      icon: hospitalityIcon, // ✅ correct
       color: "#10b981",
       img: "https://images.unsplash.com/photo-1566073771259-6a8506099945"
     },
@@ -27,7 +27,7 @@ const Services = () => {
       title: "TECHNOSTHAN INNOVATIONS HUB",
       path: "/services/technosthan-innovations-hub",
       desc: "Product innovation, custom app development, and digital transformation solutions.",
-      icon: innovationIcon,
+      icon: innovationIcon, // ✅ correct
       color: "#f59e0b",
       img: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0"
     },
@@ -35,7 +35,7 @@ const Services = () => {
       title: "TECHNOSTHAN AGRITECH",
       path: "/services/technosthan-agritech",
       desc: "Agri-tech solutions, farm automation, and data-driven agriculture growth services.",
-      icon: agritechIcon,
+      icon: agritechIcon, // ✅ correct
       color: "#22c55e",
       img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449"
     },
@@ -43,7 +43,7 @@ const Services = () => {
       title: "TECHNOSTHAN IT SERVICES",
       path: "/services/technosthan-it-services",
       desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
-      icon: itServicesIcon,
+      icon: itIcon, // ✅ correct
       color: "#6366f1",
       img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
     }
@@ -76,8 +76,6 @@ const Services = () => {
           </p>
 
           <div className="hero-buttons">
-
-            {/* ✅ Explore → Scroll */}
             <button
               className="btn primary"
               onClick={() => {
@@ -88,14 +86,12 @@ const Services = () => {
               Explore
             </button>
 
-            {/* ✅ Contact → Page */}
             <button
               className="btn secondary"
               onClick={() => navigate("/contact")}
             >
               Contact
             </button>
-
           </div>
         </div>
 
@@ -117,7 +113,6 @@ const Services = () => {
             className="service-card"
             onClick={() => navigate(item.path)}
           >
-
             <div
               className="card-bg"
               style={{ backgroundImage: `url(${item.img})` }}
@@ -127,10 +122,13 @@ const Services = () => {
 
             <div className="content">
               <div className="card-top">
-                <div
-                  className="icon-box"
-                >
-                  <img src={item.icon} alt={item.title} className="service-logo" loading="lazy" />
+                <div className="icon-box">
+                  <img
+                    src={item.icon}
+                    alt={item.title}
+                    className="service-logo"
+                    loading="lazy"
+                  />
                 </div>
 
                 <div className="arrow-icon">
@@ -148,7 +146,6 @@ const Services = () => {
                 style={{ background: item.color }}
               ></div>
             </div>
-
           </motion.div>
         ))}
       </motion.div>
