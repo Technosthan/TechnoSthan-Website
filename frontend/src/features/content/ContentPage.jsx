@@ -49,7 +49,7 @@ const ContentPage = () => {
             subtopics: [
               {
                 heading: "What is Smart Farming?",
-                body: "Smart farming uses IoT sensors, AI, and data analytics to optimize crop production, reduce waste, and improve sustainability.",
+                body: "Smart farming uses AI and data analytics to optimize crop production, reduce waste, and improve sustainability.",
               },
               {
                 heading: "Key Technologies",
@@ -312,7 +312,7 @@ const ContentPage = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 * idx }}
-                      className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 rounded-lg"
+                      className="mb-6 p-4 bg-linear-to-r from-green-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 rounded-lg"
                     >
                       <h3 className="text-xl font-semibold mb-2 text-yellow-600 dark:text-yellow-400 flex items-center">
                         <Zap className="mr-2" size={18} />

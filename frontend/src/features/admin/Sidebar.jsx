@@ -18,7 +18,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
-  const { theme } = useTheme();
+  const { theme, appSettings } = useTheme();
 
   const menuItems = [
     {
@@ -104,7 +104,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       {/* Top Section - Logo and Navigation */}
       <div className="flex flex-col h-full">
         {/* Logo and Brand */}
-        <div className="flex items-center justify-between h-20 px-6 border-b border-white/20 flex-shrink-0">
+        <div className="flex items-center justify-between h-20 px-6 border-b border-white/20 shrink-0">
           <motion.div
             className="flex items-center"
             whileHover={{ scale: 1.02 }}
@@ -113,11 +113,19 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             <div
               className={`w-12 h-12 ${theme.primary} rounded-2xl flex items-center justify-center mr-4 shadow-lg`}
             >
-              <Shield size={24} />
+              {appSettings.logoUrl ? (
+                <img
+                  src={appSettings.logoUrl}
+                  alt={appSettings.appName || "Admin logo"}
+                  className="w-12 h-12 rounded-2xl object-cover"
+                />
+              ) : (
+                <Shield size={24} />
+              )}
             </div>
             <div>
               <h1 className={`text-xl font-bold ${theme.accent}`}>
-                TECHNOSTHAN AGRITECH
+                {appSettings.appName || "TECHNOSTHAN AGRITECH"}
               </h1>
               <p className={`text-xs ${theme.textSecondary}`}>Admin Panel</p>
             </div>
@@ -145,14 +153,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                   to={item.path}
                   className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-300 group relative overflow-hidden ${
                     isActive
-                      ? `bg-gradient-to-r ${item.color} text-white shadow-xl transform scale-105`
+                      ? `bg-linear-to-r ${item.color} text-white shadow-xl transform scale-105`
                       : `${theme.navItem} hover:${theme.navItemHover}`
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   {isActive && (
                     <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                      className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent"
                       initial={{ x: "-100%" }}
                       animate={{ x: "100%" }}
                       transition={{

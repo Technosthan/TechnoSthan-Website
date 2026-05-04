@@ -24,9 +24,9 @@ const About = () => {
         <p className={`text-lg leading-relaxed mt-4 ${theme.text}`}>
           Through our platform, users can learn about smart farming techniques,
           take quizzes to test their knowledge, interact with an AI chatbot for
-          instant advice, and monitor real-time farm data via IoT dashboards. We
-          believe in making technology accessible to everyone in the
-          agricultural community.
+          instant advice, and apply data-driven farming practices. We believe in
+          making technology accessible to everyone in the agricultural
+          community.
         </p>
       </div>
       <Footer />

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { getPublicSettings } from "../shared/lib/settingsApi";
 
 /* =========================
    🎨 THEMES
@@ -122,6 +123,70 @@ export const ThemeProvider = ({ children }) => {
     return localStorage.getItem("mode") || "light";
   });
 
+  const [appSettings, setAppSettings] = useState({
+    appName: "Technosthan AgriTech",
+    logoUrl: "/hero.png",
+    theme: "default",
+    defaultLanguage: "en",
+    featureFlags: {
+      aiChat: true,
+      quiz: true,
+      contentVisibility: true,
+    },
+    dashboardSettings: {
+      visibleCards: ["stats", "users", "content", "quiz", "activity"],
+      cardOrder: ["stats", "users", "content", "quiz", "activity"],
+    },
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSettings = async () => {
+      try {
+        const response = await getPublicSettings();
+        const settings = response.data?.data || {};
+
+        if (!mounted) return;
+
+        setAppSettings({
+          appName: settings.appName || "Technosthan AgriTech",
+          logoUrl: settings.logoUrl || "/hero.png",
+          theme: settings.theme || "default",
+          defaultLanguage: settings.defaultLanguage || "en",
+          featureFlags: {
+            aiChat: true,
+            quiz: true,
+            contentVisibility: true,
+            ...(settings.featureFlags || {}),
+          },
+          dashboardSettings: {
+            visibleCards: ["stats", "users", "content", "quiz", "activity"],
+            cardOrder: ["stats", "users", "content", "quiz", "activity"],
+            ...(settings.dashboardSettings || {}),
+          },
+        });
+
+        if (settings.theme === "dark") {
+          setMode("dark");
+        } else if (settings.theme === "default") {
+          setMode("light");
+        }
+
+        document.title = settings.appName || "Technosthan AgriTech";
+        document.documentElement.lang = settings.defaultLanguage || "en";
+      } catch (error) {
+        // keep local defaults if settings cannot be loaded
+      }
+    };
+
+    loadSettings();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   /* Save theme */
   useEffect(() => {
     localStorage.setItem("theme", currentTheme);
@@ -190,6 +255,7 @@ export const ThemeProvider = ({ children }) => {
         themes,
         mode,
         toggleMode,
+        appSettings,
       }}
     >
       <div

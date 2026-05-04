@@ -8,6 +8,10 @@ export const getAllContent = () => axiosInstance.get("/api/content");
 
 export const getChatHistory = () => axiosInstance.get("/api/chat/history");
 
+export const updateProfile = async (data) => {
+  return await axiosInstance.put("/api/auth/update", data);
+};
+
 export const getDashboardStats = async () => {
   const [profile, quizResults, content] = await Promise.all([
     getProfile(),

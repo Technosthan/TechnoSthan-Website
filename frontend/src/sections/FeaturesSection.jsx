@@ -107,11 +107,11 @@ const FeaturesSection = () => {
         />
         <div>
           <h2 className={`text-3xl font-bold mb-4 ${theme.accent}`}>
-            AI + IoT for Smart Farming
+            AI for Smarter Farming
           </h2>
           <p className={`${theme.text}`}>
-            Use modern technology like sensors, AI, and data analytics to
-            improve productivity and decision-making.
+            Use modern technology like AI and data analytics to improve
+            productivity and decision-making.
           </p>
         </div>
       </motion.section>

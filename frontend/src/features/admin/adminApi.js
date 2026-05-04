@@ -30,6 +30,27 @@ export const getSettings = () => axiosInstance.get("/api/admin/settings");
 export const updateSettings = (settingsData) =>
   axiosInstance.post("/api/admin/settings", settingsData);
 
+// AI config (provider independent)
+export const getAIConfig = () => axiosInstance.get("/api/admin/ai-config");
+export const updateAIConfig = (data) =>
+  axiosInstance.put("/api/admin/ai-config", data);
+
+// AI Provider Management
+export const getAIProviders = () =>
+  axiosInstance.get("/api/admin/ai-providers");
+export const addAIProvider = (providerData) =>
+  axiosInstance.post("/api/admin/ai-providers", providerData);
+export const updateAIProvider = (providerId, updateData) =>
+  axiosInstance.put(`/api/admin/ai-providers/${providerId}`, updateData);
+export const deleteAIProvider = (providerId) =>
+  axiosInstance.delete(`/api/admin/ai-providers/${providerId}`);
+export const updateAIMode = (mode) =>
+  axiosInstance.put("/api/admin/ai-mode", { mode });
+export const updateProviderPriority = (providerId, priority) =>
+  axiosInstance.put(`/api/admin/ai-providers/${providerId}/priority`, {
+    priority,
+  });
+
 // User permissions
 export const updateUserPermissions = (userId, permissionsData) =>
   axiosInstance.put(`/api/admin/users/${userId}/permissions`, permissionsData);

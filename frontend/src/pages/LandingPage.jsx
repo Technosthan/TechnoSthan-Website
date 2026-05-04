@@ -97,10 +97,9 @@ const LandingPage = () => {
             </p>
           </div>
           <div className={`p-6 rounded-xl ${theme.card} shadow-lg`}>
-            <h3 className="text-xl font-semibold mb-3">IoT Integration</h3>
+            <h3 className="text-xl font-semibold mb-3">Data Insights</h3>
             <p className="opacity-80">
-              Real-time monitoring of soil conditions, weather, and equipment
-              status.
+              Actionable insights to help farmers make better decisions.
             </p>
           </div>
           <div className={`p-6 rounded-xl ${theme.card} shadow-lg`}>

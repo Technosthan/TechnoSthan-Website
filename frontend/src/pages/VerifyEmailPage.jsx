@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../features/auth/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { verifyOTP, sendOTP } from "../features/auth/authApi";
 import {
   Lock,
   Eye,
@@ -18,31 +19,26 @@ import {
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
-const   VerifyEmailPage = () => {
-  const {
-    loading,
-    handleVerifyOTP,
-    handleSendOTP,
-    inputValue,
-    otpMethod,
-    tempData,
-    setInputValue,
-    setInputType,
-    setTempData,
-    sendLoginOTP,
-    verifyLoginOTPFunc,
-  } = useAuth();
+const VerifyEmailPage = () => {
+  const { loading, setInputValue, setInputType, inputValue } = useAuth();
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { theme } = useTheme();
 
   const [otp, setOtp] = useState("");
-  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
-  const [step, setStep] = useState("verify"); // verify or enter-phone
+  const [step, setStep] = useState("verify");
+  const [phone, setPhone] = useState("");
+  const [tempData, setTempData] = useState({});
+  const [pendingUserId, setPendingUserId] = useState(null);
 
-  const purpose = searchParams.get("purpose") || "register";
+  const handleSendOTP = async (type) => {
+    await sendOTP({
+      contact: inputValue,
+      type,
+    });
+  };
 
   useEffect(() => {
     const contact = searchParams.get("contact");
@@ -52,18 +48,9 @@ const   VerifyEmailPage = () => {
     }
     setInputValue(contact);
     setInputType("email");
-
-    if (purpose === "login") {
-      sendLoginOTP(contact, "email");
-    }
-  }, [
-    searchParams,
-    navigate,
-    setInputValue,
-    setInputType,
-    purpose,
-    sendLoginOTP,
-  ]);
+    const storedPendingUserId = localStorage.getItem("pendingUserId");
+    setPendingUserId(storedPendingUserId);
+  }, [searchParams, navigate, setInputValue, setInputType]);
 
   const handleVerifySubmit = async (e) => {
     e.preventDefault();
@@ -78,19 +65,24 @@ const   VerifyEmailPage = () => {
     }
 
     try {
-      if (purpose === "login") {
-        await verifyLoginOTPFunc({ contact: inputValue, otp, method: "email" });
-        navigate("/");
+      const res = await verifyOTP({
+        contact: inputValue,
+        otp,
+      });
+      const { data } = res.data || {};
+      setPendingUserId(data?.pendingUserId);
+      if (data?.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.removeItem("pendingUserId");
+        navigate(data.user.role === "admin" ? "/admin/dashboard" : "/");
       } else {
-        const res = await handleVerifyOTP(otp);
-        if (res.registrationComplete) {
-          navigate("/");
-        } else {
-          setStep("enter-phone");
-        }
+        setStep("phone");
       }
     } catch (err) {
-      setError(err.message || "Verification failed");
+      setError(
+        err.response?.data?.message || err.message || "Verification failed",
+      );
     }
   };
 
@@ -106,8 +98,12 @@ const   VerifyEmailPage = () => {
       setInputValue(phone);
       setInputType("phone");
       setTempData((prev) => ({ ...prev, phone }));
-      await handleSendOTP("sms");
-      navigate("/verify-phone?contact=" + phone);
+      await sendOTP({
+        contact: phone,
+        method: "sms",
+        pendingUserId,
+      });
+      navigate(`/verify-phone?contact=${phone}&pendingUserId=${pendingUserId}`);
     } catch (err) {
       setError(err.message || "Failed to send OTP");
     }
@@ -115,7 +111,11 @@ const   VerifyEmailPage = () => {
 
   const handleResend = async () => {
     try {
-      await handleSendOTP("email");
+      await sendOTP({
+        contact: inputValue,
+        method: "email",
+        pendingUserId,
+      });
     } catch (err) {
       setError(err.message || "Failed to resend OTP");
     }

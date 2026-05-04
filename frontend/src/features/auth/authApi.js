@@ -3,6 +3,7 @@ import axiosInstance from "../../shared/lib/axiosInstance";
 export const registerUser = (data) =>
   axiosInstance.post("/api/auth/register", data);
 export const loginUser = (data) => axiosInstance.post("/api/auth/login", data);
+export const authenticateUser = (data) => axiosInstance.post("/api/auth/authenticate", data);
 export const googleLogin = () =>
   (window.location.href = `${axiosInstance.defaults.baseURL}/api/auth/google`);
 
@@ -24,6 +25,12 @@ export const forgotPassword = (data) =>
   axiosInstance.post("/api/auth/forgot-password", data);
 export const resetPassword = (data) =>
   axiosInstance.post("/api/auth/reset-password", data);
+
+// Social login OTP
+export const sendLoginOtp = (data) =>
+  axiosInstance.post("/api/auth/send-login-otp", data);
+export const verifyLoginOtp = (data) =>
+  axiosInstance.post("/api/auth/verify-login-otp", data);
 
 // Login OTP verify
 export const verifyLoginOTP = (data) =>

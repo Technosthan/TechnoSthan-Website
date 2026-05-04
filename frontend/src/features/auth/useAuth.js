@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import {
   loginUser,
   registerUser,
+  authenticateUser,
   googleLogin,
   sendOTP,
   verifyOTP,
-  registerWithOTP,
-  loginWithOTP,
   generateQRLogin,
   verifyQRLogin,
   forgotPassword,
@@ -58,6 +57,7 @@ export const useAuth = () => {
     setInputType(null);
     setOtpMethod("");
     setTempData({});
+    setIsRegister(false);
   };
 
   // Traditional register/login (keep for backward compatibility)
@@ -95,6 +95,38 @@ export const useAuth = () => {
     }
   };
 
+  // Unified authenticate function
+  const authenticate = async (data) => {
+    setLoading(true);
+    try {
+      const res = await authenticateUser(data);
+      const { flow, ...resultData } = res.data.data;
+
+      if (flow === "login") {
+        // User exists - login successful
+        const { token, user: userData } = resultData;
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
+        return { flow: "login", token, user: userData };
+      } else if (flow === "registration") {
+        // User doesn't exist - start registration flow
+        const { pendingUserId, contactType, nextStep } = resultData;
+        setIsRegister(true);
+        setInputValue(data.contact);
+        setInputType(contactType);
+        setTempData({ pendingUserId, [contactType]: data.contact });
+        setOtpMethod(contactType === "email" ? "email" : "sms");
+        setStep(nextStep);
+        return { flow: "registration", pendingUserId, contactType, nextStep };
+      }
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // OTP-based authentication flow
   const startAuthFlow = (isRegisterMode = false) => {
     setIsRegister(isRegisterMode);
@@ -124,29 +156,14 @@ export const useAuth = () => {
   const handleSendOTP = async (method) => {
     setLoading(true);
     try {
-      const purpose = isRegister
-        ? inputType === "email"
-          ? "verify-email"
-          : "verify-phone"
-        : "login";
-
       await sendOTP({
         contact: inputValue,
         method,
-        purpose,
         pendingUserId: tempData.pendingUserId,
       });
 
       setOtpMethod(method);
       setStep(isRegister ? "verify-otp" : "verify-otp");
-
-      if (isRegister && inputType === "email") {
-        // After email verification, registration complete
-      } else if (isRegister && inputType === "phone") {
-        // After phone verification, ask for email
-        setStep("input-second-field");
-        setInputType("email");
-      }
     } catch (error) {
       throw new Error(getErrorMessage(error));
     } finally {
@@ -158,23 +175,19 @@ export const useAuth = () => {
     setLoading(true);
     try {
       const res = await verifyOTP({
-  contact: inputValue,
-  otp,
-  purpose: isRegister
-    ? otpMethod === "email"
-      ? "verify-email"
-      : "verify-phone"
-    : "login",
-});
+        contact: inputValue,
+        otp,
+      });
 
       setTempData((prev) => ({
         ...prev,
         [otpMethod === "email" ? "emailVerified" : "phoneVerified"]: true,
       }));
 
-      if (res.data.data.registrationComplete) {
+      const innerData = res.data?.data;
+      if (innerData?.finalized) {
         // Both verified, login
-        const { token, user: userData } = res.data.data;
+        const { token, user: userData } = innerData;
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(userData));
         setUser(userData);
@@ -182,76 +195,59 @@ export const useAuth = () => {
         return { token, user: userData };
       }
 
+      // If registration not finalized, move to second-field input to collect remaining contact
+      if (!innerData?.finalized && isRegister) {
+        setStep("input-second-field");
+        // Keep the verified contact type so the UI can ask for the missing contact
+        setInputType(otpMethod === "email" ? "email" : "phone");
+        setInputValue("");
+      }
+
       return res.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.message || "OTP verification failed",
+        error.response?.data?.message ||
+          error.message ||
+          "OTP verification failed",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSecondFieldSubmit = async (value, name) => {
+  const handleSecondFieldSubmit = async (value) => {
     const type = detectInputType(value);
 
     if (isRegister) {
       if (inputType === "email" && type === "phone") {
         // Email was verified, now verify phone
-        setTempData((prev) => ({ ...prev, phone: value, name }));
+        setTempData((prev) => ({ ...prev, phone: value }));
         setInputValue(value);
         setInputType("phone");
-        setStep("otp");
+        setStep("verify-otp");
 
         // Send phone OTP
         await sendOTP({
           contact: value,
           method: "sms",
-          purpose: "verify-phone",
           pendingUserId: tempData.pendingUserId,
         });
         setOtpMethod("sms");
       } else if (inputType === "phone" && type === "email") {
         // Phone was verified, now verify email
-        setTempData((prev) => ({ ...prev, email: value, name }));
+        setTempData((prev) => ({ ...prev, email: value }));
         setInputValue(value);
         setInputType("email");
-        setStep("otp");
+        setStep("verify-otp");
 
         // Send email OTP
         await sendOTP({
           contact: value,
           method: "email",
-          purpose: "verify-email",
           pendingUserId: tempData.pendingUserId,
         });
         setOtpMethod("email");
       }
-    }
-  };
-
-  const completeRegistration = async () => {
-    setLoading(true);
-    try {
-      const res = await registerWithOTP({
-        email: tempData.email,
-        phone: tempData.phone,
-        name: tempData.name,
-      });
-
-      const { token, user: userData } = res.data.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      setUser(userData);
-      console.log("User registered with OTP and set:", userData);
-
-      resetFlow();
-      return { token, user: userData };
-    } catch (error) {
-      throw new Error(getErrorMessage(error));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -341,7 +337,7 @@ export const useAuth = () => {
   const sendLoginOTP = async (contact, method) => {
     setLoading(true);
     try {
-      const res = await sendOTP({ contact, method, purpose: "login" });
+      const res = await sendOTP({ contact, method });
       return res.data;
     } catch (error) {
       throw new Error(getErrorMessage(error));
@@ -395,6 +391,7 @@ export const useAuth = () => {
     resetFlow,
     sendLoginOTP,
     verifyLoginOTPFunc,
+    authenticate,
 
     // Setters for internal use
     setInputValue,

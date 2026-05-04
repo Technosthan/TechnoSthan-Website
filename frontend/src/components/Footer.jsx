@@ -58,10 +58,26 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Features</h4>
             <ul className="space-y-2 text-sm">
-              <li>AI Chatbot</li>
-              <li>IoT Dashboard</li>
-              <li>AgriTech Wiki Modules</li>
-              <li>Knowledge Assessment</li>
+              <li>
+                <Link to="/chat" className={`hover:${theme.accent} transition`}>
+                  AI Chatbot
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard" className={`hover:${theme.accent} transition`}>
+                  My Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link to="/AgriTech Wiki" className={`hover:${theme.accent} transition`}>
+                  AgriTech Wiki Modules
+                </Link>
+              </li>
+              <li>
+                <Link to="/Agritech Wiki" className={`hover:${theme.accent} transition`}>
+                  Knowledge Assessment
+                </Link>
+              </li>
             </ul>
           </div>
 

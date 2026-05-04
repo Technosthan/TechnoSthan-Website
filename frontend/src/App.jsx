@@ -8,6 +8,8 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyPhonePage from "./pages/VerifyPhonePage";
+import TelegramLoginPage from "./pages/TelegramLoginPage";
+import WhatsappLoginPage from "./pages/WhatsappLoginPage";
 import ContentPage from "./features/content/ContentPage";
 import QuizPage from "./features/quiz/QuizPage";
 import ChatPage from "./features/chat/ChatPage";
@@ -26,6 +28,7 @@ import GlobalSearch from "./features/admin/GlobalSearch";
 import MonitoringPage from "./features/admin/MonitoringPage";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import FloatingThemeSelector from "./components/FloatingThemeSelector";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
 function App() {
   return (
@@ -42,6 +45,9 @@ function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/verify-phone" element={<VerifyPhonePage />} />
+          <Route path="/login/telegram" element={<TelegramLoginPage />} />
+          <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
 
           {/* Protected User Routes */}
           <Route
