@@ -126,8 +126,6 @@ export const ThemeProvider = ({ children }) => {
   const [appSettings, setAppSettings] = useState({
     appName: "Technosthan AgriTech",
     logoUrl: "/hero.png",
-    theme: "default",
-    defaultLanguage: "en",
     featureFlags: {
       aiChat: true,
       quiz: true,
@@ -152,8 +150,6 @@ export const ThemeProvider = ({ children }) => {
         setAppSettings({
           appName: settings.appName || "Technosthan AgriTech",
           logoUrl: settings.logoUrl || "/hero.png",
-          theme: settings.theme || "default",
-          defaultLanguage: settings.defaultLanguage || "en",
           featureFlags: {
             aiChat: true,
             quiz: true,
@@ -174,7 +170,6 @@ export const ThemeProvider = ({ children }) => {
         }
 
         document.title = settings.appName || "Technosthan AgriTech";
-        document.documentElement.lang = settings.defaultLanguage || "en";
       } catch (error) {
         // keep local defaults if settings cannot be loaded
       }

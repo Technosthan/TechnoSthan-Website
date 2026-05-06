@@ -21,7 +21,7 @@ const ContactSection = () => {
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.96 }}
         onClick={() => navigate("/AgriTech Wiki")}
-        className={`${theme.buttonSecondary} font-bold px-8 py-4 rounded-2xl shadow-xl text-lg`}
+        className={`${theme.buttonSecondary} font-bold px-8 cursor-pointer py-4 rounded-2xl shadow-xl text-lg`}
       >
         Demo
       </motion.button>

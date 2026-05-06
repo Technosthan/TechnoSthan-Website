@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect  } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   Search,
@@ -22,17 +22,24 @@ const GlobalSearch = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("all");
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query.trim() || query.trim().length < 2) {
-      setError("Please enter at least 2 characters to search");
-      return;
-    }
+  useEffect(() => {
+  
+  if (!query.trim()) {
+    setResults(null);
+    setError("");
+    return;
+  }
 
+
+  
+
+  const delayDebounce = setTimeout(async () => {
     try {
       setLoading(true);
       setError("");
+
       const response = await globalSearch(query);
+
       setResults(response.data.data);
     } catch (err) {
       setError(err.response?.data?.message || "Search failed");
@@ -40,7 +47,12 @@ const GlobalSearch = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, 400); // debounce delay
+
+  return () => clearTimeout(delayDebounce);
+
+}, [query]);
+  
 
   const getResultCount = (type) => {
     if (!results) return 0;
@@ -187,7 +199,7 @@ const GlobalSearch = () => {
       <div
         className={`${theme.card} rounded-2xl shadow-lg p-6 border ${theme.border}`}
       >
-        <form onSubmit={handleSearch} className="flex gap-4">
+        <div className="flex gap-4">
           <div className="flex-1 relative">
             <Search
               className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${theme.textSecondary} h-5 w-5`}
@@ -212,7 +224,7 @@ const GlobalSearch = () => {
             )}
             {loading ? "Searching..." : "Search"}
           </button>
-        </form>
+        </div>
       </div>
 
       {error && (

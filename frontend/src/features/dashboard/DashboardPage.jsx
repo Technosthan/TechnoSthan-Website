@@ -214,7 +214,7 @@ const DashboardPage = () => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 cursor-pointer text-white px-4 py-2 rounded-lg"
               >
                 Edit Profile
               </button>
@@ -403,7 +403,7 @@ const DashboardPage = () => {
                   <Activity size={24} />
                   Quick Actions
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 cursor-pointer gap-4">
                   {[
                     {
                       icon: BookOpen,
@@ -443,7 +443,7 @@ const DashboardPage = () => {
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => navigate(action.path)}
-                      className={`bg-gradient-to-r ${action.color} ${action.hoverColor} text-white p-6 rounded-xl shadow-lg transition-all duration-300 text-left group`}
+                      className={`bg-gradient-to-r ${action.color} ${action.hoverColor} text-white p-6 rounded-xl shadow-lg transition-all cursor-pointer duration-300 text-left group`}
                     >
                       <action.icon
                         size={32}
@@ -520,7 +520,7 @@ const DashboardPage = () => {
               </h3>
               <button
                 onClick={() => navigate("/chat")}
-                className={`${theme.link} text-sm font-medium transition-colors`}
+                className={`${theme.link} text-sm font-medium cursor-pointer transition-colors`}
               >
                 Open Chat →
               </button>

@@ -14,8 +14,6 @@ import { getSettings, updateSettings } from "./adminApi";
 const defaultSettings = {
   appName: "Technosthan AgriTech",
   logoUrl: "",
-  theme: "default",
-  defaultLanguage: "en",
   aiSettings: {
     systemPrompt: "",
     temperature: 0.7,
@@ -267,46 +265,6 @@ const SettingsPanel = () => {
               className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
               placeholder="https://example.com/logo.png"
             />
-          </div>
-
-          {/* Theme */}
-          <div>
-            <label
-              className={`block text-sm font-semibold ${theme.text} mb-2 flex items-center`}
-            >
-              <Palette className="h-4 w-4 mr-2" />
-              Theme
-            </label>
-            <select
-              value={currentSettings.theme || "default"}
-              onChange={(e) => updateSetting("theme", e.target.value)}
-              className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
-            >
-              <option value="default">Default</option>
-              <option value="dark">Dark</option>
-              <option value="red-black">Red & Black</option>
-            </select>
-          </div>
-
-          {/* Default Language */}
-          <div>
-            <label
-              className={`block text-sm font-semibold ${theme.text} mb-2 flex items-center`}
-            >
-              <Globe className="h-4 w-4 mr-2" />
-              Default Language
-            </label>
-            <select
-              value={currentSettings.defaultLanguage || "en"}
-              onChange={(e) => updateSetting("defaultLanguage", e.target.value)}
-              className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
-            >
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="hi">Hindi</option>
-            </select>
           </div>
         </div>
       </div>

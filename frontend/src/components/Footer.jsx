@@ -23,7 +23,7 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/" className={`hover:${theme.accent} transition`}>
+                <Link to="/" className={`hover:${theme.accent} transition cursor-pointer`}>
                   Home
                 </Link>
               </li>

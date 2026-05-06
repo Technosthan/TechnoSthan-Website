@@ -1,11 +1,19 @@
 import { VertexAI } from "@google-cloud/vertexai";
 import Settings from "../admin/settings.model.js";
 
-// Initialize Vertex AI
-const vertexAI = new VertexAI({
-  project: process.env.GOOGLE_PROJECT_ID,
-  location: "us-central1",
-});
+// Initialize Vertex AI only if project ID is available
+let vertexAI = null;
+try {
+  if (process.env.GOOGLE_PROJECT_ID) {
+    vertexAI = new VertexAI({
+      project: process.env.GOOGLE_PROJECT_ID,
+      location: "us-central1",
+    });
+  }
+} catch (error) {
+  console.warn("Vertex AI initialization failed:", error.message);
+  vertexAI = null;
+}
 
 const getSettings = async () => {
   try {
@@ -30,6 +38,13 @@ If question is unrelated, politely refuse.`,
 
 export const getAIResponse = async (message, history = []) => {
   try {
+    // Check if Vertex AI is available
+    if (!vertexAI) {
+      throw new Error(
+        "Vertex AI not configured. Please set GOOGLE_PROJECT_ID environment variable.",
+      );
+    }
+
     const settings = await getSettings();
     const { systemPrompt, temperature, maxTokens } = settings.aiSettings;
 

@@ -8,22 +8,20 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: function () {
-        return !this.mobile; // Email required only if mobile not present
-      },
+      required: true, // Always required now
       unique: true,
       lowercase: true,
       trim: true,
-      sparse: true, // Allows null values but ensures uniqueness when present
     },
     mobile: {
       type: String,
-      required: function () {
-        return !this.email; // Mobile required only if email not present
-      },
-      unique: true,
+      // TEMPORARILY DISABLED: Phone authentication system
+      // required: function () {
+      //   return !this.email; // Mobile required only if email not present
+      // },
+      // unique: true,
       trim: true,
-      sparse: true,
+      // sparse: true,
     },
     password: {
       type: String,
@@ -83,6 +81,16 @@ const userSchema = new mongoose.Schema(
     phoneVerified: {
       type: Boolean,
       default: false,
+    },
+    telegramChatId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    whatsappNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
   },
   { timestamps: true },

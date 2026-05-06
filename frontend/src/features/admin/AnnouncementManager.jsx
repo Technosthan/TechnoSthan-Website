@@ -13,6 +13,9 @@ import {
   XCircle,
   Search,
   Filter,
+  Monitor,
+  Mail,
+  MailCheck,
 } from "lucide-react";
 import {
   getAnnouncements,
@@ -31,6 +34,7 @@ const AnnouncementManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterChannel, setFilterChannel] = useState("all");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -38,6 +42,7 @@ const AnnouncementManager = () => {
     type: "info",
     priority: "medium",
     targetAudience: "all",
+    deliveryChannel: "dashboard",
     isActive: true,
   });
 
@@ -64,6 +69,7 @@ const AnnouncementManager = () => {
       type: "info",
       priority: "medium",
       targetAudience: "all",
+      deliveryChannel: "dashboard",
       isActive: true,
     });
     setEditingAnnouncement(null);
@@ -77,6 +83,7 @@ const AnnouncementManager = () => {
       type: announcement.type,
       priority: announcement.priority,
       targetAudience: announcement.targetAudience,
+      deliveryChannel: announcement.deliveryChannel || "dashboard",
       isActive: announcement.isActive,
     });
     setEditingAnnouncement(announcement);
@@ -149,6 +156,41 @@ const AnnouncementManager = () => {
     }
   };
 
+  const getDeliveryChannelIcon = (channel) => {
+    switch (channel) {
+      case "email":
+        return <Mail className="h-4 w-4 text-blue-600" />;
+      case "both":
+        return <MailCheck className="h-4 w-4 text-green-600" />;
+      default:
+        return <Monitor className="h-4 w-4 text-purple-600" />;
+    }
+  };
+
+  const getDeliveryChannelText = (channel) => {
+    switch (channel) {
+      case "email":
+        return "Email Only";
+      case "both":
+        return "Dashboard & Email";
+      default:
+        return "Dashboard Only";
+    }
+  };
+
+  const getEmailStatusColor = (status) => {
+    switch (status) {
+      case "sent":
+        return "bg-green-100 text-green-800";
+      case "failed":
+        return "bg-red-100 text-red-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   // Filter announcements
   const filteredAnnouncements = announcements.filter((announcement) => {
     const matchesSearch =
@@ -160,7 +202,10 @@ const AnnouncementManager = () => {
       filterStatus === "all" ||
       (filterStatus === "active" && announcement.isActive) ||
       (filterStatus === "inactive" && !announcement.isActive);
-    return matchesSearch && matchesType && matchesStatus;
+    const matchesChannel =
+      filterChannel === "all" ||
+      (announcement.deliveryChannel || "dashboard") === filterChannel;
+    return matchesSearch && matchesType && matchesStatus && matchesChannel;
   });
 
   if (loading) {
@@ -235,6 +280,16 @@ const AnnouncementManager = () => {
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
+            </select>
+            <select
+              value={filterChannel}
+              onChange={(e) => setFilterChannel(e.target.value)}
+              className={`px-4 py-3 border ${theme.border} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
+            >
+              <option value="all">All Channels</option>
+              <option value="dashboard">Dashboard Only</option>
+              <option value="email">Email Only</option>
+              <option value="both">Both</option>
             </select>
           </div>
         </div>
@@ -355,6 +410,28 @@ const AnnouncementManager = () => {
                     <option value="admins">Admins Only</option>
                   </select>
                 </div>
+
+                <div>
+                  <label
+                    className={`block text-sm font-semibold ${theme.text} mb-2`}
+                  >
+                    Delivery Channel
+                  </label>
+                  <select
+                    value={formData.deliveryChannel}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        deliveryChannel: e.target.value,
+                      })
+                    }
+                    className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
+                  >
+                    <option value="dashboard">Dashboard Only</option>
+                    <option value="email">Email Only</option>
+                    <option value="both">Both Dashboard & Email</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -442,13 +519,17 @@ const AnnouncementManager = () => {
                 No announcements found
               </h3>
               <p className={`${theme.textSecondary} mb-6`}>
-                {searchTerm || filterType !== "all" || filterStatus !== "all"
+                {searchTerm ||
+                filterType !== "all" ||
+                filterStatus !== "all" ||
+                filterChannel !== "all"
                   ? "Try adjusting your search or filter criteria."
                   : "Get started by creating your first announcement."}
               </p>
               {!searchTerm &&
                 filterType === "all" &&
-                filterStatus === "all" && (
+                filterStatus === "all" &&
+                filterChannel === "all" && (
                   <button
                     onClick={() => setShowForm(true)}
                     className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -486,6 +567,25 @@ const AnnouncementManager = () => {
                         >
                           {announcement.priority}
                         </span>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2 border`}
+                        >
+                          {getDeliveryChannelIcon(
+                            announcement.deliveryChannel || "dashboard",
+                          )}
+                          <span className="ml-1">
+                            {getDeliveryChannelText(
+                              announcement.deliveryChannel || "dashboard",
+                            )}
+                          </span>
+                        </span>
+                        {announcement.emailStatus && (
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2 ${getEmailStatusColor(announcement.emailStatus)}`}
+                          >
+                            Email: {announcement.emailStatus}
+                          </span>
+                        )}
                         {!announcement.isActive && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2 bg-gray-100 text-gray-800">
                             Inactive

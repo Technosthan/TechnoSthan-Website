@@ -21,11 +21,6 @@ const otpSchema = new mongoose.Schema(
       enum: ["sms", "whatsapp", "telegram", "instagram", "messenger", "email"],
       required: true,
     },
-    purpose: {
-      type: String,
-      enum: ["register", "login", "verify-email", "verify-phone"],
-      required: true,
-    },
     attempts: {
       type: Number,
       default: 0,
@@ -55,7 +50,7 @@ const otpSchema = new mongoose.Schema(
 );
 
 // Compound index for rate limiting
-otpSchema.index({ contact: 1, purpose: 1, createdAt: -1 });
+otpSchema.index({ contact: 1, createdAt: -1 });
 
 const OTP = mongoose.model("OTP", otpSchema);
 

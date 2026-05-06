@@ -26,7 +26,7 @@ const HeroSection = () => {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate("/AgriTech Wiki")}
-          className={`${theme.button} hover:scale-105 transition transform px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold`}
+          className={`${theme.button} hover:scale-105 transition cursor-pointer transform px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold`}
         >
           Demo
         </motion.button>

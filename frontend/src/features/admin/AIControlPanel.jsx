@@ -33,6 +33,7 @@ const AIControlPanel = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [success, setSuccess] = useState("");
   const [globalSettings, setGlobalSettings] = useState({
     systemPrompt: "",
     temperature: 0.7,
@@ -204,7 +205,7 @@ const AIControlPanel = () => {
           headers.forEach((header, index) => {
             const value = values[index];
             if (header.includes("provider") || header === "type") {
-              provider.providerType = value || "custom";
+              provider.providerType = value || "";
             } else if (
               header.includes("apikey") ||
               header.includes("api_key") ||
@@ -229,24 +230,25 @@ const AIControlPanel = () => {
           });
 
           // Set defaults
-          if (!provider.providerType) provider.providerType = "custom";
+          if (!provider.providerType) provider.providerType = "openai";
           if (!provider.isActive) provider.isActive = true;
 
           providers.push(provider);
         }
       }
 
+      // Normalize providers data
+      providers = providers.map((provider) => ({
+        providerType: provider.providerType,
+        customName: provider.customName,
+        apiKey: provider.apiKey,
+        modelName: provider.modelName,
+        apiUrl: provider.apiUrl,
+        isActive: provider.isActive,
+      }));
+
       // Validate and add providers
       for (const provider of providers) {
-        if (!provider.apiKey && !provider.token) {
-          throw new Error("Each provider must have an API key or token");
-        }
-        if (!provider.modelName && provider.providerType !== "token-only") {
-          throw new Error(
-            "Each provider must have a model name (except token-only providers)",
-          );
-        }
-
         // Map token to apiKey if needed
         if (provider.token && !provider.apiKey) {
           provider.apiKey = provider.token;
@@ -256,7 +258,11 @@ const AIControlPanel = () => {
       }
 
       await fetchProviders();
-      setError(`Successfully added ${providers.length} provider(s) from file`);
+      setSuccess(`Providers added successfully from file`);
+      setTimeout(() => {
+        setSuccess("");
+      }, 3000);
+      setError("");
     } catch (err) {
       setError(err.message || "Failed to process file");
     } finally {
@@ -325,6 +331,14 @@ const AIControlPanel = () => {
             <h3 className="text-lg font-semibold text-red-800">Error</h3>
           </div>
           <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-green-800 font-semibold">Success</h3>
+          <p className="text-green-700">{success}</p>
         </div>
       )}
 
@@ -556,9 +570,7 @@ const ProviderCard = ({
                 ? provider.customName
                 : provider.providerType}
             </h4>
-            <p className={`text-sm ${theme.textSecondary}`}>
-              {getStatusText()} â€¢ Priority: {provider.priority}
-            </p>
+            
           </div>
         </div>
 

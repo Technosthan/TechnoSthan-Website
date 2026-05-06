@@ -8,26 +8,25 @@ const pendingUserSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: function () {
-        return !this.mobile;
-      },
+      required: true, // Always required now
       unique: true,
       lowercase: true,
       trim: true,
-      sparse: true,
+      // sparse: true,
     },
     mobile: {
       type: String,
-      required: function () {
-        return !this.email;
-      },
-      unique: true,
+      // TEMPORARILY DISABLED: Phone authentication system
+      // required: function () {
+      //   return !this.email;
+      // },
+      // unique: true,
       trim: true,
-      sparse: true,
+      // sparse: true,
     },
     password: {
       type: String,
-      required: true,
+      required: false,
     },
     emailVerified: {
       type: Boolean,

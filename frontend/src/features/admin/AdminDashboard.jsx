@@ -191,7 +191,7 @@ const AdminDashboard = () => {
                     className={({ isActive: navIsActive }) =>
                       `w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-300 group relative overflow-hidden ${
                         navIsActive
-                          ? `bg-gradient-to-r ${item.color} text-white shadow-xl transform scale-105`
+                          ? `text-white shadow-xl transform scale-105`
                           : `${theme.navItem} hover:${theme.navItemHover}`
                       }`
                     }

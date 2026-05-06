@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import PendingUser from "./pendingUser.model.js";
+import { sendOTP } from "./otp.service.js";
 import ResetToken from "./resetToken.model.js";
 import crypto from "crypto";
 
@@ -20,66 +21,92 @@ const isMobile = (contact) => {
 export const registerUser = async (data) => {
   const { name, contact, password } = data;
 
-  if (!name || !name.trim()) {
-    throw new Error("Name is required");
+  let finalName = name;
+  if (!finalName || !finalName.trim()) {
+    // Derive a name from contact when not provided (email local-part)
+    if (isEmail(contact)) {
+      finalName = contact.split("@")[0] || "User";
+    } else {
+      finalName = contact || "User";
+    }
   }
 
-  if (!isEmail(contact) && !isMobile(contact)) {
-    throw new Error("Invalid email or mobile number");
+  // TEMPORARILY DISABLED: Phone authentication system
+  // if (!isEmail(contact) && !isMobile(contact)) {
+  //   throw new Error("Invalid email or mobile number");
+  // }
+  if (!isEmail(contact)) {
+    throw new Error("Only email registration is allowed at this time");
   }
 
   // Check if user already exists in main DB
-  const existingUser = isEmail(contact)
-    ? await User.findOne({ email: contact.trim().toLowerCase() })
-    : await User.findOne({ mobile: contact.trim() });
+  // TEMPORARILY DISABLED: Phone authentication system
+  // const existingUser = isEmail(contact)
+  //   ? await User.findOne({ email: contact.trim().toLowerCase() })
+  //   : await User.findOne({ mobile: contact.trim() });
+  const existingUser = await User.findOne({
+    email: contact.trim().toLowerCase(),
+  });
 
   if (existingUser) {
     throw new Error("User already exists");
   }
 
   // Check if pending user exists
-  const existingPending = isEmail(contact)
-    ? await PendingUser.findOne({ email: contact.trim().toLowerCase() })
-    : await PendingUser.findOne({ mobile: contact.trim() });
+  // TEMPORARILY DISABLED: Phone authentication system
+  // const existingPending = isEmail(contact)
+  //   ? await PendingUser.findOne({ email: contact.trim().toLowerCase() })
+  //   : await PendingUser.findOne({ mobile: contact.trim() });
+  const existingPending = await PendingUser.findOne({
+    email: contact.trim().toLowerCase(),
+  });
 
   if (existingPending) {
     throw new Error(
-      "Registration already in progress. Please check your email/SMS for OTP.",
+      "Registration already in progress. Please check your email for OTP.",
     );
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const pendingData = {
-    name,
+    name: finalName,
     password: hashedPassword,
   };
 
-  if (isEmail(contact)) {
-    pendingData.email = contact.trim().toLowerCase();
-  } else {
-    pendingData.mobile = contact.trim();
-  }
+  // TEMPORARILY DISABLED: Phone authentication system
+  // if (isEmail(contact)) {
+  //   pendingData.email = contact.trim().toLowerCase();
+  // } else {
+  //   pendingData.mobile = contact.trim();
+  // }
+  pendingData.email = contact.trim().toLowerCase();
 
   const pendingUser = new PendingUser(pendingData);
   await pendingUser.save();
 
   return {
     pendingUserId: pendingUser._id,
-    contactType: isEmail(contact) ? "email" : "phone",
+    contactType: "email", // Always email now
   };
 };
 
 export const loginUser = async (data) => {
   const { contact, password } = data;
 
-  if (!isEmail(contact) && !isMobile(contact)) {
-    throw new Error("Invalid email or mobile number");
+  // TEMPORARILY DISABLED: Phone authentication system
+  // if (!isEmail(contact) && !isMobile(contact)) {
+  //   throw new Error("Invalid email or mobile number");
+  // }
+  if (!isEmail(contact)) {
+    throw new Error("Only email login is allowed at this time");
   }
 
-  const user = isEmail(contact)
-    ? await User.findOne({ email: contact.trim().toLowerCase() })
-    : await User.findOne({ mobile: contact.trim() });
+  // TEMPORARILY DISABLED: Phone authentication system
+  // const user = isEmail(contact)
+  //   ? await User.findOne({ email: contact.trim().toLowerCase() })
+  //   : await User.findOne({ mobile: contact.trim() });
+  const user = await User.findOne({ email: contact.trim().toLowerCase() });
 
   if (!user) {
     throw new Error("Invalid credentials");
@@ -87,11 +114,16 @@ export const loginUser = async (data) => {
 
   console.log("Login user:", user);
   console.log("Email verified:", user.emailVerified);
-  console.log("Phone verified:", user.phoneVerified);
+  // TEMPORARILY DISABLED: Phone authentication system
+  // console.log("Phone verified:", user.phoneVerified);
 
   // Check if user is verified
-  if (!user.emailVerified || !user.phoneVerified) {
-    throw new Error("Please verify your email and phone before logging in.");
+  // TEMPORARILY DISABLED: Phone authentication system
+  // if (!user.emailVerified || !user.phoneVerified) {
+  //   throw new Error("Please verify your email and phone before logging in.");
+  // }
+  if (!user.emailVerified) {
+    throw new Error("Please verify your email before logging in.");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -100,8 +132,12 @@ export const loginUser = async (data) => {
   }
 
   // Check if user is active
+  // TEMPORARILY DISABLED: Phone authentication system
+  // if (user.status !== "active") {
+  //   throw new Error("Please verify your email and phone first.");
+  // }
   if (user.status !== "active") {
-    throw new Error("Please verify your email and phone first.");
+    throw new Error("Please verify your email first.");
   }
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -113,12 +149,114 @@ export const loginUser = async (data) => {
     id: user._id,
     name: user.name,
     email: user.email,
-    mobile: user.mobile,
+    // TEMPORARILY DISABLED: Phone authentication system
+    // mobile: user.mobile,
     role: user.role,
     status: user.status,
   };
 
   return { user: userData, token };
+};
+
+export const authenticateUser = async ({ contact, password }) => {
+  // TEMPORARILY DISABLED: Phone authentication system
+  // Detect contact type
+  // const contactType = isEmail(contact) ? "email" : "phone";
+  if (!isEmail(contact)) {
+    throw new Error("Only email authentication is allowed at this time");
+  }
+
+  // Check if user exists
+  // TEMPORARILY DISABLED: Phone authentication system
+  // const existingUser = isEmail(contact)
+  //   ? await User.findOne({ email: contact.trim().toLowerCase() })
+  //   : await User.findOne({ mobile: contact.trim() });
+  const existingUser = await User.findOne({
+    email: contact.trim().toLowerCase(),
+  });
+
+  if (existingUser) {
+    // User exists - verify password
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      existingUser.password,
+    );
+    if (!isPasswordValid) {
+      throw new Error("Invalid password");
+    }
+
+    // Check if user is verified and active
+    // TEMPORARILY DISABLED: Phone authentication system
+    // if (!existingUser.emailVerified || !existingUser.phoneVerified) {
+    //   throw new Error("Please verify your email and phone before logging in.");
+    // }
+    if (!existingUser.emailVerified) {
+      throw new Error("Please verify your email before logging in.");
+    }
+
+    if (existingUser.status !== "active") {
+      throw new Error("Account is not active.");
+    }
+
+    // Generate token
+    const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "24h",
+    });
+
+    return {
+      isExistingUser: true,
+      token,
+      user: {
+        id: existingUser._id,
+        name: existingUser.name,
+        email: existingUser.email,
+        // TEMPORARILY DISABLED: Phone authentication system
+        // phone: existingUser.mobile, // Map mobile to phone for frontend
+        role: existingUser.role,
+        status: existingUser.status,
+      },
+    };
+  } else {
+    // User doesn't exist - create a PendingUser and start registration
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const pendingData = { password: hashedPassword };
+
+    // TEMPORARILY DISABLED: Phone authentication system
+    // if (contactType === "email") {
+    //   pendingData.email = contact.trim().toLowerCase();
+    //   // Extract name from email local-part
+    //   pendingData.name = contact.split("@")[0] || "User";
+    // } else {
+    //   pendingData.mobile = contact.trim();
+    //   // Use phone as temporary name until email is provided
+    //   pendingData.name = contact.trim();
+    // }
+    pendingData.email = contact.trim().toLowerCase();
+    // Extract name from email local-part
+    pendingData.name = contact.split("@")[0] || "User";
+
+    const pendingUser = new PendingUser(pendingData);
+    await pendingUser.save();
+
+    // TEMPORARILY DISABLED: Phone authentication system
+    // const method = contactType === "email" ? "email" : "sms";
+    const method = "email";
+
+    await sendOTP(
+      contact,
+      "email", // Always email
+      method,
+      pendingUser._id,
+      pendingData.name,
+    );
+
+    return {
+      isExistingUser: false,
+      pendingUserId: pendingUser._id,
+      contactType,
+    };
+  }
 };
 
 export const finalizeRegistration = async (pendingUserId) => {
@@ -137,6 +275,7 @@ export const finalizeRegistration = async (pendingUserId) => {
     password: pendingUser.password,
     email: pendingUser.email,
     mobile: pendingUser.mobile,
+    whatsappNumber: pendingUser.mobile, // Link WhatsApp to mobile
     role: "student",
     emailVerified: true,
     phoneVerified: true,
@@ -280,11 +419,7 @@ export const verifyOTPForPending = async (pendingUserId, otp, method) => {
 
   const contact = method === "email" ? pendingUser.email : pendingUser.phone;
 
-  const result = await verifyOTP(
-    contact,
-    otp,
-    method === "email" ? "verify-email" : "verify-phone",
-  );
+  const result = await verifyOTP(contact, otp);
 
   if (result.success) {
     if (method === "email") {
@@ -329,4 +464,114 @@ export const setupGoogleStrategy = () => {
   passport.deserializeUser((user, done) => {
     done(null, user);
   });
+};
+
+// Email Update with OTP
+export const sendEmailUpdateOTP = async (userId, newEmail) => {
+  // Validate new email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(newEmail)) {
+    throw new Error("Invalid email format");
+  }
+
+  // Check if email is already in use by another user
+  const existingUser = await User.findOne({
+    email: newEmail.toLowerCase(),
+    _id: { $ne: userId },
+  });
+  if (existingUser) {
+    throw new Error("Email is already in use by another user");
+  }
+
+  // Get user details
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Import here to avoid circular dependency
+  const EmailUpdateRequest = (await import("./emailUpdateRequest.model.js"))
+    .default;
+  const { generateOTP, sendEmailOTP } = await import("./otp.service.js");
+
+  // Check if there's already a pending request for this user/email
+  const existingRequest = await EmailUpdateRequest.findOne({
+    userId,
+    newEmail: newEmail.toLowerCase(),
+  });
+
+  if (existingRequest) {
+    // Check if OTP is still valid (not expired and attempts not exceeded)
+    if (
+      existingRequest.otpExpiresAt > new Date() &&
+      existingRequest.attempts < 3
+    ) {
+      // Resend existing OTP
+      await sendEmailOTP(newEmail, existingRequest.otp, user.name);
+      return { success: true, message: "OTP sent to new email address" };
+    } else {
+      // Delete expired request
+      await EmailUpdateRequest.findByIdAndDelete(existingRequest._id);
+    }
+  }
+
+  // Generate new OTP
+  const otp = generateOTP();
+
+  // Create new email update request
+  const emailUpdateRequest = new EmailUpdateRequest({
+    userId,
+    newEmail: newEmail.toLowerCase(),
+    otp,
+  });
+
+  await emailUpdateRequest.save();
+
+  // Send OTP to new email
+  await sendEmailOTP(newEmail, otp, user.name);
+
+  return { success: true, message: "OTP sent to new email address" };
+};
+
+export const verifyEmailUpdateOTP = async (userId, otp) => {
+  // Import here to avoid circular dependency
+  const EmailUpdateRequest = (await import("./emailUpdateRequest.model.js"))
+    .default;
+
+  // Find the email update request
+  const request = await EmailUpdateRequest.findOne({
+    userId,
+    otpExpiresAt: { $gt: new Date() },
+  });
+
+  if (!request) {
+    throw new Error("No valid email update request found or OTP expired");
+  }
+
+  // Check attempts
+  if (request.attempts >= 3) {
+    await EmailUpdateRequest.findByIdAndDelete(request._id);
+    throw new Error("Maximum OTP attempts exceeded. Please request a new OTP.");
+  }
+
+  // Update attempts
+  request.attempts += 1;
+  request.lastAttemptAt = new Date();
+  await request.save();
+
+  // Verify OTP
+  if (request.otp !== otp) {
+    throw new Error("Invalid OTP");
+  }
+
+  // Update user's email
+  await User.findByIdAndUpdate(userId, {
+    email: request.newEmail,
+    emailVerified: true, // Mark as verified since OTP was sent and verified
+  });
+
+  // Delete the request
+  await EmailUpdateRequest.findByIdAndDelete(request._id);
+
+  return { success: true, message: "Email updated successfully" };
 };

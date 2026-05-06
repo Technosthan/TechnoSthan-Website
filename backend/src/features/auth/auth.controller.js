@@ -4,6 +4,7 @@ import {
   finalizeRegistration,
   forgotPassword,
   resetPassword,
+  authenticateUser,
 } from "./auth.service.js";
 
 import {
@@ -15,6 +16,8 @@ import {
   verifyQRLogin,
   detectContactType,
   sendResetEmail,
+  sendLoginOtp,
+  verifyLoginOtp,
 } from "./otp.service.js";
 
 // ================= REGISTER =================
@@ -40,13 +43,11 @@ export const register = async (req, res) => {
 
     const contactType = result.contactType;
     const method = contactType === "email" ? "email" : "sms";
-    const purpose = contactType === "email" ? "verify-email" : "verify-phone";
 
     await sendOTP(
       contactValue,
       contactType,
       method,
-      purpose,
       result.pendingUserId,
       name,
     );
@@ -86,25 +87,89 @@ export const login = async (req, res) => {
   }
 };
 
+// ================= UNIFIED AUTHENTICATE =================
+export const authenticate = async (req, res) => {
+  try {
+    const { contact, password } = req.body;
+
+    if (!contact || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Contact and password are required",
+      });
+    }
+
+    // Use the new service function
+    const result = await authenticateUser({ contact, password });
+
+    if (result.isExistingUser) {
+      // User exists - return login token
+      return res.json({
+        success: true,
+        message: "Login successful",
+        data: {
+          token: result.token,
+          user: result.user,
+          flow: "login",
+        },
+      });
+    } else {
+      // User doesn't exist - start registration
+      return res.json({
+        success: true,
+        message: `Registration started. OTP sent to ${result.contactType}`,
+        data: {
+          pendingUserId: result.pendingUserId,
+          contactType: result.contactType,
+          flow: "registration",
+          nextStep: "verify-otp",
+        },
+      });
+    }
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // ================= SEND OTP =================
 export const sendOTPController = async (req, res) => {
   try {
-    const { contact, method, purpose, pendingUserId, name } = req.body;
+    const { contact, method, pendingUserId, name } = req.body;
 
-    if (!contact || !method || !purpose) {
+    if (!contact || !method) {
       return res.status(400).json({
         success: false,
-        message: "Contact, method, and purpose are required",
+        message: "Contact and method are required",
+      });
+    }
+
+    // TEMPORARILY DISABLED: Phone authentication system
+    // Only allow email OTP
+    if (method !== "email") {
+      return res.status(400).json({
+        success: false,
+        message: "Only email OTP is allowed at this time",
       });
     }
 
     const contactType = detectContactType(contact);
 
+    // TEMPORARILY DISABLED: Phone authentication system
+    // Ensure it's email
+    if (contactType !== "email") {
+      return res.status(400).json({
+        success: false,
+        message: "Only email contact is allowed at this time",
+      });
+    }
+
     await sendOTP(
       contact,
       contactType,
       method,
-      purpose,
       pendingUserId || null,
       name || "User",
     );
@@ -124,16 +189,16 @@ export const sendOTPController = async (req, res) => {
 // ================= VERIFY OTP =================
 export const verifyOTPController = async (req, res) => {
   try {
-    const { contact, otp, purpose } = req.body;
+    const { contact, otp } = req.body;
 
-    if (!contact || !otp || !purpose) {
+    if (!contact || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Contact, OTP, and purpose are required",
+        message: "Contact and OTP are required",
       });
     }
 
-    const result = await verifyOTP(contact, otp, purpose);
+    const result = await verifyOTP(contact, otp);
 
     res.json({
       success: true,
@@ -215,7 +280,7 @@ export const verifyLoginOTPController = async (req, res) => {
       });
     }
 
-    const result = await verifyOTP(contact, otp, "login");
+    const result = await verifyOTP(contact, otp);
 
     res.json({
       success: true,
@@ -276,6 +341,32 @@ export const verifyQRLoginController = async (req, res) => {
   }
 };
 
+// ================= RESET PASSWORD =================
+export const resetPasswordController = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required",
+      });
+    }
+
+    const result = await resetPassword(token, newPassword);
+
+    res.json({
+      success: true,
+      message: "Password reset successfully",
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 // ================= FORGOT PASSWORD =================
 export const forgotPasswordController = async (req, res) => {
   try {
@@ -289,7 +380,7 @@ export const forgotPasswordController = async (req, res) => {
     }
 
     const result = await forgotPassword(email);
-    const resetLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${result.resetToken}`;
+    const resetLink = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${result.resetToken}`;
 
     await sendResetEmail(email, result.user.name, resetLink);
 
@@ -305,23 +396,20 @@ export const forgotPasswordController = async (req, res) => {
   }
 };
 
-// ================= RESET PASSWORD =================
-export const resetPasswordController = async (req, res) => {
+// ================= SEND LOGIN OTP =================
+export const sendLoginOtpController = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-
-    if (!token || !newPassword) {
+    const { phone, method } = req.body; // method: 'telegram' or 'whatsapp'
+    if (!phone || !method) {
       return res.status(400).json({
         success: false,
-        message: "Token and new password are required",
+        message: "Phone and method are required",
       });
     }
-
-    await resetPassword(token, newPassword);
-
+    const result = await sendLoginOtp(phone, method);
     res.json({
       success: true,
-      message: "Password reset successfully",
+      message: result.message,
     });
   } catch (error) {
     res.status(400).json({
@@ -331,10 +419,151 @@ export const resetPasswordController = async (req, res) => {
   }
 };
 
+// ================= VERIFY LOGIN OTP =================
+export const verifyLoginOtpController = async (req, res) => {
+  try {
+    const { phone, otp, method } = req.body;
+    if (!phone || !otp || !method) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone, OTP, and method are required",
+      });
+    }
+    const result = await verifyLoginOtp(phone, otp, method);
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= LINK TELEGRAM =================
+// TEMPORARILY DISABLED: Phone authentication system
+// export const linkTelegramController = async (req, res) => {
+//   try {
+//     const { phone, chatId } = req.query;
+//     if (!phone || !chatId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Phone and chatId are required",
+//       });
+//     }
+//     const user = await User.findOne({ mobile: phone });
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+//     user.telegramChatId = chatId;
+//     await user.save();
+//     res.json({
+//       success: true,
+//       message: "Telegram linked successfully",
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+// ================= LINK WHATSAPP =================
+// TEMPORARILY DISABLED: Phone authentication system
+// export const linkWhatsappController = async (req, res) => {
+//   try {
+//     const { phone, whatsappNumber } = req.body;
+//     if (!phone || !whatsappNumber) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Phone and whatsappNumber are required",
+//       });
+//     }
+//     const user = await User.findOne({ mobile: phone });
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+//     user.whatsappNumber = whatsappNumber;
+//     await user.save();
+//     res.json({
+//       success: true,
+//       message: "WhatsApp linked successfully",
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
 // ================= GET ME =================
 export const getMe = (req, res) => {
   res.json({
     success: true,
     data: req.user,
   });
+};
+
+// ================= SEND EMAIL UPDATE OTP =================
+export const sendEmailUpdateOTPController = async (req, res) => {
+  try {
+    const { newEmail } = req.body;
+
+    if (!newEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "New email is required",
+      });
+    }
+
+    const { sendEmailUpdateOTP } = await import("./auth.service.js");
+    const result = await sendEmailUpdateOTP(req.user.id, newEmail);
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= VERIFY EMAIL UPDATE OTP =================
+export const verifyEmailUpdateOTPController = async (req, res) => {
+  try {
+    const { otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP is required",
+      });
+    }
+
+    const { verifyEmailUpdateOTP } = await import("./auth.service.js");
+    const result = await verifyEmailUpdateOTP(req.user.id, otp);
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };

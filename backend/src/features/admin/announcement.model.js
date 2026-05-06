@@ -31,6 +31,16 @@ const announcementSchema = new mongoose.Schema(
       enum: ["all", "students", "admins"],
       default: "all",
     },
+    deliveryChannel: {
+      type: String,
+      enum: ["dashboard", "email", "both"],
+      default: "dashboard",
+    },
+    emailStatus: {
+      type: String,
+      enum: ["pending", "sent", "failed"],
+      default: null,
+    },
     expiresAt: {
       type: Date,
       default: null,
@@ -45,7 +55,12 @@ const announcementSchema = new mongoose.Schema(
 );
 
 // Index for efficient queries
-announcementSchema.index({ isActive: 1, expiresAt: 1, targetAudience: 1 });
+announcementSchema.index({
+  isActive: 1,
+  expiresAt: 1,
+  targetAudience: 1,
+  deliveryChannel: 1,
+});
 
 const Announcement = mongoose.model("Announcement", announcementSchema);
 

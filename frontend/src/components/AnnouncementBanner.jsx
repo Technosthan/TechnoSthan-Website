@@ -66,7 +66,7 @@ const AnnouncementBanner = () => {
             <button
               aria-label="Announcements"
               onClick={() => setShowModal(true)}
-              className={`p-2 rounded-lg hover:${theme.card} transition-colors`}
+              className={`p-2 rounded-lg hover:${theme.card}  transition-colors`}
             >
               <Bell className={`h-6 w-6 ${theme.textSecondary}`} />
             </button>

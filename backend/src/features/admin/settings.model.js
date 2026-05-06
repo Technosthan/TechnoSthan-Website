@@ -12,17 +12,69 @@ const settingsSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    theme: {
-      type: String,
-      enum: ["default", "dark", "red-black"],
-      default: "default",
-    },
-    defaultLanguage: {
-      type: String,
-      default: "en",
-      trim: true,
-    },
+
     aiSettings: {
+      mode: {
+        type: String,
+        enum: ["single", "fallback"],
+        default: "single",
+      },
+      providers: [
+        {
+          providerId: {
+            type: String,
+            required: true,
+            unique: true,
+          },
+          providerType: {
+            type: String,
+            enum: ["gemini", "openai", "custom", "token-only"],
+            required: true,
+          },
+          customName: {
+            type: String,
+            trim: true,
+          },
+          apiKey: {
+            type: String,
+            select: false,
+          },
+          modelName: {
+            type: String,
+            trim: true,
+          },
+          apiUrl: {
+            type: String,
+            trim: true,
+          },
+          configFile: {
+            type: String, // JSON string of config
+          },
+          isActive: {
+            type: Boolean,
+            default: true,
+          },
+          isPaused: {
+            type: Boolean,
+            default: false,
+          },
+          priority: {
+            type: Number,
+            default: 0,
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+          lastUsed: {
+            type: Date,
+          },
+          failureCount: {
+            type: Number,
+            default: 0,
+          },
+        },
+      ],
       systemPrompt: {
         type: String,
         default: `You are an AI assistant specialized in agriculture (AgriTech).
@@ -53,10 +105,6 @@ If question is unrelated, politely refuse.`,
         default: true,
       },
       contentVisibility: {
-        type: Boolean,
-        default: true,
-      },
-      iotMonitoring: {
         type: Boolean,
         default: true,
       },

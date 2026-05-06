@@ -45,7 +45,11 @@ export const useAuth = () => {
 
   // Detect input type
   const detectInputType = (value) => {
-    const type = value.includes("@") ? "email" : "phone";
+    // TEMPORARILY DISABLED: Phone authentication system
+    // const type = value.includes("@") ? "email" : "phone";
+    // console.log("Input:", value, "Detected Type:", type);
+    // return type;
+    const type = "email"; // Always email
     console.log("Input:", value, "Detected Type:", type);
     return type;
   };
@@ -142,27 +146,36 @@ export const useAuth = () => {
     setInputValue(value);
     setInputType(type);
 
-    if (isRegister) {
-      // Register flow: always phone first
-      setInputType("phone");
-      setTempData({ phone: value });
-      setStep("otp");
-    } else {
-      // Login flow
-      setStep("otp");
-    }
+    // TEMPORARILY DISABLED: Phone authentication system
+    // if (isRegister) {
+    //   // Register flow: always phone first
+    //   setInputType("phone");
+    //   setTempData({ phone: value });
+    //   setStep("otp");
+    // } else {
+    //   // Login flow
+    //   setStep("otp");
+    // }
+    // Always email, go to otp
+    setStep("otp");
   };
 
   const handleSendOTP = async (method) => {
     setLoading(true);
     try {
+      // TEMPORARILY DISABLED: Phone authentication system
+      // await sendOTP({
+      //   contact: inputValue,
+      //   method,
+      //   pendingUserId: tempData.pendingUserId,
+      // });
       await sendOTP({
         contact: inputValue,
-        method,
+        method: "email", // Always email
         pendingUserId: tempData.pendingUserId,
       });
 
-      setOtpMethod(method);
+      setOtpMethod("email");
       setStep(isRegister ? "verify-otp" : "verify-otp");
     } catch (error) {
       throw new Error(getErrorMessage(error));
@@ -181,7 +194,9 @@ export const useAuth = () => {
 
       setTempData((prev) => ({
         ...prev,
-        [otpMethod === "email" ? "emailVerified" : "phoneVerified"]: true,
+        // TEMPORARILY DISABLED: Phone authentication system
+        // [otpMethod === "email" ? "emailVerified" : "phoneVerified"]: true,
+        emailVerified: true,
       }));
 
       const innerData = res.data?.data;
@@ -195,13 +210,14 @@ export const useAuth = () => {
         return { token, user: userData };
       }
 
+      // TEMPORARILY DISABLED: Phone authentication system
       // If registration not finalized, move to second-field input to collect remaining contact
-      if (!innerData?.finalized && isRegister) {
-        setStep("input-second-field");
-        // Keep the verified contact type so the UI can ask for the missing contact
-        setInputType(otpMethod === "email" ? "email" : "phone");
-        setInputValue("");
-      }
+      // if (!innerData?.finalized && isRegister) {
+      //   setStep("input-second-field");
+      //   // Keep the verified contact type so the UI can ask for the missing contact
+      //   setInputType(otpMethod === "email" ? "email" : "phone");
+      //   setInputValue("");
+      // }
 
       return res.data;
     } catch (error) {
@@ -215,41 +231,42 @@ export const useAuth = () => {
     }
   };
 
-  const handleSecondFieldSubmit = async (value) => {
-    const type = detectInputType(value);
+  // TEMPORARILY DISABLED: Phone authentication system
+  // const handleSecondFieldSubmit = async (value) => {
+  //   const type = detectInputType(value);
 
-    if (isRegister) {
-      if (inputType === "email" && type === "phone") {
-        // Email was verified, now verify phone
-        setTempData((prev) => ({ ...prev, phone: value }));
-        setInputValue(value);
-        setInputType("phone");
-        setStep("verify-otp");
+  //   if (isRegister) {
+  //     if (inputType === "email" && type === "phone") {
+  //       // Email was verified, now verify phone
+  //       setTempData((prev) => ({ ...prev, phone: value }));
+  //       setInputValue(value);
+  //       setInputType("phone");
+  //       setStep("verify-otp");
 
-        // Send phone OTP
-        await sendOTP({
-          contact: value,
-          method: "sms",
-          pendingUserId: tempData.pendingUserId,
-        });
-        setOtpMethod("sms");
-      } else if (inputType === "phone" && type === "email") {
-        // Phone was verified, now verify email
-        setTempData((prev) => ({ ...prev, email: value }));
-        setInputValue(value);
-        setInputType("email");
-        setStep("verify-otp");
+  //       // Send phone OTP
+  //       await sendOTP({
+  //         contact: value,
+  //         method: "sms",
+  //         pendingUserId: tempData.pendingUserId,
+  //       });
+  //       setOtpMethod("sms");
+  //     } else if (inputType === "phone" && type === "email") {
+  //       // Phone was verified, now verify email
+  //       setTempData((prev) => ({ ...prev, email: value }));
+  //       setInputValue(value);
+  //       setInputType("email");
+  //       setStep("verify-otp");
 
-        // Send email OTP
-        await sendOTP({
-          contact: value,
-          method: "email",
-          pendingUserId: tempData.pendingUserId,
-        });
-        setOtpMethod("email");
-      }
-    }
-  };
+  //       // Send email OTP
+  //       await sendOTP({
+  //         contact: value,
+  //         method: "email",
+  //         pendingUserId: tempData.pendingUserId,
+  //       });
+  //       setOtpMethod("email");
+  //     }
+  //   }
+  // };
 
   // QR Login
   const generateQR = async () => {
@@ -382,7 +399,8 @@ export const useAuth = () => {
     handleInputSubmit,
     handleSendOTP,
     handleVerifyOTP,
-    handleSecondFieldSubmit,
+    // TEMPORARILY DISABLED: Phone authentication system
+    // handleSecondFieldSubmit,
     generateQR,
     verifyQR,
     handleGoogleLogin,

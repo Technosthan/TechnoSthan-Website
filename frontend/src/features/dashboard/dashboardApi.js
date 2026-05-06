@@ -12,6 +12,16 @@ export const updateProfile = async (data) => {
   return await axiosInstance.put("/api/auth/update", data);
 };
 
+export const sendEmailUpdateOTP = async (newEmail) => {
+  return await axiosInstance.post("/api/auth/send-email-update-otp", {
+    newEmail,
+  });
+};
+
+export const verifyEmailUpdateOTP = async (otp) => {
+  return await axiosInstance.post("/api/auth/verify-email-update-otp", { otp });
+};
+
 export const getDashboardStats = async () => {
   const [profile, quizResults, content] = await Promise.all([
     getProfile(),

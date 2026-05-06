@@ -8,6 +8,10 @@ import twilio from "twilio";
 import axios from "axios";
 import qrcode from "qrcode";
 
+// Import new services
+import { sendTelegramOtp } from "./telegram.service.js";
+import { sendWhatsappOtp } from "./whatsapp.service.js";
+
 // Initialize services - conditionally
 let twilioClient = null;
 const getTwilioClient = () => {
@@ -176,6 +180,13 @@ export const sendTelegramOTP = async (phone, otp) => {
   console.log(`Mock Telegram OTP sent to ${phone}: ${otp}`);
   // Simulate API call
   await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Uncomment to use real service
+  // const user = await User.findOne({ mobile: phone });
+  // if (user && user.telegramChatId) {
+  //   await sendTelegramOtp(user.telegramChatId, otp);
+  // } else {
+  //   throw new Error('Telegram not linked');
+  // }
 };
 
 export const sendInstagramOTP = async (phone, otp) => {
@@ -249,7 +260,6 @@ export const sendOTP = async (
   contact,
   contactType,
   method,
-  purpose,
   pendingUserId = null,
   name = null,
 ) => {
@@ -277,13 +287,29 @@ export const sendOTP = async (
   console.log(`OTP for ${normalizedContact} (${method}): ${otp}`);
   const hashedOTP = await hashOTP(otp);
 
+  // Update pending user with contact if not set
+  if (pendingUserId) {
+    const pendingUser = await PendingUser.findById(pendingUserId);
+    if (pendingUser) {
+      if (contactType === "email" && !pendingUser.email) {
+        pendingUser.email = normalizedContact;
+      } else if (contactType === "phone" && !pendingUser.mobile) {
+        pendingUser.mobile = normalizedContact;
+      }
+      // Update name if provided (e.g., when user provides email/phone later)
+      if (name && (!pendingUser.name || pendingUser.name === "")) {
+        pendingUser.name = name;
+      }
+      await pendingUser.save();
+    }
+  }
+
   // Create OTP record
   const otpRecord = new OTP({
     contact: normalizedContact,
     contactType,
     otp: hashedOTP,
     method,
-    purpose,
     expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
     pendingUserId,
   });
@@ -317,25 +343,30 @@ export const sendOTP = async (
 
   // Send OTP based on method
   try {
+    console.log(`Sending OTP via method=${method} to ${normalizedContact}`);
     switch (method) {
       case "email":
         await sendEmailOTP(normalizedContact, otp, name);
         break;
-      case "sms":
-        await sendSMSOTP(contact, otp);
-        break;
-      case "whatsapp":
-        await sendWhatsAppOTP(contact, otp);
-        break;
-      case "telegram":
-        await sendTelegramOTP(contact, otp);
-        break;
-      case "instagram":
-        await sendInstagramOTP(contact, otp);
-        break;
-      case "messenger":
-        await sendMessengerOTP(contact, otp);
-        break;
+      // TEMPORARILY DISABLED: Phone authentication system
+      // case "sms":
+      //   console.log(`PHONE OTP: ${otp} -> ${normalizedContact}`);
+      //   await sendSMSOTP(normalizedContact, otp);
+      //   break;
+      // case "whatsapp":
+      //   console.log(`WHATSAPP OTP: ${otp} -> ${normalizedContact}`);
+      //   await sendWhatsAppOTP(normalizedContact, otp);
+      //   break;
+      // case "telegram":
+      //   console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
+      //   await sendTelegramOTP(normalizedContact, otp);
+      //   break;
+      // case "instagram":
+      //   await sendInstagramOTP(normalizedContact, otp);
+      //   break;
+      // case "messenger":
+      //   await sendMessengerOTP(normalizedContact, otp);
+      //   break;
       default:
         throw new Error("Invalid OTP method");
     }
@@ -346,11 +377,10 @@ export const sendOTP = async (
   }
 };
 
-export const verifyOTP = async (contact, otp, purpose) => {
+export const verifyOTP = async (contact, otp) => {
   // 1. LOG EVERYTHING
   console.log("INPUT CONTACT:", contact);
   console.log("INPUT OTP:", otp);
-  console.log("INPUT PURPOSE:", purpose);
 
   // 2. NORMALIZE CONTACT
   contact = contact.trim().toLowerCase();
@@ -360,7 +390,6 @@ export const verifyOTP = async (contact, otp, purpose) => {
   // 3. FETCH LATEST OTP (IMPORTANT FIX)
   const otpRecord = await OTP.findOne({
     contact: contact,
-    purpose: purpose,
     verified: false,
     // 8. REMOVE STRICT EXPIRY TEMPORARILY (FOR DEBUG)
     // expiresAt: { $gt: new Date() },
@@ -370,7 +399,7 @@ export const verifyOTP = async (contact, otp, purpose) => {
   console.log("OTP FROM DB:", otpRecord);
 
   if (!otpRecord) {
-    console.log("NO OTP RECORD FOUND FOR:", { contact, purpose });
+    console.log("NO OTP RECORD FOUND FOR:", { contact });
     throw new Error("OTP not found or expired");
   }
 
@@ -395,23 +424,63 @@ export const verifyOTP = async (contact, otp, purpose) => {
   await otpRecord.save();
 
   // If this is for registration verification, update pending user
-  if (
-    otpRecord.pendingUserId &&
-    (purpose === "verify-email" || purpose === "verify-phone")
-  ) {
+  if (otpRecord.pendingUserId) {
     const pendingUser = await PendingUser.findById(otpRecord.pendingUserId);
     if (pendingUser) {
-      if (purpose === "verify-email") {
+      if (otpRecord.contactType === "email") {
         pendingUser.emailVerified = true;
-      } else if (purpose === "verify-phone") {
+      } else if (otpRecord.contactType === "phone") {
         pendingUser.phoneVerified = true;
       }
       await pendingUser.save();
-    }
-  }
 
-  // If this is for login, return token and user
-  if (purpose === "login") {
+      // Check if both email and phone are verified for finalization
+      if (pendingUser.emailVerified && pendingUser.phoneVerified) {
+        // Finalize registration
+        const user = new User({
+          name: pendingUser.name,
+          password: pendingUser.password,
+          email: pendingUser.email,
+          mobile: pendingUser.mobile,
+          role: "student",
+          emailVerified: true,
+          phoneVerified: true,
+          status: "active",
+        });
+        await user.save();
+
+        // Delete pending user
+        await PendingUser.findByIdAndDelete(otpRecord.pendingUserId);
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+          expiresIn: "24h",
+        });
+
+        return {
+          success: true,
+          contactType: otpRecord.contactType,
+          finalized: true,
+          token,
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            mobile: user.mobile,
+            role: user.role,
+            status: user.status,
+          },
+        };
+      } else {
+        return {
+          success: true,
+          contactType: otpRecord.contactType,
+          pendingUserId: otpRecord.pendingUserId,
+          finalized: false,
+        };
+      }
+    }
+  } else {
+    // It's for login
     const user = await User.findOne(
       otpRecord.contactType === "email"
         ? { email: otpRecord.contact.toLowerCase() }
@@ -434,6 +503,7 @@ export const verifyOTP = async (contact, otp, purpose) => {
       success: true,
       contactType: otpRecord.contactType,
       pendingUserId: otpRecord.pendingUserId,
+      finalized: true,
       token,
       user: {
         id: user._id,
@@ -577,4 +647,89 @@ export const verifyQRLogin = async (qrData, targetUserId) => {
   } catch (error) {
     throw new Error("Invalid QR code");
   }
+};
+
+// ================= LOGIN OTP FUNCTIONS =================
+export const sendLoginOtp = async (phone, method) => {
+  // Find user by phone
+  const user = await User.findOne({ mobile: phone });
+  if (!user) {
+    throw new Error("User not found with this phone number");
+  }
+
+  // Check if user has the required field
+  if (method === "telegram" && !user.telegramChatId) {
+    throw new Error("Telegram not linked to this account");
+  }
+  if (method === "whatsapp" && !user.whatsappNumber && !user.mobile) {
+    throw new Error("WhatsApp not linked to this account");
+  }
+
+  // Generate OTP
+  const otp = generateOTP();
+  const hashedOTP = await hashOTP(otp);
+
+  // Save to LoginOtp
+  const loginOtp = new LoginOtp({
+    identifier: phone,
+    otp: hashedOTP,
+    method,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min
+  });
+  await loginOtp.save();
+
+  // Send OTP
+  if (method === "telegram") {
+    await sendTelegramOtp(user.telegramChatId, otp);
+  } else if (method === "whatsapp") {
+    await sendWhatsappOtp(user.whatsappNumber || user.mobile, otp);
+  }
+
+  return { message: "OTP sent" };
+};
+
+export const verifyLoginOtp = async (phone, otp, method) => {
+  // Find user
+  const user = await User.findOne({ mobile: phone });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Find OTP record
+  const loginOtp = await LoginOtp.findOne({
+    identifier: phone,
+    method,
+    used: false,
+    expiresAt: { $gt: new Date() },
+  });
+  if (!loginOtp) {
+    throw new Error("Invalid or expired OTP");
+  }
+
+  // Verify OTP
+  const isValid = await verifyOTPHash(otp, loginOtp.otp);
+  if (!isValid) {
+    throw new Error("Invalid OTP");
+  }
+
+  // Mark as used
+  loginOtp.used = true;
+  await loginOtp.save();
+
+  // Generate token
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "24h",
+  });
+
+  return {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      status: user.status,
+    },
+    token,
+  };
 };

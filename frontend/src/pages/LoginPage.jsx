@@ -26,8 +26,6 @@ const LoginPage = () => {
     inputType,
     otpMethod,
     isRegister,
-    inputValue,
-    tempData,
     handleSendOTP,
     handleVerifyOTP,
     handleSecondFieldSubmit,
@@ -49,13 +47,21 @@ const LoginPage = () => {
 
   const handleSendOtp = async () => {
     if (!contact.trim()) {
-      setError("Please enter email or phone number");
+      setError("Please enter your email address");
       return;
     }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contact)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
     setOtpLoading(true);
     setError("");
     try {
-      const method = contact.includes("@") ? "email" : "sms";
+      const method = "email";
       await sendOTP({
         contact,
         method,
@@ -91,6 +97,7 @@ const LoginPage = () => {
     }
   };
   const [form, setForm] = useState({
+    name: "",
     contact: "",
     password: "",
     otp: "",
@@ -127,32 +134,34 @@ const LoginPage = () => {
     let errors = {};
     if (isOtpLogin || step !== "input") {
       if (step === "input") {
-        if (!form.contact.trim()) errors.contact = "Email or Phone is required";
-        else if (!isEmail(form.contact) && !isPhone(form.contact))
-          errors.contact = "Invalid email or phone";
+        if (!form.contact.trim()) errors.contact = "Email is required";
+        else if (!isEmail(form.contact)) errors.contact = "Invalid email";
       }
       if (step === "verify-otp") {
         if (!form.otp.trim()) errors.otp = "OTP is required";
         if (form.otp.length !== 6) errors.otp = "OTP must be 6 digits";
       }
-      if (step === "input-second-field") {
-        if (!form.contact.trim()) errors.contact = "Email or Phone is required";
-      }
+      // TEMPORARILY DISABLED: Phone authentication system
+      // if (step === "input-second-field") {
+      //   if (!form.contact.trim()) errors.contact = "Email or Phone is required";
+      //   if (!form.name.trim()) errors.name = "Name is required";
+      // }
     } else {
       // Unified password-based validation
       if (step === "input") {
-        if (!form.contact.trim()) errors.contact = "Email or Phone is required";
-        else if (!isEmail(form.contact) && !isPhone(form.contact))
-          errors.contact = "Invalid email or phone";
+        if (!form.contact.trim()) errors.contact = "Email is required";
+        else if (!isEmail(form.contact)) errors.contact = "Invalid email";
         if (!form.password.trim()) errors.password = "Password is required";
       }
       if (step === "verify-otp") {
         if (!form.otp.trim()) errors.otp = "OTP is required";
         if (form.otp.length !== 6) errors.otp = "OTP must be 6 digits";
       }
-      if (step === "input-second-field") {
-        if (!form.contact.trim()) errors.contact = "Email or Phone is required";
-      }
+      // TEMPORARILY DISABLED: Phone authentication system
+      // if (step === "input-second-field") {
+      //   if (!form.contact.trim()) errors.contact = "Email or Phone is required";
+      //   if (!form.name.trim()) errors.name = "Name is required";
+      // }
     }
     setFieldError(errors);
     return Object.keys(errors).length === 0;
@@ -179,7 +188,7 @@ const LoginPage = () => {
       }
 
       if (isRegister && step === "input-second-field") {
-        await handleSecondFieldSubmit(form.contact);
+        await handleSecondFieldSubmit(form.contact, form.name);
         return;
       }
 
@@ -223,25 +232,25 @@ const LoginPage = () => {
       return isOtpSent ? "Enter OTP" : "OTP Login";
     }
     if (step === "input") return "Welcome";
-    if (step === "verify-otp") return "Verify Contact";
-    if (step === "input-second-field") return "Complete Registration";
+    if (step === "verify-otp") return "Verify Email";
+    // TEMPORARILY DISABLED: Phone authentication system
+    // if (step === "input-second-field") return "Complete Registration";
     return "Welcome";
   };
 
   const getStepDescription = () => {
     if (isOtpLogin) {
       return isOtpSent
-        ? `Enter the 6-digit code sent to your ${contact.includes("@") ? "email" : "phone"}`
-        : "Enter your email or phone number to login";
+        ? `Enter the 6-digit code sent to your email`
+        : "Enter your email address to login";
     }
     if (step === "input")
       return "Enter your credentials to login or create account";
     if (step === "verify-otp")
-      return `Enter the 6-digit code sent to your ${inputType}`;
-    if (step === "input-second-field") {
-      const missing = inputType === "email" ? "phone number" : "email";
-      return `Add your ${missing} to complete registration`;
-    }
+      return `Enter the 6-digit code sent to your email`;
+    // TEMPORARILY DISABLED: Phone authentication system
+    // if (step === "input-second-field")
+    //   return `Add your ${inputType === "email" ? "phone number" : "email"} to complete registration`;
     return "Enter your credentials to login or create account";
   };
 
@@ -278,8 +287,8 @@ const LoginPage = () => {
                 <Mail className="text-gray-400" size={18} />
               </div>
               <input
-                type="text"
-                placeholder="Enter email or phone number"
+                type="email"
+                placeholder="Enter your email address"
                 value={contact}
                 className={`${theme.input} pl-10`}
                 onChange={(e) => setContact(e.target.value)}
@@ -289,7 +298,7 @@ const LoginPage = () => {
               type="button"
               onClick={handleSendOtp}
               disabled={otpLoading}
-              className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+              className={`w-full ${theme.button} py-3 rounded-xl flex cursor-pointer justify-center items-center gap-2`}
             >
               {otpLoading ? (
                 <RefreshCw className="animate-spin" size={18} />
@@ -320,7 +329,7 @@ const LoginPage = () => {
               type="button"
               onClick={handleVerifyOtp}
               disabled={otpLoading}
-              className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+              className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer flex justify-center items-center gap-2`}
             >
               {otpLoading ? (
                 <RefreshCw className="animate-spin" size={18} />
@@ -388,7 +397,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+                className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer flex justify-center items-center gap-2`}
               >
                 {loading ? "Please wait..." : "Continue"}
               </button>
@@ -404,13 +413,14 @@ const LoginPage = () => {
               </div>
 
               {/* Login with OTP toggle */}
-              <button
+              {/* TEMPORARILY DISABLED: Phone authentication system - keeping OTP for email only */}
+              {/* <button
                 type="button"
                 onClick={toggleOtpLogin}
-                className="w-full text-blue-500 text-sm hover:text-blue-600"
+                className="w-full text-blue-500 text-sm cursor-pointer hover:text-blue-600"
               >
                 Login with OTP instead
-              </button>
+              </button> */}
             </>
           )}
 
@@ -448,7 +458,7 @@ const LoginPage = () => {
                 type="button"
                 onClick={() => handleSendOTP(otpMethod)}
                 disabled={loading}
-                className="w-full text-blue-500 text-sm hover:text-blue-600 flex items-center justify-center gap-2"
+                className="w-full text-blue-500 text-sm cursor-pointer hover:text-blue-600 flex items-center justify-center gap-2"
               >
                 <RefreshCw size={14} />
                 Resend OTP
@@ -457,7 +467,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+                className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer flex justify-center items-center gap-2`}
               >
                 {loading ? "Verifying..." : "Verify OTP"}
               </button>
@@ -465,27 +475,38 @@ const LoginPage = () => {
           )}
 
           {/* Registration Flow - Second Field Input */}
-          {!isOtpLogin && isRegister && step === "input-second-field" && (
+          {/* TEMPORARILY DISABLED: Phone authentication system */}
+          {/* {!isOtpLogin && isRegister && step === "input-second-field" && (
             <div className="space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center">
-                  {(() => {
-                    const missing = inputType === "email" ? "phone" : "email";
-                    return missing === "phone" ? (
-                      <Phone className="text-gray-400" size={18} />
-                    ) : (
-                      <Mail className="text-gray-400" size={18} />
-                    );
-                  })()}
+                  <User className="text-gray-400" size={18} />
                 </div>
                 <input
                   type="text"
-                  placeholder={(() => {
-                    const missing = inputType === "email" ? "phone" : "email";
-                    return missing === "phone"
-                      ? "Phone Number"
-                      : "Email Address";
-                  })()}
+                  placeholder="Full Name"
+                  value={form.name}
+                  className={`${theme.input} pl-10`}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+                {fieldError.name && (
+                  <p className="text-red-500 text-xs mt-1">{fieldError.name}</p>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center">
+                  {inputType === "email" ? (
+                    <Phone className="text-gray-400" size={18} />
+                  ) : (
+                    <Mail className="text-gray-400" size={18} />
+                  )}
+                </div>
+                <input
+                  type="text"
+                  placeholder={
+                    inputType === "email" ? "Phone Number" : "Email Address"
+                  }
                   value={form.contact}
                   className={`${theme.input} pl-10`}
                   onChange={(e) =>
@@ -503,12 +524,12 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2`}
+                className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer flex justify-center items-center gap-2`}
               >
                 {loading ? "Please wait..." : "Complete Registration"}
               </button>
             </div>
-          )}
+          )} */}
 
           {/* QR Login Option */}
           {!isOtpLogin && step === "input" && (
@@ -516,7 +537,7 @@ const LoginPage = () => {
               <button
                 type="button"
                 onClick={handleGenerateQR}
-                className="text-blue-500 text-sm hover:text-blue-600 flex items-center justify-center gap-2 mx-auto"
+                className="text-blue-500 text-sm cursor-pointer hover:text-blue-600 flex items-center justify-center gap-2 mx-auto"
               >
                 <QrCode size={16} />
                 Login with QR Code
@@ -539,7 +560,7 @@ const LoginPage = () => {
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className={`w-full ${theme.card} ${theme.border} py-3 rounded-xl flex items-center justify-center gap-2`}
+              className={`w-full ${theme.card} ${theme.border} py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2`}
             >
               <svg
                 className="w-5 h-5"
@@ -568,7 +589,8 @@ const LoginPage = () => {
           )}
 
           {/* Social Login Options */}
-          {!isOtpLogin && step === "input" && (
+          {/* TEMPORARILY DISABLED: Phone authentication system */}
+          {/* {!isOtpLogin && step === "input" && (
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -585,21 +607,21 @@ const LoginPage = () => {
               <div className="mt-4 flex justify-center gap-4">
                 <button
                   onClick={() => navigate("/login/telegram")}
-                  className="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                  className="p-3 rounded-full cursor-pointer bg-blue-500 hover:bg-blue-600 text-white transition-colors"
                   title="Login with Telegram"
                 >
                   <MessageSquare size={20} />
                 </button>
                 <button
                   onClick={() => navigate("/login/whatsapp")}
-                  className="p-3 rounded-full bg-green-500 hover:bg-green-600 text-white transition-colors"
+                  className="p-3 rounded-full cursor-pointer bg-green-500 hover:bg-green-600 text-white transition-colors"
                   title="Login with WhatsApp"
                 >
                   <MessageSquare size={20} />
                 </button>
               </div>
             </div>
-          )}
+          )} */}
         </form>
       </div>
     </div>

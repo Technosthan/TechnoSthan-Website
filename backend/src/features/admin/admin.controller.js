@@ -4,6 +4,7 @@ import Question from "../quiz/question.model.js";
 import QuizResult from "../quiz/quizResult.model.js";
 import Settings from "./settings.model.js";
 import Announcement from "./announcement.model.js";
+import { sendBulkAnnouncementEmails } from "./announcement.service.js";
 import bcrypt from "bcryptjs";
 
 export const getAdminStats = async (req, res) => {
@@ -380,13 +381,56 @@ export const updateUserStatus = async (req, res) => {
 export const getSettings = async (req, res) => {
   console.log("getSettings called for user:", req.user?.email);
   try {
-    // Temporary test - return static data
-    const settings = {
-      appName: "Test App",
-      theme: "default",
-      aiSettings: { temperature: 0.7 },
+    const defaultSettings = {
+      appName: "Technosthan AgriTech",
+      logoUrl: "",
+      aiSettings: {
+        systemPrompt: "",
+        temperature: 0.7,
+        maxTokens: 3000,
+      },
+      featureFlags: {
+        aiChat: true,
+        quiz: true,
+        contentVisibility: true,
+      },
+      dashboardSettings: {
+        visibleCards: ["stats", "users", "content", "quiz", "activity"],
+        cardOrder: ["stats", "users", "content", "quiz", "activity"],
+      },
     };
-    console.log("Returning settings:", settings);
+
+    let settings = await Settings.findOne().lean();
+
+    if (!settings) {
+      settings = await Settings.create({});
+      settings = settings.toObject();
+      console.log("Created default settings document:", settings._id);
+    }
+
+    settings = {
+      ...defaultSettings,
+      ...settings,
+      aiSettings: {
+        ...defaultSettings.aiSettings,
+        ...(settings.aiSettings || {}),
+      },
+      featureFlags: {
+        ...defaultSettings.featureFlags,
+        ...(settings.featureFlags || {}),
+      },
+      dashboardSettings: {
+        ...defaultSettings.dashboardSettings,
+        ...(settings.dashboardSettings || {}),
+      },
+    };
+
+    console.log("Returning settings:", {
+      id: settings._id,
+      hasFeatureFlags: !!settings.featureFlags,
+      hasDashboardSettings: !!settings.dashboardSettings,
+    });
+
     res.json({
       success: true,
       data: settings,
@@ -396,6 +440,403 @@ export const getSettings = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch settings",
+    });
+  }
+};
+
+// AI config endpoints
+export const getAIConfig = async (req, res) => {
+  try {
+    let settings = await Settings.findOne().lean();
+    if (!settings) {
+      settings = await Settings.create({});
+      settings = settings.toObject();
+    }
+
+    const ai = settings.aiSettings || {};
+
+    // Mask API key for safety before returning
+    const maskedApiKey = ai.apiKey ? "********" + ai.apiKey.slice(-4) : "";
+
+    const response = {
+      provider: ai.provider || "gemini",
+      model: ai.model || "gemini-2.5-pro",
+      apiKeyMasked: maskedApiKey,
+      apiUrl: ai.apiUrl || "",
+      systemPrompt: ai.systemPrompt || "",
+      temperature: ai.temperature != null ? ai.temperature : 0.7,
+      maxTokens: ai.maxTokens != null ? ai.maxTokens : 3000,
+    };
+
+    res.json({ success: true, data: response });
+  } catch (error) {
+    console.error("Get AI config error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch AI config" });
+  }
+};
+
+export const updateAIConfig = async (req, res) => {
+  try {
+    const aiUpdate = req.body || {};
+
+    // Remove apiKeyMasked field if present (it's only for UI display)
+    delete aiUpdate.apiKeyMasked;
+
+    // Basic validation
+    if (
+      aiUpdate.provider &&
+      !["gemini", "openai", "custom"].includes(aiUpdate.provider)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid provider" });
+    }
+
+    // If provider is custom, apiUrl must be provided
+    if (aiUpdate.provider === "custom" && !aiUpdate.apiUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "apiUrl is required for custom provider",
+      });
+    }
+
+    // Build update object for nested aiSettings
+    const updateObj = {};
+    Object.keys(aiUpdate).forEach((k) => {
+      updateObj[`aiSettings.${k}`] = aiUpdate[k];
+    });
+
+    // Handle apiKey: if not provided or it's a masked value, do not overwrite stored key
+    if (Object.prototype.hasOwnProperty.call(aiUpdate, "apiKey")) {
+      const v = aiUpdate.apiKey;
+      if (
+        !v ||
+        typeof v !== "string" ||
+        v.startsWith("***") ||
+        v.startsWith("********")
+      ) {
+        // remove from updateObj so we don't overwrite actual stored key
+        delete updateObj[`aiSettings.apiKey`];
+      } else {
+        // set real apiKey
+        updateObj[`aiSettings.apiKey`] = v;
+      }
+    }
+
+    await Settings.findOneAndUpdate(
+      {},
+      { $set: updateObj },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+
+    // Re-read settings including apiKey to be able to mask it for response
+    const fresh = await Settings.findOne().select("+aiSettings.apiKey").lean();
+    const ai = (fresh && fresh.aiSettings) || {};
+    const maskedApiKey = ai.apiKey ? "********" + ai.apiKey.slice(-4) : "";
+
+    const response = {
+      provider: ai.provider || "gemini",
+      model: ai.model || "gemini-2.5-pro",
+      apiKeyMasked: maskedApiKey,
+      apiUrl: ai.apiUrl || "",
+      systemPrompt: ai.systemPrompt || "",
+      temperature: ai.temperature != null ? ai.temperature : 0.7,
+      maxTokens: ai.maxTokens != null ? ai.maxTokens : 3000,
+    };
+
+    res.json({
+      success: true,
+      message: "AI settings updated successfully",
+      data: response,
+    });
+  } catch (error) {
+    console.error("Update AI config error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update AI config: " + error.message,
+    });
+  }
+};
+
+// ===== AI PROVIDER MANAGEMENT =====
+
+// Get all AI providers
+export const getAIProviders = async (req, res) => {
+  try {
+    const settings = await Settings.findOne()
+      .select("+aiSettings.providers.apiKey")
+      .lean();
+
+    if (!settings || !settings.aiSettings) {
+      return res.json({
+        success: true,
+        data: {
+          mode: "single",
+          providers: [],
+        },
+      });
+    }
+
+    const { mode, providers = [] } = settings.aiSettings;
+
+    // Mask API keys for security
+    const maskedProviders = providers.map((provider) => ({
+      ...provider,
+      apiKey: provider.apiKey ? "********" + provider.apiKey.slice(-4) : "",
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        mode,
+        providers: maskedProviders,
+      },
+    });
+  } catch (error) {
+    console.error("Get AI providers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch AI providers",
+    });
+  }
+};
+
+// Add new AI provider
+export const addAIProvider = async (req, res) => {
+  try {
+    const providerData = req.body;
+
+    // Validation
+    if (
+      !providerData.providerType ||
+      !["gemini", "openai", "custom", "token-only"].includes(
+        providerData.providerType,
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid provider type",
+      });
+    }
+
+    if (providerData.providerType === "custom" && !providerData.customName) {
+      return res.status(400).json({
+        success: false,
+        message: "Custom name is required for custom providers",
+      });
+    }
+
+    // Generate unique provider ID
+    const providerId = `${providerData.providerType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const newProvider = {
+      providerId,
+      providerType: providerData.providerType,
+      customName: providerData.customName || "",
+      apiKey: providerData.apiKey || "",
+      modelName: providerData.modelName || "",
+      apiUrl: providerData.apiUrl || "",
+      configFile: providerData.configFile || "",
+      isActive:
+        providerData.isActive !== undefined ? providerData.isActive : true,
+      isPaused: false,
+      priority: providerData.priority || 0,
+      createdAt: new Date(),
+      failureCount: 0,
+    };
+
+    // Add to providers array
+    await Settings.findOneAndUpdate(
+      {},
+      {
+        $push: { "aiSettings.providers": newProvider },
+        $setOnInsert: { "aiSettings.mode": "single" },
+      },
+      { upsert: true, new: true },
+    );
+
+    // Return masked provider
+    const maskedProvider = {
+      ...newProvider,
+      apiKey: newProvider.apiKey
+        ? "********" + newProvider.apiKey.slice(-4)
+        : "",
+    };
+
+    res.json({
+      success: true,
+      message: "AI provider added successfully",
+      data: maskedProvider,
+    });
+  } catch (error) {
+    console.error("Add AI provider error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add AI provider: " + error.message,
+    });
+  }
+};
+
+// Update AI provider
+export const updateAIProvider = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const updateData = req.body;
+
+    if (!providerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Provider ID is required",
+      });
+    }
+
+    // Build update object
+    const updateObj = {};
+    Object.keys(updateData).forEach((key) => {
+      if (key !== "providerId" && key !== "createdAt") {
+        updateObj[`aiSettings.providers.$.${key}`] = updateData[key];
+      }
+    });
+
+    const result = await Settings.findOneAndUpdate(
+      { "aiSettings.providers.providerId": providerId },
+      { $set: updateObj },
+      { new: true },
+    );
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Provider not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "AI provider updated successfully",
+    });
+  } catch (error) {
+    console.error("Update AI provider error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update AI provider: " + error.message,
+    });
+  }
+};
+
+// Delete AI provider
+export const deleteAIProvider = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+
+    if (!providerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Provider ID is required",
+      });
+    }
+
+    const result = await Settings.findOneAndUpdate(
+      { "aiSettings.providers.providerId": providerId },
+      { $pull: { "aiSettings.providers": { providerId } } },
+      { new: true },
+    );
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Provider not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "AI provider deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete AI provider error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete AI provider: " + error.message,
+    });
+  }
+};
+
+// Update AI mode (single/fallback)
+export const updateAIMode = async (req, res) => {
+  try {
+    const { mode } = req.body;
+
+    if (!mode || !["single", "fallback"].includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid mode. Must be 'single' or 'fallback'",
+      });
+    }
+
+    await Settings.findOneAndUpdate(
+      {},
+      { $set: { "aiSettings.mode": mode } },
+      { upsert: true, new: true },
+    );
+
+    res.json({
+      success: true,
+      message: `AI mode updated to ${mode}`,
+    });
+  } catch (error) {
+    console.error("Update AI mode error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update AI mode: " + error.message,
+    });
+  }
+};
+
+// Update provider priority
+export const updateProviderPriority = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const { priority } = req.body;
+
+    if (!providerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Provider ID is required",
+      });
+    }
+
+    if (typeof priority !== "number") {
+      return res.status(400).json({
+        success: false,
+        message: "Priority must be a number",
+      });
+    }
+
+    const result = await Settings.findOneAndUpdate(
+      { "aiSettings.providers.providerId": providerId },
+      { $set: { "aiSettings.providers.$.priority": priority } },
+      { new: true },
+    );
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Provider not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Provider priority updated successfully",
+    });
+  } catch (error) {
+    console.error("Update provider priority error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update provider priority: " + error.message,
     });
   }
 };
@@ -425,68 +866,21 @@ export const updateSettings = async (req, res) => {
       });
     }
 
-    if (
-      updateData.theme &&
-      !["default", "dark", "red-black"].includes(updateData.theme)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "theme must be one of: default, dark, red-black",
-      });
-    }
-
-    if (
-      updateData.defaultLanguage &&
-      typeof updateData.defaultLanguage !== "string"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "defaultLanguage must be a string",
-      });
-    }
-
     console.log("Validation passed, looking for existing settings...");
 
-    // Find existing settings
-    let settings = await Settings.findOne();
-    console.log("Existing settings found:", !!settings);
+    // Merge into a single settings document so nested sections persist cleanly.
+    const settings = await Settings.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      },
+    );
 
-    if (!settings) {
-      console.log("Creating new settings document...");
-      try {
-        // Check if any settings exist before creating
-        const existingCount = await Settings.countDocuments();
-        if (existingCount > 0) {
-          return res.status(400).json({
-            success: false,
-            message: "Settings document already exists. Use update instead.",
-          });
-        }
-        settings = await Settings.create(updateData);
-        console.log("Settings created successfully:", settings._id);
-      } catch (createError) {
-        console.error("Error creating settings:", createError);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to create settings: " + createError.message,
-        });
-      }
-    } else {
-      console.log("Updating existing settings...");
-      try {
-        settings = await Settings.findByIdAndUpdate(settings._id, updateData, {
-          new: true,
-          runValidators: true,
-        });
-        console.log("Settings updated successfully");
-      } catch (updateError) {
-        console.error("Error updating settings:", updateError);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to update settings: " + updateError.message,
-        });
-      }
-    }
+    console.log("Settings updated successfully:", settings._id);
 
     console.log("Returning success response");
     res.json({
@@ -570,7 +964,77 @@ export const createAnnouncement = async (req, res) => {
       createdBy: req.user._id,
     };
 
+    // Validate delivery channel
+    if (!announcementData.deliveryChannel) {
+      announcementData.deliveryChannel = "dashboard";
+    }
+
     const announcement = await Announcement.create(announcementData);
+
+    // Handle email sending if delivery channel includes email
+    if (
+      announcementData.deliveryChannel === "email" ||
+      announcementData.deliveryChannel === "both"
+    ) {
+      try {
+        // Update status to pending
+        await Announcement.findByIdAndUpdate(announcement._id, {
+          emailStatus: "pending",
+        });
+
+        // Get target users
+        let userQuery = { email: { $exists: true, $ne: null } }; // Only users with email
+
+        if (announcementData.targetAudience !== "all") {
+          userQuery.role = announcementData.targetAudience;
+        }
+
+        const targetUsers = await User.find(userQuery).select("name email");
+
+        if (targetUsers.length > 0) {
+          // Send emails asynchronously
+          setImmediate(async () => {
+            try {
+              const emailResults = await sendBulkAnnouncementEmails(
+                targetUsers,
+                announcement,
+              );
+
+              // Update email status based on results
+              const finalStatus =
+                emailResults.failed === 0
+                  ? "sent"
+                  : emailResults.sent > 0
+                    ? "sent"
+                    : "failed";
+              await Announcement.findByIdAndUpdate(announcement._id, {
+                emailStatus: finalStatus,
+              });
+
+              console.log(
+                `Announcement emails sent: ${emailResults.sent} successful, ${emailResults.failed} failed`,
+              );
+            } catch (emailError) {
+              console.error("Bulk email sending error:", emailError);
+              await Announcement.findByIdAndUpdate(announcement._id, {
+                emailStatus: "failed",
+              });
+            }
+          });
+        } else {
+          // No users to send emails to
+          await Announcement.findByIdAndUpdate(announcement._id, {
+            emailStatus: "sent",
+          });
+        }
+      } catch (emailSetupError) {
+        console.error("Email setup error:", emailSetupError);
+        // Don't fail the announcement creation, just mark email as failed
+        await Announcement.findByIdAndUpdate(announcement._id, {
+          emailStatus: "failed",
+        });
+      }
+    }
 
     res.json({
       success: true,
@@ -643,13 +1107,6 @@ export const deleteAnnouncement = async (req, res) => {
 export const globalSearch = async (req, res) => {
   try {
     const { query, type } = req.query;
-
-    if (!query || query.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Search query must be at least 2 characters",
-      });
-    }
 
     const searchRegex = new RegExp(query, "i");
     let results = {};
