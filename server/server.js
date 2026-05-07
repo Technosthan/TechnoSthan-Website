@@ -250,16 +250,29 @@ http.createServer(app);
 
 // SOCKET SERVER
 
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173").split(",");
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:3000,https://techno-sthan-website.vercel.app,https://www.technosthan.com,https://technosthan.com")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+};
 
 const io = new Server(server, {
 
-  cors: {
-
-    origin: allowedOrigins,
-
-    credentials: true,
-  },
+  cors: corsOptions,
 });
 
 
@@ -346,15 +359,7 @@ const authLimiter = rateLimit({
 
 // CORS
 
-app.use(
-
-  cors({
-
-    origin: allowedOrigins,
-
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 
 // BODY PARSER
