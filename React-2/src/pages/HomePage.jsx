@@ -1,15 +1,29 @@
-import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { motion } from 'framer-motion';
+
+import React from "react";
+import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
 import {
-  ArrowRight, Code2, Cloud, TrendingUp, Lightbulb,
-  CheckCircle2, Layers, Users, Globe, Shield,
-  Zap, Star, ChevronRight
-} from 'lucide-react';
-import StatsSection from '../components/Stats';
-import CTASection from '../components/CTA';
-import { SectionWrapper, SectionHeading, FadeUp } from '../components/SectionWrapper';
-import './HomePage.css';
+  Code2,
+  Cloud,
+  TrendingUp,
+  Briefcase,
+  Rocket,
+  Lightbulb,
+  Zap,
+  Shield,
+  Globe,
+  Layers,
+  Users,
+  Star,
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight
+} from "lucide-react";
+import { SectionWrapper, SectionHeading, FadeUp } from "../components";
+import StatsSection from "../components/Stats";
+import CTASection from "../components/CTA";
+import "./HomePage.css";
 
 const VERTICALS = [
   {
@@ -66,7 +80,7 @@ const PROCESS = [
   { num: '04', title: 'Launch', desc: 'Rigorous QA, staged rollouts, and monitoring from day one of going live.' },
 ];
 
-export default function HomePage() {
+export default function ServicesPage() {
   return (
     <>
       <Helmet>
@@ -109,11 +123,12 @@ export default function HomePage() {
             </p>
 
             <div className="hero__actions">
-              <Link to="/services" className="btn-primary">
+              <Link to="/services?scroll=services-section" className="btn-primary">
                 Explore Services <ArrowRight size={16} />
               </Link>
-              <Link to="/contact" className="hero__secondary-cta">
-                Schedule a Call <ChevronRight size={16} />
+
+              <Link to="/services/technosthan-it-services" className="btn-premium btn-secondary">
+                Our Product <ArrowRight size={16} />
               </Link>
             </div>
 
@@ -278,3 +293,5 @@ export default function HomePage() {
     </>
   );
 }
+
+// export default ServicesPage;

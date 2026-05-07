@@ -1,46 +1,51 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation
+} from "react-router-dom";
+
 import { HelmetProvider } from "react-helmet-async";
 
-/* COMPONENTS */
-import AboutPage from "./component/About/AboutPage";
+/* LAYOUT */
 import Navbar from "./component/Navbar/Navbar";
 import Footer from "./component/Footer/Footer";
-import Services from "./component/Services/Services";
-import TechnoSthanHospitality from "./component/Services/TechnoSthanHospitality";
-import TechnoSthanInnovationsHub from "./component/Services/TechnoSthanInnovationsHub";
-import TechnoSthanAgritech from "./component/Services/TechnoSthanAgritech";
-import HomePage from "./pages/HomePage";
-import Contact from "./component/Contact/Contact";
-import Solution from "./component/Solution/Solution";
 import SocialSidebar from "./component/SocialSidebar/SocialSidebar";
-import Login from "./component/Auth/Login";
-import Register from "./component/Auth/Register";
 import ScrollToTop from "./component/ScrollToTop";
 
-/* DASHBOARDS */
+/* EXISTING PAGES */
+import AboutPage from "./component/About/AboutPage";
+import Contact from "./component/Contact/Contact";
+import Solution from "./component/Solution/Solution";
+
+import Login from "./component/Auth/Login";
+import Register from "./component/Auth/Register";
+
 import Dashboard from "./component/Dashboard/Dashboard";
 import AdminDashboard from "./component/AdminDashboard/AdminDashboard";
 
-/* PROTECTED */
 import ProtectedRoute from "./component/Protected/ProtectedRoute";
 import AdminRoute from "./component/Protected/AdminRoute";
 
-/* PAGES */
-import Home from "./component/Home/Home";
 import SocialForm from "./component/SocialForm/SocialForm";
 import HRSocial from "./component/HRSocial/HRSocial";
+
 import ExplorePage from "./Tab/ExplorePage";
 
-/* 🔥 REAL IT SERVICES PAGE */
-import TechnoSthanITServices from "./component/Services/TechnoSthanITServices";
-
 /* NEW PAGES */
+import HomePage from "./pages/HomePage";
 import ServicesPage from "./pages/ServicesPage";
+
 import EngineeringPage from "./pages/EngineeringPage";
 import CloudPage from "./pages/CloudPage";
 import DigitalGrowth from "./pages/DigitalGrowth";
 import ConsultingPage from "./pages/ConsultingPage";
+
+/* OLD SERVICE PAGES */
+import TechnoSthanHospitality from "./component/Services/TechnoSthanHospitality";
+import TechnoSthanInnovationsHub from "./component/Services/TechnoSthanInnovationsHub";
+import TechnoSthanAgritech from "./component/Services/TechnoSthanAgritech";
 
 /* WRAPPER */
 function AppWrapper() {
@@ -56,9 +61,16 @@ function AppWrapper() {
 
 /* MAIN APP */
 function App() {
+
   const location = useLocation();
 
-  const noGlobalLayoutPaths = ["/login", "/register", "/dashboard", "/admin"];
+  const noGlobalLayoutPaths = [
+    "/login",
+    "/register",
+    "/dashboard",
+    "/admin"
+  ];
+
   const hideLayout = noGlobalLayoutPaths.includes(location.pathname);
 
   return (
@@ -69,35 +81,70 @@ function App() {
       <Routes>
 
         {/* HOME */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<HomePage />} />
 
         {/* ABOUT */}
         <Route path="/about" element={<AboutPage />} />
 
-        {/* SERVICES */}
-        <Route path="/services" element={<Services />} />
-        <Route path="/services/technosthan-hospitality" element={<TechnoSthanHospitality />} />
-        <Route path="/services/technosthan-innovations-hub" element={<TechnoSthanInnovationsHub />} />
-        <Route path="/services/technosthan-agritech" element={<TechnoSthanAgritech />} />
-        <Route path="/services/technosthan-it-services" element={<TechnoSthanITServices />} />
+        {/* SERVICES MAIN */}
+        <Route path="/services" element={<ServicesPage />} />
 
-        {/* 🔥 NEW ENGINEERING ROUTE */}
+        {/* NEW SERVICE DETAIL PAGES */}
+        <Route
+          path="/services/technosthan-it-services"
+          element={<EngineeringPage />}
+        />
+
+        <Route
+          path="/services/technosthan-cloud"
+          element={<CloudPage />}
+        />
+
+        <Route
+          path="/services/technosthan-growth"
+          element={<DigitalGrowth />}
+        />
+
+        <Route
+          path="/services/technosthan-consulting"
+          element={<ConsultingPage />}
+        />
+
+        {/* DIRECT SERVICE SLUGS */}
         <Route path="/engineering" element={<EngineeringPage />} />
         <Route path="/cloud" element={<CloudPage />} />
         <Route path="/digital-growth" element={<DigitalGrowth />} />
         <Route path="/consulting" element={<ConsultingPage />} />
-         <Route path="/services" element={<ServicesPage />} />
+
+        {/* OLD SERVICE PAGES */}
+        <Route
+          path="/services/technosthan-hospitality"
+          element={<TechnoSthanHospitality />}
+        />
+
+        <Route
+          path="/services/technosthan-innovations-hub"
+          element={<TechnoSthanInnovationsHub />}
+        />
+
+        <Route
+          path="/services/technosthan-agritech"
+          element={<TechnoSthanAgritech />}
+        />
 
         {/* OTHER */}
         <Route path="/contact" element={<Contact />} />
+
         <Route path="/solution" element={<Solution />} />
 
         {/* AUTH */}
         <Route path="/login" element={<Login />} />
+
         <Route path="/register" element={<Register />} />
 
         {/* SOCIAL */}
         <Route path="/social" element={<SocialForm />} />
+
         <Route path="/hr-social" element={<HRSocial />} />
 
         {/* DASHBOARD */}

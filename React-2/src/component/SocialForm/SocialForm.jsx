@@ -1,6 +1,7 @@
 // SocialForm.jsx - HR Social Dashboard
 import React, { useState, useEffect } from "react";
 import "./SocialForm.css";
+import WhatsAppChat from "./WhatsAppChat";
 import logo from "../../assets/logo.png";
 import { Helmet } from "react-helmet-async";
 
@@ -3654,6 +3655,7 @@ const SocialForm = () => {
         {/* Content Area */}
         <div className="content-area">
           {renderActiveView()}
+          <WhatsAppChat />
         </div>
       </main>
 

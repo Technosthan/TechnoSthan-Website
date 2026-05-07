@@ -1,11 +1,28 @@
 /* === HERO === */
 .hero {
   position: relative;
-  min-height: 100vh;
+  /* let content define the height so nothing gets clipped */
+  min-height: auto;
   display: flex;
-  align-items: center;
-  overflow: hidden;
-  padding-top: 80px;
+  /* align-start so content sits below the sticky navbar instead of centering under it */
+  align-items: flex-start;
+  /* allow visuals to extend without being clipped */
+  overflow: visible;
+  padding-top: 7px; /* match the sticky navbar height more closely */
+  padding-bottom: 2px;
+  box-sizing: border-box;
+}
+
+/* subtle overlay to tame bright lighting across the hero */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(rgba(0,0,0,0.04), rgba(0,0,0,0.18));
+  mix-blend-mode: multiply;
+  z-index: 0;
+  /* height: 200px; */
 }
 
 .hero__bg-grid {
@@ -13,31 +30,31 @@
 }
 
 .hero__orb--1 {
-  width: 600px;
-  height: 600px;
-  top: -100px;
-  right: -100px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.18), transparent 60%);
+  width: 480px;
+  height: 480px;
+  top: -60px;
+  right: -80px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.04), transparent 60%);
   position: absolute;
   pointer-events: none;
 }
 
 .hero__orb--2 {
-  width: 400px;
-  height: 400px;
+  width: 320px;
+  height: 320px;
   bottom: 0;
-  left: -100px;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.12), transparent 60%);
+  left: -60px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.03), transparent 60%);
   position: absolute;
   pointer-events: none;
 }
 
 .hero__orb--3 {
-  width: 300px;
-  height: 300px;
-  top: 50%;
-  left: 30%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.07), transparent 60%);
+  width: 220px;
+  height: 220px;
+  top: 52%;
+  left: 34%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.02), transparent 60%);
   position: absolute;
   pointer-events: none;
 }
@@ -45,12 +62,18 @@
 .hero__inner {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  gap: 80px;
-  align-items: center;
-  padding-top: 60px;
-  padding-bottom: 80px;
+  gap: 56px; /* reduce gap for denser layout */
+  align-items: flex-start;
+  padding-top: 24px;
+  padding-bottom: 24px;
   position: relative;
   z-index: 1;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
 }
 
 /* Badge */
@@ -84,20 +107,21 @@
 /* Title */
 .hero__title {
   font-family: var(--font-display);
-  font-size: clamp(36px, 5.5vw, 68px);
+  /* slightly smaller max size and better responsiveness */
+  font-size: clamp(24px, 4.3vw, 50px);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.02;
   color: var(--text-primary);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   letter-spacing: -0.02em;
 }
 
 .hero__subtitle {
-  font-size: 17px;
+  font-size: 15px;
   color: var(--text-secondary);
-  line-height: 1.75;
+  line-height: 1.55;
   max-width: 520px;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
 }
 
 /* Actions */
@@ -106,7 +130,7 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 36px;
+  margin-bottom: 20px;
 }
 
 .hero__secondary-cta {
@@ -129,6 +153,7 @@
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
+  padding-bottom: 6px;
 }
 
 .hero__trust-item {
@@ -142,14 +167,27 @@
 /* Hero Visual */
 .hero__visual {
   position: relative;
+  width: 100%;
+  /* scale responsively but cap at desktop size */
+  max-width: clamp(300px, 42%, 520px);
+  margin-left: auto;
+  display: block;
+  z-index: 1;
 }
 
 .hero__card {
-  background: rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.02);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
-  backdrop-filter: blur(20px);
+  overflow: visible; /* allow inner visuals to be seen on small screens */
+  backdrop-filter: blur(10px);
+  width: 100%;
+  transform-origin: center right;
+}
+
+/* scale down inner visuals to avoid clipping on small screens */
+.hero__card-body, .hero__card-header {
+  transform-origin: center right;
 }
 
 .hero__card-header {
@@ -179,7 +217,7 @@
 }
 
 .hero__card-body {
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -221,7 +259,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
 .hero__tag {
@@ -237,7 +275,7 @@
 /* Scroll */
 .hero__scroll {
   position: absolute;
-  bottom: 40px;
+  bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -439,9 +477,31 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .hero__inner { grid-template-columns: 1fr; gap: 48px; }
+  .hero__inner { grid-template-columns: 1fr; gap: 28px; }
   .hero__visual { max-width: 500px; }
+  .hero__content { margin-top: 10px; }
   .process-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 900px) {
+  .hero__orb--1, .hero__orb--2, .hero__orb--3 { display: none; }
+  /* keep at least navbar height spacing so hero isn't overlapped */
+  .hero__inner { padding-top: 18px; padding-bottom: 24px; gap: 24px; }
+  .hero__content { margin-top: 8px; }
+  .hero__title { font-size: clamp(24px, 5.6vw, 36px); }
+  .hero__subtitle { max-width: 100%; font-size: 15px; }
+  .hero__visual { max-width: 360px; opacity: 0.98; transform: scale(0.95); }
+  .hero__floating-tags { display: none; }
+}
+
+@media (max-width: 540px) {
+  /* mobile spacing must account for sticky navbar */
+  .hero__inner { padding-top: 14px; padding-bottom: 16px; gap: 20px; }
+  .hero__content { margin-top: 4px; }
+  .hero__title { font-size: clamp(20px, 7vw, 30px); }
+  .hero__subtitle { font-size: 14px; line-height: 1.5; }
+  .hero__actions { margin-bottom: 14px; }
+  .hero__visual { display: block; max-width: 300px; transform: scale(0.84); margin-left: 0; }
 }
 
 @media (max-width: 768px) {
