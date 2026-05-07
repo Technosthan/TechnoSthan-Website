@@ -15,6 +15,7 @@
 
 .services-section h1 span {
   background: linear-gradient(90deg, #818cf8, #38bdf8);
+  background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
 }

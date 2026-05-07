@@ -13,11 +13,11 @@
 .hero-left {
   flex: 1;
 }
-
 .hero-left h1 {
-  font-size: clamp(2.2rem, 5vw, 4rem);
-  font-weight: 900;
-  margin: 18px 0 14px;
+  font-size: clamp(1rem, 2vw, 2rem);
+  
+  /* Updated spacing */
+  margin: -10px 0 0 -17px;
 
   background: linear-gradient(90deg, #ffffff, #94a3b8);
   background-clip: text;
@@ -38,6 +38,7 @@
   display: flex;
   gap: 15px;
   flex-wrap: wrap;
+  margin-top: 75px;
 }
 
 .btn {
@@ -47,6 +48,8 @@
   cursor: pointer;
   font-weight: 600;
   transition: 0.3s;
+  
+  margin-top:20px;
 }
 
 .btn.primary {
@@ -78,7 +81,119 @@
   align-items: center;
 }
 
-/* CARD STACK */
+/* VERTICAL SLIDER - AUTO SLIDING */
+.vertical-slider {
+  position: relative;
+  width: min(100%, 380px);
+  aspect-ratio: 16 / 10;
+}
+
+.slider-track {
+  width: 100%;
+  height: 100%;
+}
+
+.vertical-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.vertical-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.95), rgba(2, 6, 23, 0.4));
+  z-index: 1;
+}
+
+.vertical-content {
+  position: relative;
+  z-index: 2;
+  padding: clamp(16px, 2vw, 24px);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.vertical-icon {
+  width: clamp(64px, 8vw, 80px);
+  height: clamp(64px, 8vw, 80px);
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.vertical-content h3 {
+  font-size: clamp(0.9rem, 1.1vw, 1.1rem);
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+/* Slide Indicators */
+.slide-indicators {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 8px;
+  z-index: 3;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.indicator.active {
+  background: rgba(99,102,241,1);
+  border-color: rgba(99,102,241,1);
+  width: 24px;
+  border-radius: 999px;
+}
+
+/* VERTICAL LABEL (30% smaller than h1) */
+.vertical-label {
+  font-size: clamp(0.7rem, 1.4vw, 1.4rem);
+  color: #cbd5f5;
+  font-weight: 600;
+  margin-top: 12px;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* DYNAMIC VERTICAL DESCRIPTION */
+.vertical-description {
+  color: #cbd5f5;
+  max-width: 500px;
+  margin-bottom: 20px;
+  font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+  line-height: 1.6;
+  min-height: auto;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* CARD STACK - REMOVED BUT KEEPING FOR FALLBACK */
 .card-stack {
   position: relative;
   width: min(100%, 320px);
@@ -124,9 +239,9 @@
   position: absolute;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(168,85,247,0.4), transparent);
-  top: 0;
-  right: 0;
+  background: radial-gradient(circle, rgba(168,85,247,0.15), transparent);
+  top: 50%;
+  right: -150px;
   filter: blur(120px);
   z-index: -1;
   pointer-events: none;
@@ -137,14 +252,114 @@
   .hero-pro {
     flex-direction: column;
     text-align: center;
+    gap: 28px;
+  }
+
+  .hero-left,
+  .hero-right {
+    width: 100%;
+  }
+
+  .hero-left h1 {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+
+  .vertical-label {
+    font-size: clamp(0.65rem, 1.2vw, 1.2rem);
+    text-align: center;
+    margin: 12px auto 8px;
+  }
+
+  .vertical-description {
+    margin: 0 auto 20px;
+    text-align: center;
   }
 
   .hero-buttons {
     justify-content: center;
+    max-width: 640px;
+  }
+
+  .hero-right {
+    min-height: 260px;
+  }
+
+  .vertical-slider {
+    width: min(100%, 320px);
+    margin: 0 auto;
+  }
+
+  .services-page .services-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-pro {
+    gap: 22px;
+    margin-bottom: 40px;
+  }
+
+  .hero-left h1 {
+    font-size: clamp(1.8rem, 10vw, 2.4rem);
+    margin-top: 8px;
   }
 
   .hero-left p {
-    margin: 0 auto 20px;
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+
+  .hero-buttons {
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1 1 140px;
+  }
+
+  .hero-right {
+    min-height: 240px;
+  }
+
+  .vertical-slider {
+    width: min(100%, 280px);
+  }
+}
+
+@media (max-width: 640px) {
+  .vertical-slider {
+    width: min(100%, 240px);
+    aspect-ratio: 16 / 10;
+  }
+
+  .vertical-label {
+    font-size: clamp(0.6rem, 2vw, 1rem);
+  }
+
+  .vertical-description {
+    font-size: clamp(0.85rem, 1.2vw, 0.95rem);
+  }
+
+  .slide-indicators {
+    bottom: 8px;
+    gap: 6px;
+  }
+
+  .indicator {
+    width: 6px;
+    height: 6px;
+  }
+
+  .indicator.active {
+    width: 18px;
+  }
+
+  .services-page .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .services-page .service-card {
+    aspect-ratio: auto;
+    min-height: 220px;
   }
 }
 
@@ -267,7 +482,7 @@
 
 .services-page .card-footer {
   height: 3px;
-  margin-top: 10px;
+  margin-top: 6px;
   border-radius: 999px;
 }
 
@@ -282,85 +497,5 @@
 @media (max-width: 1180px) {
   .hero-pro {
     align-items: flex-start;
-  }
-}
-
-@media (max-width: 900px) {
-  .hero-pro {
-    flex-direction: column;
-    text-align: center;
-    gap: 28px;
-  }
-
-  .hero-left,
-  .hero-right {
-    width: 100%;
-  }
-
-  .hero-left h1 {
-    font-size: clamp(2rem, 8vw, 3rem);
-  }
-
-  .hero-left p {
-    margin: 0 auto 20px;
-  }
-
-  .hero-buttons {
-    justify-content: center;
-    max-width: 640px;
-  }
-
-  .hero-right {
-    min-height: 240px;
-  }
-
-  .card-stack {
-    width: min(100%, 280px);
-  }
-
-  .services-page .services-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .hero-pro {
-    gap: 22px;
-    margin-bottom: 40px;
-  }
-
-  .hero-left h1 {
-    font-size: clamp(1.8rem, 10vw, 2.4rem);
-    margin-top: 8px;
-  }
-
-  .hero-left p {
-    font-size: 0.96rem;
-    line-height: 1.65;
-  }
-
-  .hero-buttons {
-    width: 100%;
-  }
-
-  .btn {
-    flex: 1 1 140px;
-  }
-
-  .hero-right {
-    min-height: 210px;
-  }
-
-  .card-stack {
-    width: min(100%, 240px);
-  }
-
-}
-
-@media (max-width: 640px) {
-  .services-page .services-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .services-page .service-card {
-    aspect-ratio: auto;
-    min-height: 220px;
   }
 }

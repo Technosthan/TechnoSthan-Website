@@ -115,7 +115,7 @@
 .auth-buttons {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   position: relative;
 }
 
@@ -137,16 +137,16 @@
 .signup-btn {
   background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: white;
-  padding: 8px 18px;
+  padding: 6px 10px;
   border-radius: 8px;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 400;
   transition: 0.3s;
 }
 
 .signup-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 12px rgba(59,130,246,0.7);
+  box-shadow: 0 0 10px rgba(30, 82, 167, 0.7);
 }
 
 .profile-menu-wrap {
@@ -240,7 +240,7 @@
 /* ================= MENU ICON ================= */
 .menu-toggle {
   display: none;
-  font-size: 1.8rem;
+  font-size: .5rem;
   cursor: pointer;
   color: white;
 }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+// import { Link } from "react-router-dom";   // ✅ ADD
+
 import "./AboutPage.css";
 
 /* ✅ Correct Icons */
@@ -42,7 +44,7 @@ const AboutPage = () => {
     },
     {
       title: "TECHNOSTHAN IT SERVICES",
-      path: "/services/technosthan-it-services",
+       path: "/Pages/ServicesPage",   // ✅ FINAL CHANGE
       icon: itIcon,
       theme: 3,
       desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services."

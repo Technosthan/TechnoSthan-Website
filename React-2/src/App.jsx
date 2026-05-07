@@ -10,7 +10,7 @@ import Services from "./component/Services/Services";
 import TechnoSthanHospitality from "./component/Services/TechnoSthanHospitality";
 import TechnoSthanInnovationsHub from "./component/Services/TechnoSthanInnovationsHub";
 import TechnoSthanAgritech from "./component/Services/TechnoSthanAgritech";
-import TechnoSthanITServices from "./component/Services/TechnoSthanITServices";
+import HomePage from "./pages/HomePage";
 import Contact from "./component/Contact/Contact";
 import Solution from "./component/Solution/Solution";
 import SocialSidebar from "./component/SocialSidebar/SocialSidebar";
@@ -32,7 +32,11 @@ import SocialForm from "./component/SocialForm/SocialForm";
 import HRSocial from "./component/HRSocial/HRSocial";
 import ExplorePage from "./Tab/ExplorePage";
 
-/* 🔥 NEW PAGE */
+/* 🔥 REAL IT SERVICES PAGE */
+import TechnoSthanITServices from "./component/Services/TechnoSthanITServices";
+
+/* NEW PAGES */
+import ServicesPage from "./pages/ServicesPage";
 import EngineeringPage from "./pages/EngineeringPage";
 import CloudPage from "./pages/CloudPage";
 import DigitalGrowth from "./pages/DigitalGrowth";
@@ -82,6 +86,7 @@ function App() {
         <Route path="/cloud" element={<CloudPage />} />
         <Route path="/digital-growth" element={<DigitalGrowth />} />
         <Route path="/consulting" element={<ConsultingPage />} />
+         <Route path="/services" element={<ServicesPage />} />
 
         {/* OTHER */}
         <Route path="/contact" element={<Contact />} />

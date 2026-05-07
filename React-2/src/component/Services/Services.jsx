@@ -1,5 +1,5 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight } from "lucide-react";
@@ -13,6 +13,7 @@ import hospitalityIcon from "../../assets/hospitality.png";
 
 const Services = () => {
   const navigate = useNavigate();
+  const [activeVertical, setActiveVertical] = useState(0);
 
   const services = [
     {
@@ -49,6 +50,32 @@ const Services = () => {
     }
   ];
 
+  // Auto-slide effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveVertical((prev) => (prev + 1) % services.length);
+    }, 5000); // Change every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Scroll-to-section when navigated with ?scroll=param
+  const location = useLocation();
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const scrollTo = params.get("scroll");
+      if (scrollTo) {
+        // Delay slightly to allow route mount and layout
+        setTimeout(() => {
+          document.getElementById(scrollTo)?.scrollIntoView({ behavior: "smooth" });
+        }, 120);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [location.search]);
+
   return (
     <section className="services-page">
 
@@ -65,14 +92,18 @@ const Services = () => {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="hero-left">
-          <span className="badge">EXPERTISE</span>
-
           <h1>
-            Our Business <br /> Verticals
+            Our Business Verticals
           </h1>
 
-          <p>
-            Pushing boundaries with innovative digital solutions tailored for your success.
+          {/* Business Vertical Title (30% smaller) */}
+          <div className="vertical-label">
+            {services[activeVertical].title}
+          </div>
+
+          {/* Dynamic Description from Active Vertical */}
+          <p className="vertical-description">
+            {services[activeVertical].desc}
           </p>
 
           <div className="hero-buttons">
@@ -95,12 +126,47 @@ const Services = () => {
           </div>
         </div>
 
-        {/* RIGHT VISUAL */}
+        {/* RIGHT VISUAL - AUTO SLIDING VERTICALS */}
         <div className="hero-right">
-          <div className="card-stack">
-            <div className="card-layer"></div>
-            <div className="card-layer"></div>
-            <div className="card-layer main"></div>
+          <div className="vertical-slider">
+            {/* Vertical Images - Auto Slide */}
+            <motion.div
+              className="slider-track"
+              key={activeVertical}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div
+                className="vertical-card"
+                style={{ backgroundImage: `url(${services[activeVertical].img})` }}
+              >
+                <div className="vertical-overlay"></div>
+                
+                <div className="vertical-content">
+                  <img
+                    src={services[activeVertical].icon}
+                    alt={services[activeVertical].title}
+                    className="vertical-icon"
+                    loading="lazy"
+                  />
+                  <h3>{services[activeVertical].title}</h3>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Slide Indicators */}
+            <div className="slide-indicators">
+              {services.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`indicator ${idx === activeVertical ? "active" : ""}`}
+                  onClick={() => setActiveVertical(idx)}
+                  aria-label={`Go to vertical ${idx + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>

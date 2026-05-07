@@ -12,11 +12,11 @@
   margin: auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px; /* 🔥 tight spacing */
+  gap: 11px;
+} /* 🔥 tight spacing */
 
   /* ❌ REMOVE this line */
   /* grid-auto-rows: minmax(auto, 1fr); */
-}
 
 /* Section */
 .footer-section h2,
@@ -28,7 +28,7 @@
 /* Text */
 .footer-section p {
   font-size: 0.8rem;
-  line-height: 1.3;
+  line-height: 1.4;
   margin: 4px 0;
   color: #ccc;
 }
@@ -37,8 +37,8 @@
 .footer-section a {
   display: block;
   margin: 0; /* 🔥 no extra gap */
-  font-size: 0.8rem;
-  line-height: 1.3;
+  font-size: 0.9rem;
+  line-height: 0.001;
   text-decoration: none;
   color: #ccc;
   transition: 0.2s;
@@ -57,7 +57,7 @@
   margin-top: 15px;   /* 🔥 tight */
   border-top: 1px solid #2c5364;
   padding-top: 8px;
-  font-size: 0.6rem;
+  font-size: 1rem;
   color: #aaa;
 }
 

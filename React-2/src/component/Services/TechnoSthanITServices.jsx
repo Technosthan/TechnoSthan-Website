@@ -6,7 +6,8 @@ import {
   Cloud,
   TrendingUp,
   Briefcase,
-  Rocket
+  Rocket,
+  ArrowRight
 } from "lucide-react";
 import "./TechnoSthanITServices.css";
 
@@ -124,6 +125,18 @@ const TechnoSthanITServices = () => {
           <div className="stat"><strong>100+</strong> <span>Projects</span></div>
           <div className="stat"><strong>99%</strong> <span>Client Satisfaction</span></div>
           <div className="stat"><strong>24/7</strong> <span>Support</span></div>
+        </motion.div>
+
+        {/* CTA BUTTON */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          style={{ textAlign: "center", marginTop: "50px" }}
+        >
+          <Link to="/services" className="btn-premium btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            Explore Services <ArrowRight size={16} />
+          </Link>
         </motion.div>
 
       </div>
