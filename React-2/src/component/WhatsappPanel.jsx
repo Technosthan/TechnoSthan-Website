@@ -1,5 +1,6 @@
 const addContact = async () => {
-  await fetch("http://localhost:5000/api/social/add-contact", {
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+  await fetch(`${API_BASE}/api/social/add-contact`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

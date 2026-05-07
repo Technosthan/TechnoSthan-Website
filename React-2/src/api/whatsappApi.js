@@ -3,6 +3,8 @@ import axios from "axios";
 
 // NORMAL MESSAGE
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export const sendWhatsAppMessage =
 async (
 
@@ -13,7 +15,7 @@ async (
 
    return await axios.post(
 
-      "http://localhost:5000/api/whatsapp/send",
+      `${API_BASE}/api/whatsapp/send`,
 
       {
 
@@ -40,7 +42,7 @@ async (
 
    return await axios.post(
 
-      "http://localhost:5000/api/whatsapp/send-template",
+      `${API_BASE}/api/whatsapp/send-template`,
 
       {
 

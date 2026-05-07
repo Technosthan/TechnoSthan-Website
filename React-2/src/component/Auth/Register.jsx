@@ -65,7 +65,7 @@ const Register = () => {
       };
 
       const res = await axios.post(
-        "http://localhost:5000/api/auth/register",
+        `${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/auth/register`,
         registerData
       );
 
@@ -85,7 +85,7 @@ const Register = () => {
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
     setError("");
-    window.location.href = "http://localhost:5000/api/auth/google";
+    window.location.href = `${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/auth/google`;
   };
 
   return (

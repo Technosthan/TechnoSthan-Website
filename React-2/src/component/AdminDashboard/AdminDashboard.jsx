@@ -23,7 +23,8 @@ function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:5000/api/social");
+      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      const res = await axios.get(`${API_BASE}/api/social`);
       setSocialData(res.data);
       setFilteredData(res.data);
       
@@ -72,7 +73,8 @@ function AdminDashboard() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this record?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/social/${id}`);
+      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      await axios.delete(`${API_BASE}/api/social/${id}`);
       fetchData();
     } catch (err) {
       alert("Delete failed");

@@ -20,7 +20,8 @@ function Dashboard() {
   // 🔥 FETCH DATA (social data)
   const fetchData = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/social", {
+      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      const res = await axios.get(`${API_BASE}/api/social`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
         }
@@ -38,7 +39,8 @@ function Dashboard() {
   // 🔥 DELETE
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/social/${id}`, {
+      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      await axios.delete(`${API_BASE}/api/social/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
         }

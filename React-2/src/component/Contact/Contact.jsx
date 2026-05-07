@@ -30,7 +30,8 @@ const Contact = () => {
     e.preventDefault();
 
     try {
-      await axios.post("http://localhost:5000/api/contact", formData);
+      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      await axios.post(`${API_BASE}/api/contact`, formData);
       alert("Form Submitted Successfully");
 
       // reset form

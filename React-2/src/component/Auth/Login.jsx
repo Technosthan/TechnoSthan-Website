@@ -50,7 +50,7 @@ const Login = () => {
       };
 
       const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        `${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/auth/login`,
         loginData
       );
 
