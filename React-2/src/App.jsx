@@ -79,12 +79,11 @@ function App() {
       {!hideLayout && <SocialSidebar />}
 
       <Routes>
-
-        {/* HOME */}
-        <Route path="/" element={<HomePage />} />
+ {/* HOME */}
+        <Route path="/" element={<AboutPage />} />
 
         {/* ABOUT */}
-        <Route path="/about" element={<AboutPage />} />
+        <Route path="/about" element={<HomePage />} />
 
         {/* SERVICES MAIN */}
         <Route path="/services" element={<ServicesPage />} />
