@@ -15,11 +15,12 @@ import {
   resetPasswordController,
   sendLoginOtpController,
   verifyLoginOtpController,
-  // TEMPORARILY DISABLED: Phone authentication system
-  // linkTelegramController,
-  // linkWhatsappController,
+  linkTelegramController,
+  linkWhatsappController,
   sendEmailUpdateOTPController,
   verifyEmailUpdateOTPController,
+  generateTelegramLinkingCodeController,
+  verifyAndLinkTelegramController,
 } from "./auth.controller.js";
 import { getMe } from "./auth.controller.js";
 import { setupGoogleStrategy } from "./auth.service.js";
@@ -54,9 +55,12 @@ router.post("/reset-password", resetPasswordController);
 // Social login OTP routes
 router.post("/send-login-otp", sendLoginOtpController);
 router.post("/verify-login-otp", verifyLoginOtpController);
-// TEMPORARILY DISABLED: Phone authentication system
-// router.get("/link-telegram", linkTelegramController);
-// router.post("/link-whatsapp", linkWhatsappController);
+router.get("/link-telegram", linkTelegramController);
+router.post("/link-whatsapp", linkWhatsappController);
+
+// Telegram linking routes
+router.post("/telegram/generate-code", generateTelegramLinkingCodeController);
+router.post("/telegram/verify-link", verifyAndLinkTelegramController);
 
 // QR Login routes
 router.post("/qr-login/generate", authMiddleware, generateQRLoginController);

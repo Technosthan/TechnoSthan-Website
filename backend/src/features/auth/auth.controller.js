@@ -20,6 +20,13 @@ import {
   verifyLoginOtp,
 } from "./otp.service.js";
 
+import {
+  generateLinkingCode,
+  verifyAndLinkAccount,
+} from "./telegramLinking.service.js";
+
+import User from "./user.model.js";
+
 // ================= REGISTER =================
 export const register = async (req, res) => {
   try {
@@ -146,25 +153,7 @@ export const sendOTPController = async (req, res) => {
       });
     }
 
-    // TEMPORARILY DISABLED: Phone authentication system
-    // Only allow email OTP
-    if (method !== "email") {
-      return res.status(400).json({
-        success: false,
-        message: "Only email OTP is allowed at this time",
-      });
-    }
-
     const contactType = detectContactType(contact);
-
-    // TEMPORARILY DISABLED: Phone authentication system
-    // Ensure it's email
-    if (contactType !== "email") {
-      return res.status(400).json({
-        success: false,
-        message: "Only email contact is allowed at this time",
-      });
-    }
 
     await sendOTP(
       contact,
@@ -221,7 +210,7 @@ export const registerOTP = async (req, res) => {
     if (!name || !name.trim() || (!email && !phone)) {
       return res.status(400).json({
         success: false,
-        message: "Name and either email or phone are required",
+        message: "Name and either email  are required",
       });
     }
 
@@ -412,6 +401,15 @@ export const sendLoginOtpController = async (req, res) => {
       message: result.message,
     });
   } catch (error) {
+    // Handle Telegram not linked case
+    if (error.isNotLinked || error.message === "TELEGRAM_NOT_LINKED") {
+      return res.status(200).json({
+        success: true,
+        telegramNotLinked: true,
+        botLink: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME || "AgritectBot"}`,
+        message: "Telegram account not connected",
+      });
+    }
     res.status(400).json({
       success: false,
       message: error.message,
@@ -443,68 +441,66 @@ export const verifyLoginOtpController = async (req, res) => {
 };
 
 // ================= LINK TELEGRAM =================
-// TEMPORARILY DISABLED: Phone authentication system
-// export const linkTelegramController = async (req, res) => {
-//   try {
-//     const { phone, chatId } = req.query;
-//     if (!phone || !chatId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Phone and chatId are required",
-//       });
-//     }
-//     const user = await User.findOne({ mobile: phone });
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-//     user.telegramChatId = chatId;
-//     await user.save();
-//     res.json({
-//       success: true,
-//       message: "Telegram linked successfully",
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
+export const linkTelegramController = async (req, res) => {
+  try {
+    const { phone, chatId } = req.query;
+    if (!phone || !chatId) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and chatId are required",
+      });
+    }
+    const user = await User.findOne({ mobile: phone });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    user.telegramChatId = chatId;
+    await user.save();
+    res.json({
+      success: true,
+      message: "Telegram linked successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 // ================= LINK WHATSAPP =================
-// TEMPORARILY DISABLED: Phone authentication system
-// export const linkWhatsappController = async (req, res) => {
-//   try {
-//     const { phone, whatsappNumber } = req.body;
-//     if (!phone || !whatsappNumber) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Phone and whatsappNumber are required",
-//       });
-//     }
-//     const user = await User.findOne({ mobile: phone });
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-//     user.whatsappNumber = whatsappNumber;
-//     await user.save();
-//     res.json({
-//       success: true,
-//       message: "WhatsApp linked successfully",
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
+export const linkWhatsappController = async (req, res) => {
+  try {
+    const { phone, whatsappNumber } = req.body;
+    if (!phone || !whatsappNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and whatsappNumber are required",
+      });
+    }
+    const user = await User.findOne({ mobile: phone });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    user.whatsappNumber = whatsappNumber;
+    await user.save();
+    res.json({
+      success: true,
+      message: "WhatsApp linked successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 // ================= GET ME =================
 export const getMe = (req, res) => {
@@ -559,6 +555,53 @@ export const verifyEmailUpdateOTPController = async (req, res) => {
     res.json({
       success: true,
       message: result.message,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= GENERATE TELEGRAM LINKING CODE =================
+export const generateTelegramLinkingCodeController = async (req, res) => {
+  try {
+    const code = await generateLinkingCode();
+    res.json({
+      success: true,
+      message: "Linking code generated successfully",
+      data: {
+        code,
+        expiresIn: "15 minutes",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= VERIFY AND LINK TELEGRAM ACCOUNT =================
+export const verifyAndLinkTelegramController = async (req, res) => {
+  try {
+    const { chatId, code, phoneNumber } = req.body;
+
+    if (!chatId || !code || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Chat ID, code, and phone number are required",
+      });
+    }
+
+    const result = await verifyAndLinkAccount(chatId, code, phoneNumber);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.user,
     });
   } catch (error) {
     res.status(400).json({
