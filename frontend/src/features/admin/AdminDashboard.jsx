@@ -146,7 +146,7 @@ const AdminDashboard = () => {
 
       {/* Sidebar - Fixed Position */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-72 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl flex flex-col justify-between z-30 transform ${
+        className={`fixed left-0 top-0 h-screen w-72 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl flex flex-col justify-between z-50 transform ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } transition-transform duration-300 ease-in-out lg:translate-x-0 flex-shrink-0`}
       >
@@ -287,7 +287,9 @@ const AdminDashboard = () => {
 
           {/* Logout Button */}
           <motion.button
+            type="button"
             onClick={handleLogout}
+            style={{ cursor: "pointer" }}
             className="w-full flex items-center px-4 py-3 text-left text-red-600 hover:bg-red-50/80 hover:text-red-700 rounded-xl transition-all duration-200 font-medium backdrop-blur-sm"
             whileHover={{
               scale: 1.02,

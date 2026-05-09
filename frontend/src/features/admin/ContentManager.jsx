@@ -211,7 +211,7 @@ const ContentManager = () => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="mt-4 lg:mt-0 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="mt-4 lg:mt-0 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium cursor-pointer  shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add New Content
@@ -236,7 +236,7 @@ const ContentManager = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+              className="px-4 py-3 border border-gray-300 rounded-xl cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer  transition-colors duration-200"
             >
               <option value="all">All Content</option>
               <option value="with-resources">With Resources</option>
@@ -320,7 +320,7 @@ const ContentManager = () => {
                   <button
                     type="button"
                     onClick={addSubtopic}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center font-medium"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex cursor-pointer  items-center font-medium"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Subtopic
@@ -538,7 +538,7 @@ const ContentManager = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center   font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   <Save className="h-5 w-5 mr-2" />
                   {editingContent ? "Update Content" : "Create Content"}

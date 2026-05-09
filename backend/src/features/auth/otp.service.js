@@ -1,4 +1,5 @@
 import OTP from "./otp.model.js";
+import LoginOtp from "./loginOtp.model.js";
 import User from "./user.model.js";
 import PendingUser from "./pendingUser.model.js";
 import bcrypt from "bcryptjs";
@@ -181,12 +182,14 @@ export const sendTelegramOTP = async (phone, otp) => {
   // Simulate API call
   await new Promise((resolve) => setTimeout(resolve, 1000));
   // Uncomment to use real service
-  // const user = await User.findOne({ mobile: phone });
-  // if (user && user.telegramChatId) {
-  //   await sendTelegramOtp(user.telegramChatId, otp);
-  // } else {
-  //   throw new Error('Telegram not linked');
-  // }
+  const user = await User.findOne({ mobile: phone });
+  if (user && user.telegramChatId) {
+    await sendTelegramOtp(user.telegramChatId, otp);
+  } else {
+    throw new Error(
+      "Telegram not linked - please link your Telegram account first",
+    );
+  }
 };
 
 export const sendInstagramOTP = async (phone, otp) => {
@@ -348,25 +351,24 @@ export const sendOTP = async (
       case "email":
         await sendEmailOTP(normalizedContact, otp, name);
         break;
-      // TEMPORARILY DISABLED: Phone authentication system
-      // case "sms":
-      //   console.log(`PHONE OTP: ${otp} -> ${normalizedContact}`);
-      //   await sendSMSOTP(normalizedContact, otp);
-      //   break;
-      // case "whatsapp":
-      //   console.log(`WHATSAPP OTP: ${otp} -> ${normalizedContact}`);
-      //   await sendWhatsAppOTP(normalizedContact, otp);
-      //   break;
-      // case "telegram":
-      //   console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
-      //   await sendTelegramOTP(normalizedContact, otp);
-      //   break;
-      // case "instagram":
-      //   await sendInstagramOTP(normalizedContact, otp);
-      //   break;
-      // case "messenger":
-      //   await sendMessengerOTP(normalizedContact, otp);
-      //   break;
+      case "sms":
+        console.log(`PHONE OTP: ${otp} -> ${normalizedContact}`);
+        await sendSMSOTP(normalizedContact, otp);
+        break;
+      case "whatsapp":
+        console.log(`WHATSAPP OTP: ${otp} -> ${normalizedContact}`);
+        await sendWhatsAppOTP(normalizedContact, otp);
+        break;
+      case "telegram":
+        console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
+        await sendTelegramOTP(normalizedContact, otp);
+        break;
+      case "instagram":
+        await sendInstagramOTP(normalizedContact, otp);
+        break;
+      case "messenger":
+        await sendMessengerOTP(normalizedContact, otp);
+        break;
       default:
         throw new Error("Invalid OTP method");
     }
@@ -468,6 +470,10 @@ export const verifyOTP = async (contact, otp) => {
             mobile: user.mobile,
             role: user.role,
             status: user.status,
+            emailVerified: user.emailVerified,
+            phoneVerified: user.phoneVerified,
+            telegramLinked: user.telegramLinked,
+            telegramUsername: user.telegramUsername,
           },
         };
       } else {
@@ -512,6 +518,10 @@ export const verifyOTP = async (contact, otp) => {
         mobile: user.mobile,
         role: user.role,
         status: user.status,
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        telegramLinked: user.telegramLinked,
+        telegramUsername: user.telegramUsername,
       },
     };
   }
@@ -531,7 +541,7 @@ export const registerWithOTP = async (email, phone, name) => {
   });
 
   if (existingUser) {
-    throw new Error("User already exists with this email or phone");
+    throw new Error("User already exists with this email ");
   }
 
   // Create user
@@ -558,6 +568,10 @@ export const registerWithOTP = async (email, phone, name) => {
       mobile: user.mobile,
       role: user.role,
       status: user.status,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      telegramLinked: user.telegramLinked,
+      telegramUsername: user.telegramUsername,
     },
     token,
   };
@@ -592,6 +606,10 @@ export const loginWithOTP = async (contact, contactType) => {
       mobile: user.mobile,
       role: user.role,
       status: user.status,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      telegramLinked: user.telegramLinked,
+      telegramUsername: user.telegramUsername,
     },
     token,
   };
@@ -641,6 +659,10 @@ export const verifyQRLogin = async (qrData, targetUserId) => {
         mobile: user.mobile,
         role: user.role,
         status: user.status,
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        telegramLinked: user.telegramLinked,
+        telegramUsername: user.telegramUsername,
       },
       token,
     };
@@ -651,25 +673,55 @@ export const verifyQRLogin = async (qrData, targetUserId) => {
 
 // ================= LOGIN OTP FUNCTIONS =================
 export const sendLoginOtp = async (phone, method) => {
-  // Find user by phone
   const user = await User.findOne({ mobile: phone });
   if (!user) {
-    throw new Error("User not found with this phone number");
+    throw new Error(
+      "No account found with this phone number. Please register first.",
+    );
   }
 
-  // Check if user has the required field
+  if (!user.phoneVerified) {
+    throw new Error(
+      "Your phone number is not verified yet. Please verify your account first.",
+    );
+  }
+
+  if (user.status === "blocked") {
+    throw new Error("Account is blocked");
+  }
+
   if (method === "telegram" && !user.telegramChatId) {
-    throw new Error("Telegram not linked to this account");
+    const error = new Error("TELEGRAM_NOT_LINKED");
+    error.isNotLinked = true;
+    throw error;
   }
   if (method === "whatsapp" && !user.whatsappNumber && !user.mobile) {
     throw new Error("WhatsApp not linked to this account");
   }
 
-  // Generate OTP
+  const recentOtp = await LoginOtp.findOne({
+    identifier: phone,
+    method,
+    used: false,
+    createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
+  });
+
+  if (recentOtp) {
+    throw new Error("Please wait before requesting another OTP");
+  }
+
   const otp = generateOTP();
   const hashedOTP = await hashOTP(otp);
 
-  // Save to LoginOtp
+  await LoginOtp.updateMany(
+    {
+      identifier: phone,
+      method,
+      used: false,
+    },
+    { $set: { used: true } },
+  );
+
   const loginOtp = new LoginOtp({
     identifier: phone,
     otp: hashedOTP,
@@ -678,41 +730,51 @@ export const sendLoginOtp = async (phone, method) => {
   });
   await loginOtp.save();
 
-  // Send OTP
-  if (method === "telegram") {
-    await sendTelegramOtp(user.telegramChatId, otp);
-  } else if (method === "whatsapp") {
-    await sendWhatsappOtp(user.whatsappNumber || user.mobile, otp);
+  try {
+    if (method === "telegram") {
+      await sendTelegramOtp(user.telegramChatId, otp);
+    } else if (method === "whatsapp") {
+      await sendWhatsappOtp(user.whatsappNumber || user.mobile, otp);
+    }
+  } catch (error) {
+    await LoginOtp.findByIdAndDelete(loginOtp._id);
+    throw error;
   }
 
   return { message: "OTP sent" };
 };
 
 export const verifyLoginOtp = async (phone, otp, method) => {
-  // Find user
   const user = await User.findOne({ mobile: phone });
   if (!user) {
     throw new Error("User not found");
   }
 
-  // Find OTP record
+  if (user.status === "blocked") {
+    throw new Error("Account is blocked");
+  }
+
   const loginOtp = await LoginOtp.findOne({
     identifier: phone,
     method,
     used: false,
     expiresAt: { $gt: new Date() },
-  });
+  }).sort({ createdAt: -1 });
   if (!loginOtp) {
     throw new Error("Invalid or expired OTP");
   }
 
-  // Verify OTP
+  if (loginOtp.attempts >= 5) {
+    throw new Error("Maximum verification attempts exceeded");
+  }
+
   const isValid = await verifyOTPHash(otp, loginOtp.otp);
   if (!isValid) {
+    loginOtp.attempts += 1;
+    await loginOtp.save();
     throw new Error("Invalid OTP");
   }
 
-  // Mark as used
   loginOtp.used = true;
   await loginOtp.save();
 
@@ -729,6 +791,10 @@ export const verifyLoginOtp = async (phone, otp, method) => {
       mobile: user.mobile,
       role: user.role,
       status: user.status,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      telegramLinked: user.telegramLinked,
+      telegramUsername: user.telegramUsername,
     },
     token,
   };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { sendLoginOtp, verifyLoginOtp } from "../features/auth/authApi";
+import { sendLoginOtp } from "../features/auth/authApi";
 import { useAuth } from "../features/auth/useAuth";
 import { ArrowLeft, Phone, MessageCircle } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
@@ -12,7 +12,7 @@ const WhatsappLoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { verifyLoginOTPFunc } = useAuth();
   const { theme } = useTheme();
 
   const handleSendOtp = async () => {
@@ -39,22 +39,19 @@ const WhatsappLoginPage = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await verifyLoginOtp({ phone, otp, method: "whatsapp" });
-      login(response.data.data);
+      await verifyLoginOTPFunc({ phone, otp, method: "whatsapp" });
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid OTP");
+      setError(err.response?.data?.message || err.message || "Invalid OTP");
     }
     setLoading(false);
   };
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center p-4 ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
+      className={`min-h-screen flex items-center justify-center p-4 ${theme.bg} ${theme.text}`}
     >
-      <div
-        className={`max-w-md w-full ${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow-lg p-6`}
-      >
+      <div className={`max-w-md w-full ${theme.card} rounded-lg shadow-lg p-6`}>
         <div className="flex items-center mb-6">
           <button
             onClick={() => navigate("/login")}
@@ -87,7 +84,7 @@ const WhatsappLoginPage = () => {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 ${theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300"}`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 ${theme.input}`}
                     placeholder="Enter phone number"
                   />
                 </div>
@@ -116,7 +113,7 @@ const WhatsappLoginPage = () => {
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 ${theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300"}`}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 ${theme.input}`}
                   placeholder="Enter 6-digit OTP"
                   maxLength={6}
                 />

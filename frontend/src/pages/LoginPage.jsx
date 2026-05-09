@@ -47,21 +47,22 @@ const LoginPage = () => {
 
   const handleSendOtp = async () => {
     if (!contact.trim()) {
-      setError("Please enter your email address");
+      setError("Please enter your email or phone");
       return;
     }
 
-    // Validate email
+    // Validate email or phone
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(contact)) {
-      setError("Please enter a valid email address");
+    const phoneRegex = /^\d{10}$/;
+    if (!emailRegex.test(contact) && !phoneRegex.test(contact)) {
+      setError("Please enter a valid email or 10-digit phone number");
       return;
     }
 
     setOtpLoading(true);
     setError("");
     try {
-      const method = "email";
+      const method = emailRegex.test(contact) ? "email" : "sms";
       await sendOTP({
         contact,
         method,
@@ -97,7 +98,6 @@ const LoginPage = () => {
     }
   };
   const [form, setForm] = useState({
-    name: "",
     contact: "",
     password: "",
     otp: "",
@@ -117,7 +117,15 @@ const LoginPage = () => {
       localStorage.setItem("token", token);
       localStorage.setItem("user", user);
       const userData = JSON.parse(user);
-      navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
+      if (
+        userData.requiresVerification ||
+        !userData.emailVerified ||
+        !userData.phoneVerified
+      ) {
+        navigate("/profile?verification=required");
+      } else {
+        navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
+      }
     }
   }, [searchParams, navigate]);
 
@@ -134,34 +142,44 @@ const LoginPage = () => {
     let errors = {};
     if (isOtpLogin || step !== "input") {
       if (step === "input") {
-        if (!form.contact.trim()) errors.contact = "Email is required";
-        else if (!isEmail(form.contact)) errors.contact = "Invalid email";
+        if (!form.contact.trim()) errors.contact = "Email or Phone is required";
+        else if (!isEmail(form.contact) && !isPhone(form.contact))
+          errors.contact = "Invalid email or phone";
       }
       if (step === "verify-otp") {
         if (!form.otp.trim()) errors.otp = "OTP is required";
         if (form.otp.length !== 6) errors.otp = "OTP must be 6 digits";
       }
-      // TEMPORARILY DISABLED: Phone authentication system
-      // if (step === "input-second-field") {
-      //   if (!form.contact.trim()) errors.contact = "Email or Phone is required";
-      //   if (!form.name.trim()) errors.name = "Name is required";
-      // }
+      if (step === "input-second-field") {
+        if (!form.contact.trim()) {
+          errors.contact = "Email or Phone is required";
+        } else if (inputType === "email" && !isPhone(form.contact)) {
+          errors.contact = "Enter a valid 10-digit phone number";
+        } else if (inputType === "phone" && !isEmail(form.contact)) {
+          errors.contact = "Enter a valid email address";
+        }
+      }
     } else {
       // Unified password-based validation
       if (step === "input") {
-        if (!form.contact.trim()) errors.contact = "Email is required";
-        else if (!isEmail(form.contact)) errors.contact = "Invalid email";
+        if (!form.contact.trim()) errors.contact = "Email or Phone is required";
+        else if (!isEmail(form.contact) && !isPhone(form.contact))
+          errors.contact = "Invalid email or phone";
         if (!form.password.trim()) errors.password = "Password is required";
       }
       if (step === "verify-otp") {
         if (!form.otp.trim()) errors.otp = "OTP is required";
         if (form.otp.length !== 6) errors.otp = "OTP must be 6 digits";
       }
-      // TEMPORARILY DISABLED: Phone authentication system
-      // if (step === "input-second-field") {
-      //   if (!form.contact.trim()) errors.contact = "Email or Phone is required";
-      //   if (!form.name.trim()) errors.name = "Name is required";
-      // }
+      if (step === "input-second-field") {
+        if (!form.contact.trim()) {
+          errors.contact = "Email or Phone is required";
+        } else if (inputType === "email" && !isPhone(form.contact)) {
+          errors.contact = "Enter a valid 10-digit phone number";
+        } else if (inputType === "phone" && !isEmail(form.contact)) {
+          errors.contact = "Enter a valid email address";
+        }
+      }
     }
     setFieldError(errors);
     return Object.keys(errors).length === 0;
@@ -188,7 +206,7 @@ const LoginPage = () => {
       }
 
       if (isRegister && step === "input-second-field") {
-        await handleSecondFieldSubmit(form.contact, form.name);
+        await handleSecondFieldSubmit(form.contact);
         return;
       }
 
@@ -199,7 +217,11 @@ const LoginPage = () => {
 
       if (result.flow === "login") {
         const userData = JSON.parse(localStorage.getItem("user") || "null");
-        navigate(userData?.role === "admin" ? "/admin/dashboard" : "/");
+        if (result.requiresVerification) {
+          navigate("/profile?verification=required");
+        } else {
+          navigate(userData?.role === "admin" ? "/admin/dashboard" : "/");
+        }
       }
     } catch (err) {
       setError(err.message || "Something went wrong");
@@ -232,25 +254,27 @@ const LoginPage = () => {
       return isOtpSent ? "Enter OTP" : "OTP Login";
     }
     if (step === "input") return "Welcome";
-    if (step === "verify-otp") return "Verify Email";
-    // TEMPORARILY DISABLED: Phone authentication system
-    // if (step === "input-second-field") return "Complete Registration";
+    if (step === "verify-otp")
+      return `Verify ${inputType === "email" ? "Email" : "Phone"}`;
+    if (step === "input-second-field")
+      return inputType === "email" ? "Enter Phone" : "Enter Email";
     return "Welcome";
   };
 
   const getStepDescription = () => {
     if (isOtpLogin) {
       return isOtpSent
-        ? `Enter the 6-digit code sent to your email`
-        : "Enter your email address to login";
+        ? `Enter the 6-digit code sent to your ${isEmail(contact) ? "email" : "phone"}`
+        : "Enter your email or phone to login";
     }
     if (step === "input")
       return "Enter your credentials to login or create account";
     if (step === "verify-otp")
-      return `Enter the 6-digit code sent to your email`;
-    // TEMPORARILY DISABLED: Phone authentication system
-    // if (step === "input-second-field")
-    //   return `Add your ${inputType === "email" ? "phone number" : "email"} to complete registration`;
+      return `Enter the 6-digit code sent to your ${inputType === "email" ? "email" : "phone"}`;
+    if (step === "input-second-field")
+      return inputType === "email"
+        ? "Enter your phone to continue registration"
+        : "Enter your email to continue registration";
     return "Enter your credentials to login or create account";
   };
 
@@ -287,8 +311,8 @@ const LoginPage = () => {
                 <Mail className="text-gray-400" size={18} />
               </div>
               <input
-                type="email"
-                placeholder="Enter your email address"
+                type="text"
+                placeholder="Enter your email or phone"
                 value={contact}
                 className={`${theme.input} pl-10`}
                 onChange={(e) => setContact(e.target.value)}
@@ -413,14 +437,13 @@ const LoginPage = () => {
               </div>
 
               {/* Login with OTP toggle */}
-              {/* TEMPORARILY DISABLED: Phone authentication system - keeping OTP for email only */}
-              {/* <button
+              <button
                 type="button"
                 onClick={toggleOtpLogin}
                 className="w-full text-blue-500 text-sm cursor-pointer hover:text-blue-600"
               >
                 Login with OTP instead
-              </button> */}
+              </button>
             </>
           )}
 
@@ -475,25 +498,8 @@ const LoginPage = () => {
           )}
 
           {/* Registration Flow - Second Field Input */}
-          {/* TEMPORARILY DISABLED: Phone authentication system */}
-          {/* {!isOtpLogin && isRegister && step === "input-second-field" && (
+          {!isOtpLogin && isRegister && step === "input-second-field" && (
             <div className="space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center">
-                  <User className="text-gray-400" size={18} />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  value={form.name}
-                  className={`${theme.input} pl-10`}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-                {fieldError.name && (
-                  <p className="text-red-500 text-xs mt-1">{fieldError.name}</p>
-                )}
-              </div>
-
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center">
                   {inputType === "email" ? (
@@ -513,23 +519,22 @@ const LoginPage = () => {
                     setForm({ ...form, contact: e.target.value })
                   }
                 />
+                {fieldError.contact && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {fieldError.contact}
+                  </p>
+                )}
               </div>
-
-              {fieldError.contact && (
-                <p className="text-red-500 text-xs mt-1">
-                  {fieldError.contact}
-                </p>
-              )}
 
               <button
                 type="submit"
                 disabled={loading}
                 className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer flex justify-center items-center gap-2`}
               >
-                {loading ? "Please wait..." : "Complete Registration"}
+                {loading ? "Please wait..." : "Continue"}
               </button>
             </div>
-          )} */}
+          )}
 
           {/* QR Login Option */}
           {!isOtpLogin && step === "input" && (
@@ -589,8 +594,7 @@ const LoginPage = () => {
           )}
 
           {/* Social Login Options */}
-          {/* TEMPORARILY DISABLED: Phone authentication system */}
-          {/* {!isOtpLogin && step === "input" && (
+          {!isOtpLogin && step === "input" && (
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -621,7 +625,7 @@ const LoginPage = () => {
                 </button>
               </div>
             </div>
-          )} */}
+          )}
         </form>
       </div>
     </div>

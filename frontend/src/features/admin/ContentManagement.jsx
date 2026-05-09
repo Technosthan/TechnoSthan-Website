@@ -411,7 +411,7 @@ const ContentManagement = () => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className={`mt-4 lg:mt-0 px-6 py-3 ${theme.button} rounded-xl hover:scale-105 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5`}
+          className={`mt-4 lg:mt-0 px-6 py-3 ${theme.button} rounded-xl hover:scale-105 transition-all duration-200 flex items-center cursor-pointer  font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5`}
         >
           <Plus className="h-5 w-5 mr-2" />
           Add New Content
@@ -440,7 +440,7 @@ const ContentManagement = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className={`px-4 py-3 border ${theme.border} rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200`}
+              className={`px-4 py-3 border ${theme.border} rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 cursor-pointer`}
             >
               <option value="all">All Content</option>
               <option value="with-resources">With Resources</option>
@@ -532,7 +532,7 @@ const ContentManagement = () => {
                   <button
                     type="button"
                     onClick={addSubtopic}
-                    className={`px-4 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 flex items-center font-medium`}
+                    className={`px-4 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 cursor-pointer  flex items-center font-medium`}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Subtopic
@@ -592,7 +592,7 @@ const ContentManagement = () => {
                     <button
                       type="button"
                       onClick={() => setResourcesCollapsed(!resourcesCollapsed)}
-                      className={`flex items-center hover:${theme.card} rounded px-2 py-1 transition-colors duration-200`}
+                      className={`flex items-center cursor-pointer hover:${theme.card} rounded px-2 py-1 transition-colors duration-200`}
                     >
                       {resourcesCollapsed ? (
                         <ChevronRight
@@ -612,7 +612,7 @@ const ContentManagement = () => {
                         <button
                           type="button"
                           onClick={addResource}
-                          className={`px-3 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 flex items-center font-medium`}
+                          className={`px-3 py-2 ${theme.button} rounded-lg hover:scale-105 transition-colors duration-200 cursor-pointer  flex items-center font-medium`}
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Add Resource
@@ -928,7 +928,7 @@ const ContentManagement = () => {
                     <button
                       type="button"
                       onClick={() => setIsQuizOpen(!isQuizOpen)}
-                      className={`flex items-center hover:${theme.card} rounded px-2 py-1 transition-colors duration-200`}
+                      className={`flex items-center hover:${theme.card} cursor-pointer rounded px-2 py-1 transition-colors duration-200`}
                     >
                       {isQuizOpen ? (
                         <ChevronDown
@@ -1052,15 +1052,15 @@ const ContentManagement = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className={`px-6 py-3 border ${theme.border} rounded-xl ${theme.text} hover:${theme.card} transition-colors duration-200 font-medium`}
+                  className={`px-6 py-3 border cursor-pointer ${theme.border} rounded-xl ${theme.text} hover:${theme.card} transition-colors duration-200 font-medium`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 cursor-pointer flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
-                  <Save className="h-5 w-5 mr-2" />
+                  <Save className="h-5 w-5  mr-2" />
                   {editingContent ? "Update Content" : "Create Content"}
                 </button>
               </div>
@@ -1090,7 +1090,7 @@ const ContentManagement = () => {
                 />
               )}
               <div>
-                <h2 className={`text-xl font-bold ${theme.text}`}>
+                <h2 className={`text-xl cursor-pointer  font-bold ${theme.text}`}>
                   All Content
                 </h2>
                 <p className={`text-sm ${theme.textSecondary} mt-1`}>
@@ -1313,7 +1313,7 @@ const ContentManagement = () => {
                                   content.resources.length > 0 && (
                                     <div>
                                       <h4
-                                        className={`text-sm font-medium ${theme.text} mb-2`}
+                                        className={`text-sm  font-medium ${theme.text} mb-2`}
                                       >
                                         Resources ({content.resources.length})
                                       </h4>

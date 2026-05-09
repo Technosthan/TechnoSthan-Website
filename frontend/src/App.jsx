@@ -47,7 +47,14 @@ function App() {
           <Route path="/verify-phone" element={<VerifyPhonePage />} />
           <Route path="/login/telegram" element={<TelegramLoginPage />} />
           <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected User Routes */}
           <Route

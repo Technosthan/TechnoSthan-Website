@@ -5,6 +5,11 @@ import {
   forgotPassword,
   resetPassword,
   authenticateUser,
+  changePassword,
+  sendProfileEmailVerificationOTP,
+  verifyProfileEmailOTP,
+  sendProfilePhoneVerificationOTP,
+  verifyProfilePhoneOTP,
 } from "./auth.service.js";
 
 import {
@@ -23,6 +28,7 @@ import {
 import {
   generateLinkingCode,
   verifyAndLinkAccount,
+  unlinkTelegramAccount,
 } from "./telegramLinking.service.js";
 
 import User from "./user.model.js";
@@ -83,7 +89,9 @@ export const login = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Login successful",
+      message: result.requiresVerification
+        ? "Login successful. Complete your account verification to continue."
+        : "Login successful",
       data: result,
     });
   } catch (error) {
@@ -113,11 +121,16 @@ export const authenticate = async (req, res) => {
       // User exists - return login token
       return res.json({
         success: true,
-        message: "Login successful",
+        message: result.requiresVerification
+          ? "Login successful. Complete your account verification to continue."
+          : "Login successful",
         data: {
           token: result.token,
           user: result.user,
           flow: "login",
+          requiresVerification: result.requiresVerification,
+          emailVerified: result.emailVerified,
+          phoneVerified: result.phoneVerified,
         },
       });
     } else {
@@ -387,8 +400,9 @@ export const forgotPasswordController = async (req, res) => {
 
 // ================= SEND LOGIN OTP =================
 export const sendLoginOtpController = async (req, res) => {
+  const { phone, method } = req.body; // method: 'telegram' or 'whatsapp'
+
   try {
-    const { phone, method } = req.body; // method: 'telegram' or 'whatsapp'
     if (!phone || !method) {
       return res.status(400).json({
         success: false,
@@ -403,12 +417,21 @@ export const sendLoginOtpController = async (req, res) => {
   } catch (error) {
     // Handle Telegram not linked case
     if (error.isNotLinked || error.message === "TELEGRAM_NOT_LINKED") {
-      return res.status(200).json({
-        success: true,
-        telegramNotLinked: true,
-        botLink: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME || "AgritectBot"}`,
-        message: "Telegram account not connected",
-      });
+      try {
+        const code = await generateLinkingCode(phone);
+        return res.status(200).json({
+          success: true,
+          telegramNotLinked: true,
+          linkCode: code,
+          botLink: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}`,
+          message: "Telegram account not connected",
+        });
+      } catch (linkError) {
+        return res.status(500).json({
+          success: false,
+          message: linkError.message,
+        });
+      }
     }
     res.status(400).json({
       success: false,
@@ -503,10 +526,36 @@ export const linkWhatsappController = async (req, res) => {
 };
 
 // ================= GET ME =================
-export const getMe = (req, res) => {
+export const getMe = async (req, res) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
   res.json({
     success: true,
-    data: req.user,
+    data: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      status: user.status,
+      picture: user.picture,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      telegramLinked: user.telegramLinked,
+      telegramUsername: user.telegramUsername,
+      telegramChatId: user.telegramChatId,
+      telegramLinkCode: user.telegramLinkCode,
+      telegramLinkCodeExpires: user.telegramLinkCodeExpires,
+      hasPassword:
+        typeof user.password === "string" && user.password.length > 0,
+    },
   });
 };
 
@@ -567,7 +616,16 @@ export const verifyEmailUpdateOTPController = async (req, res) => {
 // ================= GENERATE TELEGRAM LINKING CODE =================
 export const generateTelegramLinkingCodeController = async (req, res) => {
   try {
-    const code = await generateLinkingCode();
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    const code = await generateLinkingCode(phone);
     res.json({
       success: true,
       message: "Linking code generated successfully",
@@ -584,19 +642,219 @@ export const generateTelegramLinkingCodeController = async (req, res) => {
   }
 };
 
-// ================= VERIFY AND LINK TELEGRAM ACCOUNT =================
-export const verifyAndLinkTelegramController = async (req, res) => {
+export const changePasswordController = async (req, res) => {
   try {
-    const { chatId, code, phoneNumber } = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
-    if (!chatId || !code || !phoneNumber) {
-      return res.status(400).json({
+    const result = await changePassword(req.user.id, {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const generateTelegramProfileLinkingCodeController = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: "Chat ID, code, and phone number are required",
+        message: "User not found",
       });
     }
 
-    const result = await verifyAndLinkAccount(chatId, code, phoneNumber);
+    if (!user.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Add and verify your phone number before linking Telegram",
+      });
+    }
+
+    if (!user.phoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Verify your phone number before linking Telegram",
+      });
+    }
+
+    const code = await generateLinkingCode(user.mobile);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    user.telegramLinkCode = code;
+    user.telegramLinkCodeExpires = expiresAt;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Telegram linking code generated successfully",
+      data: {
+        code,
+        expiresIn: "15 minutes",
+        botLink: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}`,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getTelegramStatusController = async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      telegramLinked: !!req.user.telegramLinked,
+      telegramUsername: req.user.telegramUsername,
+      telegramChatId: req.user.telegramChatId,
+      telegramLinkCode: req.user.telegramLinkCode,
+      telegramLinkCodeExpires: req.user.telegramLinkCodeExpires,
+    },
+  });
+};
+
+export const unlinkTelegramProfileController = async (req, res) => {
+  try {
+    const result = await unlinkTelegramAccount(req.user.mobile);
+    const user = await User.findById(req.user.id);
+    user.telegramLinkCode = null;
+    user.telegramLinkCodeExpires = null;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const sendProfileEmailVerificationOTPController = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const result = await sendProfileEmailVerificationOTP(req.user.id, email);
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const verifyProfileEmailOTPController = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP is required",
+      });
+    }
+
+    const result = await verifyProfileEmailOTP(req.user.id, otp);
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const sendProfilePhoneVerificationOTPController = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    const result = await sendProfilePhoneVerificationOTP(req.user.id, phone);
+    res.json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const verifyProfilePhoneOTPController = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP is required",
+      });
+    }
+
+    const result = await verifyProfilePhoneOTP(req.user.id, otp);
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= VERIFY AND LINK TELEGRAM ACCOUNT =================
+export const verifyAndLinkTelegramController = async (req, res) => {
+  try {
+    const { chatId, code, telegramUsername } = req.body;
+
+    if (!chatId || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "Chat ID and code are required",
+      });
+    }
+
+    const result = await verifyAndLinkAccount(chatId, code, telegramUsername);
 
     res.json({
       success: true,

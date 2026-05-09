@@ -45,11 +45,7 @@ export const useAuth = () => {
 
   // Detect input type
   const detectInputType = (value) => {
-    // TEMPORARILY DISABLED: Phone authentication system
-    // const type = value.includes("@") ? "email" : "phone";
-    // console.log("Input:", value, "Detected Type:", type);
-    // return type;
-    const type = "email"; // Always email
+    const type = value.includes("@") ? "email" : "phone";
     console.log("Input:", value, "Detected Type:", type);
     return type;
   };
@@ -84,14 +80,26 @@ export const useAuth = () => {
     setLoading(true);
     try {
       const res = await loginUser(data);
-      const { token, user: userData } = res.data.data;
+      const {
+        token,
+        user: userData,
+        requiresVerification,
+        emailVerified,
+        phoneVerified,
+      } = res.data.data;
 
       // Store token and user data
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(userData));
       setUser(userData);
 
-      return { token, user: userData };
+      return {
+        token,
+        user: userData,
+        requiresVerification,
+        emailVerified,
+        phoneVerified,
+      };
     } catch (error) {
       throw new Error(getErrorMessage(error));
     } finally {
@@ -108,11 +116,24 @@ export const useAuth = () => {
 
       if (flow === "login") {
         // User exists - login successful
-        const { token, user: userData } = resultData;
+        const {
+          token,
+          user: userData,
+          requiresVerification,
+          emailVerified,
+          phoneVerified,
+        } = resultData;
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(userData));
         setUser(userData);
-        return { flow: "login", token, user: userData };
+        return {
+          flow: "login",
+          token,
+          user: userData,
+          requiresVerification,
+          emailVerified,
+          phoneVerified,
+        };
       } else if (flow === "registration") {
         // User doesn't exist - start registration flow
         const { pendingUserId, contactType, nextStep } = resultData;
@@ -146,36 +167,31 @@ export const useAuth = () => {
     setInputValue(value);
     setInputType(type);
 
-    // TEMPORARILY DISABLED: Phone authentication system
-    // if (isRegister) {
-    //   // Register flow: always phone first
-    //   setInputType("phone");
-    //   setTempData({ phone: value });
-    //   setStep("otp");
-    // } else {
-    //   // Login flow
-    //   setStep("otp");
-    // }
-    // Always email, go to otp
-    setStep("otp");
+    if (isRegister) {
+      // Register flow: collect both email and phone
+      if (type === "phone") {
+        setTempData({ phone: value });
+        setStep("input-second-field"); // Ask for email next
+      } else {
+        setTempData({ email: value });
+        setStep("input-second-field"); // Ask for phone next
+      }
+    } else {
+      // Login flow: go directly to OTP
+      setStep("otp");
+    }
   };
 
   const handleSendOTP = async (method) => {
     setLoading(true);
     try {
-      // TEMPORARILY DISABLED: Phone authentication system
-      // await sendOTP({
-      //   contact: inputValue,
-      //   method,
-      //   pendingUserId: tempData.pendingUserId,
-      // });
       await sendOTP({
         contact: inputValue,
-        method: "email", // Always email
+        method,
         pendingUserId: tempData.pendingUserId,
       });
 
-      setOtpMethod("email");
+      setOtpMethod(method);
       setStep(isRegister ? "verify-otp" : "verify-otp");
     } catch (error) {
       throw new Error(getErrorMessage(error));
@@ -194,9 +210,7 @@ export const useAuth = () => {
 
       setTempData((prev) => ({
         ...prev,
-        // TEMPORARILY DISABLED: Phone authentication system
-        // [otpMethod === "email" ? "emailVerified" : "phoneVerified"]: true,
-        emailVerified: true,
+        [otpMethod === "email" ? "emailVerified" : "phoneVerified"]: true,
       }));
 
       const innerData = res.data?.data;
@@ -210,14 +224,13 @@ export const useAuth = () => {
         return { token, user: userData };
       }
 
-      // TEMPORARILY DISABLED: Phone authentication system
       // If registration not finalized, move to second-field input to collect remaining contact
-      // if (!innerData?.finalized && isRegister) {
-      //   setStep("input-second-field");
-      //   // Keep the verified contact type so the UI can ask for the missing contact
-      //   setInputType(otpMethod === "email" ? "email" : "phone");
-      //   setInputValue("");
-      // }
+      if (!innerData?.finalized && isRegister) {
+        setStep("input-second-field");
+        // Keep the verified contact type so the UI can ask for the missing contact
+        setInputType(otpMethod === "email" ? "email" : "phone");
+        setInputValue("");
+      }
 
       return res.data;
     } catch (error) {
@@ -231,42 +244,41 @@ export const useAuth = () => {
     }
   };
 
-  // TEMPORARILY DISABLED: Phone authentication system
-  // const handleSecondFieldSubmit = async (value) => {
-  //   const type = detectInputType(value);
+  const handleSecondFieldSubmit = async (value) => {
+    const type = detectInputType(value);
 
-  //   if (isRegister) {
-  //     if (inputType === "email" && type === "phone") {
-  //       // Email was verified, now verify phone
-  //       setTempData((prev) => ({ ...prev, phone: value }));
-  //       setInputValue(value);
-  //       setInputType("phone");
-  //       setStep("verify-otp");
+    if (isRegister) {
+      if (inputType === "email" && type === "phone") {
+        // Email was verified, now verify phone
+        setTempData((prev) => ({ ...prev, phone: value }));
+        setInputValue(value);
+        setInputType("phone");
+        setStep("verify-otp");
 
-  //       // Send phone OTP
-  //       await sendOTP({
-  //         contact: value,
-  //         method: "sms",
-  //         pendingUserId: tempData.pendingUserId,
-  //       });
-  //       setOtpMethod("sms");
-  //     } else if (inputType === "phone" && type === "email") {
-  //       // Phone was verified, now verify email
-  //       setTempData((prev) => ({ ...prev, email: value }));
-  //       setInputValue(value);
-  //       setInputType("email");
-  //       setStep("verify-otp");
+        // Send phone OTP
+        await sendOTP({
+          contact: value,
+          method: "sms",
+          pendingUserId: tempData.pendingUserId,
+        });
+        setOtpMethod("sms");
+      } else if (inputType === "phone" && type === "email") {
+        // Phone was verified, now verify email
+        setTempData((prev) => ({ ...prev, email: value }));
+        setInputValue(value);
+        setInputType("email");
+        setStep("verify-otp");
 
-  //       // Send email OTP
-  //       await sendOTP({
-  //         contact: value,
-  //         method: "email",
-  //         pendingUserId: tempData.pendingUserId,
-  //       });
-  //       setOtpMethod("email");
-  //     }
-  //   }
-  // };
+        // Send email OTP
+        await sendOTP({
+          contact: value,
+          method: "email",
+          pendingUserId: tempData.pendingUserId,
+        });
+        setOtpMethod("email");
+      }
+    }
+  };
 
   // QR Login
   const generateQR = async () => {
@@ -345,6 +357,17 @@ export const useAuth = () => {
     return storedUser ? JSON.parse(storedUser) : null;
   };
 
+  const syncStoredUser = (updates) => {
+    const storedUser = getCurrentUser();
+    if (!storedUser) return null;
+
+    const nextUser = { ...storedUser, ...updates };
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    setUser(nextUser);
+    window.dispatchEvent(new CustomEvent("userUpdated", { detail: nextUser }));
+    return nextUser;
+  };
+
   const isAdmin = () => {
     const currentUser = getCurrentUser();
     return currentUser?.role === "admin";
@@ -399,8 +422,7 @@ export const useAuth = () => {
     handleInputSubmit,
     handleSendOTP,
     handleVerifyOTP,
-    // TEMPORARILY DISABLED: Phone authentication system
-    // handleSecondFieldSubmit,
+    handleSecondFieldSubmit,
     generateQR,
     verifyQR,
     handleGoogleLogin,
@@ -421,5 +443,6 @@ export const useAuth = () => {
     isAuthenticated,
     isAdmin,
     getCurrentUser,
+    syncStoredUser,
   };
 };

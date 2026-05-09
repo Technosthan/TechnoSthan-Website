@@ -161,7 +161,7 @@ const AdminDashboardHome = () => {
         </div>
         <button
           onClick={fetchStats}
-          className="mt-4 sm:mt-0 px-6 py-3 bg-linear-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="mt-4 sm:mt-0 px-6 py-3 bg-linear-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl cursor-pointer transform hover:-translate-y-0.5"
         >
           <RefreshCw className="h-5 w-5 mr-2" />
           Refresh Data

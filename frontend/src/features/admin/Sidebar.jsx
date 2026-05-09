@@ -97,7 +97,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen w-64 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl flex flex-col justify-between z-30 transform ${
+      className={`fixed left-0 top-0 h-screen w-64 ${theme.cardOpacity} ${theme.text} backdrop-blur-xl border-r ${theme.border} shadow-2xl flex flex-col justify-between z-50 transform ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       } transition-transform duration-300 ease-in-out lg:translate-x-0`}
     >
@@ -151,25 +151,13 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                 <NavLink
                   key={item.id}
                   to={item.path}
-                  className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+                  className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-200 group ${
                     isActive
-                      ? `bg-linear-to-r ${item.color} text-white shadow-xl transform scale-105`
-                      : `${theme.navItem} hover:${theme.navItemHover}`
+                      ? "bg-white/10 text-white"
+                      : `${theme.navItem} hover:bg-white/5`
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  {isActive && (
-                    <motion.div
-                      className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent"
-                      initial={{ x: "-100%" }}
-                      animate={{ x: "100%" }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        repeatDelay: 3,
-                      }}
-                    />
-                  )}
                   <Icon
                     className={`h-6 w-6 mr-4 transition-colors duration-200 ${
                       isActive

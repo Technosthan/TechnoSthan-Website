@@ -1,19 +1,34 @@
 const express = require("express");
 const axios = require("axios");
 const dotenv = require("dotenv");
+const fs = require("fs");
+const path = require("path");
 
-dotenv.config();
+const backendEnvPath = path.join(__dirname, "backend", ".env");
+if (fs.existsSync(backendEnvPath)) {
+  dotenv.config({ path: backendEnvPath });
+} else {
+  dotenv.config();
+}
 
 const app = express();
 app.use(express.json());
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:5000";
+const shouldUsePolling =
+  process.env.TELEGRAM_USE_POLLING === "true" ||
+  (!process.env.TELEGRAM_USE_POLLING &&
+    /localhost|127\.0\.0\.1/i.test(BACKEND_API_URL));
 
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+let pollingOffset = 0;
 
-// Store linking codes temporarily (in production, use Redis or database)
-const linkingCodes = new Map();
+if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === "your_bot_token_here") {
+  throw new Error(
+    "Telegram bot token is missing. Set TELEGRAM_BOT_TOKEN in backend/.env or root .env.",
+  );
+}
 
 /**
  * Send Telegram message
@@ -85,7 +100,7 @@ const handleLink = async (chatId, args, userName = null) => {
       {
         chatId,
         code,
-        phoneNumber: null, // Backend will handle this based on code
+        telegramUsername: userName || null,
       },
     );
 
@@ -135,49 +150,74 @@ Contact us at support@agritech.com
   await sendMessage(chatId, helpMessage);
 };
 
+const handleIncomingMessage = async (message) => {
+  if (!message || !message.text || !message.chat) {
+    return;
+  }
+
+  const chatId = message.chat.id;
+  const userName = message.from?.username;
+  const text = message.text.trim();
+
+  console.log(`Message from ${chatId}: ${text}`);
+
+  if (text.startsWith("/")) {
+    const [command, ...args] = text.split(" ");
+
+    switch (command.toLowerCase()) {
+      case "/start":
+        await handleStart(chatId, userName);
+        break;
+      case "/link":
+        await handleLink(chatId, args, userName);
+        break;
+      case "/help":
+        await handleHelp(chatId);
+        break;
+      default:
+        await sendMessage(
+          chatId,
+          `Unknown command: ${command}\n\nType /help for available commands`,
+        );
+    }
+  } else {
+    await sendMessage(
+      chatId,
+      `I only understand commands.\n\nType /help to learn more or /start to begin.`,
+    );
+  }
+};
+
+const pollTelegramUpdates = async () => {
+  try {
+    const response = await axios.get(`${TELEGRAM_API}/getUpdates`, {
+      params: {
+        timeout: 30,
+        offset: pollingOffset,
+      },
+    });
+
+    const updates = response.data?.result || [];
+    for (const update of updates) {
+      pollingOffset = update.update_id + 1;
+      if (update.message) {
+        await handleIncomingMessage(update.message);
+      }
+    }
+  } catch (error) {
+    console.error(
+      "Telegram polling error:",
+      error.response?.data || error.message,
+    );
+  } finally {
+    setTimeout(pollTelegramUpdates, 1000);
+  }
+};
+
 // Handle incoming Telegram messages
 app.post("/webhook/telegram", async (req, res) => {
   try {
-    const { message, update_id } = req.body;
-
-    if (!message || !message.text || !message.chat) {
-      return res.sendStatus(200);
-    }
-
-    const chatId = message.chat.id;
-    const userName = message.from?.username;
-    const text = message.text.trim();
-
-    console.log(`Message from ${chatId}: ${text}`);
-
-    // Handle commands
-    if (text.startsWith("/")) {
-      const [command, ...args] = text.split(" ");
-
-      switch (command.toLowerCase()) {
-        case "/start":
-          await handleStart(chatId, userName);
-          break;
-        case "/link":
-          await handleLink(chatId, args, userName);
-          break;
-        case "/help":
-          await handleHelp(chatId);
-          break;
-        default:
-          await sendMessage(
-            chatId,
-            `Unknown command: ${command}\n\nType /help for available commands`,
-          );
-      }
-    } else {
-      // Send help if not a command
-      await sendMessage(
-        chatId,
-        `I only understand commands.\n\nType /help to learn more or /start to begin.`,
-      );
-    }
-
+    await handleIncomingMessage(req.body.message);
     res.sendStatus(200);
   } catch (error) {
     console.error("Telegram webhook error:", error);
@@ -197,10 +237,10 @@ app.listen(PORT, () => {
   console.log(
     `Webhook URL: https://your-domain.com/webhook/telegram or http://localhost:${PORT}/webhook/telegram`,
   );
+  if (shouldUsePolling) {
+    console.log("Telegram polling mode enabled for local development.");
+    pollTelegramUpdates();
+  }
 });
 
 module.exports = app;
-
-app.listen(3001, () => {
-  console.log("Telegram webhook server running on port 3001");
-});

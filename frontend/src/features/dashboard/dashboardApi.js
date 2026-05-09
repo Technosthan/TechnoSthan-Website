@@ -12,6 +12,42 @@ export const updateProfile = async (data) => {
   return await axiosInstance.put("/api/auth/update", data);
 };
 
+export const changePassword = async (data) => {
+  return await axiosInstance.post("/api/auth/change-password", data);
+};
+
+export const sendProfileEmailVerificationOTP = async (email) => {
+  return await axiosInstance.post("/api/auth/profile/send-email-verification-otp", {
+    email,
+  });
+};
+
+export const verifyProfileEmailOTP = async (otp) => {
+  return await axiosInstance.post("/api/auth/profile/verify-email-otp", { otp });
+};
+
+export const sendProfilePhoneVerificationOTP = async (phone) => {
+  return await axiosInstance.post("/api/auth/profile/send-phone-verification-otp", {
+    phone,
+  });
+};
+
+export const verifyProfilePhoneOTP = async (otp) => {
+  return await axiosInstance.post("/api/auth/profile/verify-phone-otp", { otp });
+};
+
+export const generateTelegramProfileLinkCode = async () => {
+  return await axiosInstance.post("/api/auth/telegram/profile/generate-code");
+};
+
+export const getTelegramStatus = async () => {
+  return await axiosInstance.get("/api/auth/telegram/status");
+};
+
+export const unlinkTelegramProfile = async () => {
+  return await axiosInstance.post("/api/auth/telegram/unlink");
+};
+
 export const sendEmailUpdateOTP = async (newEmail) => {
   return await axiosInstance.post("/api/auth/send-email-update-otp", {
     newEmail,

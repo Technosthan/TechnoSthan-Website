@@ -1,177 +1,263 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { getPublicSettings } from "../shared/lib/settingsApi";
 
-/* =========================
-   🎨 THEMES
-========================= */
+/* =====================================================
+   🎨 ADVANCED THEMES
+===================================================== */
 export const themes = {
   "green-yellow": {
-    name: "Green & Yellow",
+    name: "Green Nature",
+
+    /* Layout */
+    layout:
+      "min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-white dark:from-gray-950 dark:via-gray-900 dark:to-black",
+
+    /* Main Colors */
     primary: "bg-green-600 hover:bg-green-700",
+    secondary: "bg-yellow-400 hover:bg-yellow-500",
     accent: "text-yellow-500",
-    button: "bg-green-600 hover:bg-green-700 text-white",
-    buttonSecondary:
-      "bg-yellow-400 hover:bg-yellow-500 text-gray-900 dark:bg-yellow-500 dark:hover:bg-yellow-400",
-    card: "bg-white dark:bg-gray-900",
-    cardOpacity: "bg-white/90 dark:bg-gray-900/90",
-    surface: "bg-gray-100 dark:bg-gray-800",
+
+    /* Text */
+    text: "text-gray-900 dark:text-white",
+    textSecondary: "text-gray-600 dark:text-gray-400",
+
+    /* Cards */
+    card:
+      "bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg",
+
+    /* Navbar */
     navbar:
       "bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700",
-    link: "text-green-600 dark:text-green-400 hover:underline",
-    navItem:
-      "text-gray-700 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-400",
-    navItemHover: "bg-gray-100 dark:bg-gray-800",
+
+    /* Surface */
+    surface: "bg-white dark:bg-gray-900",
+
+    /* Buttons */
+    button:
+      "bg-green-600 hover:bg-green-700 text-white transition-all duration-300",
+
+    buttonSecondary:
+      "bg-yellow-400 hover:bg-yellow-500 text-black transition-all duration-300",
+
+    /* Inputs */
+    input:
+      "w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none transition-all duration-300",
+
+    /* Borders */
     border: "border-green-500",
-    logoutButton:
-      "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white",
-    error: "border-red-200 bg-red-50 text-red-700",
-    gradient: "green-500-yellow-500",
+
+    /* Links */
+    link: "text-green-600 dark:text-green-400 hover:underline",
+
+    /* Sidebar */
+    sidebar:
+      "bg-white/90 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700",
+
+    /* Footer */
+    footer:
+      "bg-white/80 dark:bg-gray-900/80 border-t border-gray-200 dark:border-gray-700",
+
+    /* Hero */
+    heroGradient:
+      "bg-gradient-to-r from-green-600 via-yellow-500 to-green-700",
   },
 
   "blue-dark": {
     name: "Blue Dark",
+
+    layout:
+      "min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-black",
+
     primary: "bg-blue-600 hover:bg-blue-700",
-    accent: "text-blue-500",
-    button: "bg-blue-600 hover:bg-blue-700 text-white",
-    buttonSecondary:
-      "bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:text-white",
-    card: "bg-white dark:bg-gray-900",
-    cardOpacity: "bg-white/90 dark:bg-gray-900/90",
-    surface: "bg-gray-100 dark:bg-gray-800",
+    secondary: "bg-cyan-500 hover:bg-cyan-600",
+    accent: "text-cyan-400",
+
+    text: "text-white",
+    textSecondary: "text-slate-300",
+
+    card:
+      "bg-slate-900/80 backdrop-blur border border-slate-700 shadow-xl",
+
     navbar:
-      "bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700",
-    link: "text-blue-600 dark:text-blue-400 hover:underline",
-    navItem:
-      "text-gray-700 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400",
-    navItemHover: "bg-gray-100 dark:bg-gray-800",
+      "bg-slate-950/80 backdrop-blur border-b border-slate-700",
+
+    surface: "bg-slate-900",
+
+    button:
+      "bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300",
+
+    buttonSecondary:
+      "bg-cyan-500 hover:bg-cyan-600 text-black transition-all duration-300",
+
+    input:
+      "w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-300",
+
     border: "border-blue-500",
-    logoutButton:
-      "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white",
-    error: "border-red-200 bg-red-50 text-red-700",
-    gradient: "blue-500-cyan-500",
+
+    link: "text-blue-400 hover:underline",
+
+    sidebar:
+      "bg-slate-950/90 border-r border-slate-700",
+
+    footer:
+      "bg-slate-950/80 border-t border-slate-700",
+
+    heroGradient:
+      "bg-gradient-to-r from-blue-700 via-cyan-500 to-blue-800",
   },
 
-  "purple-light": {
-    name: "Purple Light",
+  "purple-neon": {
+    name: "Purple Neon",
+
+    layout:
+      "min-h-screen bg-gradient-to-br from-black via-purple-950 to-pink-950",
+
     primary: "bg-purple-600 hover:bg-purple-700",
-    accent: "text-purple-500",
-    button: "bg-purple-600 hover:bg-purple-700 text-white",
-    buttonSecondary:
-      "bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-700 dark:text-white",
-    card: "bg-white dark:bg-gray-900",
-    cardOpacity: "bg-white/90 dark:bg-gray-900/90",
-    surface: "bg-gray-100 dark:bg-gray-800",
+    secondary: "bg-pink-500 hover:bg-pink-600",
+    accent: "text-pink-400",
+
+    text: "text-white",
+    textSecondary: "text-purple-200",
+
+    card:
+      "bg-purple-950/40 backdrop-blur border border-purple-700 shadow-2xl",
+
     navbar:
-      "bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700",
-    link: "text-purple-600 dark:text-purple-400 hover:underline",
-    navItem:
-      "text-gray-700 dark:text-gray-300 hover:text-purple-500 dark:hover:text-purple-400",
-    navItemHover: "bg-gray-100 dark:bg-gray-800",
-    border: "border-purple-500",
-    logoutButton:
-      "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white",
-    error: "border-red-200 bg-red-50 text-red-700",
-    gradient: "purple-500-pink-500",
+      "bg-black/60 backdrop-blur border-b border-purple-700",
+
+    surface: "bg-purple-950",
+
+    button:
+      "bg-purple-600 hover:bg-purple-700 text-white transition-all duration-300",
+
+    buttonSecondary:
+      "bg-pink-500 hover:bg-pink-600 text-white transition-all duration-300",
+
+    input:
+      "w-full px-3 py-2 rounded-xl bg-purple-950 border border-purple-700 text-white focus:ring-2 focus:ring-pink-500 outline-none transition-all duration-300",
+
+    border: "border-pink-500",
+
+    link: "text-pink-400 hover:underline",
+
+    sidebar:
+      "bg-black/70 border-r border-purple-700",
+
+    footer:
+      "bg-black/60 border-t border-purple-700",
+
+    heroGradient:
+      "bg-gradient-to-r from-purple-600 via-pink-500 to-purple-700",
   },
 
   "red-black": {
     name: "Red Black",
+
+    layout:
+      "min-h-screen bg-gradient-to-br from-black via-red-950 to-gray-950",
+
     primary: "bg-red-600 hover:bg-red-700",
-    accent: "text-red-500",
-    button: "bg-red-600 hover:bg-red-700 text-white",
-    buttonSecondary:
-      "bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-700 dark:text-white",
-    card: "bg-white dark:bg-gray-900",
-    cardOpacity: "bg-white/90 dark:bg-gray-900/90",
-    surface: "bg-gray-100 dark:bg-gray-800",
+    secondary: "bg-gray-800 hover:bg-gray-700",
+    accent: "text-red-400",
+
+    text: "text-white",
+    textSecondary: "text-gray-300",
+
+    card:
+      "bg-black/80 backdrop-blur border border-red-900 shadow-2xl",
+
     navbar:
-      "bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700",
-    link: "text-red-500 dark:text-red-400 hover:underline",
-    navItem:
-      "text-gray-700 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400",
-    navItemHover: "bg-gray-100 dark:bg-gray-800",
-    border: "border-red-500",
-    logoutButton:
-      "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white",
-    error: "border-red-200 bg-red-50 text-red-700",
-    gradient: "red-500-pink-500",
+      "bg-black/90 backdrop-blur border-b border-red-900",
+
+    surface: "bg-black",
+
+    button:
+      "bg-red-600 hover:bg-red-700 text-white transition-all duration-300",
+
+    buttonSecondary:
+      "bg-gray-800 hover:bg-gray-700 text-white transition-all duration-300",
+
+    input:
+      "w-full px-3 py-2 rounded-xl bg-gray-900 border border-red-900 text-white focus:ring-2 focus:ring-red-500 outline-none transition-all duration-300",
+
+    border: "border-red-700",
+
+    link: "text-red-400 hover:underline",
+
+    sidebar:
+      "bg-black/90 border-r border-red-900",
+
+    footer:
+      "bg-black/90 border-t border-red-900",
+
+    heroGradient:
+      "bg-gradient-to-r from-red-700 via-red-500 to-black",
   },
 };
 
-/* =========================
+/* =====================================================
    CONTEXT
-========================= */
+===================================================== */
 const ThemeContext = createContext();
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
-  if (!context) throw new Error("useTheme must be used within ThemeProvider");
+
+  if (!context) {
+    throw new Error(
+      "useTheme must be used within ThemeProvider"
+    );
+  }
+
   return context;
 };
 
-/* =========================
+/* =====================================================
    PROVIDER
-========================= */
+===================================================== */
 export const ThemeProvider = ({ children }) => {
-  // 🎨 Theme (color)
   const [currentTheme, setCurrentTheme] = useState(() => {
     return localStorage.getItem("theme") || "green-yellow";
-  });
-
-  // 🌗 Mode (DEFAULT LIGHT)
-  const [mode, setMode] = useState(() => {
-    return localStorage.getItem("mode") || "light";
   });
 
   const [appSettings, setAppSettings] = useState({
     appName: "Technosthan AgriTech",
     logoUrl: "/hero.png",
-    featureFlags: {
-      aiChat: true,
-      quiz: true,
-      contentVisibility: true,
-    },
-    dashboardSettings: {
-      visibleCards: ["stats", "users", "content", "quiz", "activity"],
-      cardOrder: ["stats", "users", "content", "quiz", "activity"],
-    },
   });
 
+  /* =========================================
+     LOAD SETTINGS
+  ========================================= */
   useEffect(() => {
     let mounted = true;
 
     const loadSettings = async () => {
       try {
         const response = await getPublicSettings();
+
         const settings = response.data?.data || {};
 
         if (!mounted) return;
 
         setAppSettings({
-          appName: settings.appName || "Technosthan AgriTech",
-          logoUrl: settings.logoUrl || "/hero.png",
-          featureFlags: {
-            aiChat: true,
-            quiz: true,
-            contentVisibility: true,
-            ...(settings.featureFlags || {}),
-          },
-          dashboardSettings: {
-            visibleCards: ["stats", "users", "content", "quiz", "activity"],
-            cardOrder: ["stats", "users", "content", "quiz", "activity"],
-            ...(settings.dashboardSettings || {}),
-          },
+          appName:
+            settings.appName ||
+            "Technosthan AgriTech",
+
+          logoUrl:
+            settings.logoUrl || "/hero.png",
         });
 
-        if (settings.theme === "dark") {
-          setMode("dark");
-        } else if (settings.theme === "default") {
-          setMode("light");
-        }
-
-        document.title = settings.appName || "Technosthan AgriTech";
+        document.title =
+          settings.appName ||
+          "Technosthan AgriTech";
       } catch (error) {
-        // keep local defaults if settings cannot be loaded
+        console.log("Theme settings load failed");
       }
     };
 
@@ -182,79 +268,42 @@ export const ThemeProvider = ({ children }) => {
     };
   }, []);
 
-  /* Save theme */
+  /* =========================================
+     SAVE THEME
+  ========================================= */
   useEffect(() => {
-    localStorage.setItem("theme", currentTheme);
+    localStorage.setItem(
+      "theme",
+      currentTheme
+    );
   }, [currentTheme]);
 
-  /* Apply mode (LIGHT by default) */
-  useEffect(() => {
-    localStorage.setItem("mode", mode);
-
-    if (mode === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [mode]);
-
-  /* =========================
-     GLOBAL STYLES
-  ========================= */
-  const globalStyles = {
-    bg: "bg-white dark:bg-gray-950",
-    bgGradient:
-      "bg-gradient-to-br from-green-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800",
-    text: "text-gray-900 dark:text-gray-100",
-    textSecondary: "text-gray-600 dark:text-gray-400",
-    border: "border border-gray-300 dark:border-gray-700",
-    icon: "text-gray-400",
-    iconSecondary: "text-gray-500",
-    iconError: "text-red-500",
-    iconHover: "hover:text-green-600",
-
-    // ✅ FIXED INPUT (main issue solved)
-    input: `
-      w-full px-3 py-2 rounded-lg
-      bg-white text-gray-900 placeholder-gray-500
-      border border-gray-300
-      focus:outline-none focus:ring-2 focus:ring-green-500
-
-      dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400
-      dark:border-gray-600 dark:focus:ring-green-400
-
-      transition-colors duration-300
-    `,
-  };
-
-  const theme = {
-    ...themes[currentTheme],
-    ...globalStyles,
-  };
-
-  /* FUNCTIONS */
+  /* =========================================
+     CHANGE THEME
+  ========================================= */
   const changeTheme = (themeKey) => {
-    if (themes[themeKey]) setCurrentTheme(themeKey);
+    if (themes[themeKey]) {
+      setCurrentTheme(themeKey);
+    }
   };
 
-  const toggleMode = () => {
-    setMode((prev) => (prev === "light" ? "dark" : "light"));
-  };
+  /* =========================================
+     ACTIVE THEME
+  ========================================= */
+  const theme = themes[currentTheme];
 
   return (
     <ThemeContext.Provider
       value={{
         theme,
+        themes,
         currentTheme,
         changeTheme,
-        themes,
-        mode,
-        toggleMode,
         appSettings,
       }}
     >
       <div
-        className={`min-h-screen transition-colors duration-300 ${theme.bg} ${theme.text}`}
+        className={`${theme.layout} ${theme.text} transition-all duration-500`}
       >
         {children}
       </div>

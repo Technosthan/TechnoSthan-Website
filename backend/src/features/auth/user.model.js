@@ -15,13 +15,12 @@ const userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      // TEMPORARILY DISABLED: Phone authentication system
-      // required: function () {
-      //   return !this.email; // Mobile required only if email not present
-      // },
-      // unique: true,
+      required: function () {
+        return !this.email; // Mobile required only if email not present
+      },
+      unique: true,
       trim: true,
-      // sparse: true,
+      sparse: true,
     },
     password: {
       type: String,
@@ -78,14 +77,48 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    emailOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    emailOtpExpires: {
+      type: Date,
+      default: null,
+    },
     phoneVerified: {
       type: Boolean,
       default: false,
+    },
+    phoneOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    phoneOtpExpires: {
+      type: Date,
+      default: null,
     },
     telegramChatId: {
       type: String,
       unique: true,
       sparse: true,
+    },
+    telegramUsername: {
+      type: String,
+      sparse: true,
+    },
+    telegramLinked: {
+      type: Boolean,
+      default: false,
+    },
+    telegramLinkCode: {
+      type: String,
+      default: null,
+    },
+    telegramLinkCodeExpires: {
+      type: Date,
+      default: null,
     },
     whatsappNumber: {
       type: String,

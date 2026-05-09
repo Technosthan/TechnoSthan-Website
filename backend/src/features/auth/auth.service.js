@@ -7,6 +7,14 @@ import PendingUser from "./pendingUser.model.js";
 import { sendOTP } from "./otp.service.js";
 import ResetToken from "./resetToken.model.js";
 import crypto from "crypto";
+import OTP from "./otp.model.js";
+import {
+  generateOTP,
+  hashOTP,
+  verifyOTPHash,
+  sendEmailOTP,
+  sendSMSOTP,
+} from "./otp.service.js";
 
 const isEmail = (contact) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,6 +25,14 @@ const isMobile = (contact) => {
   const mobileRegex = /^\d{10}$/; // Assuming 10 digit mobile
   return mobileRegex.test(contact);
 };
+
+const normalizeEmail = (email) =>
+  typeof email === "string" ? email.trim().toLowerCase() : "";
+
+const normalizePhone = (phone) =>
+  typeof phone === "string" ? phone.replace(/[^\d+]/g, "").trim() : "";
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export const registerUser = async (data) => {
   const { name, contact, password } = data;
@@ -31,39 +47,27 @@ export const registerUser = async (data) => {
     }
   }
 
-  // TEMPORARILY DISABLED: Phone authentication system
-  // if (!isEmail(contact) && !isMobile(contact)) {
-  //   throw new Error("Invalid email or mobile number");
-  // }
-  if (!isEmail(contact)) {
-    throw new Error("Only email registration is allowed at this time");
+  if (!isEmail(contact) && !isMobile(contact)) {
+    throw new Error("Invalid email or mobile number");
   }
 
   // Check if user already exists in main DB
-  // TEMPORARILY DISABLED: Phone authentication system
-  // const existingUser = isEmail(contact)
-  //   ? await User.findOne({ email: contact.trim().toLowerCase() })
-  //   : await User.findOne({ mobile: contact.trim() });
-  const existingUser = await User.findOne({
-    email: contact.trim().toLowerCase(),
-  });
+  const existingUser = isEmail(contact)
+    ? await User.findOne({ email: contact.trim().toLowerCase() })
+    : await User.findOne({ mobile: contact.trim() });
 
   if (existingUser) {
     throw new Error("User already exists");
   }
 
   // Check if pending user exists
-  // TEMPORARILY DISABLED: Phone authentication system
-  // const existingPending = isEmail(contact)
-  //   ? await PendingUser.findOne({ email: contact.trim().toLowerCase() })
-  //   : await PendingUser.findOne({ mobile: contact.trim() });
-  const existingPending = await PendingUser.findOne({
-    email: contact.trim().toLowerCase(),
-  });
+  const existingPending = isEmail(contact)
+    ? await PendingUser.findOne({ email: contact.trim().toLowerCase() })
+    : await PendingUser.findOne({ mobile: contact.trim() });
 
   if (existingPending) {
     throw new Error(
-      "Registration already in progress. Please check your email for OTP.",
+      "Registration already in progress. Please check your email or SMS for OTP.",
     );
   }
 
@@ -74,56 +78,34 @@ export const registerUser = async (data) => {
     password: hashedPassword,
   };
 
-  // TEMPORARILY DISABLED: Phone authentication system
-  // if (isEmail(contact)) {
-  //   pendingData.email = contact.trim().toLowerCase();
-  // } else {
-  //   pendingData.mobile = contact.trim();
-  // }
-  pendingData.email = contact.trim().toLowerCase();
+  if (isEmail(contact)) {
+    pendingData.email = contact.trim().toLowerCase();
+  } else {
+    pendingData.mobile = contact.trim();
+  }
 
   const pendingUser = new PendingUser(pendingData);
   await pendingUser.save();
 
   return {
     pendingUserId: pendingUser._id,
-    contactType: "email", // Always email now
+    contactType: isEmail(contact) ? "email" : "phone",
   };
 };
 
 export const loginUser = async (data) => {
   const { contact, password } = data;
 
-  // TEMPORARILY DISABLED: Phone authentication system
-  // if (!isEmail(contact) && !isMobile(contact)) {
-  //   throw new Error("Invalid email or mobile number");
-  // }
-  if (!isEmail(contact)) {
-    throw new Error("Only email login is allowed at this time");
+  if (!isEmail(contact) && !isMobile(contact)) {
+    throw new Error("Invalid email or mobile number");
   }
 
-  // TEMPORARILY DISABLED: Phone authentication system
-  // const user = isEmail(contact)
-  //   ? await User.findOne({ email: contact.trim().toLowerCase() })
-  //   : await User.findOne({ mobile: contact.trim() });
-  const user = await User.findOne({ email: contact.trim().toLowerCase() });
+  const user = isEmail(contact)
+    ? await User.findOne({ email: contact.trim().toLowerCase() })
+    : await User.findOne({ mobile: contact.trim() });
 
   if (!user) {
     throw new Error("Invalid credentials");
-  }
-
-  console.log("Login user:", user);
-  console.log("Email verified:", user.emailVerified);
-  // TEMPORARILY DISABLED: Phone authentication system
-  // console.log("Phone verified:", user.phoneVerified);
-
-  // Check if user is verified
-  // TEMPORARILY DISABLED: Phone authentication system
-  // if (!user.emailVerified || !user.phoneVerified) {
-  //   throw new Error("Please verify your email and phone before logging in.");
-  // }
-  if (!user.emailVerified) {
-    throw new Error("Please verify your email before logging in.");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -131,13 +113,8 @@ export const loginUser = async (data) => {
     throw new Error("Invalid credentials");
   }
 
-  // Check if user is active
-  // TEMPORARILY DISABLED: Phone authentication system
-  // if (user.status !== "active") {
-  //   throw new Error("Please verify your email and phone first.");
-  // }
-  if (user.status !== "active") {
-    throw new Error("Please verify your email first.");
+  if (user.status === "blocked") {
+    throw new Error("Your account has been blocked. Please contact administrator.");
   }
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -149,31 +126,38 @@ export const loginUser = async (data) => {
     id: user._id,
     name: user.name,
     email: user.email,
-    // TEMPORARILY DISABLED: Phone authentication system
-    // mobile: user.mobile,
+    mobile: user.mobile,
     role: user.role,
     status: user.status,
+    emailVerified: user.emailVerified,
+    phoneVerified: user.phoneVerified,
+    telegramLinked: user.telegramLinked,
+    telegramUsername: user.telegramUsername,
+    picture: user.picture,
+    hasPassword: typeof user.password === "string" && user.password.length > 0,
   };
 
-  return { user: userData, token };
+  return {
+    user: userData,
+    token,
+    requiresVerification: !user.emailVerified || !user.phoneVerified,
+    emailVerified: user.emailVerified,
+    phoneVerified: user.phoneVerified,
+  };
 };
 
 export const authenticateUser = async ({ contact, password }) => {
-  // TEMPORARILY DISABLED: Phone authentication system
   // Detect contact type
-  // const contactType = isEmail(contact) ? "email" : "phone";
-  if (!isEmail(contact)) {
-    throw new Error("Only email authentication is allowed at this time");
-  }
+  const contactType = isEmail(contact) ? "email" : "phone";
 
   // Check if user exists
-  // TEMPORARILY DISABLED: Phone authentication system
-  // const existingUser = isEmail(contact)
-  //   ? await User.findOne({ email: contact.trim().toLowerCase() })
-  //   : await User.findOne({ mobile: contact.trim() });
-  const existingUser = await User.findOne({
-    email: contact.trim().toLowerCase(),
-  });
+  const existingUser = isEmail(contact)
+    ? await User.findOne({ email: contact.trim().toLowerCase() })
+    : await User.findOne({ mobile: contact.trim() });
+
+  if (!password || typeof password !== "string") {
+    throw new Error("Password is required");
+  }
 
   if (existingUser) {
     // User exists - verify password
@@ -185,17 +169,8 @@ export const authenticateUser = async ({ contact, password }) => {
       throw new Error("Invalid password");
     }
 
-    // Check if user is verified and active
-    // TEMPORARILY DISABLED: Phone authentication system
-    // if (!existingUser.emailVerified || !existingUser.phoneVerified) {
-    //   throw new Error("Please verify your email and phone before logging in.");
-    // }
-    if (!existingUser.emailVerified) {
-      throw new Error("Please verify your email before logging in.");
-    }
-
-    if (existingUser.status !== "active") {
-      throw new Error("Account is not active.");
+    if (existingUser.status === "blocked") {
+      throw new Error("Your account has been blocked. Please contact administrator.");
     }
 
     // Generate token
@@ -210,11 +185,22 @@ export const authenticateUser = async ({ contact, password }) => {
         id: existingUser._id,
         name: existingUser.name,
         email: existingUser.email,
-        // TEMPORARILY DISABLED: Phone authentication system
-        // phone: existingUser.mobile, // Map mobile to phone for frontend
+        mobile: existingUser.mobile,
         role: existingUser.role,
         status: existingUser.status,
+        emailVerified: existingUser.emailVerified,
+        phoneVerified: existingUser.phoneVerified,
+        telegramLinked: existingUser.telegramLinked,
+        telegramUsername: existingUser.telegramUsername,
+        picture: existingUser.picture,
+        hasPassword:
+          typeof existingUser.password === "string" &&
+          existingUser.password.length > 0,
       },
+      requiresVerification:
+        !existingUser.emailVerified || !existingUser.phoneVerified,
+      emailVerified: existingUser.emailVerified,
+      phoneVerified: existingUser.phoneVerified,
     };
   } else {
     // User doesn't exist - create a PendingUser and start registration
@@ -222,30 +208,24 @@ export const authenticateUser = async ({ contact, password }) => {
 
     const pendingData = { password: hashedPassword };
 
-    // TEMPORARILY DISABLED: Phone authentication system
-    // if (contactType === "email") {
-    //   pendingData.email = contact.trim().toLowerCase();
-    //   // Extract name from email local-part
-    //   pendingData.name = contact.split("@")[0] || "User";
-    // } else {
-    //   pendingData.mobile = contact.trim();
-    //   // Use phone as temporary name until email is provided
-    //   pendingData.name = contact.trim();
-    // }
-    pendingData.email = contact.trim().toLowerCase();
-    // Extract name from email local-part
-    pendingData.name = contact.split("@")[0] || "User";
+    if (contactType === "email") {
+      pendingData.email = contact.trim().toLowerCase();
+      // Extract name from email local-part
+      pendingData.name = contact.split("@")[0] || "User";
+    } else {
+      pendingData.mobile = contact.trim();
+      // Use phone as temporary name until email is provided
+      pendingData.name = contact.trim();
+    }
 
     const pendingUser = new PendingUser(pendingData);
     await pendingUser.save();
 
-    // TEMPORARILY DISABLED: Phone authentication system
-    // const method = contactType === "email" ? "email" : "sms";
-    const method = "email";
+    const method = contactType === "email" ? "email" : "sms";
 
     await sendOTP(
       contact,
-      "email", // Always email
+      contactType,
       method,
       pendingUser._id,
       pendingData.name,
@@ -353,38 +333,89 @@ export const resetPassword = async (token, newPassword) => {
   return { success: true };
 };
 
+export const changePassword = async (
+  userId,
+  { currentPassword, newPassword, confirmPassword },
+) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error("New password must be at least 6 characters long");
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new Error("New password and confirm password do not match");
+  }
+
+  if (user.password) {
+    if (!currentPassword) {
+      throw new Error("Current password is required");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new Error("Current password is incorrect");
+    }
+  }
+
+  const isSameAsOld =
+    user.password && (await bcrypt.compare(newPassword, user.password));
+  if (isSameAsOld) {
+    throw new Error("New password must be different from the current password");
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  return {
+    success: true,
+    message: user.googleId
+      ? "Password set successfully"
+      : "Password changed successfully",
+  };
+};
+
 // Google OAuth
 export const googleAuth = async (profile) => {
   const { id, displayName, emails, photos } = profile;
+  const profileEmail = normalizeEmail(emails?.[0]?.value || "");
 
   if (!displayName) {
     throw new Error("Display name is required for Google login");
   }
 
+  if (!profileEmail) {
+    throw new Error("Google account did not provide an email address");
+  }
+
   let user = await User.findOne({ googleId: id });
 
   if (!user) {
-    // Check if user exists with same email
-    if (emails && emails.length > 0) {
-      user = await User.findOne({ email: emails[0].value.toLowerCase() });
-      if (user) {
-        // Link Google account
-        user.googleId = id;
-        user.picture = photos && photos.length > 0 ? photos[0].value : null;
-        user.status = "active";
-        await user.save();
-      } else {
-        // Create new user
-        user = new User({
-          name: displayName,
-          email: emails[0].value.toLowerCase(),
-          googleId: id,
-          picture: photos && photos.length > 0 ? photos[0].value : null,
-          role: "student",
-          status: "active",
-        });
-        await user.save();
-      }
+    // Find existing user by email regardless of case
+    const emailRegex = new RegExp(`^${escapeRegExp(profileEmail)}$`, "i");
+    user = await User.findOne({ email: emailRegex });
+
+    if (user) {
+      // Link Google account to existing user
+      user.googleId = id;
+      user.picture = photos && photos.length > 0 ? photos[0].value : null;
+      user.status = "active";
+      await user.save();
+    } else {
+      // Create new user
+      user = new User({
+        name: displayName,
+        email: profileEmail,
+        googleId: id,
+        picture: photos && photos.length > 0 ? photos[0].value : null,
+        role: "student",
+        status: "active",
+      });
+      await user.save();
     }
   }
 
@@ -407,9 +438,241 @@ export const googleAuth = async (profile) => {
     role: user.role,
     status: user.status,
     picture: user.picture,
+    emailVerified: user.emailVerified,
+    phoneVerified: user.phoneVerified,
+    telegramLinked: user.telegramLinked,
+    telegramUsername: user.telegramUsername,
+    requiresVerification: !user.emailVerified || !user.phoneVerified,
+    hasPassword: typeof user.password === "string" && user.password.length > 0,
   };
 
   return { user: userData, token };
+};
+
+export const sendProfileEmailVerificationOTP = async (userId, email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (!normalizedEmail || !isEmail(normalizedEmail)) {
+    throw new Error("Invalid email address");
+  }
+
+  const existingUser = await User.findOne({
+    email: normalizedEmail,
+    _id: { $ne: userId },
+  });
+  if (existingUser) {
+    throw new Error("Email is already in use by another user");
+  }
+
+  if (user.email === normalizedEmail && user.emailVerified) {
+    throw new Error("This email is already verified");
+  }
+
+  const recentOtp = await OTP.findOne({
+    userId,
+    method: "email",
+    verified: false,
+    createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
+  });
+  if (recentOtp) {
+    throw new Error("Please wait before requesting another OTP");
+  }
+
+  const otp = generateOTP();
+  const hashedOtp = await hashOTP(otp);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await OTP.create({
+    contact: normalizedEmail,
+    contactType: "email",
+    otp: hashedOtp,
+    method: "email",
+    expiresAt,
+    userId,
+  });
+
+  user.emailOtp = hashedOtp;
+  user.emailOtpExpires = expiresAt;
+  await user.save();
+
+  await sendEmailOTP(normalizedEmail, otp, user.name);
+
+  return {
+    message: "OTP sent to your email address",
+    expiresIn: "10 minutes",
+  };
+};
+
+export const verifyProfileEmailOTP = async (userId, otp) => {
+  const user = await User.findById(userId).select("+emailOtp");
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const otpRecord = await OTP.findOne({
+    userId,
+    method: "email",
+    verified: false,
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+
+  if (!otpRecord) {
+    throw new Error("OTP not found or expired");
+  }
+
+  if (otpRecord.attempts >= 3) {
+    throw new Error("Maximum verification attempts exceeded");
+  }
+
+  const isValid = await verifyOTPHash(otp, otpRecord.otp);
+  if (!isValid) {
+    otpRecord.attempts += 1;
+    await otpRecord.save();
+    throw new Error("Invalid OTP");
+  }
+
+  otpRecord.verified = true;
+  await otpRecord.save();
+
+  user.email = normalizeEmail(otpRecord.contact);
+  user.emailVerified = true;
+  user.emailOtp = null;
+  user.emailOtpExpires = null;
+  if (user.emailVerified && user.phoneVerified) {
+    user.status = "active";
+  }
+  await user.save();
+
+  return {
+    message: "Email verified successfully",
+    user: {
+      id: user._id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      telegramLinked: user.telegramLinked,
+      telegramUsername: user.telegramUsername,
+      status: user.status,
+    },
+  };
+};
+
+export const sendProfilePhoneVerificationOTP = async (userId, phone) => {
+  const normalizedPhone = normalizePhone(phone);
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (!normalizedPhone || !/^\+?[1-9]\d{9,14}$/.test(normalizedPhone)) {
+    throw new Error("Invalid phone number");
+  }
+
+  const existingUser = await User.findOne({
+    mobile: normalizedPhone,
+    _id: { $ne: userId },
+  });
+  if (existingUser) {
+    throw new Error("Phone number is already in use by another user");
+  }
+
+  if (user.mobile === normalizedPhone && user.phoneVerified) {
+    throw new Error("This phone number is already verified");
+  }
+
+  const recentOtp = await OTP.findOne({
+    userId,
+    method: "sms",
+    verified: false,
+    createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
+  });
+  if (recentOtp) {
+    throw new Error("Please wait before requesting another OTP");
+  }
+
+  const otp = generateOTP();
+  const hashedOtp = await hashOTP(otp);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await OTP.create({
+    contact: normalizedPhone,
+    contactType: "phone",
+    otp: hashedOtp,
+    method: "sms",
+    expiresAt,
+    userId,
+  });
+
+  user.phoneOtp = hashedOtp;
+  user.phoneOtpExpires = expiresAt;
+  await user.save();
+
+  await sendSMSOTP(normalizedPhone, otp);
+
+  return {
+    message: "OTP sent to your phone number",
+    expiresIn: "10 minutes",
+  };
+};
+
+export const verifyProfilePhoneOTP = async (userId, otp) => {
+  const user = await User.findById(userId).select("+phoneOtp");
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const otpRecord = await OTP.findOne({
+    userId,
+    method: "sms",
+    verified: false,
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+
+  if (!otpRecord) {
+    throw new Error("OTP not found or expired");
+  }
+
+  if (otpRecord.attempts >= 3) {
+    throw new Error("Maximum verification attempts exceeded");
+  }
+
+  const isValid = await verifyOTPHash(otp, otpRecord.otp);
+  if (!isValid) {
+    otpRecord.attempts += 1;
+    await otpRecord.save();
+    throw new Error("Invalid OTP");
+  }
+
+  otpRecord.verified = true;
+  await otpRecord.save();
+
+  user.mobile = normalizePhone(otpRecord.contact);
+  user.phoneVerified = true;
+  user.phoneOtp = null;
+  user.phoneOtpExpires = null;
+  if (user.emailVerified && user.phoneVerified) {
+    user.status = "active";
+  }
+  await user.save();
+
+  return {
+    message: "Phone number verified successfully",
+    user: {
+      id: user._id,
+      mobile: user.mobile,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      telegramLinked: user.telegramLinked,
+      telegramUsername: user.telegramUsername,
+      status: user.status,
+    },
+  };
 };
 
 export const verifyOTPForPending = async (pendingUserId, otp, method) => {

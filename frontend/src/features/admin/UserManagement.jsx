@@ -201,7 +201,7 @@ const UserManagement = () => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="mt-4 lg:mt-0 px-6 py-3 bg-linear-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="mt-4 lg:mt-0 px-6 py-3 bg-linear-to-r cursor-pointer from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add New User

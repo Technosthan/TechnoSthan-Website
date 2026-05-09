@@ -6,13 +6,13 @@ import {
   authenticate,
   sendOTPController,
   verifyOTPController,
-  verifyLoginOTPController,
   registerOTP,
   loginOTP,
   generateQRLoginController,
   verifyQRLoginController,
   forgotPasswordController,
   resetPasswordController,
+  changePasswordController,
   sendLoginOtpController,
   verifyLoginOtpController,
   linkTelegramController,
@@ -21,6 +21,13 @@ import {
   verifyEmailUpdateOTPController,
   generateTelegramLinkingCodeController,
   verifyAndLinkTelegramController,
+  generateTelegramProfileLinkingCodeController,
+  getTelegramStatusController,
+  unlinkTelegramProfileController,
+  sendProfileEmailVerificationOTPController,
+  verifyProfileEmailOTPController,
+  sendProfilePhoneVerificationOTPController,
+  verifyProfilePhoneOTPController,
 } from "./auth.controller.js";
 import { getMe } from "./auth.controller.js";
 import { setupGoogleStrategy } from "./auth.service.js";
@@ -44,23 +51,31 @@ router.post("/authenticate", loginRateLimit, authenticate);
 // OTP-based auth routes
 router.post("/send-otp", otpRateLimit, sendOTPController);
 router.post("/verify-otp", loginRateLimit, verifyOTPController);
-router.post("/verify-login-otp", loginRateLimit, verifyLoginOTPController);
 router.post("/register-otp", registerOTP);
 router.post("/login-otp", loginRateLimit, loginOTP);
 
 // Password reset routes
 router.post("/forgot-password", forgotPasswordController);
 router.post("/reset-password", resetPasswordController);
+router.post("/change-password", authMiddleware, changePasswordController);
 
 // Social login OTP routes
-router.post("/send-login-otp", sendLoginOtpController);
-router.post("/verify-login-otp", verifyLoginOtpController);
+router.post("/send-login-otp", otpRateLimit, sendLoginOtpController);
+router.post("/verify-login-otp", loginRateLimit, verifyLoginOtpController);
 router.get("/link-telegram", linkTelegramController);
 router.post("/link-whatsapp", linkWhatsappController);
 
 // Telegram linking routes
 router.post("/telegram/generate-code", generateTelegramLinkingCodeController);
 router.post("/telegram/verify-link", verifyAndLinkTelegramController);
+router.post(
+  "/telegram/profile/generate-code",
+  authMiddleware,
+  otpRateLimit,
+  generateTelegramProfileLinkingCodeController,
+);
+router.get("/telegram/status", authMiddleware, getTelegramStatusController);
+router.post("/telegram/unlink", authMiddleware, unlinkTelegramProfileController);
 
 // QR Login routes
 router.post("/qr-login/generate", authMiddleware, generateQRLoginController);
@@ -78,8 +93,10 @@ router.get(
   (req, res) => {
     // Successful authentication, redirect to frontend with token
     const { token, user } = req.user;
+    const needsVerification =
+      user.requiresVerification || !user.emailVerified || !user.phoneVerified;
     res.redirect(
-      `http://localhost:5173/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`,
+      `http://localhost:5173/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}${needsVerification ? "&verification=required" : ""}`,
     );
   },
 );
@@ -149,6 +166,30 @@ router.post(
   "/verify-email-update-otp",
   authMiddleware,
   verifyEmailUpdateOTPController,
+);
+router.post(
+  "/profile/send-email-verification-otp",
+  authMiddleware,
+  otpRateLimit,
+  sendProfileEmailVerificationOTPController,
+);
+router.post(
+  "/profile/verify-email-otp",
+  authMiddleware,
+  loginRateLimit,
+  verifyProfileEmailOTPController,
+);
+router.post(
+  "/profile/send-phone-verification-otp",
+  authMiddleware,
+  otpRateLimit,
+  sendProfilePhoneVerificationOTPController,
+);
+router.post(
+  "/profile/verify-phone-otp",
+  authMiddleware,
+  loginRateLimit,
+  verifyProfilePhoneOTPController,
 );
 
 export default router;

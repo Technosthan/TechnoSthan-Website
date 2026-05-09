@@ -307,14 +307,14 @@ const AIControlPanel = () => {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingFile}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center font-medium disabled:opacity-50"
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition-colors flex items-center font-medium disabled:opacity-50"
           >
             <FileText className="h-4 w-4 mr-2" />
             {uploadingFile ? "Uploading..." : "Upload Config"}
           </button>
           <button
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center font-medium"
+            className="px-4 py-2 bg-green-500 text-white rounded-lg cursor-pointer hover:bg-green-600 transition-colors flex items-center font-medium"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Provider
@@ -437,7 +437,7 @@ const AIControlPanel = () => {
           <button
             onClick={handleGlobalSettingsSave}
             disabled={saving}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-blue-500 text-white cursor-pointer rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save Settings"}
           </button>
@@ -880,14 +880,14 @@ const AddProviderModal = ({ onClose, onSave, theme }) => {
           <div className="flex gap-2 pt-4">
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+              className="flex-1 px-4 py-2 cursor-pointer bg-purple-500 text-white rounded-lg hover:bg-purple-600"
             >
               Add Provider
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+              className="px-4 py-2 cursor-pointer bg-gray-500 text-white rounded-lg hover:bg-gray-600"
             >
               Cancel
             </button>

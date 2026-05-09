@@ -225,7 +225,7 @@ const QuizPage = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
               onClick={handleRetake}
-              className={`mt-6 w-full ${theme.button} font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center`}
+              className={`mt-6 w-full ${theme.button} font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center justify-center`}
             >
               <RotateCcw className="mr-2" size={20} />
               Take Quiz Again

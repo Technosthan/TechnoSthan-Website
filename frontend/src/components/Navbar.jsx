@@ -8,8 +8,10 @@ import { getUnreadCount } from "../shared/lib/announcementsApi";
 const Navbar = () => {
   const navigate = useNavigate();
   const { theme, appSettings } = useTheme();
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user") || "null"),
+  );
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
   const isAdmin = user?.role === "admin";
   const [unread, setUnread] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -61,12 +63,23 @@ const Navbar = () => {
     window.addEventListener("announcements:changed", fetchCount);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    const handleUserUpdated = (event) => {
+      if (event?.detail) {
+        setUser(event.detail);
+      } else {
+        setUser(JSON.parse(localStorage.getItem("user") || "null"));
+      }
+    };
+
+    window.addEventListener("userUpdated", handleUserUpdated);
+
     return () => {
       mounted = false;
       window.clearInterval(intervalId);
       window.removeEventListener("focus", fetchCount);
       window.removeEventListener("announcements:changed", fetchCount);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("userUpdated", handleUserUpdated);
     };
   }, [token]);
 
