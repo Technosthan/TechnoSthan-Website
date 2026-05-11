@@ -29,6 +29,7 @@ import MonitoringPage from "./features/admin/MonitoringPage";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import FloatingThemeSelector from "./components/FloatingThemeSelector";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
@@ -118,6 +119,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      <Toaster position="top-right" />
       <FloatingThemeSelector />
     </ThemeProvider>
   );

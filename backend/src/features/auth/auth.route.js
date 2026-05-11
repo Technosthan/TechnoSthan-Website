@@ -28,6 +28,9 @@ import {
   verifyProfileEmailOTPController,
   sendProfilePhoneVerificationOTPController,
   verifyProfilePhoneOTPController,
+  sendWhatsappLoginOTPController,
+  verifyWhatsappLoginOTPController,
+  resendWhatsappLoginOTPController,
 } from "./auth.controller.js";
 import { getMe } from "./auth.controller.js";
 import { setupGoogleStrategy } from "./auth.service.js";
@@ -65,6 +68,23 @@ router.post("/verify-login-otp", loginRateLimit, verifyLoginOtpController);
 router.get("/link-telegram", linkTelegramController);
 router.post("/link-whatsapp", linkWhatsappController);
 
+// WhatsApp Login routes (integrated with User model)
+router.post(
+  "/send-whatsapp-login-otp",
+  otpRateLimit,
+  sendWhatsappLoginOTPController,
+);
+router.post(
+  "/verify-whatsapp-login-otp",
+  loginRateLimit,
+  verifyWhatsappLoginOTPController,
+);
+router.post(
+  "/resend-whatsapp-login-otp",
+  otpRateLimit,
+  resendWhatsappLoginOTPController,
+);
+
 // Telegram linking routes
 router.post("/telegram/generate-code", generateTelegramLinkingCodeController);
 router.post("/telegram/verify-link", verifyAndLinkTelegramController);
@@ -75,7 +95,11 @@ router.post(
   generateTelegramProfileLinkingCodeController,
 );
 router.get("/telegram/status", authMiddleware, getTelegramStatusController);
-router.post("/telegram/unlink", authMiddleware, unlinkTelegramProfileController);
+router.post(
+  "/telegram/unlink",
+  authMiddleware,
+  unlinkTelegramProfileController,
+);
 
 // QR Login routes
 router.post("/qr-login/generate", authMiddleware, generateQRLoginController);

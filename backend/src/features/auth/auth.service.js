@@ -17,7 +17,9 @@ import {
 } from "./otp.service.js";
 
 const isEmail = (contact) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex =
+    /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
+
   return emailRegex.test(contact);
 };
 
@@ -732,7 +734,8 @@ export const setupGoogleStrategy = () => {
 // Email Update with OTP
 export const sendEmailUpdateOTP = async (userId, newEmail) => {
   // Validate new email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex =
+  /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
   if (!emailRegex.test(newEmail)) {
     throw new Error("Invalid email format");
   }

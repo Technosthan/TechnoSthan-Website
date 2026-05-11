@@ -17,6 +17,11 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   globalSearch,
+  // Auth Settings
+  getAuthSettings,
+  updateAuthSettings,
+  testWhatsappConnection,
+  testTelegramConnection,
   // AI Provider Management
   getAIProviders,
   addAIProvider,
@@ -52,6 +57,12 @@ router.delete("/users/:userId", deleteUser);
 // Settings management
 router.get("/settings", getSettings);
 router.post("/settings", updateSettings);
+
+// Auth settings management
+router.get("/auth-settings", getAuthSettings);
+router.put("/auth-settings", updateAuthSettings);
+router.post("/test-whatsapp", testWhatsappConnection);
+router.post("/test-telegram", testTelegramConnection);
 // AI config endpoints (provider-independent)
 router.get("/ai-config", getAIConfig);
 router.put("/ai-config", updateAIConfig);

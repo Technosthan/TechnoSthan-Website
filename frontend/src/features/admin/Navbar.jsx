@@ -64,7 +64,7 @@ const Navbar = () => {
           {/* Logout Button */}
           <motion.button
             onClick={handleLogout}
-            className={`flex items-center px-4 py-2 rounded-lg ${theme.logoutButton} transition-all duration-200 font-medium shadow-lg hover:shadow-xl`}
+            className={`flex items-center px-4 py-2 rounded-lg ${theme.logoutButton} transition-all duration-200 font-medium shadow-lg hover:shadow-xl cursor-pointer`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

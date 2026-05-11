@@ -3,9 +3,17 @@ import Content from "../content/content.model.js";
 import Question from "../quiz/question.model.js";
 import QuizResult from "../quiz/quizResult.model.js";
 import Settings from "./settings.model.js";
+import AuthSettings from "./authSettings.model.js";
 import Announcement from "./announcement.model.js";
 import { sendBulkAnnouncementEmails } from "./announcement.service.js";
+import {
+  buildAuthSettingsUpdate,
+  getOrCreateAuthSettings,
+  sanitizeAuthSettings,
+  validateAuthSettingsPayload,
+} from "./authSettings.service.js";
 import bcrypt from "bcryptjs";
+import axios from "axios";
 
 export const getAdminStats = async (req, res) => {
   try {
@@ -1141,6 +1149,194 @@ export const globalSearch = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Search failed",
+    });
+  }
+};
+
+// Authentication Settings Management
+export const getAuthSettings = async (req, res) => {
+  try {
+    console.log("getAuthSettings called for user:", req.user?.email);
+    const authSettings = await getOrCreateAuthSettings({ includeSensitive: true });
+    const safeSettings = sanitizeAuthSettings(authSettings);
+
+    console.log("Returning auth settings (sanitized)");
+    res.json({
+      success: true,
+      data: safeSettings,
+    });
+  } catch (error) {
+    console.error("Get auth settings error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load authentication settings",
+    });
+  }
+};
+
+export const updateAuthSettings = async (req, res) => {
+  try {
+    console.log(
+      "updateAuthSettings called with body:",
+      JSON.stringify(req.body, null, 2),
+    );
+
+    const updateData = req.body;
+    const validationError = validateAuthSettingsPayload(updateData);
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError,
+      });
+    }
+
+    console.log("Validation passed, updating auth settings...");
+
+    const existingSettings = await getOrCreateAuthSettings({
+      includeSensitive: true,
+    });
+    const nextSettings = buildAuthSettingsUpdate(updateData, existingSettings);
+
+    const authSettings = await AuthSettings.findOneAndUpdate(
+      {},
+      { $set: nextSettings },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      },
+    );
+
+    console.log("Auth settings updated successfully:", authSettings._id);
+
+    const safeSettings = sanitizeAuthSettings(authSettings.toObject());
+
+    res.json({
+      success: true,
+      message: "Authentication settings updated successfully",
+      data: safeSettings,
+    });
+  } catch (error) {
+    console.error("Update auth settings error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update authentication settings: " + error.message,
+    });
+  }
+};
+
+export const testWhatsappConnection = async (req, res) => {
+  try {
+    console.log("Testing WhatsApp connection");
+
+    const authSettings = await AuthSettings.findOne().select(
+      "+whatsapp.accessToken +whatsapp.verifyToken",
+    );
+
+    if (!authSettings?.whatsapp?.enabled) {
+      return res.status(400).json({
+        success: false,
+        message: "WhatsApp login is disabled",
+      });
+    }
+
+    if (
+      !authSettings.whatsapp.accessToken ||
+      !authSettings.whatsapp.phoneNumberId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "WhatsApp access token and phone number ID are required",
+      });
+    }
+
+    // Test connection by getting phone number info
+    const testUrl = `https://graph.facebook.com/v22.0/${authSettings.whatsapp.phoneNumberId}`;
+    const response = await axios.get(testUrl, {
+      headers: {
+        Authorization: `Bearer ${authSettings.whatsapp.accessToken}`,
+      },
+    });
+
+    if (response.data && response.data.id) {
+      res.json({
+        success: true,
+        message: "WhatsApp connection successful",
+        data: {
+          phoneNumberId: response.data.id,
+          displayPhoneNumber: response.data.display_phone_number,
+        },
+      });
+    } else {
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from WhatsApp API",
+      });
+    }
+  } catch (error) {
+    console.error(
+      "WhatsApp test connection error:",
+      error.response?.data || error.message,
+    );
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: "WhatsApp connection test failed",
+      error: error.response?.data?.error?.message || error.message,
+    });
+  }
+};
+
+export const testTelegramConnection = async (req, res) => {
+  try {
+    console.log("Testing Telegram connection");
+
+    const authSettings =
+      await AuthSettings.findOne().select("+telegram.botToken");
+
+    if (!authSettings?.telegram?.enabled) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram login is disabled",
+      });
+    }
+
+    if (!authSettings.telegram.botToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram bot token is required",
+      });
+    }
+
+    // Test connection by getting bot info
+    const testUrl = `https://api.telegram.org/bot${authSettings.telegram.botToken}/getMe`;
+    const response = await axios.get(testUrl);
+
+    if (response.data && response.data.ok && response.data.result) {
+      res.json({
+        success: true,
+        message: "Telegram connection successful",
+        data: {
+          botId: response.data.result.id,
+          botUsername: response.data.result.username,
+          botName: response.data.result.first_name,
+        },
+      });
+    } else {
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from Telegram API",
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Telegram test connection error:",
+      error.response?.data || error.message,
+    );
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: "Telegram connection test failed",
+      error: error.response?.data?.description || error.message,
     });
   }
 };

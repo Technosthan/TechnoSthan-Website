@@ -4,12 +4,11 @@ import {
   Settings as SettingsIcon,
   Save,
   RefreshCw,
-  Palette,
-  Globe,
   Image as ImageIcon,
   Type,
 } from "lucide-react";
 import { getSettings, updateSettings } from "./adminApi";
+import AuthSettingsSection from "./AuthSettingsSection";
 
 const defaultSettings = {
   appName: "Technosthan AgriTech",
@@ -316,6 +315,8 @@ const SettingsPanel = () => {
           )}
         </div>
       </div>
+
+      <AuthSettingsSection theme={theme} />
     </div>
   );
 };

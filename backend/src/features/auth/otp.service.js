@@ -8,6 +8,7 @@ import nodemailer from "nodemailer";
 import twilio from "twilio";
 import axios from "axios";
 import qrcode from "qrcode";
+import { getOtpSecuritySettings } from "../admin/authSettings.service.js";
 
 // Import new services
 import { sendTelegramOtp } from "./telegram.service.js";
@@ -266,6 +267,8 @@ export const sendOTP = async (
   pendingUserId = null,
   name = null,
 ) => {
+  const otpSecurity = await getOtpSecuritySettings();
+
   // Validate contact
   if (!validateContact(contact, contactType)) {
     throw new Error(`Invalid ${contactType}`);
@@ -278,11 +281,22 @@ export const sendOTP = async (
   // Rate limiting: Check recent OTP requests (last 1 minute)
   const recentOTP = await OTP.findOne({
     contact: normalizedContact,
-    createdAt: { $gte: new Date(Date.now() - 60000) },
+    createdAt: {
+      $gte: new Date(Date.now() - otpSecurity.resendCooldown * 1000),
+    },
   });
 
   if (recentOTP) {
     throw new Error("Please wait before requesting another OTP");
+  }
+
+  const dailyOtpCount = await OTP.countDocuments({
+    contact: normalizedContact,
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  });
+
+  if (dailyOtpCount >= otpSecurity.maxDailyRequests) {
+    throw new Error("Daily OTP request limit reached");
   }
 
   // Generate and hash OTP
@@ -313,7 +327,7 @@ export const sendOTP = async (
     contactType,
     otp: hashedOTP,
     method,
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+    expiresAt: new Date(Date.now() + otpSecurity.expiryMinutes * 60 * 1000),
     pendingUserId,
   });
 
@@ -406,7 +420,9 @@ export const verifyOTP = async (contact, otp) => {
   }
 
   // Check attempts
-  if (otpRecord.attempts >= 3) {
+  const otpSecurity = await getOtpSecuritySettings();
+
+  if (otpRecord.attempts >= otpSecurity.maxAttempts) {
     throw new Error("Maximum verification attempts exceeded");
   }
 
@@ -673,6 +689,7 @@ export const verifyQRLogin = async (qrData, targetUserId) => {
 
 // ================= LOGIN OTP FUNCTIONS =================
 export const sendLoginOtp = async (phone, method) => {
+  const otpSecurity = await getOtpSecuritySettings();
   const user = await User.findOne({ mobile: phone });
   if (!user) {
     throw new Error(
@@ -703,11 +720,23 @@ export const sendLoginOtp = async (phone, method) => {
     identifier: phone,
     method,
     used: false,
-    createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
+    createdAt: {
+      $gte: new Date(Date.now() - otpSecurity.resendCooldown * 1000),
+    },
   });
 
   if (recentOtp) {
     throw new Error("Please wait before requesting another OTP");
+  }
+
+  const dailyLoginOtpCount = await LoginOtp.countDocuments({
+    identifier: phone,
+    method,
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  });
+
+  if (dailyLoginOtpCount >= otpSecurity.maxDailyRequests) {
+    throw new Error("Daily OTP request limit reached");
   }
 
   const otp = generateOTP();
@@ -726,7 +755,7 @@ export const sendLoginOtp = async (phone, method) => {
     identifier: phone,
     otp: hashedOTP,
     method,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min
+    expiresAt: new Date(Date.now() + otpSecurity.expiryMinutes * 60 * 1000),
   });
   await loginOtp.save();
 
@@ -745,6 +774,7 @@ export const sendLoginOtp = async (phone, method) => {
 };
 
 export const verifyLoginOtp = async (phone, otp, method) => {
+  const otpSecurity = await getOtpSecuritySettings();
   const user = await User.findOne({ mobile: phone });
   if (!user) {
     throw new Error("User not found");
@@ -764,7 +794,7 @@ export const verifyLoginOtp = async (phone, otp, method) => {
     throw new Error("Invalid or expired OTP");
   }
 
-  if (loginOtp.attempts >= 5) {
+  if (loginOtp.attempts >= otpSecurity.maxAttempts) {
     throw new Error("Maximum verification attempts exceeded");
   }
 

@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "dotenv nodemon src/server.js"
+    "dev": "dotenv nodemon src/server.js",
+    "telegram:webhook": "node telegram-webhook.js",
+    "telegram:webhook:dev": "nodemon telegram-webhook.js"
   },
   "keywords": [],
   "author": "",

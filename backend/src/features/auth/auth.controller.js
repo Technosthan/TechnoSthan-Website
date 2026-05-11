@@ -31,6 +31,13 @@ import {
   unlinkTelegramAccount,
 } from "./telegramLinking.service.js";
 
+import {
+  sendWhatsappLoginOTP,
+  verifyWhatsappLoginOTP,
+  resendWhatsappLoginOTP,
+} from "./whatsappOtp.service.js";
+import { getTelegramRuntimeSettings } from "../admin/authSettings.service.js";
+
 import User from "./user.model.js";
 
 // ================= REGISTER =================
@@ -418,12 +425,15 @@ export const sendLoginOtpController = async (req, res) => {
     // Handle Telegram not linked case
     if (error.isNotLinked || error.message === "TELEGRAM_NOT_LINKED") {
       try {
+        const telegramSettings = await getTelegramRuntimeSettings();
         const code = await generateLinkingCode(phone);
         return res.status(200).json({
           success: true,
           telegramNotLinked: true,
           linkCode: code,
-          botLink: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}`,
+          botLink: telegramSettings.botUsername
+            ? `https://t.me/${telegramSettings.botUsername.replace(/^@/, "")}`
+            : null,
           message: "Telegram account not connected",
         });
       } catch (linkError) {
@@ -664,7 +674,10 @@ export const changePasswordController = async (req, res) => {
   }
 };
 
-export const generateTelegramProfileLinkingCodeController = async (req, res) => {
+export const generateTelegramProfileLinkingCodeController = async (
+  req,
+  res,
+) => {
   try {
     const user = await User.findById(req.user.id);
 
@@ -691,6 +704,7 @@ export const generateTelegramProfileLinkingCodeController = async (req, res) => 
 
     const code = await generateLinkingCode(user.mobile);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const telegramSettings = await getTelegramRuntimeSettings();
 
     user.telegramLinkCode = code;
     user.telegramLinkCodeExpires = expiresAt;
@@ -702,7 +716,9 @@ export const generateTelegramProfileLinkingCodeController = async (req, res) => 
       data: {
         code,
         expiresIn: "15 minutes",
-        botLink: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}`,
+        botLink: telegramSettings.botUsername
+          ? `https://t.me/${telegramSettings.botUsername.replace(/^@/, "")}`
+          : null,
       },
     });
   } catch (error) {
@@ -745,6 +761,8 @@ export const unlinkTelegramProfileController = async (req, res) => {
     });
   }
 };
+
+// ================= WHATSAPP LOGIN CONTROLLERS =================
 
 export const sendProfileEmailVerificationOTPController = async (req, res) => {
   try {
@@ -862,6 +880,100 @@ export const verifyAndLinkTelegramController = async (req, res) => {
       data: result.user,
     });
   } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= WHATSAPP LOGIN CONTROLLERS =================
+
+// ================= SEND WHATSAPP LOGIN OTP =================
+export const sendWhatsappLoginOTPController = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    const result = await sendWhatsappLoginOTP(phone);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Send WhatsApp login OTP controller error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= VERIFY WHATSAPP LOGIN OTP =================
+export const verifyWhatsappLoginOTPController = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+
+    if (!phone || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number and OTP are required",
+      });
+    }
+
+    const result = await verifyWhatsappLoginOTP(phone, otp);
+
+    // Generate JWT token using existing auth service
+    const { generateToken } = await import("./auth.service.js");
+    const token = generateToken(result.data.user);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: {
+        token,
+        user: result.data.user,
+        phoneNumber: result.data.phoneNumber,
+      },
+    });
+  } catch (error) {
+    console.error("Verify WhatsApp login OTP controller error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ================= RESEND WHATSAPP LOGIN OTP =================
+export const resendWhatsappLoginOTPController = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    const result = await resendWhatsappLoginOTP(phone);
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Resend WhatsApp login OTP controller error:", error);
     res.status(400).json({
       success: false,
       message: error.message,

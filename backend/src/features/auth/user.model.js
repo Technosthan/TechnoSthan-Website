@@ -90,6 +90,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    phoneVerifiedAt: {
+      type: Date,
+      default: null,
+    },
     phoneOtp: {
       type: String,
       default: null,

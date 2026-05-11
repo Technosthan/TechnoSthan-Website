@@ -881,7 +881,7 @@ const ProfilePage = () => {
 
                 <button
                   onClick={() =>
-                    window.open("https://t.me/TechnoSthan_HR_Bot", "_blank")
+                    window.open("https://t.me/Technosthan_Bot", "_blank")
                   }
                   className={`${buttonBase} bg-transparent border border-blue-500/40 hover:bg-blue-500/10`}
                 >

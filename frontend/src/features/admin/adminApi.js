@@ -29,6 +29,13 @@ export const deleteContent = (contentId) =>
 export const getSettings = () => axiosInstance.get("/api/admin/settings");
 export const updateSettings = (settingsData) =>
   axiosInstance.post("/api/admin/settings", settingsData);
+export const getAuthSettings = () => axiosInstance.get("/api/admin/auth-settings");
+export const updateAuthSettings = (settingsData) =>
+  axiosInstance.put("/api/admin/auth-settings", settingsData);
+export const testWhatsappConnection = () =>
+  axiosInstance.post("/api/admin/test-whatsapp");
+export const testTelegramConnection = () =>
+  axiosInstance.post("/api/admin/test-telegram");
 
 // AI config (provider independent)
 export const getAIConfig = () => axiosInstance.get("/api/admin/ai-config");
