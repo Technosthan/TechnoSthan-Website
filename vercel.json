@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/services/technosthan-agritech/:path*",
+      "destination": "https://techno-sthan-website-z9yp.vercel.app/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
