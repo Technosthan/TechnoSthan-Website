@@ -17,8 +17,7 @@ import {
 } from "./otp.service.js";
 
 const isEmail = (contact) => {
-  const emailRegex =
-    /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
 
   return emailRegex.test(contact);
 };
@@ -116,7 +115,9 @@ export const loginUser = async (data) => {
   }
 
   if (user.status === "blocked") {
-    throw new Error("Your account has been blocked. Please contact administrator.");
+    throw new Error(
+      "Your account has been blocked. Please contact administrator.",
+    );
   }
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -172,7 +173,9 @@ export const authenticateUser = async ({ contact, password }) => {
     }
 
     if (existingUser.status === "blocked") {
-      throw new Error("Your account has been blocked. Please contact administrator.");
+      throw new Error(
+        "Your account has been blocked. Please contact administrator.",
+      );
     }
 
     // Generate token
@@ -709,7 +712,9 @@ export const setupGoogleStrategy = () => {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/api/auth/google/callback",
+        callbackURL:
+          process.env.GOOGLE_CALLBACK_URL ||
+          "http://localhost:5000/api/auth/google/callback",
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -734,8 +739,7 @@ export const setupGoogleStrategy = () => {
 // Email Update with OTP
 export const sendEmailUpdateOTP = async (userId, newEmail) => {
   // Validate new email format
-  const emailRegex =
-  /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
   if (!emailRegex.test(newEmail)) {
     throw new Error("Invalid email format");
   }
