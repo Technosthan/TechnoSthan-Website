@@ -113,14 +113,22 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login" }),
+  passport.authenticate(
+    "google",
+    {
+      failureRedirect:
+        `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+    },
+  ),
   (req, res) => {
     // Successful authentication, redirect to frontend with token
     const { token, user } = req.user;
     const needsVerification =
       user.requiresVerification || !user.emailVerified || !user.phoneVerified;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
     res.redirect(
-      `http://localhost:5173/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}${needsVerification ? "&verification=required" : ""}`,
+      `${frontendUrl}/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}${needsVerification ? "&verification=required" : ""}`,
     );
   },
 );

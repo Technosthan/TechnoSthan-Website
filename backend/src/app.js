@@ -18,11 +18,26 @@ import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
 const app = express();
 
 // ✅ middleware
-app.use(
-  cors({
-    origin: [process.env.CLIENT_URL, "https://www.technosthan.com"],
-  }),
-);
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "https://www.technosthan.com",
+  "https://techno-sthan-website-z9yp.vercel.app",
+].filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy does not allow access from ${origin}`));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
