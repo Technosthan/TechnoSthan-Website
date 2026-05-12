@@ -17,32 +17,49 @@ import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
 
 const app = express();
 
-// ✅ middleware
+// ✅ allowed origins
 const allowedOrigins = [
-  process.env.CLIENT_URL || "http://localhost:5173",
+  "http://localhost:5173",
   "https://www.technosthan.com",
   "https://techno-sthan-website-z9yp.vercel.app",
-].filter(Boolean);
+];
 
+// ✅ allow all vercel preview deployments
+const isVercelPreview = (origin) => {
+  return origin && origin.includes(".vercel.app");
+};
+
+// ✅ CORS middleware
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl requests, Postman)
-      if (!origin) return callback(null, true);
+      // allow requests with no origin (Postman, mobile apps, curl)
+      if (!origin) {
+        return callback(null, true);
+      }
 
+      // allow fixed origins
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
-      } else {
-        console.log(`CORS blocked origin: ${origin}`);
-        return callback(
-          new Error(`CORS policy does not allow access from ${origin}`),
-        );
       }
+
+      // allow all vercel preview deployments
+      if (isVercelPreview(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked by CORS:", origin);
+
+      return callback(new Error("Not allowed by CORS"));
     },
+
     credentials: true,
-    optionsSuccessStatus: 200,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+    ],
   }),
 );
 
@@ -59,6 +76,7 @@ app.use(
     saveUninitialized: true,
   }),
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -77,4 +95,5 @@ app.use("/api/announcements", announcementsRoutes);
 app.use("/api/settings", settingsRoutes);
 
 console.log("Routes mounted");
+
 export default app;
