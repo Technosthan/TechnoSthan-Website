@@ -20,7 +20,7 @@ const app = express();
 // ✅ middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: [process.env.CLIENT_URL, "https://www.technosthan.com"],
   }),
 );
 
