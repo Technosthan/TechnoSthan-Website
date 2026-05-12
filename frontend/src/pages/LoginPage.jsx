@@ -1,11 +1,11 @@
 ﻿import { useState, useEffect } from "react";
 import { useAuth } from "../features/auth/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaTelegramPlane, FaWhatsapp } from "react-icons/fa";
+import { FaTelegram, FaWhatsapp } from "react-icons/fa";
 import {
   Lock,
   Eye,
- EyeOff,
+  EyeOff,
   XCircle,
   Mail,
   Shield,
@@ -59,10 +59,9 @@ const LoginPage = () => {
   const [qrData, setQrData] = useState(null);
 
   const isEmail = (value) =>
-  /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
+    /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
 
-  const isPhone = (value) =>
-    /^\d{10}$/.test(value);
+  const isPhone = (value) => /^\d{10}$/.test(value);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -81,11 +80,7 @@ const LoginPage = () => {
       ) {
         navigate("/profile?verification=required");
       } else {
-        navigate(
-          userData.role === "admin"
-            ? "/admin/dashboard"
-            : "/"
-        );
+        navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
       }
     }
   }, [searchParams, navigate]);
@@ -137,9 +132,7 @@ const LoginPage = () => {
 
       // Optional backend response
       if (res?.data?.isNewUser) {
-        setSuccess(
-          "Account not found. Creating new account automatically..."
-        );
+        setSuccess("Account not found. Creating new account automatically...");
       } else {
         setSuccess("OTP sent successfully");
       }
@@ -147,9 +140,7 @@ const LoginPage = () => {
       setIsOtpSent(true);
     } catch (err) {
       setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to send OTP"
+        err?.response?.data?.message || err?.message || "Failed to send OTP",
       );
     } finally {
       setOtpLoading(false);
@@ -185,17 +176,9 @@ const LoginPage = () => {
 
       setSuccess("Login successful");
 
-      navigate(
-        userData.role === "admin"
-          ? "/admin/dashboard"
-          : "/"
-      );
+      navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Invalid OTP"
-      );
+      setError(err?.response?.data?.message || err?.message || "Invalid OTP");
     } finally {
       setOtpLoading(false);
     }
@@ -212,12 +195,8 @@ const LoginPage = () => {
       if (step === "input") {
         if (!form.contact.trim()) {
           errors.contact = "Email or phone is required";
-        } else if (
-          !isEmail(form.contact) &&
-          !isPhone(form.contact)
-        ) {
-          errors.contact =
-            "Enter valid email or 10 digit phone";
+        } else if (!isEmail(form.contact) && !isPhone(form.contact)) {
+          errors.contact = "Enter valid email or 10 digit phone";
         }
       }
 
@@ -232,16 +211,9 @@ const LoginPage = () => {
       if (step === "input-second-field") {
         if (!form.contact.trim()) {
           errors.contact = "Field is required";
-        } else if (
-          inputType === "email" &&
-          !isPhone(form.contact)
-        ) {
-          errors.contact =
-            "Enter valid 10 digit phone number";
-        } else if (
-          inputType === "phone" &&
-          !isEmail(form.contact)
-        ) {
+        } else if (inputType === "email" && !isPhone(form.contact)) {
+          errors.contact = "Enter valid 10 digit phone number";
+        } else if (inputType === "phone" && !isEmail(form.contact)) {
           errors.contact = "Enter valid email address";
         }
       }
@@ -249,19 +221,14 @@ const LoginPage = () => {
       if (step === "input") {
         if (!form.contact.trim()) {
           errors.contact = "Email or phone is required";
-        } else if (
-          !isEmail(form.contact) &&
-          !isPhone(form.contact)
-        ) {
-          errors.contact =
-            "Enter valid email or 10 digit phone";
+        } else if (!isEmail(form.contact) && !isPhone(form.contact)) {
+          errors.contact = "Enter valid email or 10 digit phone";
         }
 
         if (!form.password.trim()) {
           errors.password = "Password is required";
         } else if (form.password.length < 6) {
-          errors.password =
-            "Password must be at least 6 characters";
+          errors.password = "Password must be at least 6 characters";
         }
       }
     }
@@ -320,34 +287,24 @@ const LoginPage = () => {
 
       // AUTO REGISTER MESSAGE
       if (result?.flow === "register") {
-        setSuccess(
-          "Account not found. Starting registration process..."
-        );
+        setSuccess("Account not found. Starting registration process...");
       }
 
       // LOGIN SUCCESS
       if (result?.flow === "login") {
-        const userData = JSON.parse(
-          localStorage.getItem("user") || "null"
-        );
+        const userData = JSON.parse(localStorage.getItem("user") || "null");
 
         setSuccess("Login successful");
 
         if (result.requiresVerification) {
           navigate("/profile?verification=required");
         } else {
-          navigate(
-            userData?.role === "admin"
-              ? "/admin/dashboard"
-              : "/"
-          );
+          navigate(userData?.role === "admin" ? "/admin/dashboard" : "/");
         }
       }
     } catch (err) {
       setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Something went wrong"
+        err?.response?.data?.message || err?.message || "Something went wrong",
       );
     }
   };
@@ -367,7 +324,7 @@ const LoginPage = () => {
       setError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to generate QR code"
+          "Failed to generate QR code",
       );
     }
   };
@@ -403,25 +360,17 @@ const LoginPage = () => {
 
   const getStepTitle = () => {
     if (isOtpLogin) {
-      return isOtpSent
-        ? "Enter OTP"
-        : "OTP Login";
+      return isOtpSent ? "Enter OTP" : "OTP Login";
     }
 
     if (step === "input") return "Welcome";
 
     if (step === "verify-otp") {
-      return `Verify ${
-        inputType === "email"
-          ? "Email"
-          : "Phone"
-      }`;
+      return `Verify ${inputType === "email" ? "Email" : "Phone"}`;
     }
 
     if (step === "input-second-field") {
-      return inputType === "email"
-        ? "Enter Phone"
-        : "Enter Email";
+      return inputType === "email" ? "Enter Phone" : "Enter Email";
     }
 
     return "Welcome";
@@ -430,11 +379,7 @@ const LoginPage = () => {
   const getStepDescription = () => {
     if (isOtpLogin) {
       return isOtpSent
-        ? `Enter the OTP sent to your ${
-            isEmail(contact)
-              ? "email"
-              : "phone"
-          }`
+        ? `Enter the OTP sent to your ${isEmail(contact) ? "email" : "phone"}`
         : "Login using OTP";
     }
 
@@ -444,9 +389,7 @@ const LoginPage = () => {
 
     if (step === "verify-otp") {
       return `Enter OTP sent to your ${
-        inputType === "email"
-          ? "email"
-          : "phone"
+        inputType === "email" ? "email" : "phone"
       }`;
     }
 
@@ -468,18 +411,11 @@ const LoginPage = () => {
       >
         {/* TITLE */}
         <div className="text-center mb-6">
-          <Shield
-            className={`mx-auto mb-2 ${theme.accent}`}
-            size={28}
-          />
+          <Shield className={`mx-auto mb-2 ${theme.accent}`} size={28} />
 
-          <h2 className="text-2xl font-semibold">
-            {getStepTitle()}
-          </h2>
+          <h2 className="text-2xl font-semibold">{getStepTitle()}</h2>
 
-          <p className={theme.textSecondary}>
-            {getStepDescription()}
-          </p>
+          <p className={theme.textSecondary}>{getStepDescription()}</p>
         </div>
 
         {/* ERROR */}
@@ -503,10 +439,7 @@ const LoginPage = () => {
           <div className="space-y-4 mb-4">
             <div className="relative">
               <div className="absolute inset-y-0 left-3 flex items-center">
-                <Mail
-                  className="text-gray-400"
-                  size={18}
-                />
+                <Mail className="text-gray-400" size={18} />
               </div>
 
               <input
@@ -529,14 +462,10 @@ const LoginPage = () => {
               className={`w-full ${theme.button} py-3 rounded-xl flex justify-center cursor-pointer items-center gap-2`}
             >
               {otpLoading ? (
-                <RefreshCw
-                  className="animate-spin"
-                  size={18}
-                />
+                <RefreshCw className="animate-spin" size={18} />
               ) : (
                 <MessageSquare size={18} />
               )}
-
               Send OTP
             </button>
           </div>
@@ -547,10 +476,7 @@ const LoginPage = () => {
           <div className="space-y-4 mb-4">
             <div className="relative">
               <div className="absolute inset-y-0 left-3 flex items-center">
-                <Shield
-                  className="text-gray-400"
-                  size={18}
-                />
+                <Shield className="text-gray-400" size={18} />
               </div>
 
               <input
@@ -560,9 +486,7 @@ const LoginPage = () => {
                 maxLength={6}
                 className={`${theme.input} pl-10`}
                 onChange={(e) => {
-                  setOtp(
-                    e.target.value.replace(/\D/g, "")
-                  );
+                  setOtp(e.target.value.replace(/\D/g, ""));
 
                   setError("");
                   setSuccess("");
@@ -577,34 +501,24 @@ const LoginPage = () => {
               className={`w-full ${theme.button} py-3 rounded-xl flex justify-center cursor-pointer items-center gap-2`}
             >
               {otpLoading ? (
-                <RefreshCw
-                  className="animate-spin"
-                  size={18}
-                />
+                <RefreshCw className="animate-spin" size={18} />
               ) : (
                 <CheckCircle size={18} />
               )}
-
               Verify OTP
             </button>
           </div>
         )}
 
         {/* MAIN FORM */}
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="space-y-4">
           {!isOtpLogin && step === "input" && (
             <>
               {/* CONTACT */}
               <div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center">
-                    <Mail
-                      className="text-gray-400"
-                      size={18}
-                    />
+                    <Mail className="text-gray-400" size={18} />
                   </div>
 
                   <input
@@ -640,18 +554,11 @@ const LoginPage = () => {
               <div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center">
-                    <Lock
-                      className="text-gray-400"
-                      size={18}
-                    />
+                    <Lock className="text-gray-400" size={18} />
                   </div>
 
                   <input
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     value={form.password}
                     className={`${theme.input} pl-10 pr-10`}
@@ -673,15 +580,9 @@ const LoginPage = () => {
 
                   <div
                     className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
-                    onClick={() =>
-                      setShowPassword(!showPassword)
-                    }
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </div>
                 </div>
 
@@ -700,10 +601,7 @@ const LoginPage = () => {
               >
                 {loading ? (
                   <>
-                    <RefreshCw
-                      className="animate-spin "
-                      size={18}
-                    />
+                    <RefreshCw className="animate-spin " size={18} />
                     Please wait...
                   </>
                 ) : (
@@ -733,125 +631,97 @@ const LoginPage = () => {
           )}
 
           {/* REGISTER OTP VERIFY */}
-          {!isOtpLogin &&
-            isRegister &&
-            step === "verify-otp" && (
-              <div className="space-y-4">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center">
-                    <Lock
-                      className="text-gray-400"
-                      size={18}
-                    />
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Enter 6 digit OTP"
-                    value={form.otp}
-                    maxLength={6}
-                    className={`${theme.input} pl-10 text-center tracking-widest`}
-                    onChange={(e) => {
-                      setForm({
-                        ...form,
-                        otp: e.target.value.replace(
-                          /\D/g,
-                          ""
-                        ),
-                      });
-
-                      setError("");
-                    }}
-                  />
+          {!isOtpLogin && isRegister && step === "verify-otp" && (
+            <div className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center">
+                  <Lock className="text-gray-400" size={18} />
                 </div>
 
-                {fieldError.otp && (
-                  <p className="text-red-500 text-xs">
-                    {fieldError.otp}
-                  </p>
-                )}
+                <input
+                  type="text"
+                  placeholder="Enter 6 digit OTP"
+                  value={form.otp}
+                  maxLength={6}
+                  className={`${theme.input} pl-10 text-center tracking-widest`}
+                  onChange={(e) => {
+                    setForm({
+                      ...form,
+                      otp: e.target.value.replace(/\D/g, ""),
+                    });
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleSendOTP(otpMethod)
-                  }
-                  disabled={loading}
-                  className="w-full text-blue-500 text-sm flex justify-center items-center gap-2 cursor-pointer"
-                >
-                  <RefreshCw size={14} />
-                  Resend OTP
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer`}
-                >
-                  {loading
-                    ? "Verifying..."
-                    : "Verify OTP"}
-                </button>
+                    setError("");
+                  }}
+                />
               </div>
-            )}
+
+              {fieldError.otp && (
+                <p className="text-red-500 text-xs">{fieldError.otp}</p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleSendOTP(otpMethod)}
+                disabled={loading}
+                className="w-full text-blue-500 text-sm flex justify-center items-center gap-2 cursor-pointer"
+              >
+                <RefreshCw size={14} />
+                Resend OTP
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer`}
+              >
+                {loading ? "Verifying..." : "Verify OTP"}
+              </button>
+            </div>
+          )}
 
           {/* SECOND FIELD */}
-          {!isOtpLogin &&
-            isRegister &&
-            step === "input-second-field" && (
-              <div className="space-y-4">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center">
-                    {inputType === "email" ? (
-                      <Phone
-                        className="text-gray-400"
-                        size={18}
-                      />
-                    ) : (
-                      <Mail
-                        className="text-gray-400"
-                        size={18}
-                      />
-                    )}
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder={
-                      inputType === "email"
-                        ? "Phone Number"
-                        : "Email Address"
-                    }
-                    value={form.contact}
-                    className={`${theme.input} pl-10`}
-                    onChange={(e) => {
-                      setForm({
-                        ...form,
-                        contact: e.target.value,
-                      });
-
-                      setError("");
-                    }}
-                  />
+          {!isOtpLogin && isRegister && step === "input-second-field" && (
+            <div className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center">
+                  {inputType === "email" ? (
+                    <Phone className="text-gray-400" size={18} />
+                  ) : (
+                    <Mail className="text-gray-400" size={18} />
+                  )}
                 </div>
 
-                {fieldError.contact && (
-                  <p className="text-red-500 text-xs">
-                    {fieldError.contact}
-                  </p>
-                )}
+                <input
+                  type="text"
+                  placeholder={
+                    inputType === "email" ? "Phone Number" : "Email Address"
+                  }
+                  value={form.contact}
+                  className={`${theme.input} pl-10`}
+                  onChange={(e) => {
+                    setForm({
+                      ...form,
+                      contact: e.target.value,
+                    });
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full ${theme.button}  py-3 rounded-xl cursor-pointer`}
-                >
-                  {loading
-                    ? "Please wait..."
-                    : "Continue"}
-                </button>
+                    setError("");
+                  }}
+                />
               </div>
-            )}
+
+              {fieldError.contact && (
+                <p className="text-red-500 text-xs">{fieldError.contact}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full ${theme.button}  py-3 rounded-xl cursor-pointer`}
+              >
+                {loading ? "Please wait..." : "Continue"}
+              </button>
+            </div>
+          )}
 
           {/* QR LOGIN */}
           {!isOtpLogin && step === "input" && (
@@ -870,11 +740,7 @@ const LoginPage = () => {
           {/* QR DISPLAY */}
           {qrData && (
             <div className="text-center">
-              <img
-                src={qrData.qrCode}
-                alt="QR Code"
-                className="mx-auto mb-2"
-              />
+              <img src={qrData.qrCode} alt="QR Code" className="mx-auto mb-2" />
 
               <p className="text-sm text-gray-600">
                 Scan with your mobile device
@@ -884,19 +750,19 @@ const LoginPage = () => {
 
           {/* GOOGLE */}
           {!isOtpLogin && step === "input" && (
-           <button
-  type="button"
-  onClick={handleGoogleLogin}
-  className={`w-full ${theme.card} ${theme.border} py-3 rounded-xl flex items-center justify-center gap-3 cursor-pointer hover:opacity-90 transition`}
->
-  <img
-    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-    alt="Google"
-    className="w-5 h-5"
-  />
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className={`w-full ${theme.card} ${theme.border} py-3 rounded-xl flex items-center justify-center gap-3 cursor-pointer hover:opacity-90 transition`}
+            >
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                className="w-5 h-5"
+              />
 
-  <span>Continue with Google</span>
-</button>
+              <span>Continue with Google</span>
+            </button>
           )}
 
           {/* SOCIAL LOGIN */}
@@ -904,9 +770,7 @@ const LoginPage = () => {
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div
-                    className={`${theme.border} w-full`}
-                  />
+                  <div className={`${theme.border} w-full`} />
                 </div>
 
                 <div className="relative flex justify-center text-sm">
@@ -920,18 +784,14 @@ const LoginPage = () => {
 
               <div className="mt-4 flex justify-center gap-4">
                 <button
-                  onClick={() =>
-                    navigate("/login/telegram")
-                  }
+                  onClick={() => navigate("/login/telegram")}
                   className="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
                 >
-                  <FaTelegramPlane size={20} />
+                  <FaTelegram size={20} />
                 </button>
 
                 <button
-                  onClick={() =>
-                    navigate("/login/whatsapp")
-                  }
+                  onClick={() => navigate("/login/whatsapp")}
                   className="p-3 rounded-full bg-green-500 hover:bg-green-600 text-white cursor-pointer"
                 >
                   <FaWhatsapp size={20} />

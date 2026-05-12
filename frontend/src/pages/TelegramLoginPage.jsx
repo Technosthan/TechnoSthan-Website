@@ -10,7 +10,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
-import { FaTelegramPlane } from "react-icons/fa";
+import { FaTelegram } from "react-icons/fa";
 
 const TelegramLoginPage = () => {
   const [phone, setPhone] = useState("");
@@ -153,7 +153,7 @@ const TelegramLoginPage = () => {
           </button>
 
           <div className="flex items-center">
-            <FaTelegramPlane className="text-blue-500 mr-2" size={24} />
+            <FaTelegram className="text-blue-500 mr-2" size={24} />
             <h2 className="text-xl font-semibold">Login with Telegram</h2>
           </div>
         </div>
@@ -246,10 +246,7 @@ const TelegramLoginPage = () => {
                   </p>
 
                   <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                    Send{" "}
-                    <span className="font-semibold">
-                      /link {linkCode}
-                    </span>{" "}
+                    Send <span className="font-semibold">/link {linkCode}</span>{" "}
                     to the bot after pressing Start.
                   </p>
                 </div>
@@ -309,9 +306,7 @@ const TelegramLoginPage = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  OTP
-                </label>
+                <label className="block text-sm font-medium mb-2">OTP</label>
 
                 <input
                   type="text"
