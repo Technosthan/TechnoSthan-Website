@@ -24,6 +24,9 @@ const Footer = () => {
           <Link to="/about">About</Link>
           <Link to="/services">Services</Link>
           <Link to="/contact">Contact</Link>
+           <Link to="/privacy-policy">Privacy Policy</Link>
+          <Link to="/terms-and-conditions">Terms & Conditions</Link>
+          <Link to="/data-deletion">Data Deletion</Link>
         </div>
 
         {/* Services */}
@@ -51,7 +54,7 @@ const Footer = () => {
              +91 9477-288-288
             </a>
             </p>
-          <p>India</p>
+          <p>47/1 New Sanganer Road Sodala Jaipur Rajasthan</p>
         </div>
 
       </div>
