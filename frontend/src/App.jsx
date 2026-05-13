@@ -27,6 +27,8 @@ import AnnouncementManager from "./features/admin/AnnouncementManager";
 import GlobalSearch from "./features/admin/GlobalSearch";
 import MonitoringPage from "./features/admin/MonitoringPage";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
+import { AccessControlProvider } from "./contexts/AccessControlContext.jsx";
+import RouteGuard from "./shared/components/RouteGuard";
 import FloatingThemeSelector from "./components/FloatingThemeSelector";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import { Toaster } from "react-hot-toast";
@@ -34,91 +36,85 @@ import { Toaster } from "react-hot-toast";
 function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/landing" element={<LandingPage />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/verify-phone" element={<VerifyPhonePage />} />
-          <Route path="/login/telegram" element={<TelegramLoginPage />} />
-          <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
+      <AccessControlProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<RouteGuard />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/verify-phone" element={<VerifyPhonePage />} />
+              <Route path="/login/telegram" element={<TelegramLoginPage />} />
+              <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
 
-          {/* Protected User Routes */}
-          <Route
-            path="/AgriTech Wiki"
-            element={
-              <ProtectedRoute>
-                <ContentPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quiz/:contentId"
-            element={
-              <ProtectedRoute>
-                <QuizPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chat"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+              <Route
+                path="/AgriTech Wiki"
+                element={
+                  <ProtectedRoute>
+                    <ContentPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/quiz/:contentId"
+                element={
+                  <ProtectedRoute>
+                    <QuizPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chat"
+                element={
+                  <ProtectedRoute>
+                    <ChatPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
 
-          {/* Auth Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/verify-phone" element={<VerifyPhonePage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-
-          {/* Admin Routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            }
-          >
-            <Route index element={<AdminDashboardHome />} />
-            <Route path="content" element={<ContentManagement />} />
-            <Route path="quiz" element={<QuizManagement />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="ai-control" element={<AIControlPanel />} />
-            <Route path="settings" element={<SettingsPanel />} />
-            <Route path="announcements" element={<AnnouncementManager />} />
-            <Route path="search" element={<GlobalSearch />} />
-            <Route path="monitoring" element={<MonitoringPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              }
+            >
+              <Route index element={<AdminDashboardHome />} />
+              <Route path="content" element={<ContentManagement />} />
+              <Route path="quiz" element={<QuizManagement />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="ai-control" element={<AIControlPanel />} />
+              <Route path="settings" element={<SettingsPanel />} />
+              <Route path="announcements" element={<AnnouncementManager />} />
+              <Route path="search" element={<GlobalSearch />} />
+              <Route path="monitoring" element={<MonitoringPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AccessControlProvider>
       <Toaster position="top-right" />
       <FloatingThemeSelector />
     </ThemeProvider>

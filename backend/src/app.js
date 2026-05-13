@@ -14,6 +14,7 @@ import announcementsRoutes from "./features/announcements/announcements.route.js
 
 // Rate limiting
 import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
+import publicAccessControl from "./shared/middleware/publicAccessControl.js";
 
 const app = express();
 
@@ -55,11 +56,7 @@ app.use(
 
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
 
@@ -67,6 +64,9 @@ app.use(express.json());
 
 // General rate limiting
 app.use(generalRateLimit);
+
+// Public access control for non-auth API routes
+app.use(publicAccessControl);
 
 // Passport middleware
 app.use(

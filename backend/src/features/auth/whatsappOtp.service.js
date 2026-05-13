@@ -4,6 +4,7 @@ import {
   sendWhatsappOtp,
   formatPhoneNumber,
   validatePhoneNumber,
+  buildPhoneNumberQuery,
 } from "./whatsapp.service.js";
 import { getOtpSecuritySettings } from "../admin/authSettings.service.js";
 
@@ -49,8 +50,8 @@ export const sendWhatsappLoginOTP = async (phoneNumber) => {
       throw new Error("Invalid phone number format. Must be 10 digits");
     }
 
-    // Check if user exists with this phone number
-    const user = await User.findOne({ mobile: formattedPhone });
+    // Check if user exists with this phone number or WhatsApp number
+    const user = await User.findOne(buildPhoneNumberQuery(phoneNumber));
     if (!user) {
       throw new Error(
         "No account found with this phone number. Please register first.",
@@ -108,8 +109,8 @@ export const verifyWhatsappLoginOTP = async (phoneNumber, otp) => {
   try {
     const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    // Find user with this phone number
-    const user = await User.findOne({ mobile: formattedPhone });
+    // Find user with this phone number or WhatsApp number
+    const user = await User.findOne(buildPhoneNumberQuery(phoneNumber));
     if (!user) {
       throw new Error("User not found");
     }

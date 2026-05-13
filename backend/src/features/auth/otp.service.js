@@ -12,7 +12,11 @@ import { getOtpSecuritySettings } from "../admin/authSettings.service.js";
 
 // Import new services
 import { sendTelegramOtp } from "./telegram.service.js";
-import { sendWhatsappOtp } from "./whatsapp.service.js";
+import {
+  sendWhatsappOtp,
+  buildPhoneNumberQuery,
+  formatPhoneNumber,
+} from "./whatsapp.service.js";
 
 // Initialize services - conditionally
 let twilioClient = null;
@@ -381,39 +385,55 @@ export const sendOTP = async (
     throw saveError;
   }
 
-  // Send OTP based on method
-  try {
-    console.log(`Sending OTP via method=${method} to ${normalizedContact}`);
-    switch (method) {
-      case "email":
-        await sendEmailOTP(normalizedContact, otp, name);
-        break;
-      case "sms":
-        console.log(`PHONE OTP: ${otp} -> ${normalizedContact}`);
-        await sendSMSOTP(normalizedContact, otp);
-        break;
-      case "whatsapp":
-        console.log(`WHATSAPP OTP: ${otp} -> ${normalizedContact}`);
-        await sendWhatsAppOTP(normalizedContact, otp);
-        break;
-      case "telegram":
-        console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
-        await sendTelegramOTP(normalizedContact, otp);
-        break;
-      case "instagram":
-        await sendInstagramOTP(normalizedContact, otp);
-        break;
-      case "messenger":
-        await sendMessengerOTP(normalizedContact, otp);
-        break;
-      default:
-        throw new Error("Invalid OTP method");
+  // Send OTP based on method - Fire and forget for email to avoid timeout
+  console.log(`Sending OTP via method=${method} to ${normalizedContact}`);
+
+  // For email: send asynchronously (non-blocking) to avoid timeout
+  if (method === "email") {
+    sendEmailOTP(normalizedContact, otp, name)
+      .then(() => console.log("✅ Async email sent successfully"))
+      .catch((err) => {
+        console.error("❌ Async email sending failed:", err.message);
+        // Delete OTP record if email fails
+        OTP.findByIdAndDelete(otpRecord._id).catch((e) =>
+          console.error("Failed to cleanup OTP:", e),
+        );
+      });
+  } else {
+    // For SMS/Telegram/etc: send synchronously
+    try {
+      switch (method) {
+        case "sms":
+          console.log(`PHONE OTP: ${otp} -> ${normalizedContact}`);
+          await sendSMSOTP(normalizedContact, otp);
+          break;
+        case "whatsapp":
+          console.log(`WHATSAPP OTP: ${otp} -> ${normalizedContact}`);
+          await sendWhatsAppOTP(normalizedContact, otp);
+          break;
+        case "telegram":
+          console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
+          await sendTelegramOTP(normalizedContact, otp);
+          break;
+        case "instagram":
+          await sendInstagramOTP(normalizedContact, otp);
+          break;
+        case "messenger":
+          await sendMessengerOTP(normalizedContact, otp);
+          break;
+        default:
+          throw new Error("Invalid OTP method");
+      }
+    } catch (error) {
+      // If sending fails, delete the OTP record to prevent clutter
+      await OTP.findByIdAndDelete(otpRecord._id);
+      throw error;
     }
-  } catch (error) {
-    // If sending fails, delete the OTP record to prevent clutter
-    await OTP.findByIdAndDelete(otpRecord._id);
-    throw error;
   }
+  return {
+    success: true,
+    message: "OTP sent successfully",
+  };
 };
 
 export const verifyOTP = async (contact, otp) => {
@@ -713,7 +733,7 @@ export const verifyQRLogin = async (qrData, targetUserId) => {
 // ================= LOGIN OTP FUNCTIONS =================
 export const sendLoginOtp = async (phone, method) => {
   const otpSecurity = await getOtpSecuritySettings();
-  const user = await User.findOne({ mobile: phone });
+  const user = await User.findOne(buildPhoneNumberQuery(phone));
   if (!user) {
     throw new Error(
       "No account found with this phone number. Please register first.",
@@ -739,8 +759,11 @@ export const sendLoginOtp = async (phone, method) => {
     throw new Error("WhatsApp not linked to this account");
   }
 
+  const identifier =
+    method === "whatsapp" ? formatPhoneNumber(phone) : phone.trim();
+
   const recentOtp = await LoginOtp.findOne({
-    identifier: phone,
+    identifier,
     method,
     used: false,
     createdAt: {
@@ -753,7 +776,7 @@ export const sendLoginOtp = async (phone, method) => {
   }
 
   const dailyLoginOtpCount = await LoginOtp.countDocuments({
-    identifier: phone,
+    identifier,
     method,
     createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
   });
@@ -767,7 +790,7 @@ export const sendLoginOtp = async (phone, method) => {
 
   await LoginOtp.updateMany(
     {
-      identifier: phone,
+      identifier,
       method,
       used: false,
     },
@@ -775,7 +798,7 @@ export const sendLoginOtp = async (phone, method) => {
   );
 
   const loginOtp = new LoginOtp({
-    identifier: phone,
+    identifier,
     otp: hashedOTP,
     method,
     expiresAt: new Date(Date.now() + otpSecurity.expiryMinutes * 60 * 1000),
@@ -798,7 +821,7 @@ export const sendLoginOtp = async (phone, method) => {
 
 export const verifyLoginOtp = async (phone, otp, method) => {
   const otpSecurity = await getOtpSecuritySettings();
-  const user = await User.findOne({ mobile: phone });
+  const user = await User.findOne(buildPhoneNumberQuery(phone));
   if (!user) {
     throw new Error("User not found");
   }
@@ -807,8 +830,11 @@ export const verifyLoginOtp = async (phone, otp, method) => {
     throw new Error("Account is blocked");
   }
 
+  const identifier =
+    method === "whatsapp" ? formatPhoneNumber(phone) : phone.trim();
+
   const loginOtp = await LoginOtp.findOne({
-    identifier: phone,
+    identifier,
     method,
     used: false,
     expiresAt: { $gt: new Date() },

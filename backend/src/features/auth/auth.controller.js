@@ -36,6 +36,7 @@ import {
   verifyWhatsappLoginOTP,
   resendWhatsappLoginOTP,
 } from "./whatsappOtp.service.js";
+import { buildPhoneNumberQuery } from "./whatsapp.service.js";
 import { getTelegramRuntimeSettings } from "../admin/authSettings.service.js";
 
 import User from "./user.model.js";
@@ -514,7 +515,7 @@ export const linkWhatsappController = async (req, res) => {
         message: "Phone and whatsappNumber are required",
       });
     }
-    const user = await User.findOne({ mobile: phone });
+    const user = await User.findOne(buildPhoneNumberQuery(phone));
     if (!user) {
       return res.status(404).json({
         success: false,

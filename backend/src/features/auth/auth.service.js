@@ -532,7 +532,16 @@ export const sendProfileEmailVerificationOTP = async (userId, email) => {
   user.emailOtpExpires = expiresAt;
   await user.save();
 
-  await sendEmailOTP(normalizedEmail, otp, user.name);
+  sendEmailOTP(normalizedEmail, otp, user.name)
+    .then(() =>
+      console.log(
+        "✅ Profile verification email sent successfully to:",
+        normalizedEmail,
+      ),
+    )
+    .catch((err) =>
+      console.error("❌ Profile verification email failed:", err.message),
+    );
 
   return {
     message: "OTP sent to your email address",
@@ -804,7 +813,13 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
       existingRequest.attempts < 3
     ) {
       // Resend existing OTP
-      await sendEmailOTP(newEmail, existingRequest.otp, user.name);
+      sendEmailOTP(newEmail, existingRequest.otp, user.name)
+        .then(() =>
+          console.log("✅ Email update OTP resent successfully to:", newEmail),
+        )
+        .catch((err) =>
+          console.error("❌ Email update resend failed:", err.message),
+        );
       return { success: true, message: "OTP sent to new email address" };
     } else {
       // Delete expired request
@@ -825,7 +840,11 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
   await emailUpdateRequest.save();
 
   // Send OTP to new email
-  await sendEmailOTP(newEmail, otp, user.name);
+  sendEmailOTP(newEmail, otp, user.name)
+    .then(() =>
+      console.log("✅ Email update OTP sent successfully to:", newEmail),
+    )
+    .catch((err) => console.error("❌ Email update OTP failed:", err.message));
 
   return { success: true, message: "OTP sent to new email address" };
 };

@@ -406,6 +406,20 @@ export const getSettings = async (req, res) => {
         visibleCards: ["stats", "users", "content", "quiz", "activity"],
         cardOrder: ["stats", "users", "content", "quiz", "activity"],
       },
+      publicAccessEnabled: true,
+      publicRoutes: [
+        "/",
+        "/landing",
+        "/about",
+        "/contact",
+        "/login",
+        "/forgot-password",
+        "/reset-password",
+        "/verify-email",
+        "/verify-phone",
+        "/login/telegram",
+        "/login/whatsapp",
+      ],
     };
 
     let settings = await Settings.findOne().lean();
@@ -413,7 +427,6 @@ export const getSettings = async (req, res) => {
     if (!settings) {
       settings = await Settings.create({});
       settings = settings.toObject();
-      console.log("Created default settings document:", settings._id);
     }
 
     settings = {
@@ -423,6 +436,7 @@ export const getSettings = async (req, res) => {
         ...defaultSettings.aiSettings,
         ...(settings.aiSettings || {}),
       },
+
       featureFlags: {
         ...defaultSettings.featureFlags,
         ...(settings.featureFlags || {}),
@@ -1157,7 +1171,9 @@ export const globalSearch = async (req, res) => {
 export const getAuthSettings = async (req, res) => {
   try {
     console.log("getAuthSettings called for user:", req.user?.email);
-    const authSettings = await getOrCreateAuthSettings({ includeSensitive: true });
+    const authSettings = await getOrCreateAuthSettings({
+      includeSensitive: true,
+    });
     const safeSettings = sanitizeAuthSettings(authSettings);
 
     console.log("Returning auth settings (sanitized)");

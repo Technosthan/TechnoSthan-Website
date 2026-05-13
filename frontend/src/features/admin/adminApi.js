@@ -29,7 +29,8 @@ export const deleteContent = (contentId) =>
 export const getSettings = () => axiosInstance.get("/api/admin/settings");
 export const updateSettings = (settingsData) =>
   axiosInstance.post("/api/admin/settings", settingsData);
-export const getAuthSettings = () => axiosInstance.get("/api/admin/auth-settings");
+export const getAuthSettings = () =>
+  axiosInstance.get("/api/admin/auth-settings");
 export const updateAuthSettings = (settingsData) =>
   axiosInstance.put("/api/admin/auth-settings", settingsData);
 export const testWhatsappConnection = () =>
@@ -80,6 +81,12 @@ export const globalSearch = (query, type) =>
   axiosInstance.get(
     `/api/admin/search?query=${encodeURIComponent(query)}${type ? `&type=${type}` : ""}`,
   );
+
+// Access control settings
+export const getAccessControlSettings = () =>
+  axiosInstance.get("/api/settings/access-control");
+export const updateAccessControlSettings = (settingsData) =>
+  axiosInstance.put("/api/settings/access-control", settingsData);
 
 // Quiz management (admin)
 export const getAllQuestions = () => axiosInstance.get("/api/quiz/questions");

@@ -1,6 +1,12 @@
 import express from "express";
 import cors from "cors";
-import { getPublicSettings } from "./settings.controller.js";
+import authMiddleware from "../../shared/middleware/authMiddleware.js";
+import adminOnly from "../../shared/middleware/adminOnly.js";
+import {
+  getPublicSettings,
+  getAccessControlSettings,
+  updateAccessControlSettings,
+} from "./settings.controller.js";
 
 const router = express.Router();
 
@@ -13,5 +19,17 @@ const publicCorsOptions = {
 };
 
 router.get("/public", cors(publicCorsOptions), getPublicSettings);
+router.get(
+  "/access-control",
+  authMiddleware,
+  adminOnly,
+  getAccessControlSettings,
+);
+router.put(
+  "/access-control",
+  authMiddleware,
+  adminOnly,
+  updateAccessControlSettings,
+);
 
 export default router;

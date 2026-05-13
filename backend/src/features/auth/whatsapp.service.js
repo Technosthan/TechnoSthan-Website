@@ -3,6 +3,52 @@ import { getWhatsappRuntimeSettings } from "../admin/authSettings.service.js";
 
 const WHATSAPP_API_BASE_URL = "https://graph.facebook.com/v22.0";
 
+const getEnvWhatsappSettings = () => {
+  const enabled = process.env.WHATSAPP_ENABLED
+    ? process.env.WHATSAPP_ENABLED.toLowerCase() !== "false"
+    : undefined;
+
+  return {
+    enabled,
+    accessToken: process.env.WHATSAPP_TOKEN || "",
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
+    templateName: process.env.WHATSAPP_TEMPLATE_NAME || "otp_verification",
+    businessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "",
+  };
+};
+
+export const getWhatsappSettings = async () => {
+  const runtimeSettings = await getWhatsappRuntimeSettings();
+  const envSettings = getEnvWhatsappSettings();
+
+  const hasEnvConfig = Boolean(
+    envSettings.accessToken && envSettings.phoneNumberId,
+  );
+
+  if (hasEnvConfig) {
+    return {
+      enabled:
+        envSettings.enabled !== undefined
+          ? envSettings.enabled
+          : runtimeSettings.enabled,
+      accessToken: envSettings.accessToken,
+      phoneNumberId: envSettings.phoneNumberId,
+      verifyToken: envSettings.verifyToken || runtimeSettings.verifyToken || "",
+      templateName:
+        envSettings.templateName ||
+        runtimeSettings.templateName ||
+        "otp_verification",
+      businessAccountId:
+        envSettings.businessAccountId ||
+        runtimeSettings.businessAccountId ||
+        "",
+    };
+  }
+
+  return runtimeSettings;
+};
+
 /**
  * Format phone number to international format with country code
  * @param {string} phoneNumber - Phone number to format
@@ -17,7 +63,7 @@ export const formatPhoneNumber = (phoneNumber) => {
     cleaned = "91" + cleaned.substring(1);
   }
 
-  // If number doesn't start with country code, add India code
+  // If number doesn't start with country code, add India code for 10-digit numbers
   if (!cleaned.startsWith("91") && cleaned.length === 10) {
     cleaned = "91" + cleaned;
   }
@@ -40,6 +86,20 @@ export const validatePhoneNumber = (phoneNumber) => {
   return phoneRegex.test(phoneNumber);
 };
 
+export const buildPhoneNumberQuery = (phoneNumber) => {
+  const formatted = formatPhoneNumber(phoneNumber);
+  const withoutPlus = formatted.replace(/^\+/, "");
+  const withoutCountryCode = withoutPlus.replace(/^91/, "");
+
+  const variants = Array.from(
+    new Set([formatted, withoutPlus, withoutCountryCode]).values(),
+  ).filter(Boolean);
+
+  return {
+    $or: [{ mobile: { $in: variants } }, { whatsappNumber: { $in: variants } }],
+  };
+};
+
 /**
  * Send WhatsApp OTP using Meta Cloud API
  * @param {string} to - Recipient phone number
@@ -48,7 +108,7 @@ export const validatePhoneNumber = (phoneNumber) => {
  */
 export const sendWhatsappOtp = async (to, otp) => {
   try {
-    const whatsappSettings = await getWhatsappRuntimeSettings();
+    const whatsappSettings = await getWhatsappSettings();
 
     if (!whatsappSettings.enabled) {
       throw new Error("WhatsApp login is currently disabled");
@@ -56,7 +116,7 @@ export const sendWhatsappOtp = async (to, otp) => {
 
     if (!whatsappSettings.accessToken || !whatsappSettings.phoneNumberId) {
       throw new Error(
-        "WhatsApp Cloud API not configured. Missing ACCESS_TOKEN or PHONE_NUMBER_ID",
+        "WhatsApp Cloud API not configured. Missing access token or phone number ID.",
       );
     }
 
@@ -139,13 +199,12 @@ export const sendWhatsappOtp = async (to, otp) => {
  * @param {string} mode - Hub mode
  * @param {string} token - Hub verify token
  * @param {string} challenge - Hub challenge
- * @returns {string|null} - Challenge if valid, null otherwise
+ * @returns {Promise<string|null>} - Challenge if valid, null otherwise
  */
-export const verifyWebhook = (mode, token, challenge) => {
-  return getWhatsappRuntimeSettings().then((settings) => {
-    if (mode === "subscribe" && token === settings.verifyToken) {
-      return challenge;
-    }
-    return null;
-  });
+export const verifyWebhook = async (mode, token, challenge) => {
+  const settings = await getWhatsappSettings();
+  if (mode === "subscribe" && token === settings.verifyToken) {
+    return challenge;
+  }
+  return null;
 };

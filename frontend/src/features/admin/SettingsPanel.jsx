@@ -27,6 +27,20 @@ const defaultSettings = {
     visibleCards: ["stats", "users", "content", "quiz", "activity"],
     cardOrder: ["stats", "users", "content", "quiz", "activity"],
   },
+  publicAccessEnabled: true,
+  publicRoutes: [
+    "/",
+    "/landing",
+    "/about",
+    "/contact",
+    "/login",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/verify-phone",
+    "/login/telegram",
+    "/login/whatsapp",
+  ],
 };
 
 const SettingsPanel = () => {
@@ -35,6 +49,7 @@ const SettingsPanel = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [newPublicRoute, setNewPublicRoute] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -64,6 +79,11 @@ const SettingsPanel = () => {
           ...defaultSettings.dashboardSettings,
           ...(response.data.data?.dashboardSettings || {}),
         },
+        publicAccessEnabled:
+          response.data.data?.publicAccessEnabled ??
+          defaultSettings.publicAccessEnabled,
+        publicRoutes:
+          response.data.data?.publicRoutes ?? defaultSettings.publicRoutes,
       });
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load settings");
@@ -93,7 +113,7 @@ const SettingsPanel = () => {
   const updateSetting = (field, value) => {
     setSettings((prev) => ({
       ...defaultSettings,
-      ...prev,
+      ...(prev || {}),
       [field]: value,
     }));
   };
@@ -264,6 +284,111 @@ const SettingsPanel = () => {
               className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
               placeholder="https://example.com/logo.png"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Website Access Control */}
+      <div
+        className={`${theme.card} rounded-2xl shadow-lg p-8 border ${theme.border}`}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className={`text-2xl font-bold ${theme.text}`}>
+              Website Access Control
+            </h2>
+            <p className={`text-sm ${theme.textSecondary}`}>
+              Control whether the site is publicly accessible and which routes
+              remain open.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200">
+            <div>
+              <h3 className={`font-semibold ${theme.text}`}>
+                Public website access
+              </h3>
+              <p className={`text-sm ${theme.textSecondary}`}>
+                Enable public access for selected pages when the site is locked.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={currentSettings.publicAccessEnabled}
+                onChange={(e) =>
+                  updateSetting("publicAccessEnabled", e.target.checked)
+                }
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
+                Public Routes
+              </label>
+              <p className={`text-sm ${theme.textSecondary} mb-3`}>
+                Add or remove routes that remain accessible without login.
+              </p>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={newPublicRoute}
+                  onChange={(e) => setNewPublicRoute(e.target.value)}
+                  placeholder="/about or /quiz/*"
+                  className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newPublicRoute.trim()) return;
+                    const normalized = newPublicRoute.trim();
+                    const nextRoutes = Array.from(
+                      new Set([
+                        ...(currentSettings.publicRoutes || []),
+                        normalized,
+                      ]),
+                    );
+                    updateSetting("publicRoutes", nextRoutes);
+                    setNewPublicRoute("");
+                  }}
+                  className="px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(currentSettings.publicRoutes || []).map((route) => (
+                  <span
+                    key={route}
+                    className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-100 text-sm text-slate-700"
+                  >
+                    <span>{route}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateSetting(
+                          "publicRoutes",
+                          (currentSettings.publicRoutes || []).filter(
+                            (r) => r !== route,
+                          ),
+                        )
+                      }
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
