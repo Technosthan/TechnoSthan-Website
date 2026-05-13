@@ -34,15 +34,24 @@ let emailTransporter = null;
 const getEmailTransporter = () => {
   if (!emailTransporter && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     emailTransporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
+    console.log("✅ Created Gmail transporter for:", process.env.EMAIL_USER);
   }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error(
+      "Email transporter could not be created: EMAIL_USER or EMAIL_PASS is missing",
+    );
+  }
+
   return emailTransporter;
 };
 
@@ -75,16 +84,23 @@ export const verifyOTPHash = async (otp, hash) => {
 
 // OTP sending functions
 export const sendEmailOTP = async (email, otp, name = null) => {
-  console.log("EMAIL OTP:", otp); // debug
+  console.log("🔥 EMAIL OTP DEBUG:");
+  console.log("  - To:", email);
+  console.log("  - OTP:", otp);
+  console.log("  - Name:", name);
+
   const transporter = getEmailTransporter();
   if (!transporter) {
+    console.error("❌ Email service not configured");
     throw new Error("Email service not configured");
   }
+
+  console.log("✅ Email transporter available");
 
   const greeting = name ? `Hi ${name},` : "Hi there,";
 
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `AgriTech <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Verify Your Account - AgriTech",
     html: `
@@ -128,10 +144,17 @@ export const sendEmailOTP = async (email, otp, name = null) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully");
+    console.log("📤 Sending email...");
+    const result = await transporter.sendMail(mailOptions);
+    console.log("✅ Email sent successfully!");
+    console.log("  - Message ID:", result.messageId);
+    console.log("  - Response:", result.response);
+    return result;
   } catch (err) {
-    console.error("Email error:", err);
+    console.error("❌ Email sending failed:");
+    console.error("  - Error:", err.message);
+    console.error("  - Code:", err.code);
+    console.error("  - Command:", err.command);
     throw err;
   }
 };

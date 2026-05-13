@@ -386,8 +386,28 @@ export const changePassword = async (
 
 // Google OAuth
 export const googleAuth = async (profile) => {
-  const { id, displayName, emails, photos } = profile;
+  console.log("Google profile received:", JSON.stringify(profile, null, 2));
+
+  // Handle different profile structures
+  const id = profile.id || profile.sub;
+  const displayName =
+    profile.displayName ||
+    profile.name?.givenName + " " + profile.name?.familyName ||
+    profile.name;
+  const emails =
+    profile.emails || (profile.email ? [{ value: profile.email }] : []);
+  const photos =
+    profile.photos || (profile.picture ? [{ value: profile.picture }] : []);
+
   const profileEmail = normalizeEmail(emails?.[0]?.value || "");
+
+  console.log("Extracted data:", {
+    id,
+    displayName,
+    profileEmail,
+    emails: emails?.length,
+    photos: photos?.length,
+  });
 
   if (!displayName) {
     throw new Error("Display name is required for Google login");
@@ -435,6 +455,8 @@ export const googleAuth = async (profile) => {
     expiresIn: "24h",
   });
 
+  console.log("Generated token:", !!token);
+
   const userData = {
     id: user._id,
     name: user.name,
@@ -450,6 +472,11 @@ export const googleAuth = async (profile) => {
     requiresVerification: !user.emailVerified || !user.phoneVerified,
     hasPassword: typeof user.password === "string" && user.password.length > 0,
   };
+
+  console.log("Returning auth result:", {
+    hasToken: !!token,
+    hasUser: !!userData,
+  });
 
   return { user: userData, token };
 };

@@ -113,23 +113,55 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate(
-    "google",
-    {
-      failureRedirect:
-        `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
-    },
-  ),
+  passport.authenticate("google", {
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+  }),
   (req, res) => {
-    // Successful authentication, redirect to frontend with token
-    const { token, user } = req.user;
-    const needsVerification =
-      user.requiresVerification || !user.emailVerified || !user.phoneVerified;
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    try {
+      console.log(
+        "Google callback - req.user:",
+        JSON.stringify(req.user, null, 2),
+      );
 
-    res.redirect(
-      `${frontendUrl}/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}${needsVerification ? "&verification=required" : ""}`,
-    );
+      // Check if authentication was successful
+      if (!req.user) {
+        console.error("Google OAuth failed: no user in request");
+        return res.redirect(
+          `${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=auth_failed`,
+        );
+      }
+
+      const { token, user } = req.user;
+
+      console.log("Extracted token and user:", {
+        token: !!token,
+        user: !!user,
+      });
+
+      // Validate required data
+      if (!token || !user) {
+        console.error("Google OAuth failed: missing token or user data", {
+          token: !!token,
+          user: !!user,
+        });
+        return res.redirect(
+          `${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=auth_failed`,
+        );
+      }
+
+      const needsVerification =
+        user.requiresVerification || !user.emailVerified || !user.phoneVerified;
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+      res.redirect(
+        `${frontendUrl}/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}${needsVerification ? "&verification=required" : ""}`,
+      );
+    } catch (error) {
+      console.error("Google OAuth callback error:", error);
+      res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=auth_failed`,
+      );
+    }
   },
 );
 
