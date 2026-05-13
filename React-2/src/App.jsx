@@ -41,6 +41,9 @@ import EngineeringPage from "./pages/EngineeringPage";
 import CloudPage from "./pages/CloudPage";
 import DigitalGrowth from "./pages/DigitalGrowth";
 import ConsultingPage from "./pages/ConsultingPage";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
+import DataDeletion from "./pages/DataDeletion";
 
 /* OLD SERVICE PAGES */
 import TechnoSthanHospitality from "./component/Services/TechnoSthanHospitality";
@@ -133,6 +136,10 @@ function App() {
 
         {/* OTHER */}
         <Route path="/contact" element={<Contact />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsConditions />} />
+        <Route path="/data-deletion" element={<DataDeletion />} />
 
         <Route path="/solution" element={<Solution />} />
 
