@@ -1,11 +1,24 @@
 import axiosInstance from "../../shared/lib/axiosInstance";
 
+const apiBaseURL =
+  axiosInstance.defaults.baseURL ||
+  import.meta.env.VITE_API_BASE_URL_PROD ||
+  import.meta.env.VITE_API_BASE_URL ||
+  window.location.origin;
+
 export const registerUser = (data) =>
   axiosInstance.post("/api/auth/register", data);
 export const loginUser = (data) => axiosInstance.post("/api/auth/login", data);
-export const authenticateUser = (data) => axiosInstance.post("/api/auth/authenticate", data);
-export const googleLogin = () =>
-  (window.location.href = `${axiosInstance.defaults.baseURL}/api/auth/google`);
+export const authenticateUser = (data) =>
+  axiosInstance.post("/api/auth/authenticate", data);
+export const googleLogin = () => {
+  if (!apiBaseURL) {
+    console.error("Missing API base URL for Google login.");
+    return;
+  }
+
+  window.location.href = `${apiBaseURL}/api/auth/google`;
+};
 
 // OTP-based auth APIs
 export const sendOTP = (data) => axiosInstance.post("/api/auth/send-otp", data);
