@@ -1,9 +1,17 @@
 {
-  "rewrites": [
+  "redirects": [
+    {
+      "source": "/services/technosthan-agritech",
+      "destination": "https://technosthan-agritech.vercel.app",
+      "permanent": false
+    },
     {
       "source": "/services/technosthan-agritech/:path*",
-      "destination": "https://technosthan-agritech.vercel.app/:path*"
-    },
+      "destination": "https://technosthan-agritech.vercel.app/:path*",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
