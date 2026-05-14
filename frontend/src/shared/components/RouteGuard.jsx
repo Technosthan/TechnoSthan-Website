@@ -1,7 +1,9 @@
+import { useEffect, useRef } from "react";
 import { useLocation, Navigate, Outlet } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useAccessControl } from "../../contexts/AccessControlContext";
 
-const normalizeRoutePattern = (pattern) => {
+export const normalizeRoutePattern = (pattern) => {
   if (!pattern || typeof pattern !== "string") {
     return null;
   }
@@ -43,18 +45,11 @@ const isRoutePublic = (pathname, publicRoutes) => {
 
 const RouteGuard = () => {
   const location = useLocation();
-  const { publicAccessEnabled, publicRoutes, loading } = useAccessControl();
+  const { publicAccessEnabled, publicWebsiteEnabled, publicRoutes, loading } =
+    useAccessControl();
   const token = localStorage.getItem("token");
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="text-center">
-          <p className="text-lg font-medium">Loading access control...</p>
-        </div>
-      </div>
-    );
-  }
+  const pathname = decodeURIComponent(location.pathname);
+  const hasToasted = useRef(false);
 
   const alwaysPublicRoutes = [
     "/login",
@@ -66,10 +61,37 @@ const RouteGuard = () => {
     "/login/whatsapp",
   ];
 
+  const publicEnabled =
+    typeof publicWebsiteEnabled === "boolean" ||
+    typeof publicAccessEnabled === "boolean"
+      ? Boolean(publicWebsiteEnabled || publicAccessEnabled)
+      : true;
+
   const routeIsPublic =
-    alwaysPublicRoutes.includes(location.pathname) ||
-    publicAccessEnabled ||
-    isRoutePublic(location.pathname, publicRoutes);
+    alwaysPublicRoutes.includes(pathname) ||
+    publicEnabled ||
+    isRoutePublic(pathname, publicRoutes);
+
+  useEffect(() => {
+    if (!routeIsPublic && !token) {
+      if (!hasToasted.current) {
+        toast.error("Please login to continue.", { id: "login-required" });
+        hasToasted.current = true;
+      }
+    } else {
+      hasToasted.current = false;
+    }
+  }, [routeIsPublic, token]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <p className="text-lg font-medium">Loading access control...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!routeIsPublic && !token) {
     return <Navigate to="/login" state={{ from: location }} replace />;

@@ -9,7 +9,12 @@ const publicAccessControl = async (req, res, next) => {
     }
 
     const settings = await Settings.findOne().lean();
-    const publicAccessEnabled = settings?.publicAccessEnabled;
+    const publicAccessEnabled =
+      settings?.publicWebsiteEnabled != null
+        ? settings.publicWebsiteEnabled
+        : settings?.publicAccessEnabled != null
+          ? settings.publicAccessEnabled
+          : true; // Default to public access enabled
 
     if (publicAccessEnabled === false) {
       const authHeader = req.headers.authorization;

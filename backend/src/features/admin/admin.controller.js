@@ -407,6 +407,8 @@ export const getSettings = async (req, res) => {
         cardOrder: ["stats", "users", "content", "quiz", "activity"],
       },
       publicAccessEnabled: true,
+      publicWebsiteEnabled: true,
+      hideLoginButton: true,
       publicRoutes: [
         "/",
         "/landing",
@@ -429,6 +431,11 @@ export const getSettings = async (req, res) => {
       settings = settings.toObject();
     }
 
+    const publicAccessEnabledValue =
+      settings.publicWebsiteEnabled != null
+        ? settings.publicWebsiteEnabled
+        : settings.publicAccessEnabled;
+
     settings = {
       ...defaultSettings,
       ...settings,
@@ -436,7 +443,6 @@ export const getSettings = async (req, res) => {
         ...defaultSettings.aiSettings,
         ...(settings.aiSettings || {}),
       },
-
       featureFlags: {
         ...defaultSettings.featureFlags,
         ...(settings.featureFlags || {}),
@@ -445,6 +451,24 @@ export const getSettings = async (req, res) => {
         ...defaultSettings.dashboardSettings,
         ...(settings.dashboardSettings || {}),
       },
+      publicAccessEnabled:
+        settings.publicAccessEnabled != null
+          ? settings.publicAccessEnabled
+          : publicAccessEnabledValue != null
+            ? publicAccessEnabledValue
+            : defaultSettings.publicAccessEnabled,
+      publicWebsiteEnabled:
+        settings.publicWebsiteEnabled != null
+          ? settings.publicWebsiteEnabled
+          : publicAccessEnabledValue != null
+            ? publicAccessEnabledValue
+            : defaultSettings.publicWebsiteEnabled,
+      hideLoginButton:
+        settings.hideLoginButton != null
+          ? settings.hideLoginButton
+          : publicAccessEnabledValue != null
+            ? publicAccessEnabledValue
+            : defaultSettings.hideLoginButton,
     };
 
     console.log("Returning settings:", {
@@ -888,12 +912,82 @@ export const updateSettings = async (req, res) => {
       });
     }
 
+    if (
+      updateData.publicAccessEnabled != null &&
+      typeof updateData.publicAccessEnabled !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "publicAccessEnabled must be a boolean",
+      });
+    }
+
+    if (
+      updateData.publicWebsiteEnabled != null &&
+      typeof updateData.publicWebsiteEnabled !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "publicWebsiteEnabled must be a boolean",
+      });
+    }
+
+    if (
+      updateData.hideLoginButton != null &&
+      typeof updateData.hideLoginButton !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "hideLoginButton must be a boolean",
+      });
+    }
+
+    if (
+      updateData.publicRoutes != null &&
+      !Array.isArray(updateData.publicRoutes)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "publicRoutes must be an array of strings",
+      });
+    }
+
+    const publicRoutes = Array.isArray(updateData.publicRoutes)
+      ? updateData.publicRoutes.filter((route) => typeof route === "string")
+      : undefined;
+
+    const normalizedUpdateData = {
+      ...updateData,
+    };
+
+    if (publicRoutes) {
+      normalizedUpdateData.publicRoutes = publicRoutes
+        .map((route) => route.trim())
+        .filter(Boolean);
+    }
+
+    if (
+      normalizedUpdateData.publicWebsiteEnabled == null &&
+      normalizedUpdateData.publicAccessEnabled != null
+    ) {
+      normalizedUpdateData.publicWebsiteEnabled =
+        normalizedUpdateData.publicAccessEnabled;
+    }
+
+    if (
+      normalizedUpdateData.hideLoginButton == null &&
+      normalizedUpdateData.publicWebsiteEnabled != null
+    ) {
+      normalizedUpdateData.hideLoginButton =
+        normalizedUpdateData.publicWebsiteEnabled;
+    }
+
     console.log("Validation passed, looking for existing settings...");
 
     // Merge into a single settings document so nested sections persist cleanly.
     const settings = await Settings.findOneAndUpdate(
       {},
-      { $set: updateData },
+      { $set: normalizedUpdateData },
       {
         new: true,
         upsert: true,

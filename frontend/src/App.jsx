@@ -60,30 +60,9 @@ function App() {
                 }
               />
 
-              <Route
-                path="/AgriTech Wiki"
-                element={
-                  <ProtectedRoute>
-                    <ContentPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/quiz/:contentId"
-                element={
-                  <ProtectedRoute>
-                    <QuizPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chat"
-                element={
-                  <ProtectedRoute>
-                    <ChatPage />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/AgriTech Wiki" element={<ContentPage />} />
+              <Route path="/quiz/:contentId" element={<QuizPage />} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route
                 path="/dashboard"
                 element={

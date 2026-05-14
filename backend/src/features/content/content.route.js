@@ -9,6 +9,7 @@ import {
 } from "./content.controller.js";
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
+import authOptionalMiddleware from "../../shared/middleware/optionalAuthMiddleware.js";
 import adminOnly from "../../shared/middleware/adminOnly.js";
 
 const router = express.Router();
@@ -16,7 +17,7 @@ const router = express.Router();
 // public
 router.get("/", getAll);
 router.get("/:id", getOne);
-router.post("/summarize", authMiddleware, summarize);
+router.post("/summarize", authOptionalMiddleware, summarize);
 
 // admin only
 router.post("/", authMiddleware, adminOnly, create);

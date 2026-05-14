@@ -19,7 +19,8 @@ export const fetchQuestions = async (req, res) => {
 
 export const submit = async (req, res) => {
   try {
-    const result = await submitQuiz(req.user._id, req.body.answers);
+    const userId = req.user?._id || null;
+    const result = await submitQuiz(userId, req.body.answers);
 
     res.json({
       success: true,
@@ -34,6 +35,13 @@ export const submit = async (req, res) => {
 };
 
 export const results = async (req, res) => {
+  if (!req.user) {
+    return res.json({
+      success: true,
+      data: [],
+    });
+  }
+
   const data = await getResults(req.user._id);
 
   res.json({

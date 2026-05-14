@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, Shield, Bell, Menu, X } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAccessControl } from "../contexts/AccessControlContext";
 import { getUnreadCount } from "../shared/lib/announcementsApi";
 
 const Navbar = () => {
@@ -15,6 +16,14 @@ const Navbar = () => {
   const isAdmin = user?.role === "admin";
   const [unread, setUnread] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const {
+    publicAccessEnabled,
+    publicWebsiteEnabled,
+    loading: accessLoading,
+  } = useAccessControl();
+  const publicEnabled =
+    publicWebsiteEnabled != null ? publicWebsiteEnabled : publicAccessEnabled;
+  const hideLoginButton = !accessLoading && publicEnabled;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -131,6 +140,11 @@ const Navbar = () => {
 
       {/* Desktop User Section */}
       <div className="hidden md:flex items-center gap-4">
+        {hideLoginButton && (
+          <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-2">
+            Public Access Enabled
+          </span>
+        )}
         {token ? (
           <>
             {isAdmin && (
@@ -171,13 +185,15 @@ const Navbar = () => {
             </motion.button>
           </>
         ) : (
-          <Link
-            to="/login"
-            className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
-          >
-            <Shield size={16} />
-            Login
-          </Link>
+          !hideLoginButton && (
+            <Link
+              to="/login"
+              className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
+            >
+              <Shield size={16} />
+              Login
+            </Link>
+          )
         )}
       </div>
 
@@ -292,14 +308,16 @@ const Navbar = () => {
                     Logout
                   </motion.button>
                 ) : (
-                  <Link
-                    to="/login"
-                    className={`${theme.buttonSecondary} w-full hover:scale-105 transition transform px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2`}
-                    onClick={handleNavClick}
-                  >
-                    <Shield size={16} />
-                    Login
-                  </Link>
+                  !hideLoginButton && (
+                    <Link
+                      to="/login"
+                      className={`${theme.buttonSecondary} w-full hover:scale-105 transition transform px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2`}
+                      onClick={handleNavClick}
+                    >
+                      <Shield size={16} />
+                      Login
+                    </Link>
+                  )
                 )}
               </div>
             </div>

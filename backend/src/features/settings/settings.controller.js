@@ -15,6 +15,8 @@ export const getPublicSettings = async (req, res) => {
         cardOrder: ["stats", "users", "content", "quiz", "activity"],
       },
       publicAccessEnabled: true,
+      publicWebsiteEnabled: true,
+      hideLoginButton: true,
       publicRoutes: [
         "/",
         "/landing",
@@ -27,6 +29,9 @@ export const getPublicSettings = async (req, res) => {
         "/verify-phone",
         "/login/telegram",
         "/login/whatsapp",
+        "/AgriTech Wiki",
+        "/chat",
+        "/quiz/:contentId",
       ],
     };
 
@@ -36,6 +41,11 @@ export const getPublicSettings = async (req, res) => {
       settings = await Settings.create({});
       settings = settings.toObject();
     }
+
+    const publicAccessEnabledValue =
+      settings.publicWebsiteEnabled != null
+        ? settings.publicWebsiteEnabled
+        : settings.publicAccessEnabled;
 
     settings = {
       ...defaultSettings,
@@ -52,6 +62,20 @@ export const getPublicSettings = async (req, res) => {
         settings.publicAccessEnabled != null
           ? settings.publicAccessEnabled
           : defaultSettings.publicAccessEnabled,
+      publicWebsiteEnabled:
+        settings.publicWebsiteEnabled != null
+          ? settings.publicWebsiteEnabled
+          : publicAccessEnabledValue != null
+            ? publicAccessEnabledValue
+            : defaultSettings.publicWebsiteEnabled,
+      hideLoginButton:
+        settings.hideLoginButton != null
+          ? settings.hideLoginButton
+          : settings.publicWebsiteEnabled != null
+            ? settings.publicWebsiteEnabled
+            : settings.publicAccessEnabled != null
+              ? settings.publicAccessEnabled
+              : defaultSettings.hideLoginButton,
       publicRoutes:
         settings.publicRoutes != null
           ? settings.publicRoutes
@@ -72,9 +96,11 @@ export const getAccessControlSettings = async (req, res) => {
   try {
     const settings = await Settings.findOne().lean();
     const publicAccessEnabled =
-      settings?.publicAccessEnabled != null
-        ? settings.publicAccessEnabled
-        : true;
+      settings?.publicWebsiteEnabled != null
+        ? settings.publicWebsiteEnabled
+        : settings?.publicAccessEnabled != null
+          ? settings.publicAccessEnabled
+          : true;
     const publicRoutes =
       settings?.publicRoutes != null
         ? settings.publicRoutes
@@ -90,12 +116,21 @@ export const getAccessControlSettings = async (req, res) => {
             "/verify-phone",
             "/login/telegram",
             "/login/whatsapp",
+            "/AgriTech Wiki",
+            "/chat",
+            "/quiz/:contentId",
           ];
+    const hideLoginButton =
+      settings?.hideLoginButton != null
+        ? settings.hideLoginButton
+        : publicAccessEnabled;
 
     res.json({
       success: true,
       data: {
         publicAccessEnabled,
+        publicWebsiteEnabled: publicAccessEnabled,
+        hideLoginButton,
         publicRoutes,
       },
     });
@@ -110,12 +145,22 @@ export const getAccessControlSettings = async (req, res) => {
 
 export const updateAccessControlSettings = async (req, res) => {
   try {
-    const { publicAccessEnabled, publicRoutes } = req.body || {};
+    const {
+      publicAccessEnabled,
+      publicWebsiteEnabled,
+      hideLoginButton,
+      publicRoutes,
+    } = req.body || {};
 
-    if (typeof publicAccessEnabled !== "boolean") {
+    const publicEnabledValue =
+      typeof publicWebsiteEnabled === "boolean"
+        ? publicWebsiteEnabled
+        : publicAccessEnabled;
+
+    if (typeof publicEnabledValue !== "boolean") {
       return res.status(400).json({
         success: false,
-        message: "publicAccessEnabled must be a boolean",
+        message: "publicAccessEnabled/publicWebsiteEnabled must be a boolean",
       });
     }
 
@@ -135,7 +180,12 @@ export const updateAccessControlSettings = async (req, res) => {
       {},
       {
         $set: {
-          publicAccessEnabled,
+          publicAccessEnabled: publicEnabledValue,
+          publicWebsiteEnabled: publicEnabledValue,
+          hideLoginButton:
+            typeof hideLoginButton === "boolean"
+              ? hideLoginButton
+              : publicEnabledValue,
           publicRoutes: normalizedRoutes,
         },
       },

@@ -20,7 +20,8 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const token = localStorage.getItem("token");
+    if (error.response?.status === 401 && token) {
       // Token is invalid or expired, clear local storage and redirect to login
       localStorage.removeItem("token");
       localStorage.removeItem("user");

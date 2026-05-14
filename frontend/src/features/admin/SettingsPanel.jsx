@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import toast from "react-hot-toast";
 import {
   Settings as SettingsIcon,
   Save,
@@ -28,6 +29,8 @@ const defaultSettings = {
     cardOrder: ["stats", "users", "content", "quiz", "activity"],
   },
   publicAccessEnabled: true,
+  publicWebsiteEnabled: true,
+  hideLoginButton: true,
   publicRoutes: [
     "/",
     "/landing",
@@ -49,7 +52,6 @@ const SettingsPanel = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [newPublicRoute, setNewPublicRoute] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -96,15 +98,28 @@ const SettingsPanel = () => {
     try {
       setSaving(true);
       setError("");
-      console.log("Saving settings:", settings);
       const response = await updateSettings(settings);
-      console.log("Settings saved successfully:", response.data);
       setSettings(response.data.data);
-      // Show success message
-      alert("Settings saved successfully!");
+      toast.success(response.data?.message || "Settings saved successfully");
+
+      window.dispatchEvent(
+        new CustomEvent("publicAccessUpdated", {
+          detail: {
+            publicWebsiteEnabled:
+              response.data.data?.publicWebsiteEnabled ??
+              response.data.data?.publicAccessEnabled,
+            publicAccessEnabled:
+              response.data.data?.publicAccessEnabled ??
+              response.data.data?.publicWebsiteEnabled,
+            publicRoutes: response.data.data?.publicRoutes,
+          },
+        }),
+      );
     } catch (err) {
       console.error("Save error:", err);
-      setError(err.response?.data?.message || "Failed to save settings");
+      const message = err.response?.data?.message || "Failed to save settings";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -119,6 +134,28 @@ const SettingsPanel = () => {
   };
 
   const currentSettings = settings || defaultSettings;
+
+  const publicRouteOptions = [
+    { label: "Home", value: "/" },
+    { label: "AI Chat", value: "/chat" },
+    { label: "Agritech Wiki", value: "/AgriTech Wiki" },
+    { label: "Quiz", value: "/quiz/*" },
+    { label: "Content", value: "/AgriTech Wiki" },
+    { label: "About", value: "/about" },
+    { label: "Contact", value: "/contact" },
+  ];
+
+  const isRouteSelected = (route) =>
+    Array.isArray(currentSettings.publicRoutes) &&
+    currentSettings.publicRoutes.includes(route);
+
+  const togglePublicRoute = (route) => {
+    const currentRoutes = currentSettings.publicRoutes || [];
+    const nextRoutes = currentRoutes.includes(route)
+      ? currentRoutes.filter((item) => item !== route)
+      : [...currentRoutes, route];
+    updateSetting("publicRoutes", nextRoutes);
+  };
 
   if (loading) {
     return (
@@ -288,30 +325,36 @@ const SettingsPanel = () => {
         </div>
       </div>
 
-      {/* Website Access Control */}
+      {/* Website Public Mode */}
       <div
         className={`${theme.card} rounded-2xl shadow-lg p-8 border ${theme.border}`}
       >
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className={`text-2xl font-bold ${theme.text}`}>
-              Website Access Control
+              Website Public Mode
             </h2>
             <p className={`text-sm ${theme.textSecondary}`}>
-              Control whether the site is publicly accessible and which routes
-              remain open.
+              Control whether users can access the platform without login.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200">
+          <div className="flex flex-col gap-4 p-4 rounded-xl border border-gray-200 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className={`font-semibold ${theme.text}`}>
-                Public website access
-              </h3>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h3 className={`font-semibold ${theme.text}`}>
+                  Enable Public Website Access
+                </h3>
+                {currentSettings.publicAccessEnabled && (
+                  <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-semibold px-3 py-1">
+                    Public Access Enabled
+                  </span>
+                )}
+              </div>
               <p className={`text-sm ${theme.textSecondary}`}>
-                Enable public access for selected pages when the site is locked.
+                When enabled, the website is available to guests without login.
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -327,69 +370,44 @@ const SettingsPanel = () => {
             </label>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label
-                className={`block text-sm font-semibold ${theme.text} mb-2`}
-              >
-                Public Routes
-              </label>
-              <p className={`text-sm ${theme.textSecondary} mb-3`}>
-                Add or remove routes that remain accessible without login.
-              </p>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newPublicRoute}
-                  onChange={(e) => setNewPublicRoute(e.target.value)}
-                  placeholder="/about or /quiz/*"
-                  className={`${theme.input} w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200`}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!newPublicRoute.trim()) return;
-                    const normalized = newPublicRoute.trim();
-                    const nextRoutes = Array.from(
-                      new Set([
-                        ...(currentSettings.publicRoutes || []),
-                        normalized,
-                      ]),
-                    );
-                    updateSetting("publicRoutes", nextRoutes);
-                    setNewPublicRoute("");
-                  }}
-                  className="px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors duration-200"
+          {!currentSettings.publicAccessEnabled && (
+            <div className="space-y-4">
+              <div>
+                <label
+                  className={`block text-sm font-semibold ${theme.text} mb-2`}
                 >
-                  Add
-                </button>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(currentSettings.publicRoutes || []).map((route) => (
-                  <span
-                    key={route}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-100 text-sm text-slate-700"
-                  >
-                    <span>{route}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateSetting(
-                          "publicRoutes",
-                          (currentSettings.publicRoutes || []).filter(
-                            (r) => r !== route,
-                          ),
-                        )
-                      }
-                      className="text-red-600 hover:text-red-800"
+                  Public Routes
+                </label>
+                <p className={`text-sm ${theme.textSecondary} mb-3`}>
+                  Select which pages remain available when the website is set to
+                  private mode.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {publicRouteOptions.map((routeOption) => (
+                    <label
+                      key={`${routeOption.label}-${routeOption.value}`}
+                      className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer hover:border-blue-400 transition-colors"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                      <input
+                        type="checkbox"
+                        checked={isRouteSelected(routeOption.value)}
+                        onChange={() => togglePublicRoute(routeOption.value)}
+                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className={`text-sm font-medium ${theme.text}`}>
+                          {routeOption.label}
+                        </span>
+                        <p className={`text-xs ${theme.textSecondary}`}>
+                          {routeOption.value}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

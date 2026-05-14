@@ -79,7 +79,7 @@ export const uploadFile = async (req, res) => {
       });
     }
 
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { message } = req.body;
 
     // Validation: Require message when file is uploaded
@@ -118,20 +118,22 @@ Please structure your response to include:
     // Get AI response
     const aiResponse = await getAIResponse(analysisPrompt, []);
 
-    // Save to database
-    const chatEntry = new Chat({
-      userId,
-      message: `File uploaded: ${file.originalname} - ${message || "Please analyze this file"}`,
-      response: aiResponse,
-      file: {
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        path: file.path,
-      },
-    });
+    // Save to database for authenticated users only
+    if (userId) {
+      const chatEntry = new Chat({
+        userId,
+        message: `File uploaded: ${file.originalname} - ${message || "Please analyze this file"}`,
+        response: aiResponse,
+        file: {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: file.path,
+        },
+      });
 
-    await chatEntry.save();
+      await chatEntry.save();
+    }
 
     // Clean up uploaded file after processing
     try {
@@ -187,7 +189,7 @@ Please structure your response to include:
 export const chat = async (req, res) => {
   try {
     const { message, history } = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
     // Validation: Check if message is provided
     if (!message || typeof message !== "string" || message.trim() === "") {
@@ -199,14 +201,16 @@ export const chat = async (req, res) => {
 
     const reply = await getAIResponse(message.trim(), history);
 
-    // Save chat to database
-    const chatEntry = new Chat({
-      userId,
-      message: message.trim(),
-      response: reply,
-    });
+    // Save chat to database for authenticated users only
+    if (userId) {
+      const chatEntry = new Chat({
+        userId,
+        message: message.trim(),
+        response: reply,
+      });
 
-    await chatEntry.save();
+      await chatEntry.save();
+    }
 
     res.json({
       success: true,

@@ -3,13 +3,30 @@ import axios from "axios";
 
 const AccessControlContext = createContext({
   publicAccessEnabled: true,
+  publicWebsiteEnabled: true,
   publicRoutes: ["/"],
   loading: true,
 });
 
 export const AccessControlProvider = ({ children }) => {
   const [publicAccessEnabled, setPublicAccessEnabled] = useState(true);
-  const [publicRoutes, setPublicRoutes] = useState(["/"]);
+  const [publicWebsiteEnabled, setPublicWebsiteEnabled] = useState(true);
+  const [publicRoutes, setPublicRoutes] = useState([
+    "/",
+    "/landing",
+    "/about",
+    "/contact",
+    "/login",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/verify-phone",
+    "/login/telegram",
+    "/login/whatsapp",
+    "/AgriTech Wiki",
+    "/chat",
+    "/quiz/:contentId",
+  ]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,9 +39,13 @@ export const AccessControlProvider = ({ children }) => {
           `${baseURL || ""}/api/settings/public`,
         );
         const { data } = response.data;
-        setPublicAccessEnabled(
-          data.publicAccessEnabled != null ? data.publicAccessEnabled : true,
-        );
+        const enabled =
+          typeof data.publicWebsiteEnabled === "boolean" ||
+          typeof data.publicAccessEnabled === "boolean"
+            ? Boolean(data.publicWebsiteEnabled || data.publicAccessEnabled)
+            : true;
+        setPublicAccessEnabled(enabled);
+        setPublicWebsiteEnabled(enabled);
         setPublicRoutes(
           Array.isArray(data.publicRoutes) && data.publicRoutes.length > 0
             ? data.publicRoutes
@@ -38,11 +59,42 @@ export const AccessControlProvider = ({ children }) => {
     };
 
     fetchPublicSettings();
+
+    const handlePublicAccessUpdated = (event) => {
+      if (event?.detail) {
+        const enabled =
+          event.detail.publicWebsiteEnabled ??
+          event.detail.publicAccessEnabled ??
+          publicAccessEnabled;
+        setPublicAccessEnabled(enabled);
+        setPublicWebsiteEnabled(enabled);
+        setPublicRoutes(
+          Array.isArray(event.detail.publicRoutes) &&
+            event.detail.publicRoutes.length > 0
+            ? event.detail.publicRoutes
+            : ["/"],
+        );
+      }
+    };
+
+    window.addEventListener("publicAccessUpdated", handlePublicAccessUpdated);
+
+    return () => {
+      window.removeEventListener(
+        "publicAccessUpdated",
+        handlePublicAccessUpdated,
+      );
+    };
   }, []);
 
   return (
     <AccessControlContext.Provider
-      value={{ publicAccessEnabled, publicRoutes, loading }}
+      value={{
+        publicAccessEnabled,
+        publicWebsiteEnabled,
+        publicRoutes,
+        loading,
+      }}
     >
       {children}
     </AccessControlContext.Provider>

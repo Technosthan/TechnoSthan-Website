@@ -87,6 +87,10 @@ export const getAccessControlSettings = () =>
   axiosInstance.get("/api/settings/access-control");
 export const updateAccessControlSettings = (settingsData) =>
   axiosInstance.put("/api/settings/access-control", settingsData);
+export const getPublicAccessSettings = () =>
+  axiosInstance.get("/api/settings/public-access");
+export const updatePublicAccessSettings = (settingsData) =>
+  axiosInstance.put("/api/settings/public-access", settingsData);
 
 // Quiz management (admin)
 export const getAllQuestions = () => axiosInstance.get("/api/quiz/questions");

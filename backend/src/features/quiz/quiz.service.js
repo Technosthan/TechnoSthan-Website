@@ -110,18 +110,27 @@ export const submitQuiz = async (userId, answers) => {
     };
   });
 
-  const result = await QuizResult.create({
-    userId,
+  const resultPayload = {
+    userId: userId || null,
     quizId: "quiz1", // This could be dynamic if you have multiple quizzes
     score,
     total: questions.length,
     answers: evaluatedAnswers,
-  });
+  };
 
+  if (!userId) {
+    return resultPayload;
+  }
+
+  const result = await QuizResult.create(resultPayload);
   return result;
 };
 
 export const getResults = async (userId) => {
+  if (!userId) {
+    return [];
+  }
+
   return await QuizResult.find({ userId });
 };
 

@@ -31,5 +31,17 @@ router.put(
   adminOnly,
   updateAccessControlSettings,
 );
+router.get(
+  "/public-access",
+  authMiddleware,
+  adminOnly,
+  getAccessControlSettings,
+);
+router.put(
+  "/public-access",
+  authMiddleware,
+  adminOnly,
+  updateAccessControlSettings,
+);
 
 export default router;
