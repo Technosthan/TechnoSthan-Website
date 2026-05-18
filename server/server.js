@@ -74,6 +74,8 @@ https://technosthan.com
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const vercelOriginPattern = /https:\/\/.*\.vercel\.app$/;
+
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow Postman / Mobile Apps
@@ -82,7 +84,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || vercelOriginPattern.test(origin)) {
       return callback(null, true);
     }
 
@@ -160,6 +162,10 @@ app.use(
           "https://www.technosthan.com",
 
           "https://techno-sthan-website.vercel.app",
+
+          "https://technosthan-website.onrender.com",
+
+          "https://*.vercel.app",
 
           "https://accounts.google.com",
 
