@@ -1,4 +1,8 @@
-const { Platform, UserIconSelection, IconShareLog } = require("../models/Platform");
+const {
+  Platform,
+  UserIconSelection,
+  IconShareLog,
+} = require("../models/Platform");
 const User = require("../models/User");
 
 // ============ UTILITY FUNCTIONS ============
@@ -12,6 +16,14 @@ const getErrorStatus = (err) => err.statusCode || 500;
  */
 const getAllPlatforms = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     const { isActive, isCustom, category } = req.query;
     const filter = { deletedAt: null };
 
@@ -41,11 +53,24 @@ const getAllPlatforms = async (req, res) => {
  */
 const getPlatformById = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     const { platformId } = req.params;
-    const platform = await Platform.findOne({ platformId, deletedAt: null }).populate("addedBy", "name email");
+    const platform = await Platform.findOne({
+      platformId,
+      deletedAt: null,
+    }).populate("addedBy", "name email");
 
     if (!platform) {
-      return res.status(404).json({ success: false, msg: "Platform not found" });
+      return res
+        .status(404)
+        .json({ success: false, msg: "Platform not found" });
     }
 
     res.json({ success: true, data: platform });
@@ -59,6 +84,14 @@ const getPlatformById = async (req, res) => {
  */
 const addPlatform = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     // Check HR role
     const user = await User.findById(req.user._id);
     if (user.role !== "hr" && user.role !== "admin") {
@@ -132,6 +165,14 @@ const addPlatform = async (req, res) => {
  */
 const updatePlatform = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     const user = await User.findById(req.user._id);
     if (user.role !== "hr" && user.role !== "admin") {
       return res
@@ -150,11 +191,13 @@ const updatePlatform = async (req, res) => {
     const platform = await Platform.findOneAndUpdate(
       { platformId, deletedAt: null },
       { ...updateData, updatedAt: Date.now() },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!platform) {
-      return res.status(404).json({ success: false, msg: "Platform not found" });
+      return res
+        .status(404)
+        .json({ success: false, msg: "Platform not found" });
     }
 
     res.json({
@@ -172,11 +215,22 @@ const updatePlatform = async (req, res) => {
  */
 const togglePlatformVisibility = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     const user = await User.findById(req.user._id);
     if (user.role !== "hr" && user.role !== "admin") {
       return res
         .status(403)
-        .json({ success: false, msg: "Only HR can manage platform visibility" });
+        .json({
+          success: false,
+          msg: "Only HR can manage platform visibility",
+        });
     }
 
     const { platformId } = req.params;
@@ -184,16 +238,19 @@ const togglePlatformVisibility = async (req, res) => {
 
     const updateData = {};
     if (isActive !== undefined) updateData.isActive = isActive;
-    if (isVisibleToUsers !== undefined) updateData.isVisibleToUsers = isVisibleToUsers;
+    if (isVisibleToUsers !== undefined)
+      updateData.isVisibleToUsers = isVisibleToUsers;
 
     const platform = await Platform.findOneAndUpdate(
       { platformId, deletedAt: null },
       updateData,
-      { new: true }
+      { new: true },
     );
 
     if (!platform) {
-      return res.status(404).json({ success: false, msg: "Platform not found" });
+      return res
+        .status(404)
+        .json({ success: false, msg: "Platform not found" });
     }
 
     res.json({
@@ -211,6 +268,14 @@ const togglePlatformVisibility = async (req, res) => {
  */
 const deletePlatform = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     const user = await User.findById(req.user._id);
     if (user.role !== "hr" && user.role !== "admin") {
       return res
@@ -223,11 +288,13 @@ const deletePlatform = async (req, res) => {
     const platform = await Platform.findOneAndUpdate(
       { platformId, deletedAt: null },
       { deletedAt: Date.now() },
-      { new: true }
+      { new: true },
     );
 
     if (!platform) {
-      return res.status(404).json({ success: false, msg: "Platform not found" });
+      return res
+        .status(404)
+        .json({ success: false, msg: "Platform not found" });
     }
 
     res.json({ success: true, msg: "Platform deleted successfully" });
@@ -243,6 +310,14 @@ const deletePlatform = async (req, res) => {
  */
 const getUserIconSelection = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformGridEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform grid functionality is currently disabled",
+      });
+    }
+
     const userId = resolveUserId(req);
     let selection = await UserIconSelection.findOne({ userId });
 
@@ -280,8 +355,23 @@ const getUserIconSelection = async (req, res) => {
  */
 const updateUserIconSelection = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.userGridEditingEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "User grid editing is currently disabled",
+      });
+    }
+
     const userId = resolveUserId(req);
-    const { selectedPlatforms, theme, gridLayout, showLabels, enableCopyButton, enableShareButton } = req.body;
+    const {
+      selectedPlatforms,
+      theme,
+      gridLayout,
+      showLabels,
+      enableCopyButton,
+      enableShareButton,
+    } = req.body;
 
     let selection = await UserIconSelection.findOne({ userId });
 
@@ -293,8 +383,10 @@ const updateUserIconSelection = async (req, res) => {
     if (theme) selection.theme = theme;
     if (gridLayout) selection.gridLayout = gridLayout;
     if (showLabels !== undefined) selection.showLabels = showLabels;
-    if (enableCopyButton !== undefined) selection.enableCopyButton = enableCopyButton;
-    if (enableShareButton !== undefined) selection.enableShareButton = enableShareButton;
+    if (enableCopyButton !== undefined)
+      selection.enableCopyButton = enableCopyButton;
+    if (enableShareButton !== undefined)
+      selection.enableShareButton = enableShareButton;
 
     selection.updatedAt = Date.now();
     await selection.save();
@@ -314,6 +406,14 @@ const updateUserIconSelection = async (req, res) => {
  */
 const toggleIconSelection = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.userGridEditingEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "User grid editing is currently disabled",
+      });
+    }
+
     const userId = resolveUserId(req);
     const { platformId } = req.params;
 
@@ -324,7 +424,7 @@ const toggleIconSelection = async (req, res) => {
     }
 
     const platformIndex = selection.selectedPlatforms.findIndex(
-      (p) => p.platformId === platformId
+      (p) => p.platformId === platformId,
     );
 
     if (platformIndex > -1) {
@@ -357,13 +457,36 @@ const toggleIconSelection = async (req, res) => {
  */
 const logIconAction = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.usageTrackingEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Usage tracking is currently disabled",
+      });
+    }
+
     const userId = resolveUserId(req);
     const { platformId, actionType, copiedText, sharedTo } = req.body;
+    const normalizedAction = (actionType || "click").toLowerCase();
+
+    if (normalizedAction === "share" && !settings.shareTrackingEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Share tracking is currently disabled",
+      });
+    }
+
+    if (normalizedAction === "copy" && !settings.copyTrackingEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Copy tracking is currently disabled",
+      });
+    }
 
     const log = new IconShareLog({
       userId,
       platformId,
-      actionType: actionType || "click",
+      actionType: normalizedAction,
       copiedText,
       sharedTo,
       ipAddress: req.ip || req.connection.remoteAddress,
@@ -383,6 +506,14 @@ const logIconAction = async (req, res) => {
  */
 const getIconAnalytics = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.platformAnalyticsEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform analytics is currently disabled",
+      });
+    }
+
     const userId = resolveUserId(req);
     const { platformId, actionType, days = 30 } = req.query;
 

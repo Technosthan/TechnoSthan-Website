@@ -13,8 +13,9 @@ const {
   deleteWhatsAppContact,
   getPlatformConnections,
   upsertPlatformConnection,
-  sendSocial
+  sendSocial,
 } = require("../controllers/socialController");
+const { requireWorkspaceFeature } = require("../middleware/workspaceSettings");
 
 // ================= EXISTING ROUTES =================
 router.post("/", saveSocial);
@@ -40,7 +41,11 @@ router.get("/search", searchWhatsAppContacts);
 // ================= SOCIAL PLATFORM DISPATCH ROUTES =================
 router.get("/connections", getPlatformConnections);
 router.post("/connections", upsertPlatformConnection);
-router.post("/send", sendSocial);
+router.post(
+  "/send",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  sendSocial,
+);
 
 // Legacy aliases for older clients
 router.post("/social", saveSocial);

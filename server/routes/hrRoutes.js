@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { protect, hrOrAdmin } = require("../middleware/authMiddleware");
 
 const {
   getHRProfiles,
@@ -9,6 +10,8 @@ const {
   deleteHRProfile,
   uploadHRAvatar
 } = require("../controllers/hrController");
+
+router.use(protect, hrOrAdmin);
 
 router.get("/", getHRProfiles);
 router.get("/:id", getHRProfileById);

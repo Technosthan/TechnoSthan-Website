@@ -18,6 +18,9 @@ const {
   logIconAction,
   getIconAnalytics,
 } = require("../controllers/iconGridController");
+const { requireWorkspaceFeature } = require("../middleware/workspaceSettings");
+
+router.use(requireWorkspaceFeature("platformGridEnabled"));
 
 // ============ PLATFORM MANAGEMENT (HR ONLY) ============
 

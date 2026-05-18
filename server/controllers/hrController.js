@@ -3,9 +3,16 @@ const fs = require("fs");
 const path = require("path");
 
 const resolveOwnerUserId = (req) =>
-  req.user?._id?.toString() || req.query?.userId || req.body?.userId || "anonymous";
+  req.user?.id ||
+  req.user?._id?.toString() ||
+  req.query?.userId ||
+  req.body?.userId ||
+  "anonymous";
 
-const toNormalizedEmail = (value) => String(value || "").trim().toLowerCase();
+const toNormalizedEmail = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const uploadsDir = path.resolve(__dirname, "..", "uploads");
 
@@ -26,7 +33,9 @@ const getFileExtension = (mimeType = "") => {
 const getHRProfiles = async (req, res) => {
   try {
     const ownerUserId = resolveOwnerUserId(req);
-    const records = await HRProfile.find({ ownerUserId }).sort({ updatedAt: -1 }).lean();
+    const records = await HRProfile.find({ ownerUserId })
+      .sort({ updatedAt: -1 })
+      .lean();
     res.json(records);
   } catch (err) {
     console.error("❌ Error in getHRProfiles:", err);
@@ -36,6 +45,14 @@ const getHRProfiles = async (req, res) => {
 
 const createHRProfile = async (req, res) => {
   try {
+    if (req.user?.role !== "admin" && req.user?.role !== "hr") {
+      return res.status(403).json({ msg: "Access denied: Admins and HR only" });
+    }
+
+    if (req.workspaceSettings?.settings?.allowHRCreation === false) {
+      return res.status(403).json({ msg: "HR creation is currently disabled" });
+    }
+
     const ownerUserId = resolveOwnerUserId(req);
     const name = String(req.body?.name || "").trim();
     const role = String(req.body?.role || "").trim();
@@ -44,13 +61,17 @@ const createHRProfile = async (req, res) => {
     console.log("📝 Creating HR Profile:", { ownerUserId, name, role, email });
 
     if (!name || !role || !email) {
-      return res.status(400).json({ msg: "name, role, and email are required" });
+      return res
+        .status(400)
+        .json({ msg: "name, role, and email are required" });
     }
 
     // Check for global duplicate email first (collection may have unique index on email)
     const existingGlobal = await HRProfile.findOne({ email }).lean();
     if (existingGlobal) {
-      return res.status(409).json({ msg: "Profile with this email already exists" });
+      return res
+        .status(409)
+        .json({ msg: "Profile with this email already exists" });
     }
 
     const profile = await HRProfile.create({
@@ -60,7 +81,7 @@ const createHRProfile = async (req, res) => {
       email,
       phone: String(req.body?.phone || "").trim(),
       color: String(req.body?.color || "#6366f1").trim(),
-      avatarUrl: String(req.body?.avatarUrl || "")
+      avatarUrl: String(req.body?.avatarUrl || ""),
     });
 
     console.log("✅ HR Profile Created:", profile._id);
@@ -68,8 +89,13 @@ const createHRProfile = async (req, res) => {
   } catch (err) {
     // Duplicate key handling
     if (err && err.code === 11000) {
-      console.warn('Duplicate key error creating HR profile', err.keyValue || err.message);
-      return res.status(409).json({ msg: 'Profile with this email already exists' });
+      console.warn(
+        "Duplicate key error creating HR profile",
+        err.keyValue || err.message,
+      );
+      return res
+        .status(409)
+        .json({ msg: "Profile with this email already exists" });
     }
     console.error("❌ Error in createHRProfile:", err.message, err.stack);
     res.status(500).json({ msg: err.message });
@@ -79,27 +105,31 @@ const createHRProfile = async (req, res) => {
 const getHRProfileById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     console.log(`🔍 Fetching HR profile by id: ${id}`);
-    
+
     const profile = await HRProfile.findById(id).lean();
     if (!profile) {
       console.log(`⚠️ Profile not found for id: ${id}`);
-      return res.status(404).json({ msg: 'HR profile not found' });
+      return res.status(404).json({ msg: "HR profile not found" });
     }
-    
+
     console.log(`✅ Returning profile: ${id}`);
     res.json(profile);
   } catch (err) {
-    console.error('❌ Error in getHRProfileById:', err);
+    console.error("❌ Error in getHRProfileById:", err);
     res.status(500).json({ msg: err.message });
   }
 };
 
 const updateHRProfile = async (req, res) => {
   try {
+    if (req.user?.role !== "admin" && req.user?.role !== "hr") {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
     const { id } = req.params;
-    
+
     console.log(`✏️ Updating HR Profile ${id}`);
 
     // Find profile by id - no ownership check
@@ -114,17 +144,21 @@ const updateHRProfile = async (req, res) => {
     const email = toNormalizedEmail(req.body?.email);
 
     if (!name || !role || !email) {
-      return res.status(400).json({ msg: "name, role, and email are required" });
+      return res
+        .status(400)
+        .json({ msg: "name, role, and email are required" });
     }
 
     // Check for duplicate email from OTHER profiles
     const duplicate = await HRProfile.findOne({
       email,
-      _id: { $ne: existing._id }
+      _id: { $ne: existing._id },
     }).lean();
 
     if (duplicate) {
-      return res.status(409).json({ msg: "Another profile already uses this email" });
+      return res
+        .status(409)
+        .json({ msg: "Another profile already uses this email" });
     }
 
     existing.name = name;
@@ -138,13 +172,17 @@ const updateHRProfile = async (req, res) => {
     console.log(`✅ HR Profile updated: ${id}`);
     res.json(existing);
   } catch (err) {
-    console.error('❌ Error in updateHRProfile:', err.message);
+    console.error("❌ Error in updateHRProfile:", err.message);
     res.status(500).json({ msg: err.message });
   }
 };
 
 const deleteHRProfile = async (req, res) => {
   try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ msg: "Only admins can delete profiles" });
+    }
+
     const ownerUserId = resolveOwnerUserId(req);
     const { id } = req.params;
 
@@ -161,6 +199,12 @@ const deleteHRProfile = async (req, res) => {
 
 const uploadHRAvatar = async (req, res) => {
   try {
+    if (req.workspaceSettings?.settings?.avatarUploadsEnabled === false) {
+      return res
+        .status(403)
+        .json({ msg: "Avatar uploads are currently disabled" });
+    }
+
     console.log("📸 Avatar upload request received");
     const image = String(req.body?.image || "");
     if (!image.startsWith("data:image/")) {
@@ -197,5 +241,5 @@ module.exports = {
   getHRProfileById,
   updateHRProfile,
   deleteHRProfile,
-  uploadHRAvatar
+  uploadHRAvatar,
 };

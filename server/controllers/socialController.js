@@ -8,26 +8,74 @@ const {
   ALLOWED_PLATFORMS,
   normalizePlatform,
   assertSupportedPlatforms,
-  dispatchByPlatform
+  dispatchByPlatform,
 } = require("../services/socialDispatchService");
 
 const normalizePhoneNumber = (value = "") =>
   value.replace(/[^0-9+]/g, "").replace(/^\+/, "");
 
 // simple & safe
-const resolveUserId = (req) =>
-  req.user?._id || req.body?.userId || "anonymous";
+const resolveUserId = (req) => req.user?._id || req.body?.userId || "anonymous";
 
 const getErrorStatus = (err) => err.statusCode || 500;
 
 const defaultPlatformSeed = [
-  { platformId: "facebook", name: "Facebook", icon: "Facebook", color: "#1877F2", charLimit: 63206, category: "social" },
-  { platformId: "instagram", name: "Instagram", icon: "Instagram", color: "#E4405F", charLimit: 2200, category: "social" },
-  { platformId: "linkedin", name: "LinkedIn", icon: "LinkedIn", color: "#0A66C2", charLimit: 3000, category: "professional" },
-  { platformId: "twitter", name: "Twitter/X", icon: "Twitter", color: "#1DA1F2", charLimit: 280, category: "social" },
-  { platformId: "whatsapp", name: "WhatsApp", icon: "WhatsApp", color: "#25D366", charLimit: 65536, category: "messaging" },
-  { platformId: "telegram", name: "Telegram", icon: "Telegram", color: "#0088CC", charLimit: 4096, category: "messaging" },
-  { platformId: "youtube", name: "YouTube", icon: "YouTube", color: "#FF0000", charLimit: 5000, category: "content" }
+  {
+    platformId: "facebook",
+    name: "Facebook",
+    icon: "Facebook",
+    color: "#1877F2",
+    charLimit: 63206,
+    category: "social",
+  },
+  {
+    platformId: "instagram",
+    name: "Instagram",
+    icon: "Instagram",
+    color: "#E4405F",
+    charLimit: 2200,
+    category: "social",
+  },
+  {
+    platformId: "linkedin",
+    name: "LinkedIn",
+    icon: "LinkedIn",
+    color: "#0A66C2",
+    charLimit: 3000,
+    category: "professional",
+  },
+  {
+    platformId: "twitter",
+    name: "Twitter/X",
+    icon: "Twitter",
+    color: "#1DA1F2",
+    charLimit: 280,
+    category: "social",
+  },
+  {
+    platformId: "whatsapp",
+    name: "WhatsApp",
+    icon: "WhatsApp",
+    color: "#25D366",
+    charLimit: 65536,
+    category: "messaging",
+  },
+  {
+    platformId: "telegram",
+    name: "Telegram",
+    icon: "Telegram",
+    color: "#0088CC",
+    charLimit: 4096,
+    category: "messaging",
+  },
+  {
+    platformId: "youtube",
+    name: "YouTube",
+    icon: "YouTube",
+    color: "#FF0000",
+    charLimit: 5000,
+    category: "content",
+  },
 ];
 
 const ensureDefaultPlatforms = async () => {
@@ -44,8 +92,8 @@ const ensureDefaultPlatforms = async () => {
       category: platform.category,
       features: ["copy", "share", "delete"],
       requiresAuth: false,
-      description: `${platform.name} publishing channel`
-    }
+      description: `${platform.name} publishing channel`,
+    },
   }));
 
   await Platform.insertMany(docs, { ordered: false });
@@ -57,7 +105,7 @@ const toPlatformDTO = (record) => ({
   name: record.name,
   icon: record.icon,
   color: record.color,
-  charLimit: record.charLimit
+  charLimit: record.charLimit,
 });
 
 // ================= SAVE =================
@@ -71,8 +119,8 @@ const saveSocial = async (req, res) => {
     const data = new Social({
       socials: {
         ...socials,
-        whatsapp_contacts: socials.whatsapp_contacts || []
-      }
+        whatsapp_contacts: socials.whatsapp_contacts || [],
+      },
     });
 
     await data.save();
@@ -92,7 +140,7 @@ const getPlatformConnections = async (req, res) => {
       const record = records.find((r) => r.platform === platform);
       acc[platform] = {
         connected: Boolean(record?.connected),
-        createdAt: record?.createdAt || null
+        createdAt: record?.createdAt || null,
       };
       return acc;
     }, {});
@@ -115,7 +163,7 @@ const upsertPlatformConnection = async (req, res) => {
     const connection = await SocialConnection.findOneAndUpdate(
       { userId, platform },
       { $set: { accessToken, connected: Boolean(accessToken) } },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     res.json({ msg: "Connection updated", connection });
@@ -127,6 +175,14 @@ const upsertPlatformConnection = async (req, res) => {
 // ================= SEND SOCIAL =================
 const sendSocial = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
+    if (!settings.socialPostingEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Social posting is currently disabled",
+      });
+    }
+
     const userId = resolveUserId(req);
     const message = String(req.body.message || "").trim();
     const type = req.body.type;
@@ -147,11 +203,39 @@ const sendSocial = async (req, res) => {
       return res.status(400).json({ msg: "Type must be 'post' or 'message'" });
     }
 
+    if (!settings.platformDispatchEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Platform dispatch is currently disabled",
+      });
+    }
+
+    if (req.body.scheduledAt && !settings.scheduledPostsEnabled) {
+      return res.status(403).json({
+        success: false,
+        msg: "Scheduled posts are currently disabled",
+      });
+    }
+
+    const disallowed = platforms.filter((platform) => {
+      if (platform === "whatsapp" && !settings.whatsappEnabled) return true;
+      if (platform === "linkedin" && !settings.linkedinEnabled) return true;
+      if (platform === "instagram" && !settings.instagramEnabled) return true;
+      return false;
+    });
+
+    if (disallowed.length > 0) {
+      return res.status(403).json({
+        success: false,
+        msg: `Social dispatch is disabled for: ${disallowed.join(", ")}`,
+      });
+    }
+
     assertSupportedPlatforms(platforms);
 
     const connectionRecords = await SocialConnection.find({
       userId,
-      platform: { $in: platforms }
+      platform: { $in: platforms },
     }).lean();
 
     const connectionMap = connectionRecords.reduce((acc, rec) => {
@@ -170,19 +254,19 @@ const sendSocial = async (req, res) => {
           platform,
           message,
           type,
-          token
+          token,
         });
 
         results.push({
           platform,
           success: Boolean(outcome.success),
-          detail: outcome.detail
+          detail: outcome.detail,
         });
       } catch (error) {
         results.push({
           platform,
           success: false,
-          detail: error.message
+          detail: error.message,
         });
       }
     }
@@ -192,8 +276,8 @@ const sendSocial = async (req, res) => {
       successCount === results.length
         ? "success"
         : successCount > 0
-        ? "partial"
-        : "failed";
+          ? "partial"
+          : "failed";
 
     const log = await SocialPostLog.create({
       userId,
@@ -202,14 +286,14 @@ const sendSocial = async (req, res) => {
       type,
       status,
       timestamp: new Date(),
-      results
+      results,
     });
 
     res.status(200).json({
       msg: "Social dispatch completed",
       status,
       results,
-      logId: log._id
+      logId: log._id,
     });
   } catch (err) {
     res.status(getErrorStatus(err)).json({ msg: err.message });
@@ -219,17 +303,29 @@ const sendSocial = async (req, res) => {
 // ================= PLATFORM GRID =================
 const getSocialPlatforms = async (req, res) => {
   try {
+    const settings = req.workspaceSettings?.settings || {};
     await ensureDefaultPlatforms();
 
     const platforms = await Platform.find({
       deletedAt: null,
       isVisibleToUsers: true,
-      isActive: true
+      isActive: true,
     })
       .sort({ gridPosition: 1, createdAt: 1 })
       .lean();
 
-    res.json(platforms.map(toPlatformDTO));
+    const filtered = platforms.filter((record) => {
+      if (!settings.socialPostingEnabled) return false;
+      if (record.platformId === "whatsapp" && !settings.whatsappEnabled)
+        return false;
+      if (record.platformId === "linkedin" && !settings.linkedinEnabled)
+        return false;
+      if (record.platformId === "instagram" && !settings.instagramEnabled)
+        return false;
+      return true;
+    });
+
+    res.json(filtered.map(toPlatformDTO));
   } catch (err) {
     res.status(getErrorStatus(err)).json({ msg: err.message });
   }
@@ -248,12 +344,17 @@ const addSocialPlatform = async (req, res) => {
       return res.status(400).json({ msg: "name and id are required" });
     }
 
-    const existing = await Platform.findOne({ platformId: incomingId, deletedAt: null }).lean();
+    const existing = await Platform.findOne({
+      platformId: incomingId,
+      deletedAt: null,
+    }).lean();
     if (existing) {
       return res.status(409).json({ msg: "Platform already exists" });
     }
 
-    const maxGrid = await Platform.findOne({ deletedAt: null }).sort({ gridPosition: -1 }).lean();
+    const maxGrid = await Platform.findOne({ deletedAt: null })
+      .sort({ gridPosition: -1 })
+      .lean();
 
     const platform = await Platform.create({
       platformId: incomingId,
@@ -269,8 +370,8 @@ const addSocialPlatform = async (req, res) => {
         category: "custom",
         features: ["copy", "share", "delete"],
         requiresAuth: false,
-        description: `${name} custom platform`
-      }
+        description: `${name} custom platform`,
+      },
     });
 
     res.status(201).json(toPlatformDTO(platform));
@@ -296,7 +397,10 @@ const deleteSocial = async (req, res) => {
     const { id } = req.params;
     const platformDeleted = await Platform.findOneAndDelete({ _id: id });
     if (platformDeleted) {
-      return res.json({ msg: "Platform deleted successfully", entity: "platform" });
+      return res.json({
+        msg: "Platform deleted successfully",
+        entity: "platform",
+      });
     }
 
     await Social.findByIdAndDelete(id);
@@ -311,7 +415,9 @@ const addWhatsAppContact = async (req, res) => {
   try {
     const { socialId, contact } = req.body;
     if (!socialId || !contact?.phone) {
-      return res.status(400).json({ msg: "socialId and contact.phone required" });
+      return res
+        .status(400)
+        .json({ msg: "socialId and contact.phone required" });
     }
     const social = await Social.findById(socialId);
     if (!social) {
@@ -320,10 +426,13 @@ const addWhatsAppContact = async (req, res) => {
     social.socials.whatsapp_contacts = social.socials.whatsapp_contacts || [];
     social.socials.whatsapp_contacts.push({
       ...contact,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
     await social.save();
-    res.json({ msg: "Contact added", contacts: social.socials.whatsapp_contacts });
+    res.json({
+      msg: "Contact added",
+      contacts: social.socials.whatsapp_contacts,
+    });
   } catch (err) {
     res.status(getErrorStatus(err)).json({ msg: err.message });
   }
@@ -350,13 +459,13 @@ const searchWhatsAppContacts = async (req, res) => {
     }
     const regex = new RegExp(q, "i");
     const records = await Social.find({
-      "socials.whatsapp_contacts": { $elemMatch: { name: regex } }
+      "socials.whatsapp_contacts": { $elemMatch: { name: regex } },
     }).lean();
-    
+
     const contacts = [];
     for (const record of records) {
       const matches = (record.socials?.whatsapp_contacts || []).filter(
-        c => regex.test(c.name) || regex.test(c.phone)
+        (c) => regex.test(c.name) || regex.test(c.phone),
       );
       contacts.push(...matches);
     }
@@ -373,11 +482,14 @@ const deleteWhatsAppContact = async (req, res) => {
     if (!social) {
       return res.status(404).json({ msg: "Social record not found" });
     }
-    social.socials.whatsapp_contacts = (social.socials.whatsapp_contacts || []).filter(
-      c => c._id?.toString() !== contactId
-    );
+    social.socials.whatsapp_contacts = (
+      social.socials.whatsapp_contacts || []
+    ).filter((c) => c._id?.toString() !== contactId);
     await social.save();
-    res.json({ msg: "Contact deleted", contacts: social.socials.whatsapp_contacts });
+    res.json({
+      msg: "Contact deleted",
+      contacts: social.socials.whatsapp_contacts,
+    });
   } catch (err) {
     res.status(getErrorStatus(err)).json({ msg: err.message });
   }
@@ -395,5 +507,5 @@ module.exports = {
   upsertPlatformConnection,
   sendSocial,
   getSocialPlatforms,
-  addSocialPlatform
+  addSocialPlatform,
 };
