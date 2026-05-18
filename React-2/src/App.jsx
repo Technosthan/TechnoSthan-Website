@@ -3,7 +3,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  useLocation
+  useLocation,
 } from "react-router-dom";
 
 import { HelmetProvider } from "react-helmet-async";
@@ -24,9 +24,15 @@ import Register from "./component/Auth/Register";
 
 import Dashboard from "./component/Dashboard/Dashboard";
 import AdminDashboard from "./component/AdminDashboard/AdminDashboard";
+import AdminAssignments from "./component/Assignments/AdminAssignments";
+import AdminUsers from "./component/AdminLayout/AdminUsers";
+import WorkspaceServices from "./component/AdminLayout/WorkspaceServices";
+import MyAssignments from "./component/Assignments/MyAssignments";
+import HRDashboard from "./component/HRDashboard/HRDashboard";
 
 import ProtectedRoute from "./component/Protected/ProtectedRoute";
-import AdminRoute from "./component/Protected/AdminRoute";
+import ProtectedAdminRoute from "./component/Protected/ProtectedAdminRoute";
+import RoleRoute from "./component/Protected/RoleRoute";
 
 import SocialForm from "./component/SocialForm/SocialForm";
 import HRSocial from "./component/HRSocial/HRSocial";
@@ -64,17 +70,20 @@ function AppWrapper() {
 
 /* MAIN APP */
 function App() {
-
   const location = useLocation();
 
   const noGlobalLayoutPaths = [
     "/login",
     "/register",
     "/dashboard",
-    "/admin"
+    "/hr",
+    "/my-assignments",
   ];
 
-  const hideLayout = noGlobalLayoutPaths.includes(location.pathname);
+  const hideLayout =
+    noGlobalLayoutPaths.includes(location.pathname) ||
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/hr");
 
   return (
     <>
@@ -82,7 +91,7 @@ function App() {
       {!hideLayout && <SocialSidebar />}
 
       <Routes>
- {/* HOME */}
+        {/* HOME */}
         <Route path="/" element={<AboutPage />} />
 
         {/* ABOUT */}
@@ -97,10 +106,7 @@ function App() {
           element={<EngineeringPage />}
         />
 
-        <Route
-          path="/services/technosthan-cloud"
-          element={<CloudPage />}
-        />
+        <Route path="/services/technosthan-cloud" element={<CloudPage />} />
 
         <Route
           path="/services/technosthan-growth"
@@ -167,15 +173,68 @@ function App() {
         <Route
           path="/admin"
           element={
-            <AdminRoute>
+            <ProtectedAdminRoute>
               <AdminDashboard />
-            </AdminRoute>
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/assignments"
+          element={
+            <ProtectedAdminRoute>
+              <AdminAssignments />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/workspace-services"
+          element={
+            <ProtectedAdminRoute>
+              <WorkspaceServices />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedAdminRoute>
+              <AdminUsers />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/hr"
+          element={
+            <RoleRoute roles={["HR", "ADMIN"]}>
+              <HRDashboard />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/hr/assignments"
+          element={
+            <RoleRoute roles={["HR", "ADMIN"]}>
+              <AdminAssignments />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/my-assignments"
+          element={
+            <ProtectedRoute>
+              <MyAssignments />
+            </ProtectedRoute>
           }
         />
 
         {/* EXPLORE */}
         <Route path="/explore" element={<ExplorePage />} />
-
       </Routes>
 
       {!hideLayout && <Footer />}

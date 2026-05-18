@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "./Navbar.css";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
+import {
+  clearAuth,
+  getDashboardPath,
+  getStoredToken,
+  getStoredUser,
+  normalizeRole,
+} from "../../utils/auth";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -13,45 +19,35 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const readAuthState = () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user") || "null");
-      const token = localStorage.getItem("token");
-      return token && user ? user : null;
-    } catch {
-      return null;
-    }
+    const user = getStoredUser();
+    const token = getStoredToken();
+    return token && user ? user : null;
   };
 
   useEffect(() => {
-    const user = readAuthState();
-    setCurrentUser(user);
-    if (user && user.role === "admin") {
-      setIsAdmin(true);
-    } else {
-      setIsAdmin(false);
-    }
-
-    const onStorageChange = () => {
-      const latestUser = readAuthState();
-      setCurrentUser(latestUser);
-      setIsAdmin(latestUser?.role === "admin");
+    const syncAuthState = () => {
+      setCurrentUser(readAuthState());
     };
 
-    window.addEventListener("storage", onStorageChange);
-    return () => window.removeEventListener("storage", onStorageChange);
+    syncAuthState();
+    window.addEventListener("storage", syncAuthState);
+    window.addEventListener("auth-change", syncAuthState);
+
+    return () => {
+      window.removeEventListener("storage", syncAuthState);
+      window.removeEventListener("auth-change", syncAuthState);
+    };
   }, []);
 
-  //  active link helper
   const isActive = (path) => location.pathname === path;
 
-  //  mobile menu close
   const handleClick = () => {
     setMenuOpen(false);
+    setShowProfileMenu(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuth();
     setCurrentUser(null);
     setShowProfileMenu(false);
     setMenuOpen(false);
@@ -59,26 +55,20 @@ const Navbar = () => {
   };
 
   const avatarLabel = (currentUser?.name || "U").trim().charAt(0).toUpperCase();
+  const currentRole = normalizeRole(currentUser?.role);
+  const dashboardPath = currentUser ? getDashboardPath(currentRole) : "/dashboard";
 
   return (
     <nav className="navbar">
-
-      {/* LOGO (clickable) */}
       <Link to="/" className="logo">
         <img src={logo} alt="TechnoSthan Logo" />
       </Link>
 
-      {/* MENU ICON */}
-      <div
-        className="menu-toggle"
-        onClick={() => setMenuOpen(!menuOpen)}
-      >
-        ☰
+      <div className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
+        Menu
       </div>
 
-      {/* NAV LINKS */}
       <div className={`nav-links ${menuOpen ? "active" : ""}`}>
-
         <Link to="/" onClick={handleClick} className={isActive("/") ? "active" : ""}>
           Home
         </Link>
@@ -87,7 +77,7 @@ const Navbar = () => {
           About
         </Link>
 
-        <Link to="/services" onClick={handleClick}>
+        <Link to="/services" onClick={handleClick} className={isActive("/services") ? "active" : ""}>
           Our Verticals
         </Link>
 
@@ -95,50 +85,56 @@ const Navbar = () => {
           Contact
         </Link>
 
-         <Link to="/social" onClick={handleClick} className={isActive("/social") ? "active" : ""}>
-           Social Post
-        </Link> 
-        
-         {/* <Link to="/social" onClick={handleClick} className={isActive("/social-old") ? "active" : ""}>
-           Social old
-        </Link> */}
-                {/* <Link to="/socialform2" onClick={handleClick} className={isActive("/socialform") ? "active" : ""}>
-           SocialForm2 Post
-        </Link> */}
-        
-{/* 
-        <Link to="/explore" onClick={handleClick} className={isActive("/explore") ? "active" : ""}>
-          🔍 Search
-        </Link> */}
+        <Link to="/social" onClick={handleClick} className={isActive("/social") ? "active" : ""}>
+          Social Post
+        </Link>
 
-        {isAdmin && (
-          <Link to="/admin" className="admin-link" onClick={handleClick}>
-            ⚡ Admin
-          </Link>
-        )}
+        <Link
+          to={dashboardPath}
+          onClick={handleClick}
+          className={
+            isActive("/dashboard") ||
+            isActive("/admin") ||
+            isActive("/hr") ||
+            location.pathname.startsWith("/admin/") ||
+            location.pathname.startsWith("/hr/")
+              ? "active"
+              : ""
+          }
+        >
+          Dashboard
+        </Link>
 
         {!currentUser && (
           <div className="mobile-auth">
-            <Link to="/register" onClick={handleClick}>Signup</Link>
-            <Link to="/login" onClick={handleClick}>Login</Link>
+            <Link to="/register" onClick={handleClick}>
+              Signup
+            </Link>
+            <Link to="/login" onClick={handleClick}>
+              Login
+            </Link>
           </div>
         )}
 
         {currentUser && (
           <div className="mobile-auth logged-in">
             <span className="mobile-user-name">{currentUser.name}</span>
-            <button type="button" className="mobile-logout-btn" onClick={handleLogout}>Logout</button>
+            <button type="button" className="mobile-logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
           </div>
         )}
-
       </div>
 
-      {/* DESKTOP BUTTON */}
       <div className="auth-buttons">
         {!currentUser ? (
           <>
-            <Link to="/register" className="signup-btn">Signup</Link>
-            <Link to="/login" className="login-btn">Login</Link>
+            <Link to="/register" className="signup-btn">
+              Signup
+            </Link>
+            <Link to="/login" className="login-btn">
+              Login
+            </Link>
           </>
         ) : (
           <div className="profile-menu-wrap">
@@ -154,13 +150,14 @@ const Navbar = () => {
             {showProfileMenu && (
               <div className="profile-dropdown">
                 <div className="profile-dropdown-user">{currentUser.email}</div>
-                <button type="button" onClick={handleLogout}>Logout</button>
+                <button type="button" onClick={handleLogout}>
+                  Logout
+                </button>
               </div>
             )}
           </div>
         )}
       </div>
-
     </nav>
   );
 };

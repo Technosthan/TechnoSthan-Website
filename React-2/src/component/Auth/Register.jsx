@@ -1,54 +1,45 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "./Auth.css";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../../lib/api";
+import { getDashboardPath, setAuth } from "../../utils/auth";
 
 const Register = () => {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     name: "",
-    identifier: "",
+    email: "",
     password: "",
-    adminCode: ""
+    adminCode: "",
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // HANDLE INPUT CHANGE
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // GOOGLE CALLBACK
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const user = urlParams.get('user');
-    const errorParam = urlParams.get('error');
+    const token = urlParams.get("token");
+    const user = urlParams.get("user");
+    const errorParam = urlParams.get("error");
+    const redirectPath = urlParams.get("redirect");
 
     if (errorParam) {
       setError("Google authentication failed. Please try again.");
       setGoogleLoading(false);
       window.history.replaceState({}, document.title, window.location.pathname);
-    } 
-    else if (token && user) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", user);
-
+    } else if (token && user) {
       const userData = JSON.parse(decodeURIComponent(user));
-
-      alert(`Welcome ${userData.name}! Account created successfully.`);
-
-      navigate(userData.role === "admin" ? "/admin" : "/");
-
+      setAuth({ token, user: userData });
+      navigate(redirectPath || getDashboardPath(userData.role), { replace: true });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [navigate]);
 
-  // REGISTER
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -56,32 +47,22 @@ const Register = () => {
       setLoading(true);
       setError("");
 
-      // Convert identifier to email format for backend
-      const registerData = {
+      const { data } = await api.post("/api/auth/register", {
         name: form.name,
-        email: form.identifier,
+        email: form.email.trim(),
         password: form.password,
-        adminCode: form.adminCode || ""
-      };
+        adminCode: form.adminCode || "",
+      });
 
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/auth/register`,
-        registerData
-      );
-
-      alert(res.data.message + (res.data.role === "admin" ? " 🎉" : ""));
-      navigate("/login");
-
+      setAuth({ token: data.data.token, user: data.data.user });
+      navigate(getDashboardPath(data.data.user.role), { replace: true });
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Registration failed ❌"
-      );
+      setError(err.response?.data?.message || "Registration failed.");
     } finally {
       setLoading(false);
     }
   };
 
-  // GOOGLE LOGIN
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
     setError("");
@@ -91,14 +72,12 @@ const Register = () => {
   return (
     <div className="auth-page">
       <div className="auth-box">
-
         <h1>Create Account</h1>
         <p>Join TechnoSthan</p>
 
         {error && <p style={{ color: "red" }}>{error}</p>}
 
         <form onSubmit={handleRegister}>
-
           <input
             type="text"
             name="name"
@@ -108,13 +87,12 @@ const Register = () => {
             onChange={handleChange}
           />
 
-          {/* 🔥 UPDATED INPUT */}
           <input
-            type="text"
-            name="identifier"
-            placeholder="Email or Phone Number"
+            type="email"
+            name="email"
+            placeholder="Email Address"
             required
-            value={form.identifier}
+            value={form.email}
             onChange={handleChange}
           />
 
@@ -127,7 +105,6 @@ const Register = () => {
             onChange={handleChange}
           />
 
-          {/* Admin Code - Optional */}
           <input
             type="password"
             name="adminCode"
@@ -136,24 +113,18 @@ const Register = () => {
             onChange={handleChange}
           />
 
-          <button type="submit">
+          <button type="submit" disabled={loading}>
             {loading ? "Signing up..." : "Sign Up"}
           </button>
-
         </form>
 
-        <button 
-          className="google-btn" 
-          onClick={handleGoogleLogin} 
-          disabled={googleLoading}
-        >
+        <button className="google-btn" onClick={handleGoogleLogin} disabled={googleLoading}>
           {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
         <p className="switch-link">
           Already have an account? <Link to="/login">Login</Link>
         </p>
-
       </div>
     </div>
   );

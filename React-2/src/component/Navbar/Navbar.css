@@ -241,7 +241,10 @@
 /* ================= MENU ICON ================= */
 .menu-toggle {
   display: none;
-  font-size: .5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   color: white;
 }

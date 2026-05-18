@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { getDashboardPath, getStoredUser, hasRole, isAuthenticated } from "../../utils/auth";
 
-const AdminRoute = ({ children }) => {
+const RoleRoute = ({ children, roles = [] }) => {
   const location = useLocation();
   const user = getStoredUser();
 
@@ -9,11 +9,11 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (!hasRole(user, ["ADMIN"])) {
+  if (!hasRole(user, roles)) {
     return <Navigate to={getDashboardPath(user?.role)} replace />;
   }
 
   return children;
 };
 
-export default AdminRoute;
+export default RoleRoute;

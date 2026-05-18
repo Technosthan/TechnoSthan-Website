@@ -1,41 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "./Auth.css";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../../lib/api";
+import { getDashboardPath, setAuth } from "../../utils/auth";
 
 const Login = () => {
-
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    identifier: "", // email OR phone
-    password: ""
+    email: "",
+    password: "",
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // GOOGLE CALLBACK
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const user = urlParams.get('user');
+    const token = urlParams.get("token");
+    const user = urlParams.get("user");
+    const redirectPath = urlParams.get("redirect");
 
     if (token && user) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", user);
-
       const userData = JSON.parse(decodeURIComponent(user));
-
-      alert(`Welcome ${userData.name}!`);
-
-      navigate(userData.role === "admin" ? "/admin" : "/");
-
+      setAuth({ token, user: userData });
+      navigate(redirectPath || getDashboardPath(userData.role), {
+        replace: true,
+      });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [navigate]);
 
-  // LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -43,26 +37,18 @@ const Login = () => {
       setLoading(true);
       setError("");
 
-      // Convert identifier to email format for backend
-      const loginData = {
-        email: form.identifier,
-        password: form.password
-      };
+      const { data } = await api.post("/api/auth/login", {
+        email: form.email.trim(),
+        password: form.password,
+      });
 
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/auth/login`,
-        loginData
-      );
-
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      navigate(res.data.user.role === "admin" ? "/admin" : "/");
-
+      setAuth({ token: data.data.token, user: data.data.user });
+      navigate(getDashboardPath(data.data.user.role), {
+        replace: true,
+      });
     } catch (err) {
-      //  SIGNUP SUGGESTION
       setError(
-        "Invalid Email/Phone or Password . Don’t have an account? Sign up first."
+        err.response?.data?.message || "Login failed. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -72,52 +58,39 @@ const Login = () => {
   return (
     <div className="auth-page">
       <div className="auth-box">
-
         <h1>Connect-With-TechnoSthan</h1>
         <p>Login to continue</p>
 
-        {/* ERROR */}
         {error && (
           <div className="error-box">
             <p>{error}</p>
-
-            {/*ONLY SUGGESTION LINK */}
-            <span
-              className="signup-link"
-              onClick={() => navigate("/register")}
-            >
-              Create Account →
+            <span className="signup-link" onClick={() => navigate("/register")}>
+              Create Account {"->"}
             </span>
           </div>
         )}
 
         <form onSubmit={handleLogin}>
-
-          {/* EMAIL / PHONE INPUT */}
           <input
-            type="text"
-            placeholder="Email or Phone Number"
+            type="email"
+            placeholder="Email Address"
             required
-            onChange={(e) =>
-              setForm({ ...form, identifier: e.target.value })
-            }
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
 
           <input
             type="password"
             placeholder="Password"
             required
-            onChange={(e) =>
-              setForm({ ...form, password: e.target.value })
-            }
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
 
-          <button type="submit">
+          <button type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
-
       </div>
     </div>
   );

@@ -1,146 +1,215 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
-import "./Dashboard.css";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { getMyAssignments } from "../../lib/assignments";
+import { getStoredUser, normalizeRole } from "../../utils/auth";
+import AdminLayout from "../AdminLayout/AdminLayout";
 
 function Dashboard() {
-  const [data, setData] = useState([]);
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        return JSON.parse(storedUser);
-      } catch {
-        localStorage.removeItem("user");
-        return null;
-      }
-    }
-    return null;
+  const [assignments, setAssignments] = useState([]);
+  const [assignmentAnalytics, setAssignmentAnalytics] = useState({
+    total: 0,
+    submitted: 0,
+    completed: 0,
+    overdue: 0,
   });
 
-  // 🔥 FETCH DATA (social data)
-  const fetchData = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-      const res = await axios.get(`${API_BASE}/api/social`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
-      });
-      setData(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(getStoredUser());
+
+  const role = normalizeRole(user?.role);
 
   useEffect(() => {
-    fetchData();
+    const loadDashboard = async () => {
+      try {
+        setLoading(true);
+        setUser(getStoredUser());
+
+        const assignmentsResponse = await getMyAssignments({
+          page: 1,
+          limit: 6,
+          sortBy: "deadline",
+          sortOrder: "asc",
+        });
+
+        setAssignments(assignmentsResponse.data || []);
+        setAssignmentAnalytics(assignmentsResponse.analytics || {});
+      } catch (error) {
+        console.error("Dashboard load failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
   }, []);
 
-  // 🔥 DELETE
-  const handleDelete = async (id) => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-      await axios.delete(`${API_BASE}/api/social/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
-      });
-
-      fetchData();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  // LOGOUT
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
-  };
+  const summaryCards = useMemo(
+    () => [
+      {
+        label: "My Tasks",
+        value: assignmentAnalytics.total ?? 0,
+        tone: "from-cyan-500/20 to-cyan-400/5",
+      },
+      {
+        label: "Submitted",
+        value: assignmentAnalytics.submitted ?? 0,
+        tone: "from-violet-500/20 to-violet-400/5",
+      },
+      {
+        label: "Completed",
+        value: assignmentAnalytics.completed ?? 0,
+        tone: "from-emerald-500/20 to-emerald-400/5",
+      },
+      {
+        label: "Overdue",
+        value: assignmentAnalytics.overdue ?? 0,
+        tone: "from-rose-500/20 to-rose-400/5",
+      },
+    ],
+    [assignmentAnalytics],
+  );
 
   return (
-    <div className="dashboard">
+    <AdminLayout
+      title="Dashboard"
+      subtitle="Overview of your current tasks and progress."
+    >
+      <div className="space-y-5">
 
-      {/* NAVBAR */}
-      <div className="dashboard-navbar">
-        <h2>Dashboard</h2>
+        {/* TOP HERO SECTION */}
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-5 py-5 shadow-xl shadow-slate-950/20">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
-        <div className="nav-right">
-          <span>{user?.name}</span>
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      </div>
+            {/* LEFT CONTENT */}
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                Personal Workspace
+              </p>
 
-      {/* CONTENT */}
-      <div className="dashboard-content">
+              <h1 className="mt-2 text-2xl font-semibold text-white">
+                Welcome back, {user?.name || "Team Member"}
+              </h1>
 
-        {/* USER CARD */}
-        <div className="card">
-          <h3>Welcome, {user?.name}</h3>
-          <p>Email: {user?.email}</p>
-          <p>Role: {user?.role}</p>
-        </div>
-
-        {/* ADMIN PANEL */}
-        {user?.role === "admin" && (
-          <div className="card">
-            <h3>Admin Panel</h3>
-            <p>You have full access</p>
-          </div>
-        )}
-
-        {/* 🔥 DATA TABLE */}
-        <div className="card">
-          <h3>Social Media Data</h3>
-
-          {data.length === 0 ? (
-            <p>No data found</p>
-          ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Platforms</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {data.map((item, index) => (
-                    <tr key={item._id}>
-                      <td>{index + 1}</td>
-
-                      <td>
-                        {item.platforms.join(", ")}
-                      </td>
-
-                      <td>
-                        {new Date(item.createdAt).toLocaleString()}
-                      </td>
-
-                      <td>
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(item._id)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <p className="mt-1 max-w-2xl text-sm text-slate-400">
+                Focus on your assignments, track submissions, and manage daily workflow efficiently.
+              </p>
             </div>
-          )}
 
+            {/* ACTION BUTTONS */}
+            <div className="flex flex-wrap items-center gap-2">
+
+              {/* HOME BUTTON */}
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-sm font-medium text-slate-200 transition-all duration-200 hover:border-cyan-400/30 hover:text-white"
+              >
+                ← Home
+              </Link>
+
+              {/* ASSIGNMENTS BUTTON */}
+              <Link
+                to="/my-assignments"
+                className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/25 transition-all duration-200 hover:scale-[1.02]"
+              >
+                Open My Assignments
+              </Link>
+            </div>
+          </div>
         </div>
 
-      </div>
+        {/* ANALYTICS CARDS */}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {summaryCards.map((card) => (
+            <div
+              key={card.label}
+              className={`rounded-xl border border-white/10 bg-gradient-to-br ${card.tone} px-4 py-4 shadow-sm`}
+            >
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-300">
+                {card.label}
+              </p>
 
-    </div>
+              <p className="mt-2 text-3xl font-semibold text-white">
+                {card.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* ASSIGNMENTS SECTION */}
+        <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-sm">
+          
+          {/* SECTION HEADER */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                Current Work
+              </p>
+
+              <h2 className="mt-1 text-lg font-semibold text-white">
+                Upcoming Assignments
+              </h2>
+            </div>
+
+            <Link
+              to="/my-assignments"
+              className="inline-flex items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-300 transition-all duration-200 hover:bg-cyan-500/20"
+            >
+              View All Assignments
+            </Link>
+          </div>
+
+          {/* ASSIGNMENT LIST */}
+          <div className="mt-3 space-y-2">
+
+            {loading ? (
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-400">
+                Loading assignments...
+              </div>
+            ) : assignments.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-sm text-slate-400">
+                No assignments yet.
+              </div>
+            ) : (
+              assignments.map((assignment) => (
+                <div
+                  key={assignment._id}
+                  className="flex items-start justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 transition-all duration-200 hover:border-cyan-400/20 hover:bg-slate-950/60"
+                >
+
+                  {/* LEFT SIDE */}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">
+                      {assignment.title}
+                    </p>
+
+                    <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                      {assignment.description}
+                    </p>
+                  </div>
+
+                  {/* RIGHT SIDE */}
+                  <div className="ml-4 flex shrink-0 flex-col items-end gap-1">
+
+                    <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-[10px] font-medium capitalize text-yellow-300">
+                      {assignment.status?.replace("_", " ")}
+                    </span>
+
+                    <div className="text-[11px] text-slate-500">
+                      Due{" "}
+                      {assignment.deadline
+                        ? new Date(
+                            assignment.deadline
+                          ).toLocaleDateString()
+                        : "N/A"}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </AdminLayout>
   );
 }
 
