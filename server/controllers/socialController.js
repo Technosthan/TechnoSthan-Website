@@ -10,6 +10,9 @@ const {
   assertSupportedPlatforms,
   dispatchByPlatform,
 } = require("../services/socialDispatchService");
+const {
+  resolveWorkspaceFeatureAccess,
+} = require("../services/workspaceSettingsService");
 
 const normalizePhoneNumber = (value = "") =>
   value.replace(/[^0-9+]/g, "").replace(/^\+/, "");
@@ -18,6 +21,8 @@ const normalizePhoneNumber = (value = "") =>
 const resolveUserId = (req) => req.user?._id || req.body?.userId || "anonymous";
 
 const getErrorStatus = (err) => err.statusCode || 500;
+const canAccessFeature = (featureKey, settings, user) =>
+  resolveWorkspaceFeatureAccess(featureKey, settings, user).allowed;
 
 const defaultPlatformSeed = [
   {
@@ -176,7 +181,7 @@ const upsertPlatformConnection = async (req, res) => {
 const sendSocial = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.socialPostingEnabled) {
+    if (!canAccessFeature("socialPostingEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Social posting is currently disabled",
@@ -203,14 +208,17 @@ const sendSocial = async (req, res) => {
       return res.status(400).json({ msg: "Type must be 'post' or 'message'" });
     }
 
-    if (!settings.platformDispatchEnabled) {
+    if (!canAccessFeature("platformDispatchEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform dispatch is currently disabled",
       });
     }
 
-    if (req.body.scheduledAt && !settings.scheduledPostsEnabled) {
+    if (
+      req.body.scheduledAt &&
+      !canAccessFeature("scheduledPostsEnabled", settings, req.user)
+    ) {
       return res.status(403).json({
         success: false,
         msg: "Scheduled posts are currently disabled",
@@ -218,9 +226,21 @@ const sendSocial = async (req, res) => {
     }
 
     const disallowed = platforms.filter((platform) => {
-      if (platform === "whatsapp" && !settings.whatsappEnabled) return true;
-      if (platform === "linkedin" && !settings.linkedinEnabled) return true;
-      if (platform === "instagram" && !settings.instagramEnabled) return true;
+      if (
+        platform === "whatsapp" &&
+        !canAccessFeature("whatsappEnabled", settings, req.user)
+      )
+        return true;
+      if (
+        platform === "linkedin" &&
+        !canAccessFeature("linkedinEnabled", settings, req.user)
+      )
+        return true;
+      if (
+        platform === "instagram" &&
+        !canAccessFeature("instagramEnabled", settings, req.user)
+      )
+        return true;
       return false;
     });
 
@@ -315,12 +335,22 @@ const getSocialPlatforms = async (req, res) => {
       .lean();
 
     const filtered = platforms.filter((record) => {
-      if (!settings.socialPostingEnabled) return false;
-      if (record.platformId === "whatsapp" && !settings.whatsappEnabled)
+      if (!canAccessFeature("socialPostingEnabled", settings, req.user))
         return false;
-      if (record.platformId === "linkedin" && !settings.linkedinEnabled)
+      if (
+        record.platformId === "whatsapp" &&
+        !canAccessFeature("whatsappEnabled", settings, req.user)
+      )
         return false;
-      if (record.platformId === "instagram" && !settings.instagramEnabled)
+      if (
+        record.platformId === "linkedin" &&
+        !canAccessFeature("linkedinEnabled", settings, req.user)
+      )
+        return false;
+      if (
+        record.platformId === "instagram" &&
+        !canAccessFeature("instagramEnabled", settings, req.user)
+      )
         return false;
       return true;
     });

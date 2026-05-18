@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { protect } = require("../middleware/authMiddleware");
 const {
   // Platform management
   getAllPlatforms,
@@ -20,6 +21,7 @@ const {
 } = require("../controllers/iconGridController");
 const { requireWorkspaceFeature } = require("../middleware/workspaceSettings");
 
+router.use(protect);
 router.use(requireWorkspaceFeature("platformGridEnabled"));
 
 // ============ PLATFORM MANAGEMENT (HR ONLY) ============

@@ -4,17 +4,25 @@ import { Link } from "react-router-dom";
 import AdminLayout from "../AdminLayout/AdminLayout";
 import { getAssignments } from "../../lib/assignments";
 import { useToast } from "../Toast/ToastProvider";
+import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const HRDashboard = () => {
   const { showToast } = useToast();
+  const { canAccessFeature } = useWorkspaceAccess();
   const [analytics, setAnalytics] = useState(null);
   const [recentAssignments, setRecentAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const canAccessAssignments = canAccessFeature("assignmentsEnabled");
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+        if (!canAccessAssignments) {
+          setAnalytics(null);
+          setRecentAssignments([]);
+          return;
+        }
         const response = await getAssignments({ page: 1, limit: 5 });
         setAnalytics(response.analytics);
         setRecentAssignments(response.data || []);
@@ -30,7 +38,7 @@ const HRDashboard = () => {
     };
 
     loadData();
-  }, [showToast]);
+  }, [canAccessAssignments, showToast]);
 
   const cards = useMemo(
     () => [
@@ -88,6 +96,10 @@ const HRDashboard = () => {
               {loading ? (
                 <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm text-slate-400">
                   Loading activity...
+                </div>
+              ) : !canAccessAssignments ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 p-5 text-sm text-slate-400">
+                  Assignments are not enabled for your account.
                 </div>
               ) : recentAssignments.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 p-5 text-sm text-slate-400">

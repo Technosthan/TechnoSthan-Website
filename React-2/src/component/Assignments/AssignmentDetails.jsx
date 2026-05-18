@@ -34,6 +34,9 @@ const AssignmentDetails = ({
   onReviewSubmission,
   onSubmitWork,
   loading,
+  canSubmitWork = true,
+  canUploadFiles = true,
+  showSubmissionActions = true,
 }) => {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
@@ -128,14 +131,22 @@ const AssignmentDetails = ({
             <Upload size={16} />
             Upload PDF, DOC, DOCX, or image
           </span>
-          <input
-            type="file"
-            className="mt-2 block w-full text-xs"
-            onChange={handleFileUpload}
-          />
-          {uploading && (
-            <p className="mt-3 text-xs text-indigo-200">
-              Uploading... {uploadProgress}%
+          {canUploadFiles ? (
+            <>
+              <input
+                type="file"
+                className="mt-2 block w-full text-xs"
+                onChange={handleFileUpload}
+              />
+              {uploading && (
+                <p className="mt-3 text-xs text-indigo-200">
+                  Uploading... {uploadProgress}%
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">
+              File uploads are disabled for your account.
             </p>
           )}
         </label>
@@ -162,7 +173,7 @@ const AssignmentDetails = ({
             <option value="submitted">Submitted</option>
           </select>
           <button
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() =>
               onSubmitWork({
                 submissionLink: submissionForm.submissionLink,
@@ -171,12 +182,21 @@ const AssignmentDetails = ({
                 status: submissionForm.status,
               })
             }
-            disabled={loading || uploading}
+            disabled={loading || uploading || !canSubmitWork}
           >
             <SendHorizonal size={16} />
-            {loading ? "Saving..." : "Save Submission"}
+            {!canSubmitWork
+              ? "Submission Disabled"
+              : loading
+                ? "Saving..."
+                : "Save Submission"}
           </button>
         </div>
+        {!canSubmitWork && (
+          <p className="text-xs text-slate-500">
+            Submission updates are currently disabled for your account.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -305,6 +325,16 @@ const AssignmentDetails = ({
           )}
         </div>
       </div>
+    </div>
+  );
+
+  const unavailableActions = (
+    <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
+      <h3 className="text-sm font-semibold text-white">Access Restricted</h3>
+      <p className="mt-3 text-sm text-slate-400">
+        Interactive actions for this assignment are not enabled for your
+        account right now.
+      </p>
     </div>
   );
 
@@ -500,7 +530,11 @@ const AssignmentDetails = ({
               </div>
 
               <div className="space-y-6">
-                {canManageAssignments ? feedbackActions : submissionActions}
+                {canManageAssignments
+                  ? feedbackActions
+                  : showSubmissionActions
+                    ? submissionActions
+                    : unavailableActions}
               </div>
             </div>
           </motion.div>

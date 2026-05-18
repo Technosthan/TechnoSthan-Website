@@ -10,6 +10,8 @@ import {
 const AssignmentCard = ({
   assignment,
   canManageAssignment = () => false,
+  canEditAssignment = canManageAssignment,
+  canDeleteAssignment = canManageAssignment,
   onView,
   onEdit,
   onDelete,
@@ -69,7 +71,7 @@ const AssignmentCard = ({
         View
       </button>
 
-      {canManageAssignment(assignment) && (
+      {canEditAssignment(assignment) && (
         <button
           className="inline-flex items-center gap-2 rounded-full bg-indigo-500/20 px-4 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-500/30"
           onClick={() => onEdit(assignment)}
@@ -79,7 +81,7 @@ const AssignmentCard = ({
         </button>
       )}
 
-      {canManageAssignment(assignment) && (
+      {canDeleteAssignment(assignment) && (
         <button
           className="inline-flex items-center gap-2 rounded-full bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/25"
           onClick={() => onDelete(assignment)}

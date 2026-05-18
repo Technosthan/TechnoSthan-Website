@@ -19,6 +19,7 @@ import {
   updateAssignmentStatus,
 } from "../../lib/assignments";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
+import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const initialFilters = {
   search: "",
@@ -32,6 +33,7 @@ const initialFilters = {
 
 const AdminAssignments = () => {
   const { showToast } = useToast();
+  const { canAccessFeature } = useWorkspaceAccess();
   const [assignments, setAssignments] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
@@ -57,9 +59,24 @@ const AdminAssignments = () => {
 
   const currentRole = normalizeRole(getStoredUser()?.role);
   const isAdmin = currentRole === "ADMIN";
+  const canCreateAssignments = canAccessFeature("hrCanCreateAssignments");
+  const canEditAssignments = canAccessFeature("hrCanEditOwnAssignments");
+  const canDeleteAssignments = canAccessFeature("hrCanDeleteAssignments");
+  const canReviewSubmissions =
+    canAccessFeature("assignmentReviewsEnabled") &&
+    canAccessFeature("hrCanReviewSubmissions");
   const MotionCard = motion.div;
 
   const canManageAssignment = (assignment) => {
+    if (
+      !canEditAssignments &&
+      !canDeleteAssignments &&
+      !canReviewSubmissions &&
+      !isAdmin
+    ) {
+      return false;
+    }
+
     if (isAdmin) {
       return true;
     }
@@ -357,15 +374,17 @@ const AdminAssignments = () => {
         </div>
 
         <div className="flex items-center justify-end">
-          <button
-            className="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400"
-            onClick={() => {
-              setEditingAssignment(null);
-              setModalOpen(true);
-            }}
-          >
-            Create New
-          </button>
+          {canCreateAssignments && (
+            <button
+              className="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400"
+              onClick={() => {
+                setEditingAssignment(null);
+                setModalOpen(true);
+              }}
+            >
+              Create New
+            </button>
+          )}
         </div>
 
         <AssignmentTable
@@ -380,6 +399,12 @@ const AdminAssignments = () => {
           assignees={assignees}
           showAssigneeFilter
           canManageAssignment={canManageAssignment}
+          canEditAssignment={(assignment) =>
+            canEditAssignments && canManageAssignment(assignment)
+          }
+          canDeleteAssignment={(assignment) =>
+            canDeleteAssignments && canManageAssignment(assignment)
+          }
           onView={handleOpenAssignment}
           onEdit={(assignment) => {
             setEditingAssignment(assignment);
@@ -401,6 +426,12 @@ const AdminAssignments = () => {
                 key={assignment._id}
                 assignment={assignment}
                 canManageAssignment={canManageAssignment}
+                canEditAssignment={(item) =>
+                  canEditAssignments && canManageAssignment(item)
+                }
+                canDeleteAssignment={(item) =>
+                  canDeleteAssignments && canManageAssignment(item)
+                }
                 onView={handleOpenAssignment}
                 onEdit={(item) => {
                   setEditingAssignment(item);
@@ -465,13 +496,17 @@ const AdminAssignments = () => {
         open={Boolean(selectedAssignment)}
         onClose={() => setSelectedAssignment(null)}
         canManageAssignments={
-          selectedAssignment ? canManageAssignment(selectedAssignment) : false
+          selectedAssignment && canReviewSubmissions
+            ? canManageAssignment(selectedAssignment)
+            : false
         }
         onStatusChange={handleStatusChange}
         onFeedback={handleFeedback}
         onReviewSubmission={handleReviewSubmission}
         onSubmitWork={() => {}}
         loading={saving}
+        canUploadFiles={false}
+        showSubmissionActions={false}
       />
     </AdminLayout>
   );

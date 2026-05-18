@@ -33,6 +33,8 @@ import HRDashboard from "./component/HRDashboard/HRDashboard";
 import ProtectedRoute from "./component/Protected/ProtectedRoute";
 import ProtectedAdminRoute from "./component/Protected/ProtectedAdminRoute";
 import RoleRoute from "./component/Protected/RoleRoute";
+import FeatureRoute from "./component/Protected/FeatureRoute";
+import { WorkspaceAccessProvider } from "./context/WorkspaceAccessContext";
 
 import SocialForm from "./component/SocialForm/SocialForm";
 import HRSocial from "./component/HRSocial/HRSocial";
@@ -61,8 +63,10 @@ function AppWrapper() {
   return (
     <Router>
       <HelmetProvider>
-        <ScrollToTop />
-        <App />
+        <WorkspaceAccessProvider>
+          <ScrollToTop />
+          <App />
+        </WorkspaceAccessProvider>
       </HelmetProvider>
     </Router>
   );
@@ -155,7 +159,18 @@ function App() {
         <Route path="/register" element={<Register />} />
 
         {/* SOCIAL */}
-        <Route path="/social" element={<SocialForm />} />
+        <Route
+          path="/social"
+          element={
+            <FeatureRoute
+              featureKey="socialPostingEnabled"
+              blockedTitle="Social posting unavailable"
+              blockedMessage="This workspace has disabled social posting or limited it to other accounts."
+            >
+              <SocialForm />
+            </FeatureRoute>
+          }
+        />
 
         <Route path="/hr-social" element={<HRSocial />} />
 
@@ -209,27 +224,43 @@ function App() {
         <Route
           path="/hr"
           element={
-            <RoleRoute roles={["HR", "ADMIN"]}>
-              <HRDashboard />
-            </RoleRoute>
+            <FeatureRoute
+              featureKey="assignmentsEnabled"
+              blockedTitle="Assignments unavailable"
+              blockedMessage="The assignments workspace is disabled or not assigned to your account."
+            >
+              <RoleRoute roles={["HR", "ADMIN"]}>
+                <HRDashboard />
+              </RoleRoute>
+            </FeatureRoute>
           }
         />
 
         <Route
           path="/hr/assignments"
           element={
-            <RoleRoute roles={["HR", "ADMIN"]}>
-              <AdminAssignments />
-            </RoleRoute>
+            <FeatureRoute
+              featureKey="assignmentsEnabled"
+              blockedTitle="Assignments unavailable"
+              blockedMessage="The assignments workspace is disabled or not assigned to your account."
+            >
+              <RoleRoute roles={["HR", "ADMIN"]}>
+                <AdminAssignments />
+              </RoleRoute>
+            </FeatureRoute>
           }
         />
 
         <Route
           path="/my-assignments"
           element={
-            <ProtectedRoute>
+            <FeatureRoute
+              featureKey="assignmentsEnabled"
+              blockedTitle="Assignments unavailable"
+              blockedMessage="The assignments workspace is disabled or not assigned to your account."
+            >
               <MyAssignments />
-            </ProtectedRoute>
+            </FeatureRoute>
           }
         />
 

@@ -17,6 +17,8 @@ const AssignmentTable = ({
   onReset,
   assignees = [],
   canManageAssignment = () => false,
+  canEditAssignment = canManageAssignment,
+  canDeleteAssignment = canManageAssignment,
   onView,
   onEdit,
   onDelete,
@@ -202,7 +204,7 @@ const AssignmentTable = ({
                       <Eye size={15} />
                     </button>
 
-                    {canManageAssignment(assignment) && (
+                    {canEditAssignment(assignment) && (
                       <button
                         className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-100 transition hover:bg-indigo-500/30"
                         onClick={() => onEdit(assignment)}
@@ -211,7 +213,7 @@ const AssignmentTable = ({
                       </button>
                     )}
 
-                    {canManageAssignment(assignment) && (
+                    {canDeleteAssignment(assignment) && (
                       <button
                         className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/20 text-rose-100 transition hover:bg-rose-500/30"
                         onClick={() => onDelete(assignment)}

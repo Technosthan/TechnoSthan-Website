@@ -5,6 +5,9 @@ const {
   getRolePermissions,
   normalizeRole,
 } = require("../constants/rbac");
+const {
+  isWorkspaceFeatureEnabled,
+} = require("../services/workspaceSettingsService");
 
 const ADMIN_SECRET_CODE =
   process.env.ADMIN_SECRET_CODE || "technosthanadmin2026";
@@ -84,7 +87,10 @@ exports.register = async (req, res) => {
     }
 
     const role = adminCode === ADMIN_SECRET_CODE ? ROLES.ADMIN : ROLES.USER;
-    if (role === ROLES.USER && settings?.allowUserRegistration === false) {
+    if (
+      role === ROLES.USER &&
+      !isWorkspaceFeatureEnabled("allowUserRegistration", settings)
+    ) {
       return res.status(403).json({
         success: false,
         message: "User registration is currently disabled",

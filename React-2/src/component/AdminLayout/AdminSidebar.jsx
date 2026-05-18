@@ -7,33 +7,35 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
+import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const AdminSidebar = ({ onLogout }) => {
   const role = normalizeRole(getStoredUser()?.role);
+  const { canAccessFeature } = useWorkspaceAccess();
   const basePath =
     role === "HR" ? "/hr" : role === "USER" ? "/dashboard" : "/admin";
   const items =
     role === "HR"
       ? [
           { label: "Overview", to: "/hr", icon: House },
-          {
+          canAccessFeature("assignmentsEnabled") && {
             label: "Assignments",
             to: "/hr/assignments",
             icon: BriefcaseBusiness,
           },
-        ]
+        ].filter(Boolean)
       : role === "USER"
         ? [
             { label: "Overview", to: "/dashboard", icon: House },
-            {
+            canAccessFeature("assignmentsEnabled") && {
               label: "Assignments",
               to: "/my-assignments",
               icon: BriefcaseBusiness,
             },
-          ]
+          ].filter(Boolean)
         : [
             { label: "Overview", to: "/admin", icon: House },
-            {
+            canAccessFeature("assignmentsEnabled") && {
               label: "Assignments",
               to: "/admin/assignments",
               icon: BriefcaseBusiness,
@@ -44,7 +46,7 @@ const AdminSidebar = ({ onLogout }) => {
               icon: ChartNoAxesCombined,
             },
             { label: "Users", to: "/admin/users", icon: Users },
-          ];
+          ].filter(Boolean);
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-slate-950/85 xl:flex xl:flex-col">

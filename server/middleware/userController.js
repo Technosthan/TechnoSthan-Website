@@ -1,5 +1,8 @@
 const User = require("../models/User");
 const { ROLES, getRoleVariants, normalizeRole } = require("../constants/rbac");
+const {
+  resolveWorkspaceFeatureAccess,
+} = require("../services/workspaceSettingsService");
 
 const buildSafeUser = (user) => ({
   id: user._id,
@@ -81,10 +84,16 @@ exports.getAllUsers = async (req, res) => {
 // UPDATE USER ROLE (Admin Only)
 exports.updateUserRole = async (req, res) => {
   try {
-    if (req.workspaceSettings?.settings?.allowRoleEditing === false) {
+    const access = resolveWorkspaceFeatureAccess(
+      "allowRoleEditing",
+      req.workspaceSettings?.settings,
+      req.user,
+      { allowAdminBypass: false },
+    );
+    if (!access.allowed) {
       return res.status(403).json({
         success: false,
-        message: "Role editing is currently disabled",
+        message: "Role editing is currently unavailable for your account",
       });
     }
 
@@ -139,10 +148,16 @@ exports.updateUserRole = async (req, res) => {
 // UPDATE USER STATUS (suspend/reactivate)
 exports.updateUserStatus = async (req, res) => {
   try {
-    if (req.workspaceSettings?.settings?.allowUserSuspension === false) {
+    const access = resolveWorkspaceFeatureAccess(
+      "allowUserSuspension",
+      req.workspaceSettings?.settings,
+      req.user,
+      { allowAdminBypass: false },
+    );
+    if (!access.allowed) {
       return res.status(403).json({
         success: false,
-        message: "User suspension is currently disabled",
+        message: "User suspension is currently unavailable for your account",
       });
     }
 
@@ -196,10 +211,16 @@ exports.updateUserStatus = async (req, res) => {
 // DELETE USER (Admin Only)
 exports.deleteUser = async (req, res) => {
   try {
-    if (req.workspaceSettings?.settings?.allowAccountDeletion === false) {
+    const access = resolveWorkspaceFeatureAccess(
+      "allowAccountDeletion",
+      req.workspaceSettings?.settings,
+      req.user,
+      { allowAdminBypass: false },
+    );
+    if (!access.allowed) {
       return res.status(403).json({
         success: false,
-        message: "Account deletion is currently disabled",
+        message: "Account deletion is currently unavailable for your account",
       });
     }
 

@@ -4,10 +4,15 @@ const {
   IconShareLog,
 } = require("../models/Platform");
 const User = require("../models/User");
+const {
+  resolveWorkspaceFeatureAccess,
+} = require("../services/workspaceSettingsService");
 
 // ============ UTILITY FUNCTIONS ============
 const resolveUserId = (req) => req.user?._id || req.body?.userId || "anonymous";
 const getErrorStatus = (err) => err.statusCode || 500;
+const canAccessFeature = (featureKey, settings, user) =>
+  resolveWorkspaceFeatureAccess(featureKey, settings, user).allowed;
 
 // ============ PLATFORM MANAGEMENT (HR ONLY) ============
 
@@ -17,7 +22,7 @@ const getErrorStatus = (err) => err.statusCode || 500;
 const getAllPlatforms = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -54,7 +59,7 @@ const getAllPlatforms = async (req, res) => {
 const getPlatformById = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -85,7 +90,7 @@ const getPlatformById = async (req, res) => {
 const addPlatform = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -166,7 +171,7 @@ const addPlatform = async (req, res) => {
 const updatePlatform = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -216,7 +221,7 @@ const updatePlatform = async (req, res) => {
 const togglePlatformVisibility = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -269,7 +274,7 @@ const togglePlatformVisibility = async (req, res) => {
 const deletePlatform = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -311,7 +316,7 @@ const deletePlatform = async (req, res) => {
 const getUserIconSelection = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformGridEnabled) {
+    if (!canAccessFeature("platformGridEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform grid functionality is currently disabled",
@@ -356,7 +361,7 @@ const getUserIconSelection = async (req, res) => {
 const updateUserIconSelection = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.userGridEditingEnabled) {
+    if (!canAccessFeature("userGridEditingEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "User grid editing is currently disabled",
@@ -407,7 +412,7 @@ const updateUserIconSelection = async (req, res) => {
 const toggleIconSelection = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.userGridEditingEnabled) {
+    if (!canAccessFeature("userGridEditingEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "User grid editing is currently disabled",
@@ -458,7 +463,7 @@ const toggleIconSelection = async (req, res) => {
 const logIconAction = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.usageTrackingEnabled) {
+    if (!canAccessFeature("usageTrackingEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Usage tracking is currently disabled",
@@ -469,14 +474,20 @@ const logIconAction = async (req, res) => {
     const { platformId, actionType, copiedText, sharedTo } = req.body;
     const normalizedAction = (actionType || "click").toLowerCase();
 
-    if (normalizedAction === "share" && !settings.shareTrackingEnabled) {
+    if (
+      normalizedAction === "share" &&
+      !canAccessFeature("shareTrackingEnabled", settings, req.user)
+    ) {
       return res.status(403).json({
         success: false,
         msg: "Share tracking is currently disabled",
       });
     }
 
-    if (normalizedAction === "copy" && !settings.copyTrackingEnabled) {
+    if (
+      normalizedAction === "copy" &&
+      !canAccessFeature("copyTrackingEnabled", settings, req.user)
+    ) {
       return res.status(403).json({
         success: false,
         msg: "Copy tracking is currently disabled",
@@ -507,7 +518,7 @@ const logIconAction = async (req, res) => {
 const getIconAnalytics = async (req, res) => {
   try {
     const settings = req.workspaceSettings?.settings || {};
-    if (!settings.platformAnalyticsEnabled) {
+    if (!canAccessFeature("platformAnalyticsEnabled", settings, req.user)) {
       return res.status(403).json({
         success: false,
         msg: "Platform analytics is currently disabled",

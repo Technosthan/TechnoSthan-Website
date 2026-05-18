@@ -1,6 +1,9 @@
 const HRProfile = require("../models/HRProfile");
 const fs = require("fs");
 const path = require("path");
+const {
+  resolveWorkspaceFeatureAccess,
+} = require("../services/workspaceSettingsService");
 
 const resolveOwnerUserId = (req) =>
   req.user?.id ||
@@ -15,6 +18,8 @@ const toNormalizedEmail = (value) =>
     .toLowerCase();
 
 const uploadsDir = path.resolve(__dirname, "..", "uploads");
+const canAccessFeature = (featureKey, settings, user, options) =>
+  resolveWorkspaceFeatureAccess(featureKey, settings, user, options).allowed;
 
 const ensureUploadsDir = () => {
   if (!fs.existsSync(uploadsDir)) {
@@ -49,7 +54,14 @@ const createHRProfile = async (req, res) => {
       return res.status(403).json({ msg: "Access denied: Admins and HR only" });
     }
 
-    if (req.workspaceSettings?.settings?.allowHRCreation === false) {
+    if (
+      !canAccessFeature(
+        "allowHRCreation",
+        req.workspaceSettings?.settings,
+        req.user,
+        { allowAdminBypass: false },
+      )
+    ) {
       return res.status(403).json({ msg: "HR creation is currently disabled" });
     }
 
@@ -199,7 +211,13 @@ const deleteHRProfile = async (req, res) => {
 
 const uploadHRAvatar = async (req, res) => {
   try {
-    if (req.workspaceSettings?.settings?.avatarUploadsEnabled === false) {
+    if (
+      !canAccessFeature(
+        "avatarUploadsEnabled",
+        req.workspaceSettings?.settings,
+        req.user,
+      )
+    ) {
       return res
         .status(403)
         .json({ msg: "Avatar uploads are currently disabled" });

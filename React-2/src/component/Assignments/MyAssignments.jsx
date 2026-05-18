@@ -11,6 +11,7 @@ import {
   submitAssignment,
   updateAssignmentStatus,
 } from "../../lib/assignments";
+import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const initialFilters = {
   search: "",
@@ -23,6 +24,7 @@ const initialFilters = {
 
 const MyAssignments = () => {
   const { showToast } = useToast();
+  const { canAccessFeature } = useWorkspaceAccess();
   const [assignments, setAssignments] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
   const [searchInput, setSearchInput] = useState(initialFilters.search);
@@ -40,6 +42,10 @@ const MyAssignments = () => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const canSubmitAssignments = canAccessFeature("usersCanSubmitAssignments");
+  const canUploadFiles =
+    canAccessFeature("fileUploadsEnabled") &&
+    canAccessFeature("usersCanUploadFiles");
 
   const fetchAssignments = async (page = pagination.page) => {
     try {
@@ -312,6 +318,8 @@ const MyAssignments = () => {
         onFeedback={() => {}}
         onSubmitWork={handleSubmission}
         loading={loading}
+        canSubmitWork={canSubmitAssignments}
+        canUploadFiles={canUploadFiles}
       />
     </AdminLayout>
   );

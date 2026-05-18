@@ -72,6 +72,31 @@ exports.protect = async (req, res, next) => {
   }
 };
 
+exports.optionalAuth = async (req, res, next) => {
+  try {
+    if (req.user?._id) {
+      req.user = buildAuthUser(req.user);
+      return next();
+    }
+
+    const token = extractToken(req);
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId || decoded.id).lean();
+
+    if (user && user.isActive !== false) {
+      req.user = buildAuthUser(user);
+    }
+
+    return next();
+  } catch (err) {
+    return next();
+  }
+};
+
 exports.authorize =
   (...acceptedRoles) =>
   (req, res, next) => {

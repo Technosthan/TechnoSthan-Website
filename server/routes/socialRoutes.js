@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { protect } = require("../middleware/authMiddleware");
 
 const {
   saveSocial,
@@ -17,10 +18,16 @@ const {
 } = require("../controllers/socialController");
 const { requireWorkspaceFeature } = require("../middleware/workspaceSettings");
 
+router.use(protect);
+
 // ================= EXISTING ROUTES =================
 router.post("/", saveSocial);
 router.get("/", getSocial);
-router.get("/platforms", getSocialPlatforms);
+router.get(
+  "/platforms",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  getSocialPlatforms,
+);
 router.post("/platforms", addSocialPlatform);
 router.delete("/:id", deleteSocial);
 
@@ -39,8 +46,16 @@ router.delete("/contacts/:id/:contactId", deleteWhatsAppContact);
 router.get("/search", searchWhatsAppContacts);
 
 // ================= SOCIAL PLATFORM DISPATCH ROUTES =================
-router.get("/connections", getPlatformConnections);
-router.post("/connections", upsertPlatformConnection);
+router.get(
+  "/connections",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  getPlatformConnections,
+);
+router.post(
+  "/connections",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  upsertPlatformConnection,
+);
 router.post(
   "/send",
   requireWorkspaceFeature("socialPostingEnabled"),
@@ -55,8 +70,20 @@ router.post("/social/add-contact", addWhatsAppContact);
 router.get("/social/contacts/:id", getWhatsAppContacts);
 router.delete("/social/contacts/:id/:contactId", deleteWhatsAppContact);
 router.get("/social/search", searchWhatsAppContacts);
-router.get("/social/connections", getPlatformConnections);
-router.post("/social/connections", upsertPlatformConnection);
-router.post("/social/send", sendSocial);
+router.get(
+  "/social/connections",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  getPlatformConnections,
+);
+router.post(
+  "/social/connections",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  upsertPlatformConnection,
+);
+router.post(
+  "/social/send",
+  requireWorkspaceFeature("socialPostingEnabled"),
+  sendSocial,
+);
 
 module.exports = router;

@@ -11,9 +11,11 @@ import { useNavigate } from "react-router-dom";
 import AdminLayout from "../AdminLayout/AdminLayout";
 import api from "../../lib/api";
 import { getAssignments, getSubmissionMonitor } from "../../lib/assignments";
+import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { canAccessFeature } = useWorkspaceAccess();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
@@ -190,6 +192,7 @@ const AdminDashboard = () => {
 
             <button
               className="inline-flex h-11 items-center rounded-full bg-cyan-500 px-5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400"
+              disabled={!canAccessFeature("assignmentsEnabled")}
               onClick={() => navigate("/admin/assignments")}
             >
               Assignment Center
@@ -369,13 +372,15 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="mt-4 grid gap-3">
-                <button
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4 text-left text-sm text-slate-200 transition hover:bg-slate-950/75"
-                  onClick={() => navigate("/admin/assignments")}
-                >
-                  <span>Manage assignments</span>
-                  <ArrowRight size={15} className="text-slate-500" />
-                </button>
+                {canAccessFeature("assignmentsEnabled") && (
+                  <button
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4 text-left text-sm text-slate-200 transition hover:bg-slate-950/75"
+                    onClick={() => navigate("/admin/assignments")}
+                  >
+                    <span>Manage assignments</span>
+                    <ArrowRight size={15} className="text-slate-500" />
+                  </button>
+                )}
                 <button
                   className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4 text-left text-sm text-slate-200 transition hover:bg-slate-950/75"
                   onClick={() => navigate("/admin/users")}
@@ -383,13 +388,15 @@ const AdminDashboard = () => {
                   <span>Manage users</span>
                   <ArrowRight size={15} className="text-slate-500" />
                 </button>
-                <button
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4 text-left text-sm text-slate-200 transition hover:bg-slate-950/75"
-                  onClick={() => navigate("/social")}
-                >
-                  <span>Open social post form</span>
-                  <ArrowRight size={15} className="text-slate-500" />
-                </button>
+                {canAccessFeature("socialPostingEnabled") && (
+                  <button
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4 text-left text-sm text-slate-200 transition hover:bg-slate-950/75"
+                    onClick={() => navigate("/social")}
+                  >
+                    <span>Open social post form</span>
+                    <ArrowRight size={15} className="text-slate-500" />
+                  </button>
+                )}
               </div>
             </section>
 
