@@ -108,6 +108,81 @@ export const getDeadlineLabel = (assignment) => {
   return `${days}d left`;
 };
 
+export const getRelativeDeadlineLabel = (value) => {
+  if (!value) {
+    return "No deadline";
+  }
+
+  const deadline = new Date(value);
+  const diffMs = deadline.getTime() - Date.now();
+  const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+
+  if (diffHours < 0) {
+    const overdueDays = Math.round(Math.abs(diffHours) / 24);
+    if (overdueDays >= 1) {
+      return `Overdue by ${overdueDays} day${overdueDays === 1 ? "" : "s"}`;
+    }
+
+    return `Overdue by ${Math.abs(diffHours)} hour${Math.abs(diffHours) === 1 ? "" : "s"}`;
+  }
+
+  if (diffHours <= 24) {
+    if (diffHours === 0) {
+      return "Due today";
+    }
+
+    return `Due in ${diffHours} hour${diffHours === 1 ? "" : "s"}`;
+  }
+
+  const dueDays = Math.ceil(diffHours / 24);
+  return `Due in ${dueDays} day${dueDays === 1 ? "" : "s"}`;
+};
+
+export const getAssignmentProgress = (assignment) => {
+  const status = assignment?.status || "pending";
+
+  if (status === "completed") {
+    return 100;
+  }
+
+  if (status === "submitted") {
+    return 85;
+  }
+
+  if (status === "rejected") {
+    return 60;
+  }
+
+  if (status === "in_progress") {
+    return 55;
+  }
+
+  return 20;
+};
+
+export const getSubmissionStatusLabel = (status) => {
+  if (!status) {
+    return "Pending";
+  }
+
+  if (status === "submitted") {
+    return "Pending";
+  }
+
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+export const getUserInitials = (name = "") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("") || "U";
+
 export const attachmentsToText = (attachments = []) => attachments.map((item) => item.url).join("\n");
 
 export const textToAttachments = (value = "") =>
