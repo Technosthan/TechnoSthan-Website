@@ -3,13 +3,14 @@ import {
   ChartNoAxesCombined,
   House,
   LogOut,
+  X,
   Users,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
-const AdminSidebar = ({ onLogout }) => {
+const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
   const role = normalizeRole(getStoredUser()?.role);
   const { canAccessFeature } = useWorkspaceAccess();
   const basePath =
@@ -49,26 +50,36 @@ const AdminSidebar = ({ onLogout }) => {
           ].filter(Boolean);
 
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-white/10 bg-slate-950/85 xl:flex xl:flex-col">
-      <div className="border-b border-white/10 px-4 py-5">
-        <div className="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[10px] uppercase tracking-[0.28em] text-indigo-200">
-          <ChartNoAxesCombined size={16} />
-          {role === "HR"
-            ? "HR Panel"
-            : role === "USER"
-              ? "Personal Workspace"
-              : "Admin panel"}
+    <aside
+      className={`fixed inset-y-0 left-0 z-[100] flex w-64 transform flex-col border-r border-white/10 bg-slate-950 transition-transform duration-300 ease-in-out xl:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-5">
+        <div className="flex flex-col">
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[10px] uppercase tracking-[0.28em] text-indigo-200">
+            <ChartNoAxesCombined size={16} />
+            {role === "HR"
+              ? "HR Panel"
+              : role === "USER"
+                ? "Personal Workspace"
+                : "Admin panel"}
+          </div>
+          <h2 className="mt-4 text-lg font-semibold tracking-tight text-white">
+            {role === "HR"
+              ? "TechnoSthan HR panel"
+              : role === "USER"
+                ? "TechnoSthan Tasks"
+                : "TechnoSthan Admin "}
+          </h2>
         </div>
-        <h2 className="mt-4 text-lg font-semibold tracking-tight text-white">
-          {role === "HR"
-            ? "TechnoSthan HR panel"
-            : role === "USER"
-              ? "TechnoSthan Tasks"
-              : "TechnoSthan Admin "}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
-          Secure role-based operations with a focused workspace.
-        </p>
+        <button
+          onClick={onClose}
+          className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-400 hover:text-white xl:hidden"
+          aria-label="Close menu"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <nav className="flex-1 space-y-1.5 px-3 py-4">
@@ -79,6 +90,7 @@ const AdminSidebar = ({ onLogout }) => {
               key={item.to}
               to={item.to}
               end={item.to === basePath}
+              onClick={onClose}
               className={({ isActive }) =>
                 `group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-medium transition ${
                   isActive
@@ -99,7 +111,10 @@ const AdminSidebar = ({ onLogout }) => {
       <div className="border-t border-white/10 p-3">
         <button
           className="flex w-full items-center gap-3 rounded-2xl border border-transparent px-3.5 py-3 text-sm font-medium text-slate-300 transition hover:border-white/10 hover:bg-white/5 hover:text-white"
-          onClick={onLogout}
+          onClick={() => {
+            onClose();
+            onLogout();
+          }}
         >
           <span className="rounded-xl bg-white/[0.04] p-2">
             <LogOut size={16} />

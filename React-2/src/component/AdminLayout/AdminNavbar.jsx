@@ -1,7 +1,7 @@
 const AdminNavbar = ({ title, subtitle }) => (
   <div className="mb-5 rounded-[24px] border border-white/8 bg-white/[0.02] px-4 py-4 shadow-[0_20px_50px_-35px_rgba(15,23,42,0.95)] backdrop-blur sm:px-5">
     <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
+      <div className="min-w-0 pl-12 xl:pl-0">
         <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
           Workspace Overview
         </p>

@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Menu } from "lucide-react";
 import AdminNavbar from "./AdminNavbar";
 import AdminSidebar from "./AdminSidebar";
 import { clearAuth } from "../../utils/auth";
 
 const AdminLayout = ({ title, subtitle, children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -14,7 +17,28 @@ const AdminLayout = ({ title, subtitle, children }) => {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.2),_transparent_35%),linear-gradient(180deg,#020617_0%,#0f172a_100%)] text-white">
       <div className="flex min-h-screen">
-        <AdminSidebar onLogout={handleLogout} />
+        {/* Mobile Hamburger Button */}
+        <button
+          className="fixed left-4 top-4 z-[110] flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-900/80 text-white shadow-lg backdrop-blur transition hover:bg-slate-800 xl:hidden"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open navigation menu"
+        >
+          <Menu size={22} />
+        </button>
+
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 xl:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <AdminSidebar
+          onLogout={handleLogout}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
         <main className="flex-1 px-3 py-3 sm:px-4 lg:px-6 lg:py-5 xl:ml-60 xl:px-7 2xl:px-8">
           <AdminNavbar title={title} subtitle={subtitle} />
           <div className="mx-auto max-w-[1680px]">{children}</div>
