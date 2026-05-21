@@ -677,6 +677,24 @@ const SocialForm = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // PLATFORM ANALYTICS
+  const [platformAnalytics, setPlatformAnalytics] = useState({
+    facebook: 0,
+    instagram: 0,
+    linkedin: 0,
+    twitter: 0,
+    whatsapp: 0,
+    telegram: 0,
+    youtube: 0,
+    pinterest: 0,
+    tiktok: 0,
+    snapchat: 0,
+    reddit: 0,
+    discord: 0,
+    slack: 0,
+    email: 0,
+    sms: 0,
+  });
 
   // HR Profile Management
   const [hrProfiles, setHRProfiles] = useState([]);
@@ -1044,7 +1062,43 @@ const SocialForm = () => {
   });
 
   // Real post history from backend
-  const [postHistory, setPostHistory] = useState([]);
+  const [postHistory, setPostHistory] = useState([
+
+  {
+    platform: "Facebook",
+    platformIcon: "Facebook",
+    platformColor: "#1877F2",
+
+    author: "Techno Sthan",
+
+    status: "sent",
+
+    message:
+      "Our new agritech automation platform is now live 🚀",
+
+    date: "21 May 2026",
+
+    time: "7:25 PM",
+  },
+
+  {
+    platform: "Instagram",
+    platformIcon: "Instagram",
+    platformColor: "#E4405F",
+
+    author: "HR Team",
+
+    status: "sent",
+
+    message:
+      "New hiring campaign started for developers.",
+
+    date: "21 May 2026",
+
+    time: "6:40 PM",
+  },
+
+]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   // ========== HELPER FUNCTIONS ==========
@@ -1440,6 +1494,46 @@ const SocialForm = () => {
     fetchAnalyticsData();
   }, []);
 
+  // Load saved platform analytics from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("platformAnalytics");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          setPlatformAnalytics((prev) => ({ ...prev, ...parsed }));
+        }
+      }
+    } catch {
+      // ignore invalid storage data
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "platformAnalytics",
+        JSON.stringify(platformAnalytics),
+      );
+    } catch {
+      // ignore storage write failures
+    }
+  }, [platformAnalytics]);
+
+  const addPlatformAnalyticsCounts = (platformIds = []) => {
+    if (!Array.isArray(platformIds)) return;
+    setPlatformAnalytics((prev) => {
+      const next = { ...prev };
+      platformIds.forEach((platformId) => {
+        const key = String(platformId || "").toLowerCase();
+        if (key in next) {
+          next[key] = (next[key] || 0) + 1;
+        }
+      });
+      return next;
+    });
+  };
+
   const normalizePhoneNumber = (phone) => {
     const digits = String(phone || "").replace(/\D/g, "");
     if (digits.length === 10) return `91${digits}`;
@@ -1656,11 +1750,13 @@ const SocialForm = () => {
 
       const resultStatus = payload?.status || "failed";
       if (resultStatus === "success") {
+        addPlatformAnalyticsCounts(dispatchPlatforms);
         showNotification(
           `Sent successfully to ${dispatchPlatforms.length} platform(s)`,
           "success",
         );
       } else if (resultStatus === "partial") {
+        addPlatformAnalyticsCounts(dispatchPlatforms);
         const firstFailure = payload?.results?.find(
           (item) => !item.success,
         )?.detail;
@@ -2312,6 +2408,7 @@ const SocialForm = () => {
         : [];
 
       setPostHistory(normalizedHistory);
+      addPlatformAnalyticsCounts(selectedPlatforms);
 
       // ✅ RESET
       setMessage("");
@@ -2392,7 +2489,8 @@ const SocialForm = () => {
     <div className="dashboard-view">
       <div className="dashboard-header">
         <div className="header-content">
-          <h1>📊 Dashboard Overview</h1>
+          <h1>Dashboard Overview</h1>
+
           <p>Welcome back! Here's your social media performance at a glance.</p>
         </div>
         <button
@@ -2415,57 +2513,29 @@ const SocialForm = () => {
           <div className="dashboard-grid">
             <div className="dashboard-card platform-performance">
               <h3>📈 Platform Performance</h3>
-              {analyticsData.platformStats.length === 0 ? (
-                <div className="empty-state">
-                  <p>No platform data yet. Start posting to see analytics!</p>
-                </div>
-              ) : (
-                <div className="platform-stats">
-                  {analyticsData.platformStats.map((stat, index) => {
-                    const platform = allPlatforms.find(
-                      (p) => p.name === stat.platform || p.id === stat.platform,
-                    );
-                    const IconComponent = platform
-                      ? PlatformIcons[platform.icon]
-                      : null;
-                    const maxEngagement = Math.max(
-                      ...analyticsData.platformStats.map((s) => s.engagement),
-                    );
-                    return (
-                      <div key={index} className="platform-stat-row">
-                        <div className="platform-info">
-                          <div
-                            className="platform-icon"
-                            style={{ background: platform?.color || "#6366f1" }}
-                          >
-                            {IconComponent && <IconComponent />}
-                          </div>
-                          <span className="platform-name">{stat.platform}</span>
-                        </div>
-                        <div className="platform-metrics">
-                          <span className="metric">
-                            <Icons.Send /> {stat.posts} posts
-                          </span>
-                          <span className="metric">
-                            <Icons.Heart /> {stat.engagement}
-                          </span>
-                          <span className="metric">
-                            <Icons.Users /> {stat.followers}
-                          </span>
-                        </div>
-                        <div className="progress-bar">
-                          <div
-                            className="progress-fill"
-                            style={{
-                              width: `${maxEngagement > 0 ? (stat.engagement / maxEngagement) * 100 : 0}%`,
-                            }}
-                          ></div>
-                        </div>
+              <p className="platform-performance-description">
+                Live post counts for every connected social channel.
+              </p>
+              <div className="platform-stats-list">
+                {allPlatforms.map((platform) => (
+                  <div className="platform-stat-item" key={platform.id}>
+                    <div
+                      className="platform-icon-box"
+                      style={{
+                        background: platform.color,
+                      }}
+                    >
+                      {React.createElement(PlatformIcons[platform.icon])}
+
+                      <div className="platform-right">
+                        {platformAnalytics[platform.id] || 0}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+
+                    <div className="platform-name">{platform.name}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="dashboard-card recent-posts">
@@ -2477,21 +2547,48 @@ const SocialForm = () => {
               ) : (
                 <>
                   <div className="recent-posts-list">
-                    {postHistory.slice(0, 3).map((post, index) => (
-                      <div key={index} className="recent-post-item">
-                        <div className="post-content-preview">
-                          {post.message?.substring(0, 60) ||
-                            "Social media post"}
-                          ...
-                        </div>
-                        <div className="post-meta">
-                          <span className={`status-badge ${post.status}`}>
-                            {post.status}
-                          </span>
-                          <span className="post-date">{post.sentAt}</span>
-                        </div>
+                    {postHistory.length === 0 ? (
+                      <div className="empty-state">
+                        <p>No recent activity found.</p>
                       </div>
-                    ))}
+                    ) : (
+                      postHistory.slice(0, 6).map((post, index) => (
+                        <div key={index} className="recent-post-item">
+                          <div className="recent-post-top">
+                            <div className="recent-platform">
+                              <div
+                                className="recent-platform-icon"
+                                style={{
+                                  background: post.platformColor || "#6366f1",
+                                }}
+                              >
+                                {React.createElement(
+                                  PlatformIcons[post.platformIcon],
+                                )}
+                              </div>
+
+                              <div className="recent-post-info">
+                                <h4>{post.platform}</h4>
+
+                                <span>Posted by {post.author}</span>
+                              </div>
+                            </div>
+
+                            <div className={`recent-status ${post.status}`}>
+                              {post.status}
+                            </div>
+                          </div>
+
+                          <p className="recent-message">{post.message}</p>
+
+                          <div className="recent-time">
+                            <span>{post.date}</span>
+
+                            <span>{post.time}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <button
                     className="view-all-btn"
@@ -2504,116 +2601,7 @@ const SocialForm = () => {
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon blue">
-                <Icons.Send />
-              </div>
-              <div className="stat-content">
-                <h3>{analyticsData.totalPosts}</h3>
-                <p>Total Posts</p>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon green">
-                <Icons.Heart />
-              </div>
-              <div className="stat-content">
-                <h3>{analyticsData.totalEngagement.toLocaleString()}</h3>
-                <p>Total Contacts</p>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon purple">
-                <Icons.TrendUp />
-              </div>
-              <div className="stat-content">
-                <h3>{analyticsData.avgEngagement}</h3>
-                <p>Avg. Contacts/Post</p>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon orange">
-                <Icons.Star />
-              </div>
-              <div className="stat-content">
-                <h3
-                  className={
-                    analyticsData.weeklyGrowth >= 0 ? "positive" : "negative"
-                  }
-                >
-                  {analyticsData.weeklyGrowth >= 0 ? "+" : ""}
-                  {analyticsData.weeklyGrowth}%
-                </h3>
-                <p>Weekly Growth</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="dashboard-grid">
-            <div className="dashboard-card quick-actions">
-              <h3>⚡ Quick Actions</h3>
-              <div className="quick-action-buttons">
-                <button onClick={() => setActiveTab("compose")}>
-                  <Icons.Compose /> New Post
-                </button>
-                <button onClick={() => setActiveTab("templates")}>
-                  <Icons.Templates /> Templates
-                </button>
-                <button onClick={() => setActiveTab("schedule")}>
-                  <Icons.Schedule /> Schedule
-                </button>
-                <button onClick={() => setActiveTab("analytics")}>
-                  <Icons.Analytics /> Analytics
-                </button>
-              </div>
-            </div>
-
-            <div className="dashboard-card engagement-chart">
-              <h3>📊 Monthly Posts</h3>
-              {analyticsData.monthlyPosts.every((v) => v === 0) ? (
-                <div className="empty-state">
-                  <p>No monthly data available yet.</p>
-                </div>
-              ) : (
-                <div className="simple-chart">
-                  {analyticsData.monthlyPosts.map((value, index) => {
-                    const maxValue = Math.max(...analyticsData.monthlyPosts, 1);
-                    return (
-                      <div key={index} className="chart-bar-container">
-                        <div
-                          className="chart-bar"
-                          style={{ height: `${(value / maxValue) * 100}%` }}
-                          title={`${value} posts`}
-                        ></div>
-                        <span className="chart-label">
-                          {
-                            [
-                              "J",
-                              "F",
-                              "M",
-                              "A",
-                              "M",
-                              "J",
-                              "J",
-                              "A",
-                              "S",
-                              "O",
-                              "N",
-                              "D",
-                            ][index]
-                          }
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          <div className="dashboard-grid"></div>
         </>
       )}
     </div>
