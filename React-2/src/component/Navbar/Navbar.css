@@ -4,14 +4,13 @@
   justify-content: space-between;
   align-items: center;
 
-  background: rgba(15, 32, 39, 0.75);
+  background: rgba(15, 32, 39, 0.78);
   backdrop-filter: blur(14px);
 
-  height: 60px;
-  padding: 0 40px;
-  
+  height: 72px;
+  padding: 0 28px;
 
-   position: fixed; 
+  position: fixed;
   top: 0;
   z-index: 1000;
   width: 100%;
@@ -23,38 +22,28 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-
+  height: 72px;
+  overflow: hidden;
 }
 
 .logo img {
-  height: 190px; /* 🔥 FIXED (overflow हटाया) */
+  height: 110px; /* BIGGER THAN NAVBAR */
   width: auto;
   object-fit: contain;
-  transition: 0.3s;
-}
-.nav-logo {
-  width: 180px;
-}
-@media (max-width: 768px) {
-  .logo img {
-    width: 130px; /* MOBILE FIXED */
-  }
-}
-@media (max-width: 480px) {
-  .logo img {
-    width: 110px; /* SMALL MOBILE FIXED */
-  }
-}
-@media (max-width: 1400px ) {
-  .logo img{
-    width: 180px; /* TABLET FIXED */
-  }
-  
+
+  margin-top: 8px;   /* adjust vertical alignment */
+
+  transition: 0.3s ease;
+  filter: drop-shadow(0 0 8px rgba(0,198,255,0.35));
 }
 
 .logo img:hover {
-  transform: scale(1.08);
+  transform: scale(1.03);
+}
+
+.nav-logo {
+  width: auto;
+  max-height: 100%;
 }
 
 /* ================= NAV LINKS ================= */
@@ -253,8 +242,12 @@
 @media (max-width: 768px) {
 
   .navbar {
-    height: 60px;
-    padding: 0 20px;
+    height: 65px;
+    padding: 0 18px;
+  }
+
+  .logo {
+    height: 65px;
   }
 
   .menu-toggle {
@@ -264,10 +257,10 @@
   /* NAV DROPDOWN */
   .nav-links {
     position: absolute;
-    top: 60px;
+    top: 65px;
     right: 10px;
 
-    background: rgba(15, 32, 39, 0.95);
+    background: rgba(15, 32, 39, 0.96);
     backdrop-filter: blur(12px);
 
     flex-direction: column;
