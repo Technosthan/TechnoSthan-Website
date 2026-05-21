@@ -1,0 +1,37 @@
+.rs-toggle-checked .rs-toggle-presentation {
+  background: #315efb !important;
+}
+
+.rs-toggle-presentation {
+  background: #475569 !important;
+  border-radius: 9999px;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.rs-toggle-presentation::before {
+  background: white !important;
+}
+
+/* Make the thumb slightly rounded and smooth movement */
+.rs-toggle-handle {
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+}
+
+/* Ensure medium size and compact spacing */
+.rs-toggle.rs-toggle-md {
+  height: 28px;
+  min-width: 52px;
+}
+
+/* Prevent heavy glows while keeping a subtle focus ring */
+.rs-toggle:focus {
+  box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.08) !important;
+}
+
+/* Small helper to vertically center in our cards */
+.rs-toggle-custom {
+  display: inline-flex;
+  align-items: center;
+}

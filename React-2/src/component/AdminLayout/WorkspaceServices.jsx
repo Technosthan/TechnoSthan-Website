@@ -12,6 +12,9 @@ import {
 } from "../../lib/workspaceSettings";
 import AdminLayout from "./AdminLayout";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
+import { Toggle } from "rsuite";
+import "rsuite/dist/rsuite.min.css";
+import "./WorkspaceServices.css";
 
 const roleLabelMap = {
   HR: "HR",
@@ -20,7 +23,9 @@ const roleLabelMap = {
 };
 
 const normalizeSettingsPayload = (raw = {}) => {
-  const normalized = { userOverrides: normalizeUserOverrides(raw.userOverrides) };
+  const normalized = {
+    userOverrides: normalizeUserOverrides(raw.userOverrides),
+  };
 
   Object.values(FEATURE_METADATA).forEach((feature) => {
     normalized[feature.key] = normalizeFeatureState(
@@ -82,8 +87,8 @@ const WorkspaceServices = () => {
       setSettings(normalized);
       setEditState(normalized);
 
-      const featureUserIds = Object.values(FEATURE_METADATA).flatMap((feature) =>
-        normalized[feature.key]?.allowedUsers || [],
+      const featureUserIds = Object.values(FEATURE_METADATA).flatMap(
+        (feature) => normalized[feature.key]?.allowedUsers || [],
       );
       const overrideUserIds = (normalized.userOverrides || []).map(
         (entry) => entry.userId,
@@ -109,7 +114,10 @@ const WorkspaceServices = () => {
       ([featureKey, query]) => {
         const trimmed = String(query || "").trim();
         if (trimmed.length < 2) {
-          setSearchResultsByKey((current) => ({ ...current, [featureKey]: [] }));
+          setSearchResultsByKey((current) => ({
+            ...current,
+            [featureKey]: [],
+          }));
           return null;
         }
 
@@ -132,7 +140,10 @@ const WorkspaceServices = () => {
               },
             });
             const rows = data?.data || [];
-            setSearchResultsByKey((current) => ({ ...current, [featureKey]: rows }));
+            setSearchResultsByKey((current) => ({
+              ...current,
+              [featureKey]: rows,
+            }));
             setUserDirectory((current) => {
               const next = { ...current };
               rows.forEach((user) => {
@@ -421,7 +432,8 @@ const WorkspaceServices = () => {
   const roleHasOverrides = (featureKey, role) =>
     normalizeUserOverrides(editState?.userOverrides).some(
       (entry) =>
-        entry.role === role && typeof entry.permissions?.[featureKey] === "boolean",
+        entry.role === role &&
+        typeof entry.permissions?.[featureKey] === "boolean",
     );
 
   const roleHasSpecificTargets = (featureKey, role) => {
@@ -433,7 +445,9 @@ const WorkspaceServices = () => {
     );
 
     return (feature.allowedUsers || []).some((userId) => {
-      const targetRole = String(userDirectory[userId]?.role || "").trim().toUpperCase();
+      const targetRole = String(userDirectory[userId]?.role || "")
+        .trim()
+        .toUpperCase();
       return targetRole === role;
     });
   };
@@ -508,7 +522,8 @@ const WorkspaceServices = () => {
 
     return (
       <div className="text-center">
-        {roleHasSpecificTargets(featureKey, role) || roleHasOverrides(featureKey, role)
+        {roleHasSpecificTargets(featureKey, role) ||
+        roleHasOverrides(featureKey, role)
           ? "Custom"
           : "No"}
       </div>
@@ -597,7 +612,9 @@ const WorkspaceServices = () => {
       >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-sm font-medium text-slate-100">{item.label}</div>
+            <div className="text-sm font-medium text-slate-100">
+              {item.label}
+            </div>
             <div className="mt-1 text-xs text-slate-500">
               {item.family === FEATURE_FAMILIES.HR
                 ? "HR-scoped permission"
@@ -608,20 +625,18 @@ const WorkspaceServices = () => {
                     : "Global workspace feature"}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setFeatureValue(item.key, { enabled: !feature.enabled })}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              feature.enabled ? "bg-indigo-600" : "bg-slate-700"
-            }`}
-            aria-pressed={feature.enabled}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                feature.enabled ? "translate-x-5" : "translate-x-1"
-              }`}
-            />
-          </button>
+          <Toggle
+            size="md"
+            checked={feature.enabled}
+            checkedChildren=""
+            unCheckedChildren=""
+            onChange={(checked) =>
+              setFeatureValue(item.key, {
+                enabled: checked,
+              })
+            }
+            className="rs-toggle-custom"
+          />
         </div>
 
         <div className="mt-4 rounded-2xl bg-slate-950/55 p-4">
@@ -630,7 +645,9 @@ const WorkspaceServices = () => {
           </div>
           <select
             value={feature.accessScope}
-            onChange={(event) => handleAccessScopeChange(item.key, event.target.value)}
+            onChange={(event) =>
+              handleAccessScopeChange(item.key, event.target.value)
+            }
             className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400/40"
             disabled={!feature.enabled}
           >
@@ -663,7 +680,10 @@ const WorkspaceServices = () => {
   );
 
   const selectedOverrideUser = overrideUserId
-    ? userDirectory[overrideUserId] || { id: overrideUserId, name: overrideUserId }
+    ? userDirectory[overrideUserId] || {
+        id: overrideUserId,
+        name: overrideUserId,
+      }
     : null;
 
   const currentOverridePermissions = selectedOverride?.permissions || {};
@@ -681,8 +701,8 @@ const WorkspaceServices = () => {
                 Workspace Services & Access Control Center
               </h1>
               <p className="mt-2 text-sm text-slate-400">
-                Context-aware permission architecture with role-correct scopes and
-                per-user enterprise overrides.
+                Context-aware permission architecture with role-correct scopes
+                and per-user enterprise overrides.
               </p>
             </div>
 
@@ -809,13 +829,17 @@ const WorkspaceServices = () => {
 
                 {selectedOverrideUser && (
                   <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-sm text-cyan-100">
-                    <div className="font-medium">{selectedOverrideUser.name}</div>
+                    <div className="font-medium">
+                      {selectedOverrideUser.name}
+                    </div>
                     <div className="mt-1 text-xs text-cyan-200/80">
                       {selectedOverrideUser.email || selectedOverrideUser.id}
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeOverrideUser(selectedOverrideUser.id)}
+                      onClick={() =>
+                        removeOverrideUser(selectedOverrideUser.id)
+                      }
                       className="mt-3 rounded-full border border-cyan-400/20 px-3 py-1 text-xs transition hover:bg-cyan-500/20"
                     >
                       Remove All Overrides
@@ -831,7 +855,8 @@ const WorkspaceServices = () => {
                 {selectedOverrideUser ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {overrideEligibleFeatures.map((feature) => {
-                      const currentValue = currentOverridePermissions[feature.key];
+                      const currentValue =
+                        currentOverridePermissions[feature.key];
                       return (
                         <div
                           key={feature.key}
@@ -843,7 +868,8 @@ const WorkspaceServices = () => {
                                 {feature.label}
                               </div>
                               <div className="mt-1 text-xs text-slate-500">
-                                Override priority beats scope and global defaults
+                                Override priority beats scope and global
+                                defaults
                               </div>
                             </div>
                             <select
@@ -859,26 +885,32 @@ const WorkspaceServices = () => {
                                     ...current,
                                     userOverrides: normalizeUserOverrides(
                                       current?.userOverrides,
-                                    ).map((entry) => {
-                                      if (entry.userId !== overrideUserId) {
-                                        return entry;
-                                      }
-                                      const nextPermissions = {
-                                        ...entry.permissions,
-                                      };
-                                      delete nextPermissions[feature.key];
-                                      return {
-                                        ...entry,
-                                        permissions: nextPermissions,
-                                      };
-                                    }).filter(
-                                      (entry) =>
-                                        Object.keys(entry.permissions).length > 0,
-                                    ),
+                                    )
+                                      .map((entry) => {
+                                        if (entry.userId !== overrideUserId) {
+                                          return entry;
+                                        }
+                                        const nextPermissions = {
+                                          ...entry.permissions,
+                                        };
+                                        delete nextPermissions[feature.key];
+                                        return {
+                                          ...entry,
+                                          permissions: nextPermissions,
+                                        };
+                                      })
+                                      .filter(
+                                        (entry) =>
+                                          Object.keys(entry.permissions)
+                                            .length > 0,
+                                      ),
                                   }));
                                   return;
                                 }
-                                upsertOverridePermission(feature.key, value === "true");
+                                upsertOverridePermission(
+                                  feature.key,
+                                  value === "true",
+                                );
                               }}
                               className="rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
                             >
