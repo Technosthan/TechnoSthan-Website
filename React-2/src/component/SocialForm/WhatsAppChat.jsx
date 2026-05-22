@@ -5,6 +5,8 @@ import React, {
 
 import socket from "../../socket";
 
+import "./WhatsAppChat.css";
+
 import {
 
   sendWhatsAppMessage,
@@ -121,64 +123,96 @@ const WhatsAppChat = () => {
   };
 
 
-  return (
+return (
 
-    <div>
+  <div className="wa-message-box">
 
-      <input
+    <div className="wa-header">
 
-        type="text"
+      <h3>WhatsApp Messaging</h3>
 
-        placeholder="Enter Number"
+      <p>
+        Send direct messages instantly
+      </p>
 
-        value={number}
+    </div>
 
-        onChange={(e)=>
-          setNumber(e.target.value)
-        }
-      />
+    <input
 
-      <textarea
+      type="text"
 
-        value={text}
+      placeholder="Enter WhatsApp Number"
 
-        onChange={(e)=>
-          setText(e.target.value)
-        }
+      value={number}
 
-        placeholder="Type Message"
-      />
+      onChange={(e)=>
+        setNumber(e.target.value)
+      }
 
-      <button onClick={handleSend}>
+      className="wa-input"
+    />
+
+    <textarea
+
+      value={text}
+
+      onChange={(e)=>
+        setText(e.target.value)
+      }
+
+      placeholder="Type Message"
+
+      className="wa-textarea"
+    />
+
+    <div className="wa-actions">
+
+      <button
+
+        onClick={handleSend}
+
+        className="wa-send-btn"
+      >
 
         Send Message
 
       </button>
 
-      <button onClick={handleTemplate}>
+      <button
+
+        onClick={handleTemplate}
+
+        className="wa-template-btn"
+      >
 
         Send Template
 
       </button>
 
+    </div>
 
-      <div>
 
-        {
-          messages.map((msg,index)=>(
+    <div className="wa-messages">
 
-            <div key={index}>
+      {
+        messages.map((msg,index)=>(
 
-              {msg.message}
+          <div
+            key={index}
 
-            </div>
-          ))
-        }
+            className="wa-message"
+          >
 
-      </div>
+            {msg.message}
+
+          </div>
+        ))
+      }
 
     </div>
-  );
+
+  </div>
+);
 };
 
 export default WhatsAppChat;
