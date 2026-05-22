@@ -1063,42 +1063,38 @@ const SocialForm = () => {
 
   // Real post history from backend
   const [postHistory, setPostHistory] = useState([
+    {
+      platform: "Facebook",
+      platformIcon: "Facebook",
+      platformColor: "#1877F2",
 
-  {
-    platform: "Facebook",
-    platformIcon: "Facebook",
-    platformColor: "#1877F2",
+      author: "Techno Sthan",
 
-    author: "Techno Sthan",
+      status: "sent",
 
-    status: "sent",
+      message: "Our new agritech automation platform is now live 🚀",
 
-    message:
-      "Our new agritech automation platform is now live 🚀",
+      date: "21 May 2026",
 
-    date: "21 May 2026",
+      time: "7:25 PM",
+    },
 
-    time: "7:25 PM",
-  },
+    {
+      platform: "Instagram",
+      platformIcon: "Instagram",
+      platformColor: "#E4405F",
 
-  {
-    platform: "Instagram",
-    platformIcon: "Instagram",
-    platformColor: "#E4405F",
+      author: "HR Team",
 
-    author: "HR Team",
+      status: "sent",
 
-    status: "sent",
+      message: "New hiring campaign started for developers.",
 
-    message:
-      "New hiring campaign started for developers.",
+      date: "21 May 2026",
 
-    date: "21 May 2026",
-
-    time: "6:40 PM",
-  },
-
-]);
+      time: "6:40 PM",
+    },
+  ]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   // ========== HELPER FUNCTIONS ==========
@@ -2719,7 +2715,7 @@ const SocialForm = () => {
               placeholder="Write your message here..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              rows={4}
+              rows={3}
             />
 
             <div className="character-counter">

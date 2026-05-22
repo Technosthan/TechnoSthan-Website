@@ -67,7 +67,8 @@ http://localhost:5173,
 http://localhost:3000,
 https://techno-sthan-website.vercel.app,
 https://www.technosthan.com,
-https://technosthan.com
+https://technosthan.com,
+https://techno-sthan-website-2sav.vercel.app/
 `
 )
   .split(",")

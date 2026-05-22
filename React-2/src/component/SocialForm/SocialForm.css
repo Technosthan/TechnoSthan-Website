@@ -1073,14 +1073,13 @@ body {
 
   padding: 14px;
 
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 
   min-width: 0;
 
   word-break: break-word;
 
-  box-shadow:
-    0 8px 24px rgba(0,0,0,0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 
   transition: 0.3s ease;
 }
@@ -1275,91 +1274,102 @@ body {
 
 /* ========== COMPOSE VIEW ========== */
 .compose-view .compose-header {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .compose-view h1 {
-  font-size: 20px;
-  margin-bottom: 4px;
-  font-weight: 600;
+  font-size: 24px;
+  margin-bottom: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
 .compose-view > .compose-header > p {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 14px;
+  max-width: 700px;
+  line-height: 1.6;
 }
 
 .compose-layout {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 360px);
+  gap: 20px;
+  align-items: start;
+  grid-auto-rows: minmax(min-content, auto);
 }
 
 .compose-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .compose-card {
-  background: linear-gradient(
-    145deg,
-    var(--bg-card) 0%,
-    rgba(30, 41, 59, 0.6) 100%
-  );
-  border-radius: 14px;
-  padding: 16px;
-  border: 1px solid rgba(51, 65, 85, 0.5);
-  transition: all 0.3s ease;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(14px);
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .compose-card:hover {
+  transform: translateY(-1px);
   border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .card-header h3 {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
 }
 
 .toolbar {
   display: flex;
-  gap: 6px;
+  gap: 10px;
+  align-items: center;
 }
 
 .toolbar-btn {
-  background: var(--bg-tertiary);
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  background: rgba(71, 85, 105, 0.72);
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .toolbar-btn:hover {
-  background: var(--accent-primary);
+  background: rgba(79, 70, 229, 0.95);
   color: white;
 }
 
 .toolbar-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Emoji Picker */
@@ -1417,7 +1427,7 @@ body {
   padding: 5px;
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: background 0.2s;
+  transition: background 0.2s ease;
 }
 
 .emoji-btn:hover {
@@ -1431,26 +1441,24 @@ body {
 
 .message-card textarea {
   width: 100%;
-  min-height: 120px;
-  background: linear-gradient(
-    135deg,
-    var(--bg-tertiary) 0%,
-    rgba(51, 65, 85, 0.5) 100%
-  );
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 14px 16px;
+  min-height: 140px;
+  background: rgba(30, 41, 59, 0.78);
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  border-radius: 16px;
+  padding: 16px;
   color: var(--text-primary);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   resize: vertical;
   transition: all 0.3s ease;
   font-family: "Inter", sans-serif;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .message-card textarea:focus {
   outline: none;
-  border-color: var(--accent-primary);
+  border-color: rgba(99, 102, 241, 0.65);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
 }
 
 .message-card textarea::placeholder {
@@ -1460,8 +1468,9 @@ body {
 .character-counter {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
-  font-size: 11px;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -1501,51 +1510,51 @@ body {
 /* ========== PREMIUM PLATFORM GRID - Compact Icons ========== */
 .platforms-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .platform-item {
   background: linear-gradient(
     145deg,
     var(--bg-tertiary),
-    rgba(30, 41, 59, 0.8)
+    rgba(30, 41, 59, 0.82)
   );
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 10px 6px;
+  border-radius: 16px;
+  padding: 14px 10px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 8px;
 }
 
 .platform-item::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    135deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.03) 100%
+  inset: 0;
+  background: radial-gradient(
+    circle at top left,
+    rgba(255, 255, 255, 0.12),
+    transparent 55%
   );
   opacity: 0;
-  transition: opacity 0.3s;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
 }
 
 .platform-item:hover {
   border-color: var(--platform-color, var(--accent-primary));
   transform: translateY(-4px);
-  box-shadow:
-    0 12px 24px -8px rgba(0, 0, 0, 0.4),
-    0 0 0 1px var(--platform-color, var(--accent-primary));
+  box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.6);
 }
 
 .platform-item:hover::before {
@@ -1556,98 +1565,81 @@ body {
   border-color: var(--platform-color, var(--accent-primary));
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--platform-color) 15%, var(--bg-tertiary)),
-    color-mix(in srgb, var(--platform-color) 8%, var(--bg-secondary))
+    color-mix(in srgb, var(--platform-color) 20%, var(--bg-tertiary)),
+    color-mix(in srgb, var(--platform-color) 10%, var(--bg-secondary))
   );
-  box-shadow:
-    0 8px 20px -4px color-mix(in srgb, var(--platform-color) 40%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--platform-color) 20%, transparent);
+  box-shadow: 0 12px 34px -12px rgba(59, 130, 246, 0.28);
 }
 
 .platform-item .platform-icon-wrapper {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.3);
-  transition: all 0.25s;
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease;
 }
 
 .platform-item .platform-icon-wrapper svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.24));
 }
 
 .platform-item:hover .platform-icon-wrapper {
-  transform: scale(1.08);
-  box-shadow:
-    0 6px 16px -2px color-mix(in srgb, var(--platform-color) 50%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
-}
-
-.platform-item .platform-icon-wrapper svg {
-  color: white;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  transform: scale(1.05);
+  box-shadow: 0 12px 22px -10px rgba(0, 0, 0, 0.38);
 }
 
 .platform-item .platform-name {
-  font-size: 10px;
-  font-weight: 600;
-  display: block;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: 0.1px;
+  letter-spacing: 0.25px;
+  text-transform: uppercase;
 }
 
 .platform-item .platform-limit {
   font-size: 9px;
   color: var(--text-muted);
-  background: var(--bg-secondary);
-  padding: 2px 6px;
+  background: rgba(148, 163, 184, 0.12);
+  padding: 4px 8px;
   border-radius: 999px;
-  display: inline-flex;
 }
 
 .platform-item .check-mark {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: linear-gradient(135deg, var(--accent-success), #16a34a);
-  color: white;
+  top: 12px;
+  right: 12px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-success), #16a34a);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
-  animation: checkPop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-@keyframes checkPop {
-  0% {
-    transform: scale(0);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35);
 }
 
 .platform-item .platform-actions {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
   opacity: 0;
-  transform: translateY(6px);
-  transition: all 0.2s ease;
+  transform: translateY(8px);
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s ease;
   pointer-events: none;
 }
 
@@ -1660,17 +1652,17 @@ body {
 .platform-item .share-btn,
 .platform-item .copy-btn,
 .platform-item .delete-btn {
-  background: var(--bg-secondary);
+  width: 100%;
+  height: 34px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   color: var(--text-secondary);
-  transition: all 0.2s;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .platform-item .share-btn:hover,
@@ -1706,24 +1698,22 @@ body {
 
 .platform-item .remove-platform-btn {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 20px;
-  height: 20px;
+  top: 10px;
+  left: 10px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .platform-item .remove-platform-btn:hover {
-  background: rgba(239, 68, 68, 0.16);
+  background: rgba(239, 68, 68, 0.18);
   color: #ef4444;
 }
 
@@ -1737,28 +1727,33 @@ body {
 
 .platform-manager-row input[type="text"] {
   min-width: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  background: rgba(30, 41, 59, 0.72);
   color: var(--text-primary);
 }
 
 .platform-manager-row input[type="color"] {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: none;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
 }
 
 .add-platform-btn {
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
   border: none;
-  background: var(--accent-primary);
+  background: linear-gradient(
+    135deg,
+    var(--accent-primary),
+    var(--accent-secondary)
+  );
   color: white;
+  font-weight: 700;
   cursor: pointer;
   transition:
     transform 0.2s ease,
@@ -1767,7 +1762,7 @@ body {
 
 .add-platform-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px -12px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 14px 28px rgba(99, 102, 241, 0.18);
 }
 
 /* API Dispatch Panel */
@@ -4200,7 +4195,7 @@ body {
 
   border-radius: 12px;
 
-  background: rgba(30,41,59,0.55);
+  background: rgba(30, 41, 59, 0.55);
 
   margin-bottom: 10px;
 }
@@ -4208,7 +4203,7 @@ body {
 .recent-post-item:hover {
   transform: translateY(-3px);
 
-  border-color: rgba(99,102,241,0.5);
+  border-color: rgba(99, 102, 241, 0.5);
 }
 
 .recent-post-top {
@@ -4274,13 +4269,13 @@ body {
 }
 
 .recent-status.sent {
-  background: rgba(34,197,94,0.15);
+  background: rgba(34, 197, 94, 0.15);
 
   color: #22c55e;
 }
 
 .recent-status.failed {
-  background: rgba(239,68,68,0.15);
+  background: rgba(239, 68, 68, 0.15);
 
   color: #ef4444;
 }
