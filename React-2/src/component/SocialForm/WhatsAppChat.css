@@ -2,51 +2,41 @@
 
 .wa-message-box {
   width: 100%;
-
-  max-width: 780px;
-
-  margin: 0px auto;
-
-  padding: 16px;
-
-  border-radius: 16px;
-
+  max-width: 100%;
+  padding: 24px;
+  border-radius: 24px;
   background: linear-gradient(
     145deg,
-    rgba(17, 24, 39, 0.96),
-    rgba(30, 41, 59, 0.92)
+    rgba(15, 23, 42, 0.98),
+    rgba(30, 41, 59, 0.94)
   );
-
-  border: 1px solid rgba(255,255,255,0.05);
-
-  box-shadow:
-    0 6px 20px rgba(0,0,0,0.18);
-
-  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
 
 /* ================= HEADER ================= */
 
 .wa-header {
-  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
 }
 
 .wa-header h3 {
   color: white;
-
-  font-size: 18px;
-
-  font-weight: 700;
-
-  margin-bottom: 2px;
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 0;
 }
 
 .wa-header p {
-  color: #94a3b8;
-
-  font-size: 11px;
-
+  color: #cbd5e1;
+  font-size: 13px;
   margin: 0;
+  line-height: 1.7;
 }
 
 /* ================= INPUTS ================= */
@@ -54,35 +44,30 @@
 .wa-input,
 .wa-textarea {
   width: 100%;
-
-  background: rgba(10, 16, 30, 0.92);
-
-  border: 1px solid rgba(255,255,255,0.05);
-
-  border-radius: 10px;
-
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
   color: white;
-
-  padding: 12px 14px;
-
-  font-size: 13px;
-
-  transition: 0.25s ease;
-
-  margin-bottom: 10px;
+  padding: 16px 18px;
+  font-size: 14px;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+  margin-bottom: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* INPUT */
 
 .wa-input {
-  height: 42px;
+  height: 48px;
 }
 
 /* TEXTAREA */
 
 .wa-textarea {
-  min-height: 110px;
-
+  min-height: 140px;
   resize: vertical;
 }
 
@@ -91,11 +76,8 @@
 .wa-input:focus,
 .wa-textarea:focus {
   outline: none;
-
-  border-color: #25d366;
-
-  box-shadow:
-    0 0 0 3px rgba(37,211,102,0.10);
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
 }
 
 /* PLACEHOLDER */
@@ -109,10 +91,9 @@
 
 .wa-actions {
   display: flex;
-
-  gap: 10px;
-
-  margin-top: 2px;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 /* ================= BUTTONS ================= */
@@ -120,87 +101,71 @@
 .wa-send-btn,
 .wa-template-btn {
   border: none;
-
-  padding: 10px 18px;
-
-  border-radius: 10px;
-
-  font-size: 12px;
-
-  font-weight: 600;
-
+  padding: 14px 20px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-
-  transition: 0.25s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+  min-width: 130px;
 }
 
 /* SEND BUTTON */
 
 .wa-send-btn {
-  background: linear-gradient(
-    135deg,
-    #25d366,
-    #128c7e
-  );
-
+  background: linear-gradient(135deg, #22c55e, #0f766e);
   color: white;
+  box-shadow: 0 14px 28px rgba(34, 197, 94, 0.2);
 }
 
 .wa-send-btn:hover {
-  transform: translateY(-1px);
-
-  box-shadow:
-    0 8px 18px rgba(37,211,102,0.20);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(34, 197, 94, 0.28);
 }
 
 /* TEMPLATE BUTTON */
 
 .wa-template-btn {
-  background: rgba(255,255,255,0.05);
-
+  background: rgba(255, 255, 255, 0.08);
   color: white;
-
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .wa-template-btn:hover {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* ================= MESSAGES ================= */
 
 .wa-messages {
-  margin-top: 14px;
-
+  margin-top: 22px;
   display: flex;
-
   flex-direction: column;
-
-  gap: 8px;
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .wa-message {
-  background: rgba(255,255,255,0.05);
-
-  padding: 8px 12px;
-
-  border-radius: 10px;
-
+  background: rgba(255, 255, 255, 0.06);
+  padding: 12px 16px;
+  border-radius: 18px;
   color: white;
-
-  font-size: 12px;
-
+  font-size: 13px;
   width: fit-content;
-
-  max-width: 70%;
+  max-width: 78%;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.04);
 }
 
 /* ================= MOBILE ================= */
 
 @media (max-width: 768px) {
-
   .wa-message-box {
-    padding: 14px;
+    padding: 18px;
   }
 
   .wa-actions {
@@ -210,5 +175,6 @@
   .wa-send-btn,
   .wa-template-btn {
     width: 100%;
+    min-width: 0;
   }
 }
