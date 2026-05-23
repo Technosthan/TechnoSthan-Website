@@ -65,6 +65,7 @@ export const themes = {
     /* Hero */
     heroGradient:
       "bg-gradient-to-r from-green-600 via-yellow-500 to-green-700",
+      
   },
 
   "blue-dark": {

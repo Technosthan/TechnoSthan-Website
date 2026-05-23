@@ -53,6 +53,18 @@ const authSettingsSchema = new mongoose.Schema(
         trim: true,
       },
     },
+    emailOtp: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    phoneOtp: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+    },
     otpSecurity: {
       expiryMinutes: {
         type: Number,

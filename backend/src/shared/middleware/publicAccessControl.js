@@ -16,9 +16,16 @@ const publicAccessControl = async (req, res, next) => {
           ? settings.publicAccessEnabled
           : true; // Default to public access enabled
 
+    console.log("[publicAccessControl]", {
+      path: req.path,
+      publicAccessEnabled,
+      hasAuth: !!req.headers.authorization,
+    });
+
     if (publicAccessEnabled === false) {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        console.log("[publicAccessControl] Blocking unauthenticated access");
         return res.status(401).json({
           success: false,
           message: "Website is locked. Please log in to continue.",
@@ -28,7 +35,7 @@ const publicAccessControl = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("Public access control middleware error:", error);
+    console.error("[publicAccessControl] Middleware error:", error);
     next();
   }
 };

@@ -109,6 +109,13 @@ export const loginUser = async (data) => {
     throw new Error("Invalid credentials");
   }
 
+  // Check if user has a password (OAuth users may not)
+  if (!user.password || typeof user.password !== "string") {
+    throw new Error(
+      "This account uses social login. Please use Google, Telegram, or WhatsApp to log in.",
+    );
+  }
+
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new Error("Invalid credentials");
@@ -164,6 +171,13 @@ export const authenticateUser = async ({ contact, password }) => {
 
   if (existingUser) {
     // User exists - verify password
+    // Check if user has a password (OAuth users may not)
+    if (!existingUser.password || typeof existingUser.password !== "string") {
+      throw new Error(
+        "This account uses social login. Please use Google, Telegram, or WhatsApp to log in.",
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(
       password,
       existingUser.password,
@@ -532,16 +546,11 @@ export const sendProfileEmailVerificationOTP = async (userId, email) => {
   user.emailOtpExpires = expiresAt;
   await user.save();
 
-  sendEmailOTP(normalizedEmail, otp, user.name)
-    .then(() =>
-      console.log(
-        "✅ Profile verification email sent successfully to:",
-        normalizedEmail,
-      ),
-    )
-    .catch((err) =>
-      console.error("❌ Profile verification email failed:", err.message),
-    );
+  await sendEmailOTP(normalizedEmail, otp, user.name);
+  console.log(
+    "✅ Profile verification email sent successfully to:",
+    normalizedEmail,
+  );
 
   return {
     message: "OTP sent to your email address",
@@ -813,24 +822,16 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
       existingRequest.attempts < 3
     ) {
       // Resend existing OTP
-      sendEmailOTP(newEmail, existingRequest.otp, user.name)
-        .then(() =>
-          console.log("✅ Email update OTP resent successfully to:", newEmail),
-        )
-        .catch((err) =>
-          console.error("❌ Email update resend failed:", err.message),
-        );
+      await sendEmailOTP(newEmail, existingRequest.otp, user.name);
+      console.log("✅ Email update OTP resent successfully to:", newEmail);
       return { success: true, message: "OTP sent to new email address" };
-    } else {
-      // Delete expired request
-      await EmailUpdateRequest.findByIdAndDelete(existingRequest._id);
     }
+
+    // Delete expired request and continue with a new OTP
+    await EmailUpdateRequest.findByIdAndDelete(existingRequest._id);
   }
 
-  // Generate new OTP
   const otp = generateOTP();
-
-  // Create new email update request
   const emailUpdateRequest = new EmailUpdateRequest({
     userId,
     newEmail: newEmail.toLowerCase(),
@@ -840,11 +841,8 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
   await emailUpdateRequest.save();
 
   // Send OTP to new email
-  sendEmailOTP(newEmail, otp, user.name)
-    .then(() =>
-      console.log("✅ Email update OTP sent successfully to:", newEmail),
-    )
-    .catch((err) => console.error("❌ Email update OTP failed:", err.message));
+  await sendEmailOTP(newEmail, otp, user.name);
+  console.log("✅ Email update OTP sent successfully to:", newEmail);
 
   return { success: true, message: "OTP sent to new email address" };
 };

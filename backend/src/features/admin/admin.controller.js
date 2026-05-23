@@ -14,6 +14,8 @@ import {
 } from "./authSettings.service.js";
 import bcrypt from "bcryptjs";
 import axios from "axios";
+import * as otpProviderService from "./otpProvider.service.js";
+import * as userServicePermissionService from "./userServicePermission.service.js";
 
 export const getAdminStats = async (req, res) => {
   try {
@@ -110,6 +112,193 @@ export const getAdminStats = async (req, res) => {
       success: false,
       message: "Failed to fetch admin statistics",
     });
+  }
+};
+
+// ================= OTP PROVIDER MANAGEMENT =================
+
+// Email Providers
+export const getEmailProviders = async (req, res) => {
+  try {
+    const providers = await otpProviderService.getEmailProviders();
+    res.json({ success: true, data: providers });
+  } catch (error) {
+    console.error("[admin.controller] getEmailProviders error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createEmailProvider = async (req, res) => {
+  try {
+    const provider = await otpProviderService.createEmailProvider(req.body);
+    res.status(201).json({ success: true, data: provider });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateEmailProvider = async (req, res) => {
+  try {
+    const provider = await otpProviderService.updateEmailProvider(
+      req.params.providerId,
+      req.body,
+    );
+    res.json({ success: true, data: provider });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteEmailProvider = async (req, res) => {
+  try {
+    await otpProviderService.deleteEmailProvider(req.params.providerId);
+    res.json({ success: true, message: "Email provider deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const setDefaultEmailProvider = async (req, res) => {
+  try {
+    const provider = await otpProviderService.setDefaultEmailProvider(
+      req.params.providerId,
+    );
+    res.json({ success: true, data: provider });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const testEmailProviderConnection = async (req, res) => {
+  try {
+    await otpProviderService.testEmailProviderConnection(req.params.providerId);
+    res.json({ success: true, message: "Connection test successful" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Phone Providers
+export const getPhoneProviders = async (req, res) => {
+  try {
+    const providers = await otpProviderService.getPhoneProviders();
+    res.json({ success: true, data: providers });
+  } catch (error) {
+    console.error("[admin.controller] getPhoneProviders error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createPhoneProvider = async (req, res) => {
+  try {
+    const provider = await otpProviderService.createPhoneProvider(req.body);
+    res.status(201).json({ success: true, data: provider });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updatePhoneProvider = async (req, res) => {
+  try {
+    const provider = await otpProviderService.updatePhoneProvider(
+      req.params.providerId,
+      req.body,
+    );
+    res.json({ success: true, data: provider });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const deletePhoneProvider = async (req, res) => {
+  try {
+    await otpProviderService.deletePhoneProvider(req.params.providerId);
+    res.json({ success: true, message: "Phone provider deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const setDefaultPhoneProvider = async (req, res) => {
+  try {
+    const provider = await otpProviderService.setDefaultPhoneProvider(
+      req.params.providerId,
+    );
+    res.json({ success: true, data: provider });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const testPhoneProviderConnection = async (req, res) => {
+  try {
+    await otpProviderService.testPhoneProviderConnection(req.params.providerId);
+    res.json({ success: true, message: "Connection test successful" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ================= USER SERVICE PERMISSIONS =================
+
+export const getUserServicePermissions = async (req, res) => {
+  try {
+    console.log(
+      "[admin.controller] getUserServicePermissions params:",
+      req.query,
+    );
+    const result = await userServicePermissionService.getUserServicePermissions(
+      req.query,
+    );
+    res.json({
+      success: true,
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+    });
+  } catch (error) {
+    console.error("[admin.controller] getUserServicePermissions error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getUserServicePermissionByUserId = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const permission =
+      await userServicePermissionService.getUserServicePermissionByUserId(
+        userId,
+      );
+    res.json({ success: true, data: permission });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateUserServicePermissions = async (req, res) => {
+  try {
+    const permission =
+      await userServicePermissionService.updateUserServicePermissions(
+        req.params.userId,
+        req.body,
+      );
+    res.json({ success: true, data: permission });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const bulkUpdateUserServicePermissions = async (req, res) => {
+  try {
+    const { userIds, updates } = req.body;
+    await userServicePermissionService.bulkUpdateUserServicePermissions(
+      userIds,
+      updates,
+    );
+    res.json({ success: true, message: "Bulk update successful" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 

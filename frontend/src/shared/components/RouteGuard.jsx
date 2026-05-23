@@ -72,6 +72,27 @@ const RouteGuard = () => {
     publicEnabled ||
     isRoutePublic(pathname, publicRoutes);
 
+  // Log state for debugging
+  useEffect(() => {
+    if (!loading) {
+      console.log("[RouteGuard]", {
+        pathname,
+        publicEnabled,
+        routeIsPublic,
+        token: !!token,
+        publicWebsiteEnabled,
+        publicAccessEnabled,
+      });
+    }
+  }, [
+    pathname,
+    publicEnabled,
+    token,
+    loading,
+    publicWebsiteEnabled,
+    publicAccessEnabled,
+  ]);
+
   useEffect(() => {
     if (!routeIsPublic && !token) {
       if (!hasToasted.current) {
@@ -94,6 +115,7 @@ const RouteGuard = () => {
   }
 
   if (!routeIsPublic && !token) {
+    console.log("[RouteGuard] Redirecting to login:", { pathname });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

@@ -143,9 +143,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           <div className="space-y-3">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const currentPath = location.pathname.replace(/\/+$/, "");
+              const targetPath = item.path
+                ? `/admin/dashboard/${item.path}`
+                : "/admin/dashboard";
               const isActive =
-                location.pathname.endsWith(item.path) ||
-                (item.path === "" && location.pathname.endsWith("/admin"));
+                currentPath === targetPath ||
+                currentPath.startsWith(`${targetPath}/`) ||
+                (item.path === "" && currentPath === "/admin/dashboard");
 
               return (
                 <NavLink
@@ -153,8 +158,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                   to={item.path}
                   className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-200 group ${
                     isActive
-                      ? "bg-white/10 text-white"
-                      : `${theme.navItem} hover:bg-white/5`
+                      ? theme.sidebarActive
+                      : `${theme.navItem} ${theme.sidebarHover}`
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >

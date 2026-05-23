@@ -29,6 +29,24 @@ import {
   deleteAIProvider,
   updateAIMode,
   updateProviderPriority,
+  // OTP Provider Controllers
+  getEmailProviders,
+  createEmailProvider,
+  updateEmailProvider,
+  deleteEmailProvider,
+  setDefaultEmailProvider,
+  testEmailProviderConnection,
+  getPhoneProviders,
+  createPhoneProvider,
+  updatePhoneProvider,
+  deletePhoneProvider,
+  setDefaultPhoneProvider,
+  testPhoneProviderConnection,
+  // User Service Permission Controllers
+  getUserServicePermissions,
+  getUserServicePermissionByUserId,
+  updateUserServicePermissions,
+  bulkUpdateUserServicePermissions,
 } from "./admin.controller.js";
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
@@ -61,6 +79,43 @@ router.post("/settings", updateSettings);
 // Auth settings management
 router.get("/auth-settings", getAuthSettings);
 router.put("/auth-settings", updateAuthSettings);
+
+// OTP Provider Routes
+router.get("/otp-providers/email", getEmailProviders);
+router.post("/otp-providers/email", createEmailProvider);
+router.put("/otp-providers/email/:providerId", updateEmailProvider);
+router.delete("/otp-providers/email/:providerId", deleteEmailProvider);
+router.patch(
+  "/otp-providers/email/:providerId/default",
+  setDefaultEmailProvider,
+);
+router.post(
+  "/otp-providers/email/:providerId/test",
+  testEmailProviderConnection,
+);
+
+router.get("/otp-providers/phone", getPhoneProviders);
+router.post("/otp-providers/phone", createPhoneProvider);
+router.put("/otp-providers/phone/:providerId", updatePhoneProvider);
+router.delete("/otp-providers/phone/:providerId", deletePhoneProvider);
+router.patch(
+  "/otp-providers/phone/:providerId/default",
+  setDefaultPhoneProvider,
+);
+router.post(
+  "/otp-providers/phone/:providerId/test",
+  testPhoneProviderConnection,
+);
+
+// User Service Permission Routes
+router.get("/user-service-permissions", getUserServicePermissions);
+router.get(
+  "/user-service-permissions/:userId",
+  getUserServicePermissionByUserId,
+);
+router.put("/user-service-permissions/:userId", updateUserServicePermissions);
+router.post("/user-service-permissions/bulk", bulkUpdateUserServicePermissions);
+
 router.post("/test-whatsapp", testWhatsappConnection);
 router.post("/test-telegram", testTelegramConnection);
 // AI config endpoints (provider-independent)

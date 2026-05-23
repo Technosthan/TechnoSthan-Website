@@ -1,38 +1,10 @@
-import nodemailer from "nodemailer";
+import { sendEmail } from "../../services/email/sendEmail.js";
 
-// Initialize email transporter
-let emailTransporter = null;
-const getEmailTransporter = () => {
-  if (!emailTransporter && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    emailTransporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    // Verify the connection
-    emailTransporter.verify((error, success) => {
-      if (error) {
-        console.error("Email transporter verification failed:", error);
-      } else {
-        console.log("Email transporter is ready to send emails");
-      }
-    });
-  }
-  return emailTransporter;
-};
+const fromAddress =
+  process.env.EMAIL_FROM || "AgriTech <no-reply@agritech.com>";
 
 // Send announcement email to a single user
 export const sendAnnouncementEmail = async (user, announcement) => {
-  const transporter = getEmailTransporter();
-  if (!transporter) {
-    throw new Error("Email service not configured");
-  }
-
   const priorityColors = {
     low: "#6c757d",
     medium: "#007bff",
@@ -48,7 +20,7 @@ export const sendAnnouncementEmail = async (user, announcement) => {
   };
 
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: fromAddress,
     to: user.email,
     subject: `AgriTech Announcement: ${announcement.title}`,
     html: `
@@ -119,7 +91,7 @@ export const sendAnnouncementEmail = async (user, announcement) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
     console.log(`Announcement email sent successfully to ${user.email}`);
   } catch (error) {
     console.error(`Failed to send announcement email to ${user.email}:`, error);
@@ -150,6 +122,3 @@ export const sendBulkAnnouncementEmails = async (users, announcement) => {
 
   return results;
 };
-
-// Export the transporter getter for initialization
-export { getEmailTransporter };

@@ -6,17 +6,24 @@ const getPublicAccessEnabled = async () => {
   try {
     const settings = await Settings.findOne().lean();
     if (!settings) {
-      // Default to public access enabled if no settings exist
+      console.log(
+        "[optionalAuthMiddleware] No settings found, defaulting to public enabled",
+      );
       return true;
     }
-    return settings.publicWebsiteEnabled != null
-      ? settings.publicWebsiteEnabled
-      : settings.publicAccessEnabled != null
-        ? settings.publicAccessEnabled
-        : true;
+    const enabled =
+      settings.publicWebsiteEnabled != null
+        ? settings.publicWebsiteEnabled
+        : settings.publicAccessEnabled != null
+          ? settings.publicAccessEnabled
+          : true;
+    console.log("[optionalAuthMiddleware] Public access enabled:", enabled);
+    return enabled;
   } catch (error) {
-    console.error("Failed to read public access settings:", error);
-    // Default to allowing public access on error
+    console.error(
+      "[optionalAuthMiddleware] Failed to read public access settings:",
+      error,
+    );
     return true;
   }
 };
@@ -25,11 +32,19 @@ const authOptionalMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const publicAccessEnabled = await getPublicAccessEnabled();
 
+  console.log("[optionalAuthMiddleware]", {
+    path: req.path,
+    hasAuth: !!authHeader,
+    publicAccessEnabled,
+  });
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     if (publicAccessEnabled) {
+      console.log("[optionalAuthMiddleware] Public access allowed, continuing");
       return next();
     }
 
+    console.log("[optionalAuthMiddleware] Public access disabled, blocking");
     return res.status(401).json({
       success: false,
       message: "Authentication required",

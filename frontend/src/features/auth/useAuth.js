@@ -111,7 +111,9 @@ export const useAuth = () => {
   const authenticate = async (data) => {
     setLoading(true);
     try {
+      console.log("[useAuth] authenticate payload:", data);
       const res = await authenticateUser(data);
+      console.log("[useAuth] authenticate response:", res?.data);
       const { flow, ...resultData } = res.data.data;
 
       if (flow === "login") {
@@ -146,6 +148,10 @@ export const useAuth = () => {
         return { flow: "registration", pendingUserId, contactType, nextStep };
       }
     } catch (error) {
+      console.error(
+        "[useAuth] authenticate error:",
+        error?.response?.data || error?.message || error,
+      );
       throw new Error(getErrorMessage(error));
     } finally {
       setLoading(false);

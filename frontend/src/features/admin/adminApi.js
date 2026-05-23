@@ -92,6 +92,44 @@ export const getPublicAccessSettings = () =>
 export const updatePublicAccessSettings = (settingsData) =>
   axiosInstance.put("/api/settings/public-access", settingsData);
 
+// OTP Email Provider Management
+export const getEmailProviders = () =>
+  axiosInstance.get("/api/admin/otp-providers/email");
+export const createEmailProvider = (data) =>
+  axiosInstance.post("/api/admin/otp-providers/email", data);
+export const updateEmailProvider = (id, data) =>
+  axiosInstance.put(`/api/admin/otp-providers/email/${id}`, data);
+export const deleteEmailProvider = (id) =>
+  axiosInstance.delete(`/api/admin/otp-providers/email/${id}`);
+export const setDefaultEmailProvider = (id) =>
+  axiosInstance.patch(`/api/admin/otp-providers/email/${id}/default`);
+export const testEmailProvider = (id) =>
+  axiosInstance.post(`/api/admin/otp-providers/email/${id}/test`);
+
+// OTP Phone Provider Management
+export const getPhoneProviders = () =>
+  axiosInstance.get("/api/admin/otp-providers/phone");
+export const createPhoneProvider = (data) =>
+  axiosInstance.post("/api/admin/otp-providers/phone", data);
+export const updatePhoneProvider = (id, data) =>
+  axiosInstance.put(`/api/admin/otp-providers/phone/${id}`, data);
+export const deletePhoneProvider = (id) =>
+  axiosInstance.delete(`/api/admin/otp-providers/phone/${id}`);
+export const setDefaultPhoneProvider = (id) =>
+  axiosInstance.patch(`/api/admin/otp-providers/phone/${id}/default`);
+export const testPhoneProvider = (id) =>
+  axiosInstance.post(`/api/admin/otp-providers/phone/${id}/test`);
+
+// User Service Permissions (Granular overrides)
+export const getUserServicePermissions = (params) =>
+  axiosInstance.get("/api/admin/user-service-permissions", { params });
+export const getUserServicePermission = (userId) =>
+  axiosInstance.get(`/api/admin/user-service-permissions/${userId}`);
+export const updateUserServicePermissions = (userId, data) =>
+  axiosInstance.put(`/api/admin/user-service-permissions/${userId}`, data);
+export const bulkUpdateUserServicePermissions = (data) =>
+  axiosInstance.post("/api/admin/user-service-permissions/bulk", data);
+
 // Quiz management (admin)
 export const getAllQuestions = () => axiosInstance.get("/api/quiz/questions");
 export const createQuestion = (questionData) =>

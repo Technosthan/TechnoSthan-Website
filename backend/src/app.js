@@ -11,6 +11,7 @@ import chatRoutes from "./features/chat/chat.route.js";
 import adminRoutes from "./features/admin/admin.route.js";
 import settingsRoutes from "./features/settings/settings.route.js";
 import announcementsRoutes from "./features/announcements/announcements.route.js";
+import { sendEmail } from "./services/email/sendEmail.js";
 
 // Rate limiting
 import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
@@ -83,6 +84,61 @@ app.use(passport.session());
 // ✅ test route
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+    timestamp: new Date().toISOString(),
+    resendConfigured: !!process.env.RESEND_API_KEY,
+    emailFrom: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
+  });
+});
+
+app.get("/api/health/email", async (req, res) => {
+  if (!process.env.RESEND_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      message: "RESEND_API_KEY is not configured",
+    });
+  }
+
+  const healthData = {
+    success: true,
+    message: "Resend API key is configured",
+    resendConfigured: true,
+    emailFrom: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
+  };
+
+  const testEmail = req.query.email;
+  if (!testEmail) {
+    return res.json({
+      ...healthData,
+      note: "Add ?email=you@example.com to send a test health email",
+    });
+  }
+
+  try {
+    const result = await sendEmail({
+      to: testEmail,
+      from: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
+      subject: "AgriTech Resend health check",
+      html: `<p>This is a Resend health check email from AgriTech. If you received it, the email service is working.</p>`,
+    });
+
+    return res.json({
+      ...healthData,
+      testEmail,
+      result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Resend email health check failed",
+      error: error?.message || error,
+    });
+  }
 });
 
 // ✅ connect routes

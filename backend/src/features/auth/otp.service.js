@@ -4,11 +4,16 @@ import User from "./user.model.js";
 import PendingUser from "./pendingUser.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import twilio from "twilio";
 import axios from "axios";
 import qrcode from "qrcode";
 import { getOtpSecuritySettings } from "../admin/authSettings.service.js";
+import * as otpProviderService from "../admin/otpProvider.service.js";
+import { getUserServicePermissionByUserId } from "../admin/userServicePermission.service.js";
+import {
+  sendForgotPasswordEmail,
+  sendOTPEmail,
+} from "../../services/emailService.js";
 
 // Import new services
 import { sendTelegramOtp } from "./telegram.service.js";
@@ -34,31 +39,6 @@ const getTwilioClient = () => {
   return twilioClient;
 };
 
-let emailTransporter = null;
-const getEmailTransporter = () => {
-  if (!emailTransporter && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    emailTransporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-    console.log("✅ Created Gmail transporter for:", process.env.EMAIL_USER);
-  }
-
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error(
-      "Email transporter could not be created: EMAIL_USER or EMAIL_PASS is missing",
-    );
-  }
-
-  return emailTransporter;
-};
-
 // Utility functions
 export const detectContactType = (contact) => {
   return contact.includes("@") ? "email" : "phone";
@@ -71,6 +51,48 @@ export const validateContact = (contact, type) => {
   } else {
     const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
     return phoneRegex.test(contact);
+  }
+};
+
+const resolveOtpAvailability = async (method, user = null) => {
+  const authSettings = await getOtpSecuritySettings();
+  const userOverride = user
+    ? await getUserServicePermissionByUserId(user._id)
+    : null;
+
+  const enabledEmail = authSettings.emailOtp?.enabled ?? true;
+  const enabledPhone = authSettings.phoneOtp?.enabled ?? true;
+  const enabledWhatsapp = authSettings.whatsapp?.enabled ?? true;
+
+  const allowByRole = user?.role === "admin";
+
+  switch (method) {
+    case "email":
+      if (
+        userOverride?.emailOtpEnabled !== null &&
+        userOverride?.emailOtpEnabled !== undefined
+      ) {
+        return userOverride.emailOtpEnabled;
+      }
+      return allowByRole ? true : enabledEmail;
+    case "sms":
+      if (
+        userOverride?.phoneOtpEnabled !== null &&
+        userOverride?.phoneOtpEnabled !== undefined
+      ) {
+        return userOverride.phoneOtpEnabled;
+      }
+      return allowByRole ? true : enabledPhone;
+    case "whatsapp":
+      if (
+        userOverride?.whatsappLoginEnabled !== null &&
+        userOverride?.whatsappLoginEnabled !== undefined
+      ) {
+        return userOverride.whatsappLoginEnabled;
+      }
+      return allowByRole ? true : enabledWhatsapp;
+    default:
+      return true;
   }
 };
 
@@ -93,72 +115,12 @@ export const sendEmailOTP = async (email, otp, name = null) => {
   console.log("  - OTP:", otp);
   console.log("  - Name:", name);
 
-  const transporter = getEmailTransporter();
-  if (!transporter) {
-    console.error("❌ Email service not configured");
-    throw new Error("Email service not configured");
-  }
-
-  console.log("✅ Email transporter available");
-
-  const greeting = name ? `Hi ${name},` : "Hi there,";
-
-  const mailOptions = {
-    from: `AgriTech <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: "Verify Your Account - AgriTech",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8f9fa; padding: 20px;">
-        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #28a745; margin: 0; font-size: 28px;">AgriTech</h1>
-            <p style="color: #6c757d; margin: 5px 0;">Smart Agriculture Solutions</p>
-          </div>
-
-          <h2 style="color: #343a40; text-align: center; margin-bottom: 20px;">Account Verification</h2>
-
-          <p style="color: #495057; line-height: 1.6; margin-bottom: 20px;">${greeting}</p>
-
-          <p style="color: #495057; line-height: 1.6; margin-bottom: 30px;">
-            Welcome to AgriTech! To complete your account setup, please verify your email address using the code below:
-          </p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="font-size: 32px; font-weight: bold; color: #007bff; padding: 20px; border: 3px solid #007bff; border-radius: 10px; display: inline-block; letter-spacing: 5px;">
-              ${otp}
-            </div>
-          </div>
-
-          <p style="color: #6c757d; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-            This verification code will expire in 5 minutes. Please enter it in the application to complete your registration.
-          </p>
-
-          <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">
-            If you didn't create an account with AgriTech, please ignore this email.
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
-
-          <p style="color: #6c757d; font-size: 12px; text-align: center;">
-            This is an automated email. Please do not reply to this message.
-          </p>
-        </div>
-      </div>
-    `,
-  };
-
   try {
-    console.log("📤 Sending email...");
-    const result = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully!");
-    console.log("  - Message ID:", result.messageId);
-    console.log("  - Response:", result.response);
+    const result = await sendOTPEmail({ email, name, otp });
+    console.log("✅ Resend OTP email queued:", { to: email, id: result.id });
     return result;
   } catch (err) {
-    console.error("❌ Email sending failed:");
-    console.error("  - Error:", err.message);
-    console.error("  - Code:", err.code);
-    console.error("  - Command:", err.command);
+    console.error("❌ Resend OTP email failed:", err.message || err);
     throw err;
   }
 };
@@ -233,57 +195,24 @@ export const sendMessengerOTP = async (phone, otp) => {
 };
 
 export const sendResetEmail = async (email, name, resetLink) => {
-  const transporter = getEmailTransporter();
-  if (!transporter) {
-    throw new Error("Email service not configured");
+  try {
+    const result = await sendForgotPasswordEmail({
+      email,
+      name,
+      resetLink,
+    });
+    console.log("✅ Resend reset password email queued:", {
+      to: email,
+      id: result.id,
+    });
+    return result;
+  } catch (error) {
+    console.error(
+      "❌ Resend reset password email failed:",
+      error.message || error,
+    );
+    throw error;
   }
-
-  const greeting = name ? `Hi ${name},` : "Hi User,";
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Reset Your Password - AgriTech",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8f9fa; padding: 20px;">
-        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #28a745; margin: 0; font-size: 28px;">AgriTech</h1>
-            <p style="color: #6c757d; margin: 5px 0;">Smart Agriculture Solutions</p>
-          </div>
-
-          <h2 style="color: #343a40; text-align: center; margin-bottom: 20px;">Password Reset Request</h2>
-
-          <p style="color: #495057; line-height: 1.6; margin-bottom: 20px;">${greeting}</p>
-
-          <p style="color: #495057; line-height: 1.6; margin-bottom: 30px;">
-            We received a request to reset your password for your AgriTech account. Click the button below to reset your password:
-          </p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Reset Password</a>
-          </div>
-
-          <p style="color: #6c757d; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-            This link will expire in 15 minutes for security reasons. If you didn't request this password reset, please ignore this email.
-          </p>
-
-          <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <span style="word-break: break-all; color: #007bff;">${resetLink}</span>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
-
-          <p style="color: #6c757d; font-size: 12px; text-align: center;">
-            This is an automated email. Please do not reply to this message.
-          </p>
-        </div>
-      </div>
-    `,
-  };
-
-  await transporter.sendMail(mailOptions);
 };
 
 // Main OTP service functions
@@ -324,6 +253,23 @@ export const sendOTP = async (
 
   if (dailyOtpCount >= otpSecurity.maxDailyRequests) {
     throw new Error("Daily OTP request limit reached");
+  }
+
+  // Resolve permissions and availability before OTP generation
+  let targetUser = null;
+  if (!pendingUserId) {
+    targetUser = await User.findOne(
+      contactType === "email"
+        ? { email: normalizedContact }
+        : { mobile: normalizedContact },
+    );
+  }
+
+  const allowed = await resolveOtpAvailability(method, targetUser);
+  if (!allowed) {
+    throw new Error(
+      "OTP delivery method is currently disabled for this contact",
+    );
   }
 
   // Generate and hash OTP
@@ -385,50 +331,44 @@ export const sendOTP = async (
     throw saveError;
   }
 
-  // Send OTP based on method - Fire and forget for email to avoid timeout
+  // Send OTP based on method
   console.log(`Sending OTP via method=${method} to ${normalizedContact}`);
 
-  // For email: send asynchronously (non-blocking) to avoid timeout
-  if (method === "email") {
-    sendEmailOTP(normalizedContact, otp, name)
-      .then(() => console.log("✅ Async email sent successfully"))
-      .catch((err) => {
-        console.error("❌ Async email sending failed:", err.message);
-        // Delete OTP record if email fails
-        OTP.findByIdAndDelete(otpRecord._id).catch((e) =>
-          console.error("Failed to cleanup OTP:", e),
+  try {
+    switch (method) {
+      case "email":
+        console.log(`EMAIL OTP via provider to ${normalizedContact}`);
+        await sendEmailWithActiveProvider(normalizedContact, otp, name);
+        break;
+      case "sms":
+      case "whatsapp":
+        console.log(
+          `${method.toUpperCase()} OTP via provider to ${normalizedContact}`,
         );
-      });
-  } else {
-    // For SMS/Telegram/etc: send synchronously
-    try {
-      switch (method) {
-        case "sms":
-          console.log(`PHONE OTP: ${otp} -> ${normalizedContact}`);
-          await sendSMSOTP(normalizedContact, otp);
-          break;
-        case "whatsapp":
-          console.log(`WHATSAPP OTP: ${otp} -> ${normalizedContact}`);
-          await sendWhatsAppOTP(normalizedContact, otp);
-          break;
-        case "telegram":
-          console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
-          await sendTelegramOTP(normalizedContact, otp);
-          break;
-        case "instagram":
-          await sendInstagramOTP(normalizedContact, otp);
-          break;
-        case "messenger":
-          await sendMessengerOTP(normalizedContact, otp);
-          break;
-        default:
-          throw new Error("Invalid OTP method");
-      }
-    } catch (error) {
-      // If sending fails, delete the OTP record to prevent clutter
-      await OTP.findByIdAndDelete(otpRecord._id);
-      throw error;
+        await sendPhoneOtpWithActiveProvider(normalizedContact, otp, method);
+        break;
+      case "telegram":
+        console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
+        await sendTelegramOTP(normalizedContact, otp);
+        break;
+      case "instagram":
+        await sendInstagramOTP(normalizedContact, otp);
+        break;
+      case "messenger":
+        await sendMessengerOTP(normalizedContact, otp);
+        break;
+      default:
+        throw new Error("Invalid OTP method");
     }
+  } catch (error) {
+    console.error(
+      `OTP send failed for method=${method}:`,
+      error.message || error,
+    );
+    await OTP.findByIdAndDelete(otpRecord._id).catch((cleanupError) =>
+      console.error("Failed to cleanup OTP after send failure:", cleanupError),
+    );
+    throw error;
   }
   return {
     success: true,

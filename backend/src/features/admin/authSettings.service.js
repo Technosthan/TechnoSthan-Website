@@ -15,6 +15,12 @@ export const AUTH_SETTINGS_DEFAULTS = {
     botUsername: "",
     webhookUrl: "",
   },
+  emailOtp: {
+    enabled: true,
+  },
+  phoneOtp: {
+    enabled: true,
+  },
   otpSecurity: {
     expiryMinutes: 5,
     resendCooldown: 60,
@@ -35,6 +41,14 @@ export const mergeAuthSettings = (settings = {}) => ({
   telegram: {
     ...AUTH_SETTINGS_DEFAULTS.telegram,
     ...(settings.telegram || {}),
+  },
+  emailOtp: {
+    ...AUTH_SETTINGS_DEFAULTS.emailOtp,
+    ...(settings.emailOtp || {}),
+  },
+  phoneOtp: {
+    ...AUTH_SETTINGS_DEFAULTS.phoneOtp,
+    ...(settings.phoneOtp || {}),
   },
   otpSecurity: {
     ...AUTH_SETTINGS_DEFAULTS.otpSecurity,
@@ -133,7 +147,13 @@ export const buildAuthSettingsUpdate = (payload = {}, existing = {}) => {
 };
 
 export const validateAuthSettingsPayload = (payload = {}) => {
-  const allowedSections = ["whatsapp", "telegram", "otpSecurity"];
+  const allowedSections = [
+    "whatsapp",
+    "telegram",
+    "emailOtp",
+    "phoneOtp",
+    "otpSecurity",
+  ];
   const sectionKeys = Object.keys(payload);
 
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -146,7 +166,7 @@ export const validateAuthSettingsPayload = (payload = {}) => {
     }
   }
 
-  const { whatsapp, telegram, otpSecurity } = payload;
+  const { whatsapp, telegram, emailOtp, phoneOtp, otpSecurity } = payload;
 
   if (whatsapp) {
     if (

@@ -12,6 +12,6 @@ router.post(
   upload.single("file"),
   uploadFile,
 );
-router.get("/history", authMiddleware, getChatHistory);
+router.get("/history", authOptionalMiddleware, getChatHistory);
 
 export default router;

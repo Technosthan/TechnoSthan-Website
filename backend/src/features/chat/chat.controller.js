@@ -247,7 +247,14 @@ export const chat = async (req, res) => {
 
 export const getChatHistory = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
 
     const chats = await Chat.find({ userId }).sort({ createdAt: -1 }).limit(50); // Limit to last 50 chats
 

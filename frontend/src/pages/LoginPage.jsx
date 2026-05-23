@@ -303,6 +303,10 @@ const LoginPage = () => {
         }
       }
     } catch (err) {
+      console.error(
+        "[LoginPage] authenticate error details:",
+        err?.response?.data || err?.message || err,
+      );
       setError(
         err?.response?.data?.message || err?.message || "Something went wrong",
       );

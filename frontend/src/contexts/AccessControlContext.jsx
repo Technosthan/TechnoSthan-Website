@@ -29,38 +29,61 @@ export const AccessControlProvider = ({ children }) => {
   ]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchPublicSettings = async () => {
-      try {
-        const baseURL =
-          import.meta.env.VITE_API_BASE_URL_PROD ||
-          import.meta.env.VITE_API_BASE_URL;
-        const response = await axios.get(
-          `${baseURL || ""}/api/settings/public`,
-        );
-        const { data } = response.data;
-        const enabled =
-          typeof data.publicWebsiteEnabled === "boolean" ||
-          typeof data.publicAccessEnabled === "boolean"
-            ? Boolean(data.publicWebsiteEnabled || data.publicAccessEnabled)
-            : true;
-        setPublicAccessEnabled(enabled);
-        setPublicWebsiteEnabled(enabled);
-        setPublicRoutes(
-          Array.isArray(data.publicRoutes) && data.publicRoutes.length > 0
-            ? data.publicRoutes
-            : ["/"],
-        );
-      } catch (error) {
-        console.error("Failed to load access control settings:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchPublicSettings = async () => {
+    try {
+      const baseURL =
+        import.meta.env.VITE_API_BASE_URL_PROD ||
+        import.meta.env.VITE_API_BASE_URL;
+      const response = await axios.get(`${baseURL || ""}/api/settings/public`);
+      const { data } = response.data;
 
+      if (!data) {
+        console.warn("No settings data returned from API");
+        return;
+      }
+
+      const enabled =
+        typeof data.publicWebsiteEnabled === "boolean" ||
+        typeof data.publicAccessEnabled === "boolean"
+          ? Boolean(data.publicWebsiteEnabled || data.publicAccessEnabled)
+          : true;
+
+      console.log("[AccessControl] Settings fetched:", {
+        enabled,
+        publicWebsiteEnabled: data.publicWebsiteEnabled,
+        publicAccessEnabled: data.publicAccessEnabled,
+        routeCount: Array.isArray(data.publicRoutes)
+          ? data.publicRoutes.length
+          : 0,
+      });
+
+      setPublicAccessEnabled(enabled);
+      setPublicWebsiteEnabled(enabled);
+      setPublicRoutes(
+        Array.isArray(data.publicRoutes) && data.publicRoutes.length > 0
+          ? data.publicRoutes
+          : ["/"],
+      );
+    } catch (error) {
+      console.error("[AccessControl] Failed to load access control settings:", {
+        message: error.message,
+        status: error.response?.status,
+      });
+      // Keep existing values on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPublicSettings();
 
     const handlePublicAccessUpdated = (event) => {
+      console.log("[AccessControl] publicAccessUpdated event received:", {
+        publicWebsiteEnabled: event?.detail?.publicWebsiteEnabled,
+        publicAccessEnabled: event?.detail?.publicAccessEnabled,
+      });
+
       if (event?.detail) {
         const enabled =
           event.detail.publicWebsiteEnabled ??
@@ -74,6 +97,10 @@ export const AccessControlProvider = ({ children }) => {
             ? event.detail.publicRoutes
             : ["/"],
         );
+
+        // Also re-fetch from backend to ensure sync
+        console.log("[AccessControl] Re-fetching settings after update");
+        fetchPublicSettings();
       }
     };
 
@@ -85,7 +112,7 @@ export const AccessControlProvider = ({ children }) => {
         handlePublicAccessUpdated,
       );
     };
-  }, []);
+  }, [publicAccessEnabled]); // Add dependency to refresh on auth state change
 
   return (
     <AccessControlContext.Provider

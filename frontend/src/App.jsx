@@ -86,7 +86,7 @@ function App() {
               <Route path="quiz" element={<QuizManagement />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="ai-control" element={<AIControlPanel />} />
-              <Route path="settings" element={<SettingsPanel />} />
+              <Route path="settings/*" element={<SettingsPanel />} />
               <Route path="announcements" element={<AnnouncementManager />} />
               <Route path="search" element={<GlobalSearch />} />
               <Route path="monitoring" element={<MonitoringPage />} />
