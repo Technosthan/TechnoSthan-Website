@@ -1,7 +1,7 @@
 import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
+import mongoose from "./backend/node_modules/mongoose/index.js";
 import { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -25,9 +25,12 @@ const app = express();
 app.use(express.json());
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:5000";
+const TELEGRAM_USE_POLLING = String(process.env.TELEGRAM_USE_POLLING || "")
+  .trim()
+  .toLowerCase();
 const shouldUsePolling =
-  process.env.TELEGRAM_USE_POLLING === "true" ||
-  (!process.env.TELEGRAM_USE_POLLING &&
+  TELEGRAM_USE_POLLING === "true" ||
+  (TELEGRAM_USE_POLLING === "" &&
     /localhost|127\.0\.0\.1/i.test(BACKEND_API_URL));
 
 let dbReady = false;
@@ -115,7 +118,10 @@ const handleLink = async (chatId, args, userName = null) => {
   const code = args[0].toUpperCase();
 
   if (!/^[A-Z]+-\d+$/.test(code)) {
-    await sendMessage(chatId, "Invalid code format\n\nCode should look like TECH-48291");
+    await sendMessage(
+      chatId,
+      "Invalid code format\n\nCode should look like TECH-48291",
+    );
     return;
   }
 
@@ -266,10 +272,17 @@ const PORT = process.env.TELEGRAM_WEBHOOK_PORT || 3001;
 ensureDatabaseConnection()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Telegram webhook server running on port ${PORT}`);
+      console.log(
+        `Telegram webhook server running on port ${PORT} (${shouldUsePolling ? "polling" : "webhook"} mode)`,
+      );
       console.log(
         `Webhook URL: ${BACKEND_API_URL}/webhook/telegram or http://localhost:${PORT}/webhook/telegram`,
       );
+      if (!shouldUsePolling) {
+        console.log(
+          "Telegram is configured for webhook mode. Ensure your bot webhook is set to the URL above or use TELEGRAM_USE_POLLING=true for local development.",
+        );
+      }
 
       if (shouldUsePolling) {
         console.log("Telegram polling mode enabled for local development.");

@@ -1,116 +1,184 @@
 import { Link } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 
+import {
+  Leaf,
+  Mail,
+  Phone,
+  MapPin,
+  ArrowUpRight,
+} from "lucide-react";
+
 const Footer = () => {
   const { theme } = useTheme();
 
   return (
-    <footer className={`${theme.navbar} ${theme.textSecondary} py-8`}>
-      <div className="max-w-7xl mx-auto px-6 md:px-16">
-        <div className="grid md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div>
-            <h3 className={`text-xl font-bold ${theme.accent} mb-4`}>
-              TECHNOSTHAN AGRITECH
-            </h3>
-            <p className="text-sm">
-              Empowering farmers and students with AI-powered agriculture tools.
+    <footer className="relative overflow-hidden border-t border-white/10 bg-[#06111f]">
+      {/* BG BLUR */}
+      <div className="absolute top-0 left-0 w-72 h-72 bg-green-500/10 rounded-full blur-3xl" />
+
+      <div className="absolute bottom-0 right-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl" />
+
+      <div className="relative max-w-7xl mx-auto px-6 md:px-10 py-12">
+        {/* TOP */}
+        <div className="grid lg:grid-cols-4 gap-10 pb-10 border-b border-white/10">
+          {/* BRAND */}
+          <div className="lg:col-span-1">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg">
+                <Leaf size={24} />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  TECHNOSTHAN
+                </h3>
+
+                <p className="text-sm text-green-400">
+                  AGRITECH
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm leading-relaxed text-gray-400 max-w-sm">
+              Empowering smart agriculture with AI,
+              innovation, and modern farming
+              solutions for farmers and students.
             </p>
           </div>
 
-          {/* Quick Links */}
+          {/* LINKS */}
           <div>
-            <h4 className="font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/" className={`hover:${theme.accent} transition cursor-pointer`}>
-                  Home
-                </Link>
+            <h4 className="text-white font-semibold mb-5">
+              Quick Links
+            </h4>
+
+            <ul className="space-y-3 text-sm">
+              {[
+                {
+                  name: "Home",
+                  path: "/",
+                },
+                {
+                  name: "About",
+                  path: "/about",
+                },
+                {
+                  name: "Contact",
+                  path: "/contact",
+                },
+                {
+                  name: "AgriTech Wiki",
+                  path: "/AgriTech Wiki",
+                },
+              ].map((item, index) => (
+                <li key={index}>
+                  <Link
+                    to={item.path}
+                    className="group flex items-center text-gray-400 hover:text-green-400 transition-all duration-300"
+                  >
+                    {item.name}
+
+                    <ArrowUpRight
+                      size={14}
+                      className="ml-1 opacity-0 group-hover:opacity-100 transition-all duration-300"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* SERVICES */}
+          <div>
+            <h4 className="text-white font-semibold mb-5">
+              Services
+            </h4>
+
+            <ul className="space-y-3 text-sm text-gray-400">
+              <li className="hover:text-green-400 transition cursor-pointer">
+                AI Chatbot
               </li>
-              <li>
-                <Link
-                  to="/about"
-                  className={`hover:${theme.accent} transition`}
-                >
-                  About
-                </Link>
+
+              <li className="hover:text-green-400 transition cursor-pointer">
+                Smart Farming
               </li>
-              <li>
-                <Link
-                  to="/contact"
-                  className={`hover:${theme.accent} transition`}
-                >
-                  Contact
-                </Link>
+
+              <li className="hover:text-green-400 transition cursor-pointer">
+                Quiz & Learning
               </li>
-              <li>
-                <Link
-                  to="/AgriTech Wiki"
-                  className={`hover:${theme.accent} transition`}
-                >
-                  AgriTech Wiki
-                </Link>
+
+              <li className="hover:text-green-400 transition cursor-pointer">
+                Progress Tracking
               </li>
             </ul>
           </div>
 
-          {/* Features */}
+          {/* CONTACT */}
           <div>
-            <h4 className="font-semibold mb-4">Features</h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/chat" className={`hover:${theme.accent} transition`}>
-                  AI Chatbot
-                </Link>
-              </li>
-              <li>
-                <Link to="/dashboard" className={`hover:${theme.accent} transition`}>
-                  My Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link to="/AgriTech Wiki" className={`hover:${theme.accent} transition`}>
-                  AgriTech Wiki Modules
-                </Link>
-              </li>
-              <li>
-                <Link to="/Agritech Wiki" className={`hover:${theme.accent} transition`}>
-                  Knowledge Assessment
-                </Link>
-              </li>
-            </ul>
-          </div>
+            <h4 className="text-white font-semibold mb-5">
+              Contact
+            </h4>
 
-          {/* Contact */}
-          <div>
-            <h4 className="font-semibold mb-4">Contact Us</h4>
-            <ul className="space-y-2 text-sm">
-              <li>Email: agritech@technosthan.com</li>
-              <li>Phone: +91-9477288288</li>
-              <li>
-                Address: 47/1 New Sanganer Road, Sodala, Jaipur, Rajasthan
-                302019
+            <ul className="space-y-4 text-sm text-gray-400">
+              <li className="flex items-start gap-3">
+                <Mail
+                  size={16}
+                  className="text-green-400 mt-0.5"
+                />
+
+                <span>
+                  agritech@technosthan.com
+                </span>
+              </li>
+
+              <li className="flex items-start gap-3">
+                <Phone
+                  size={16}
+                  className="text-green-400 mt-0.5"
+                />
+
+                <span>
+                  +91 9477288288
+                </span>
+              </li>
+
+              <li className="flex items-start gap-3">
+                <MapPin
+                  size={16}
+                  className="text-green-400 mt-0.5"
+                />
+
+                <span>
+                  Jaipur, Rajasthan, India
+                </span>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm">
-          <p>
-            © 2026 TECHNOSTHAN AGRITECH | Built by TechnoSthan | All rights
-            reserved.
+        {/* BOTTOM */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6">
+          <p className="text-sm text-gray-500 text-center md:text-left">
+            © 2026 TECHNOSTHAN AGRITECH. All
+            rights reserved.
           </p>
-          <p className="mt-2">
+
+          <div className="flex items-center gap-5 text-sm">
             <Link
               to="/privacy"
-              className="hover:text-green-400 transition mr-4"
+              className="text-gray-500 hover:text-green-400 transition"
             >
               Privacy Policy
             </Link>
-            <Link to="/terms" className="hover:text-green-400 transition">
+
+            <Link
+              to="/terms"
+              className="text-gray-500 hover:text-green-400 transition"
+            >
               Terms of Service
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </footer>

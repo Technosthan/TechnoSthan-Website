@@ -2,44 +2,218 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 
+import {
+  ArrowRight,
+  Sparkles,
+  Leaf,
+  Cpu,
+  BarChart3,
+} from "lucide-react";
+
 const HeroSection = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
 
   return (
-    <div className="grid md:grid-cols-2 gap-10 items-center px-6 md:px-16 py-20 max-w-7xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
-      >
-        <h1
-          className={`text-5xl md:text-6xl font-extrabold mb-6 ${theme.accent} drop-shadow-lg`}
+    <section className="relative overflow-hidden">
+      {/* Background Blur */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-10 w-72 h-72 bg-green-400/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative grid lg:grid-cols-2 gap-14 items-center px-6 md:px-10 lg:px-16 py-16 md:py-24 max-w-7xl mx-auto">
+        {/* LEFT CONTENT */}
+        <motion.div
+          initial={{ opacity: 0, x: -70 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10"
         >
-          Smart Agriculture for India 🇮🇳
-        </h1>
-        <p className={`${theme.text} mb-8 text-lg`}>
-          Learn modern farming, test your knowledge, and monitor farm data using
-          AI-powered tools.
-        </p>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate("/AgriTech Wiki")}
-          className={`${theme.button} hover:scale-105 transition cursor-pointer transform px-8 py-4 rounded-2xl shadow-xl text-lg font-semibold`}
+          {/* Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium text-sm mb-6 shadow-md"
+          >
+            <Sparkles size={16} />
+            AI Powered Farming Platform
+          </motion.div>
+
+          {/* Heading */}
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 ${theme.text}`}
+          >
+            Smart Agriculture
+            <br />
+
+            <span className={`${theme.accent}`}>
+              for India 🇮🇳
+            </span>
+          </motion.h1>
+
+          {/* Description */}
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className={`${theme.textSecondary} text-lg md:text-xl leading-relaxed mb-8 max-w-xl`}
+          >
+            Learn modern farming techniques, monitor farm
+            performance, explore AgriTech innovations, and
+            improve productivity using AI-powered tools.
+          </motion.p>
+
+          {/* Features */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55 }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10"
+          >
+            <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
+              <Leaf className="text-green-500" size={22} />
+
+              <span className="font-medium text-sm">
+                Smart Farming
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
+              <Cpu className="text-blue-500" size={22} />
+
+              <span className="font-medium text-sm">
+                AI Solutions
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
+              <BarChart3
+                className="text-yellow-500"
+                size={22}
+              />
+
+              <span className="font-medium text-sm">
+                Farm Analytics
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+            className="flex flex-wrap gap-4"
+          >
+            {/* Primary Button */}
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+              }}
+              whileTap={{
+                scale: 0.96,
+              }}
+              onClick={() =>
+                navigate("/AgriTech Wiki")
+              }
+              className={`${theme.button} group px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold flex items-center gap-3 cursor-pointer`}
+            >
+              Explore Wiki
+
+              <ArrowRight
+                size={20}
+                className="group-hover:translate-x-1 transition-transform duration-300"
+              />
+            </motion.button>
+
+            {/* Secondary Button */}
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+              }}
+              whileTap={{
+                scale: 0.96,
+              }}
+              onClick={() =>
+                navigate("/dashboard")
+              }
+              className="px-8 py-4 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md text-gray-800 dark:text-white shadow-lg font-semibold hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+            >
+              View Dashboard
+            </motion.button>
+          </motion.div>
+        </motion.div>
+
+        {/* RIGHT IMAGE */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            scale: 0.85,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+          }}
+          transition={{
+            duration: 0.9,
+          }}
+          className="relative"
         >
-          Demo
-        </motion.button>
-      </motion.div>
-      <motion.img
-        src="/hero.png"
-        alt="Smart Farming"
-        className="w-full rounded-2xl shadow-2xl"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8 }}
-      />
-    </div>
+          {/* Glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 blur-3xl rounded-full" />
+
+          {/* Main Image */}
+          <motion.div
+            whileHover={{
+              scale: 1.02,
+            }}
+            transition={{
+              duration: 0.3,
+            }}
+            className="relative"
+          >
+            <img
+              src="/hero.png"
+              alt="Smart Farming"
+              className="w-full rounded-[2rem] shadow-2xl border border-white/20"
+            />
+
+            {/* Floating Card */}
+            <motion.div
+              animate={{
+                y: [0, -10, 0],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+              }}
+              className="absolute -bottom-6 left-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-5 backdrop-blur-lg"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg">
+                  <Leaf size={22} />
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-gray-800 dark:text-white">
+                    AI Crop Monitoring
+                  </h4>
+
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Real-time farm insights
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
   );
 };
 
