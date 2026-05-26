@@ -15,6 +15,7 @@ import {
   sendEmailOTP,
   sendSMSOTP,
 } from "./otp.service.js";
+import { getOrCreateAuthSettings } from "../admin/authSettings.service.js";
 
 const isEmail = (contact) => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -34,6 +35,28 @@ const normalizePhone = (phone) =>
   typeof phone === "string" ? phone.replace(/[^\d+]/g, "").trim() : "";
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getEnabledOtpMethods = async () => {
+  const authSettings = await getOrCreateAuthSettings();
+  return {
+    email: authSettings.emailOtp?.enabled ?? true,
+    phone: authSettings.phoneOtp?.enabled ?? true,
+  };
+};
+
+const requiresVerificationForUser = (user, otpMethods) => {
+  const needsEmail = otpMethods.email && !!user.email && !user.emailVerified;
+  const needsPhone = otpMethods.phone && !!user.mobile && !user.phoneVerified;
+  return needsEmail || needsPhone;
+};
+
+const canFinalizePendingUser = (pendingUser, otpMethods) => {
+  const needsEmail = otpMethods.email && !!pendingUser.email;
+  const needsPhone = otpMethods.phone && !!pendingUser.mobile;
+  const emailOk = !needsEmail || pendingUser.emailVerified;
+  const phoneOk = !needsPhone || pendingUser.phoneVerified;
+  return emailOk && phoneOk;
+};
 
 export const registerUser = async (data) => {
   const { name, contact, password } = data;
@@ -131,6 +154,8 @@ export const loginUser = async (data) => {
     expiresIn: "24h",
   });
 
+  const otpMethods = await getEnabledOtpMethods();
+
   // Return user data without password
   const userData = {
     id: user._id,
@@ -150,7 +175,7 @@ export const loginUser = async (data) => {
   return {
     user: userData,
     token,
-    requiresVerification: !user.emailVerified || !user.phoneVerified,
+    requiresVerification: requiresVerificationForUser(user, otpMethods),
     emailVerified: user.emailVerified,
     phoneVerified: user.phoneVerified,
   };
@@ -192,6 +217,8 @@ export const authenticateUser = async ({ contact, password }) => {
       );
     }
 
+    const otpMethods = await getEnabledOtpMethods();
+
     // Generate token
     const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, {
       expiresIn: "24h",
@@ -216,13 +243,16 @@ export const authenticateUser = async ({ contact, password }) => {
           typeof existingUser.password === "string" &&
           existingUser.password.length > 0,
       },
-      requiresVerification:
-        !existingUser.emailVerified || !existingUser.phoneVerified,
+      requiresVerification: requiresVerificationForUser(
+        existingUser,
+        otpMethods,
+      ),
       emailVerified: existingUser.emailVerified,
       phoneVerified: existingUser.phoneVerified,
     };
   } else {
     // User doesn't exist - create a PendingUser and start registration
+    const otpMethods = await getEnabledOtpMethods();
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const pendingData = { password: hashedPassword };
@@ -241,19 +271,39 @@ export const authenticateUser = async ({ contact, password }) => {
     await pendingUser.save();
 
     const method = contactType === "email" ? "email" : "sms";
+    const isContactTypeEnabled =
+      (contactType === "email" && otpMethods.email) ||
+      (contactType === "phone" && otpMethods.phone);
 
-    await sendOTP(
-      contact,
-      contactType,
-      method,
-      pendingUser._id,
-      pendingData.name,
-    );
+    if (isContactTypeEnabled) {
+      await sendOTP(
+        contact,
+        contactType,
+        method,
+        pendingUser._id,
+        pendingData.name,
+      );
+
+      return {
+        isExistingUser: false,
+        pendingUserId: pendingUser._id,
+        contactType,
+        nextStep: "verify-otp",
+      };
+    }
+
+    const fallbackContactType = contactType === "email" ? "phone" : "email";
+    const fallbackStep =
+      otpMethods.email || otpMethods.phone
+        ? "input-second-field"
+        : "verify-otp";
 
     return {
       isExistingUser: false,
       pendingUserId: pendingUser._id,
       contactType,
+      nextStep: fallbackStep,
+      missingContactType: fallbackContactType,
     };
   }
 };
@@ -264,11 +314,19 @@ export const finalizeRegistration = async (pendingUserId) => {
     throw new Error("Pending user not found");
   }
 
-  if (!pendingUser.emailVerified || !pendingUser.phoneVerified) {
-    throw new Error("Both email and phone must be verified");
+  const otpMethods = await getEnabledOtpMethods();
+  const canFinalize = canFinalizePendingUser(pendingUser, otpMethods);
+
+  if (!canFinalize) {
+    throw new Error(
+      "Pending user has not completed required verification steps",
+    );
   }
 
   // Create user in main DB
+  const needsEmail = otpMethods.email && !!pendingUser.email;
+  const needsPhone = otpMethods.phone && !!pendingUser.mobile;
+
   const userData = {
     name: pendingUser.name,
     password: pendingUser.password,
@@ -276,8 +334,8 @@ export const finalizeRegistration = async (pendingUserId) => {
     mobile: pendingUser.mobile,
     whatsappNumber: pendingUser.mobile, // Link WhatsApp to mobile
     role: "student",
-    emailVerified: true,
-    phoneVerified: true,
+    emailVerified: !needsEmail || !!pendingUser.emailVerified,
+    phoneVerified: !needsPhone || !!pendingUser.phoneVerified,
     status: "active",
   };
 
@@ -471,6 +529,7 @@ export const googleAuth = async (profile) => {
 
   console.log("Generated token:", !!token);
 
+  const otpMethods = await getEnabledOtpMethods();
   const userData = {
     id: user._id,
     name: user.name,
@@ -483,7 +542,7 @@ export const googleAuth = async (profile) => {
     phoneVerified: user.phoneVerified,
     telegramLinked: user.telegramLinked,
     telegramUsername: user.telegramUsername,
-    requiresVerification: !user.emailVerified || !user.phoneVerified,
+    requiresVerification: requiresVerificationForUser(user, otpMethods),
     hasPassword: typeof user.password === "string" && user.password.length > 0,
   };
 

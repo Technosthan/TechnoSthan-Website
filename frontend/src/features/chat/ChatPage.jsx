@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { sendChatMessage, uploadFile } from "./chatApi";
+import {
+  sendChatMessage,
+  uploadFile,
+  createChatConversation,
+  getChatHistory,
+  getConversationMessages,
+  deleteChatConversation,
+} from "./chatApi";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy, Check } from "lucide-react";
@@ -95,43 +102,173 @@ const ChatPage = () => {
   const [error, setError] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loadingChats, setLoadingChats] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const { theme } = useTheme();
 
-  // Load chats from localStorage on mount
-  useEffect(() => {
+  const getCurrentChat = () => {
+    return chats.find((chat) => chat.id === currentChatId);
+  };
+
+  const updateChat = (chatId, updates) => {
+    setChats((prev) =>
+      prev.map((chat) => (chat.id === chatId ? { ...chat, ...updates } : chat)),
+    );
+  };
+
+  const saveLocalChats = (chatList) => {
+    localStorage.setItem("chatHistory", JSON.stringify(chatList));
+  };
+
+  const loadLocalChats = () => {
     const savedChats = localStorage.getItem("chatHistory");
-    if (savedChats) {
+    if (!savedChats) return [];
+
+    try {
       const parsedChats = JSON.parse(savedChats);
-      // Convert timestamp strings back to Date objects
-      const chatsWithDates = parsedChats.map((chat) => ({
+      return parsedChats.map((chat) => ({
         ...chat,
         messages: chat.messages.map((msg) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
         })),
       }));
-      setChats(chatsWithDates);
-      if (chatsWithDates.length > 0) {
-        setCurrentChatId(chatsWithDates[0].id);
+    } catch (error) {
+      console.error("Failed to load local chat history", error);
+      return [];
+    }
+  };
+
+  const fetchConversations = async () => {
+    setLoadingChats(true);
+    try {
+      const response = await getChatHistory();
+      const data = response.data?.data || [];
+      const mappedChats = data.map((conversation) => ({
+        id: conversation.id,
+        title: conversation.title || "New Chat",
+        preview: conversation.preview || "",
+        updatedAt: conversation.updatedAt,
+        messages: [],
+      }));
+      setChats(mappedChats);
+      if (mappedChats.length > 0) {
+        setCurrentChatId(mappedChats[0].id);
+      } else {
+        createNewChat();
       }
+    } catch (err) {
+      console.error("Failed to load chat history", err);
+      setError("Unable to load conversations. Please refresh the page.");
+      const localChats = loadLocalChats();
+      if (localChats.length > 0) {
+        setChats(localChats);
+        setCurrentChatId(localChats[0].id);
+      } else {
+        createNewChat();
+      }
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  const loadConversationMessages = async (conversationId) => {
+    const conversation = chats.find((chat) => chat.id === conversationId);
+    if (!conversation || conversation.messages?.length > 0) return;
+
+    try {
+      const response = await getConversationMessages(conversationId);
+      const chatEntries = response.data?.data || [];
+      const messages = chatEntries.flatMap((entry) => [
+        {
+          id: `${entry._id}-user`,
+          sender: "user",
+          text: entry.message,
+          timestamp: new Date(entry.createdAt),
+        },
+        {
+          id: `${entry._id}-bot`,
+          sender: "bot",
+          text: entry.response,
+          timestamp: new Date(entry.createdAt),
+        },
+      ]);
+      updateChat(conversationId, { messages });
+    } catch (err) {
+      console.error("Failed to load conversation messages", err);
+      setError("Unable to load messages for this conversation.");
+    }
+  };
+
+  const selectChat = async (chatId) => {
+    setCurrentChatId(chatId);
+    if (isAuthenticated) {
+      await loadConversationMessages(chatId);
+    }
+  };
+
+  const createLocalChat = () => {
+    const newChat = {
+      id: `chat-${Date.now()}`,
+      title: "New Chat",
+      messages: [],
+    };
+    setChats((prev) => [newChat, ...prev]);
+    setCurrentChatId(newChat.id);
+  };
+
+  const createNewChat = async (title = "New Chat") => {
+    if (!isAuthenticated) {
+      createLocalChat();
+      return;
+    }
+
+    try {
+      const response = await createChatConversation(title);
+      const conversation = response.data?.data;
+      if (conversation) {
+        const newChat = {
+          id: conversation._id,
+          title: conversation.title || title,
+          messages: [],
+          preview: "",
+          updatedAt: conversation.updatedAt,
+        };
+        setChats((prev) => [newChat, ...prev]);
+        setCurrentChatId(newChat.id);
+      }
+    } catch (err) {
+      console.error("Failed to create conversation", err);
+      setError("Unable to create a new chat session. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsAuthenticated(!!token);
+    if (token) {
+      fetchConversations();
     } else {
-      // Create initial chat
-      createNewChat();
+      const localChats = loadLocalChats();
+      if (localChats.length > 0) {
+        setChats(localChats);
+        setCurrentChatId(localChats[0].id);
+      } else {
+        createLocalChat();
+      }
     }
   }, []);
 
-  // Save chats to localStorage whenever chats change
   useEffect(() => {
-    if (chats.length > 0) {
-      localStorage.setItem("chatHistory", JSON.stringify(chats));
+    if (!isAuthenticated) {
+      saveLocalChats(chats);
     }
-  }, [chats]);
+  }, [chats, isAuthenticated]);
 
-  // Auto-collapse sidebar on mobile
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -153,26 +290,6 @@ const ChatPage = () => {
     scrollToBottom();
   }, [chats, currentChatId]);
 
-  const createNewChat = () => {
-    const newChat = {
-      id: `chat-${Date.now()}`,
-      title: "New Chat",
-      messages: [],
-    };
-    setChats((prev) => [newChat, ...prev]);
-    setCurrentChatId(newChat.id);
-  };
-
-  const getCurrentChat = () => {
-    return chats.find((chat) => chat.id === currentChatId);
-  };
-
-  const updateChat = (chatId, updates) => {
-    setChats((prev) =>
-      prev.map((chat) => (chat.id === chatId ? { ...chat, ...updates } : chat)),
-    );
-  };
-
   const handleSendMessage = async (message = inputMessage) => {
     if (!message.trim()) {
       if (uploadedFiles.length > 0) {
@@ -190,9 +307,15 @@ const ChatPage = () => {
 
     try {
       if (uploadedFiles.length > 0) {
-        // Handle file upload with message
         const uploadPromises = uploadedFiles.map(async (file) => {
-          const response = await uploadFile(file, message);
+          const response = await uploadFile(
+            file,
+            message,
+            isAuthenticated && !currentChatId.startsWith("chat-")
+              ? currentChatId
+              : undefined,
+            currentChat.title,
+          );
           return { file, response: response.data };
         });
 
@@ -207,16 +330,11 @@ const ChatPage = () => {
           };
 
           let aiResponse = extractResponseText(response);
-
-          // Ensure aiResponse is a string
           if (typeof aiResponse !== "string") {
             aiResponse = String(aiResponse || "");
           }
 
-          if (
-            !aiResponse ||
-            (typeof aiResponse === "string" && aiResponse.trim() === "")
-          ) {
+          if (!aiResponse.trim()) {
             aiResponse = `I've processed your file "${file.name}".`;
           }
 
@@ -227,25 +345,19 @@ const ChatPage = () => {
             timestamp: new Date(),
           };
 
-          setChats((prev) =>
-            prev.map((chat) =>
-              chat.id === currentChatId
-                ? {
-                    ...chat,
-                    messages: [...chat.messages, userMessage, botMessage],
-                    title:
-                      chat.title === "New Chat"
-                        ? `Analysis: ${file.name}`
-                        : chat.title,
-                  }
-                : chat,
-            ),
-          );
+          const currentMessages = currentChat.messages || [];
+          updateChat(currentChatId, {
+            messages: [...currentMessages, userMessage, botMessage],
+            title:
+              currentChat.title === "New Chat"
+                ? `Analysis: ${file.name}`
+                : currentChat.title,
+            preview: aiResponse,
+          });
         });
 
         setUploadedFiles([]);
       } else {
-        // Regular text message
         const userMessage = {
           id: `user-${Date.now()}`,
           text: message,
@@ -253,7 +365,8 @@ const ChatPage = () => {
           timestamp: new Date(),
         };
 
-        const updatedMessages = [...currentChat.messages, userMessage];
+        const currentMessages = currentChat.messages || [];
+        const updatedMessages = [...currentMessages, userMessage];
         const title =
           currentChat.title === "New Chat"
             ? message.slice(0, 30) + (message.length > 30 ? "..." : "")
@@ -262,24 +375,26 @@ const ChatPage = () => {
         updateChat(currentChatId, { messages: updatedMessages, title });
         setInputMessage("");
 
-        const history = updatedMessages.slice(-5).map((msg) => ({
+        const history = updatedMessages.slice(-6).map((msg) => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text,
         }));
 
-        const response = await sendChatMessage(message, history);
+        const response = await sendChatMessage(
+          message,
+          history,
+          isAuthenticated && !currentChatId.startsWith("chat-")
+            ? currentChatId
+            : undefined,
+          title,
+        );
 
         let aiResponse = extractResponseText(response?.data);
-
-        // Ensure aiResponse is a string
         if (typeof aiResponse !== "string") {
           aiResponse = String(aiResponse || "");
         }
 
-        if (
-          !aiResponse ||
-          (typeof aiResponse === "string" && aiResponse.trim() === "")
-        ) {
+        if (!aiResponse.trim()) {
           aiResponse = "No response received from AI. Please try again.";
         }
 
@@ -292,6 +407,7 @@ const ChatPage = () => {
 
         updateChat(currentChatId, {
           messages: [...updatedMessages, botMessage],
+          preview: aiResponse,
         });
       }
 
@@ -353,7 +469,20 @@ const ChatPage = () => {
     }
   };
 
-  const deleteChat = (chatId) => {
+  const deleteChat = async (chatId) => {
+    const shouldDeleteServerConversation =
+      isAuthenticated && !chatId.startsWith("chat-");
+
+    if (shouldDeleteServerConversation) {
+      try {
+        await deleteChatConversation(chatId);
+      } catch (err) {
+        console.error("Failed to delete conversation", err);
+        setError("Could not delete the conversation. Please try again.");
+        return;
+      }
+    }
+
     setChats((prev) => prev.filter((chat) => chat.id !== chatId));
     if (currentChatId === chatId) {
       const remainingChats = chats.filter((chat) => chat.id !== chatId);
@@ -443,16 +572,16 @@ const ChatPage = () => {
                       ? theme.navItemHover
                       : theme.navItem
                   }`}
-                  onClick={() => setCurrentChatId(chat.id)}
+                  onClick={() => selectChat(chat.id)}
                 >
                   <h3 className="text-sm font-medium truncate pr-6">
                     {chat.title}
                   </h3>
-                  {chat.messages.length > 0 && (
-                    <p className="text-xs text-gray-400 truncate mt-1">
-                      {chat.messages[chat.messages.length - 1].text}
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-400 truncate mt-1">
+                    {chat.messages?.length > 0
+                      ? chat.messages[chat.messages.length - 1].text
+                      : chat.preview || "Start a new conversation..."}
+                  </p>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

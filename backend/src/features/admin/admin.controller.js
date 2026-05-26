@@ -17,6 +17,29 @@ import axios from "axios";
 import * as otpProviderService from "./otpProvider.service.js";
 import * as userServicePermissionService from "./userServicePermission.service.js";
 
+const maskSensitiveProviderPayload = (payload) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const masked = { ...payload };
+  [
+    "password",
+    "apiKey",
+    "accessKey",
+    "secretKey",
+    "twilioAuthToken",
+    "whatsappAccessToken",
+    "whatsappVerifyToken",
+    "vonageApiSecret",
+    "customApiAuthKey",
+    "firebaseApiKey",
+    "firebaseRecaptchaToken",
+  ].forEach((key) => {
+    if (masked[key]) {
+      masked[key] = "***";
+    }
+  });
+  return masked;
+};
+
 export const getAdminStats = async (req, res) => {
   try {
     // Clean up old invalid data (one-time operation)
@@ -133,6 +156,11 @@ export const createEmailProvider = async (req, res) => {
     const provider = await otpProviderService.createEmailProvider(req.body);
     res.status(201).json({ success: true, data: provider });
   } catch (error) {
+    console.error("[admin.controller] createEmailProvider error:", {
+      error: error.message,
+      providerType: req.body?.providerType,
+      requestBody: maskSensitiveProviderPayload(req.body),
+    });
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -145,6 +173,11 @@ export const updateEmailProvider = async (req, res) => {
     );
     res.json({ success: true, data: provider });
   } catch (error) {
+    console.error("[admin.controller] updateEmailProvider error:", {
+      providerId: req.params.providerId,
+      error: error.message,
+      requestBody: maskSensitiveProviderPayload(req.body),
+    });
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -174,6 +207,10 @@ export const testEmailProviderConnection = async (req, res) => {
     await otpProviderService.testEmailProviderConnection(req.params.providerId);
     res.json({ success: true, message: "Connection test successful" });
   } catch (error) {
+    console.error("[admin.controller] testEmailProviderConnection error:", {
+      providerId: req.params.providerId,
+      error: error.message,
+    });
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -1481,7 +1518,14 @@ export const updateAuthSettings = async (req, res) => {
     );
 
     const updateData = req.body;
-    const validationError = validateAuthSettingsPayload(updateData);
+    const existingSettings = await getOrCreateAuthSettings({
+      includeSensitive: true,
+    });
+
+    const validationError = validateAuthSettingsPayload(
+      updateData,
+      existingSettings,
+    );
     if (validationError) {
       return res.status(400).json({
         success: false,
@@ -1491,9 +1535,6 @@ export const updateAuthSettings = async (req, res) => {
 
     console.log("Validation passed, updating auth settings...");
 
-    const existingSettings = await getOrCreateAuthSettings({
-      includeSensitive: true,
-    });
     const nextSettings = buildAuthSettingsUpdate(updateData, existingSettings);
 
     const authSettings = await AuthSettings.findOneAndUpdate(

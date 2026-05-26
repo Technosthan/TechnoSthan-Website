@@ -40,6 +40,10 @@ import {
   otpRateLimit,
   loginRateLimit,
 } from "../../shared/middleware/rateLimitMiddleware.js";
+import {
+  getTelegramRuntimeSettings,
+  getOrCreateAuthSettings,
+} from "../admin/authSettings.service.js";
 
 const router = express.Router();
 
@@ -116,7 +120,7 @@ router.get(
   passport.authenticate("google", {
     failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
   }),
-  (req, res) => {
+  async (req, res) => {
     try {
       console.log(
         "Google callback - req.user:",
@@ -149,8 +153,13 @@ router.get(
         );
       }
 
+      const authSettings = await getOrCreateAuthSettings();
+      const needsEmail = authSettings.emailOtp?.enabled ?? true;
+      const needsPhone = authSettings.phoneOtp?.enabled ?? true;
       const needsVerification =
-        user.requiresVerification || !user.emailVerified || !user.phoneVerified;
+        user.requiresVerification ||
+        (needsEmail && !!user.email && !user.emailVerified) ||
+        (needsPhone && !!user.mobile && !user.phoneVerified);
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
       res.redirect(

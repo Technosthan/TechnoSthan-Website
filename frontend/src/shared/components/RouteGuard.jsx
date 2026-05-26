@@ -2,31 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation, Navigate, Outlet } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAccessControl } from "../../contexts/AccessControlContext";
-
-export const normalizeRoutePattern = (pattern) => {
-  if (!pattern || typeof pattern !== "string") {
-    return null;
-  }
-
-  const trimmed = pattern.trim();
-  if (trimmed.endsWith("*")) {
-    return new RegExp(`^${trimmed.replace(/\*+$/, ".*")}$`);
-  }
-
-  if (trimmed.includes(":")) {
-    const regex = trimmed
-      .split("/")
-      .map((segment) =>
-        segment.startsWith(":")
-          ? "[^/]+"
-          : segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      )
-      .join("/");
-    return new RegExp(`^${regex}$`);
-  }
-
-  return trimmed;
-};
+import { normalizeRoutePattern } from "./routeUtils";
 
 const isRoutePublic = (pathname, publicRoutes) => {
   if (!Array.isArray(publicRoutes)) {
@@ -61,48 +37,35 @@ const RouteGuard = () => {
     "/login/whatsapp",
   ];
 
-  const publicEnabled =
-    typeof publicWebsiteEnabled === "boolean" ||
-    typeof publicAccessEnabled === "boolean"
-      ? Boolean(publicWebsiteEnabled || publicAccessEnabled)
-      : true;
-
   const routeIsPublic =
     alwaysPublicRoutes.includes(pathname) ||
-    publicEnabled ||
-    isRoutePublic(pathname, publicRoutes);
+    (publicWebsiteEnabled === true &&
+      publicAccessEnabled === true &&
+      isRoutePublic(pathname, publicRoutes));
 
   // Log state for debugging
   useEffect(() => {
     if (!loading) {
       console.log("[RouteGuard]", {
         pathname,
-        publicEnabled,
         routeIsPublic,
         token: !!token,
         publicWebsiteEnabled,
         publicAccessEnabled,
+        publicRoutes,
       });
     }
   }, [
     pathname,
-    publicEnabled,
+    routeIsPublic,
     token,
     loading,
     publicWebsiteEnabled,
     publicAccessEnabled,
+    publicRoutes,
   ]);
 
-  useEffect(() => {
-    if (!routeIsPublic && !token) {
-      if (!hasToasted.current) {
-        toast.error("Please login to continue.", { id: "login-required" });
-        hasToasted.current = true;
-      }
-    } else {
-      hasToasted.current = false;
-    }
-  }, [routeIsPublic, token]);
+
 
   if (loading) {
     return (
@@ -114,10 +77,7 @@ const RouteGuard = () => {
     );
   }
 
-  if (!routeIsPublic && !token) {
-    console.log("[RouteGuard] Redirecting to login:", { pathname });
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+ 
 
   return <Outlet />;
 };

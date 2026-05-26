@@ -1,6 +1,6 @@
 import { sendEmail } from "./email/sendEmail.js";
 import forgotPasswordTemplate from "./email/templates/forgotPasswordTemplate.js";
-import otpTemplate from "./email/templates/otpTemplate.js";
+import otpTemplate, { otpTextTemplate } from "./email/templates/otpTemplate.js";
 import welcomeTemplate from "./email/templates/welcomeTemplate.js";
 import verificationTemplate from "./email/templates/verificationTemplate.js";
 import notificationTemplate from "./email/templates/notificationTemplate.js";
@@ -23,6 +23,7 @@ export const sendOTPEmail = async ({ email, name, otp }) => {
     from: fromAddress,
     subject: "Your AgriTech verification code",
     html: otpTemplate({ name, otp }),
+    text: otpTextTemplate({ name, otp }),
   });
 };
 

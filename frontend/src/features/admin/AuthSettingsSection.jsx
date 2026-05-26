@@ -33,6 +33,12 @@ const defaultAuthSettings = {
     botUsername: "",
     webhookUrl: "",
   },
+  emailOtp: {
+    enabled: true,
+  },
+  phoneOtp: {
+    enabled: true,
+  },
   otpSecurity: {
     expiryMinutes: 5,
     resendCooldown: 60,
@@ -54,6 +60,14 @@ const mergeSettings = (data = {}) => ({
   telegram: {
     ...defaultAuthSettings.telegram,
     ...(data.telegram || {}),
+  },
+  emailOtp: {
+    ...defaultAuthSettings.emailOtp,
+    ...(data.emailOtp || {}),
+  },
+  phoneOtp: {
+    ...defaultAuthSettings.phoneOtp,
+    ...(data.phoneOtp || {}),
   },
   otpSecurity: {
     ...defaultAuthSettings.otpSecurity,
@@ -106,8 +120,10 @@ const AuthSettingsSection = ({ theme }) => {
     if (section === "whatsapp") {
       const whatsapp = settings.whatsapp;
       if (whatsapp.enabled) {
-        if (!whatsapp.accessToken.trim()) return "WhatsApp access token is required";
-        if (!whatsapp.phoneNumberId.trim()) return "Phone number ID is required";
+        if (!whatsapp.accessToken.trim())
+          return "WhatsApp access token is required";
+        if (!whatsapp.phoneNumberId.trim())
+          return "Phone number ID is required";
         if (!whatsapp.verifyToken.trim()) return "Verify token is required";
         if (!whatsapp.templateName.trim()) return "Template name is required";
       }
@@ -117,7 +133,8 @@ const AuthSettingsSection = ({ theme }) => {
       const telegram = settings.telegram;
       if (telegram.enabled) {
         if (!telegram.botToken.trim()) return "Telegram bot token is required";
-        if (!telegram.botUsername.trim()) return "Telegram bot username is required";
+        if (!telegram.botUsername.trim())
+          return "Telegram bot username is required";
       }
       if (settings.telegram.webhookUrl.trim()) {
         try {
@@ -128,12 +145,33 @@ const AuthSettingsSection = ({ theme }) => {
       }
     }
 
+    if (section === "otpVerification") {
+      if (!settings.emailOtp.enabled && !settings.phoneOtp.enabled) {
+        return "At least one OTP verification method must be enabled: email or phone.";
+      }
+    }
+
     if (section === "otpSecurity") {
       const rules = [
-        ["expiryMinutes", 1, 60, "OTP expiry time must be between 1 and 60 minutes"],
-        ["resendCooldown", 30, 300, "Resend cooldown must be between 30 and 300 seconds"],
+        [
+          "expiryMinutes",
+          1,
+          60,
+          "OTP expiry time must be between 1 and 60 minutes",
+        ],
+        [
+          "resendCooldown",
+          30,
+          300,
+          "Resend cooldown must be between 30 and 300 seconds",
+        ],
         ["maxAttempts", 1, 10, "Max OTP attempts must be between 1 and 10"],
-        ["maxDailyRequests", 1, 50, "Max daily OTP requests must be between 1 and 50"],
+        [
+          "maxDailyRequests",
+          1,
+          50,
+          "Max daily OTP requests must be between 1 and 50",
+        ],
       ];
 
       for (const [key, min, max, message] of rules) {
@@ -158,7 +196,13 @@ const AuthSettingsSection = ({ theme }) => {
     try {
       setSavingSection(section);
       setError("");
-      const payload = { [section]: settings[section] };
+      const payload =
+        section === "otpVerification"
+          ? {
+              emailOtp: settings.emailOtp,
+              phoneOtp: settings.phoneOtp,
+            }
+          : { [section]: settings[section] };
       const response = await updateAuthSettings(payload);
       const merged = mergeSettings(response.data?.data);
       setSettings(merged);
@@ -222,7 +266,11 @@ const AuthSettingsSection = ({ theme }) => {
           onClick={onToggle}
           className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700"
         >
-          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {visible ? (
+            <EyeOff className="h-4 w-4" />
+          ) : (
+            <Eye className="h-4 w-4" />
+          )}
         </button>
       </div>
     </div>
@@ -230,7 +278,9 @@ const AuthSettingsSection = ({ theme }) => {
 
   if (loading) {
     return (
-      <div className={`${theme.card} rounded-2xl shadow-lg p-8 border ${theme.border}`}>
+      <div
+        className={`${theme.card} rounded-2xl shadow-lg p-8 border ${theme.border}`}
+      >
         <div className="flex items-center justify-center py-8">
           <LoaderCircle className="h-8 w-8 animate-spin text-blue-500" />
         </div>
@@ -239,13 +289,18 @@ const AuthSettingsSection = ({ theme }) => {
   }
 
   return (
-    <div className={`${theme.card} rounded-2xl shadow-lg p-8 border ${theme.border}`}>
+    <div
+      className={`${theme.card} rounded-2xl shadow-lg p-8 border ${theme.border}`}
+    >
       <div className="flex items-center gap-3 mb-2">
         <Shield className="h-8 w-8 text-blue-600" />
-        <h2 className={`text-2xl font-bold ${theme.text}`}>Authentication Settings</h2>
+        <h2 className={`text-2xl font-bold ${theme.text}`}>
+          Authentication Settings
+        </h2>
       </div>
       <p className={`${theme.textSecondary} mb-6`}>
-        Manage WhatsApp, Telegram, and OTP security configuration without changing deployment variables.
+        Manage WhatsApp, Telegram, and OTP security configuration without
+        changing deployment variables.
       </p>
 
       {error && (
@@ -258,7 +313,9 @@ const AuthSettingsSection = ({ theme }) => {
         <div className="rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <MessageCircleMore className="h-5 w-5 text-green-600" />
-            <h3 className={`text-xl font-semibold ${theme.text}`}>WhatsApp Login Settings</h3>
+            <h3 className={`text-xl font-semibold ${theme.text}`}>
+              WhatsApp Login Settings
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -266,20 +323,28 @@ const AuthSettingsSection = ({ theme }) => {
               <input
                 type="checkbox"
                 checked={settings.whatsapp.enabled}
-                onChange={(e) => updateSection("whatsapp", "enabled", e.target.checked)}
+                onChange={(e) =>
+                  updateSection("whatsapp", "enabled", e.target.checked)
+                }
                 className="h-4 w-4"
               />
-              <span className={`text-sm font-medium ${theme.text}`}>Enable WhatsApp Login</span>
+              <span className={`text-sm font-medium ${theme.text}`}>
+                Enable WhatsApp Login
+              </span>
             </label>
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Phone Number ID
               </label>
               <input
                 type="text"
                 value={settings.whatsapp.phoneNumberId}
-                onChange={(e) => updateSection("whatsapp", "phoneNumberId", e.target.value)}
+                onChange={(e) =>
+                  updateSection("whatsapp", "phoneNumberId", e.target.value)
+                }
                 className={`${theme.input} ${fieldClassName}`}
               />
             </div>
@@ -288,7 +353,8 @@ const AuthSettingsSection = ({ theme }) => {
               id: "whatsappAccessToken",
               label: "WhatsApp Access Token",
               value: settings.whatsapp.accessToken,
-              onChange: (e) => updateSection("whatsapp", "accessToken", e.target.value),
+              onChange: (e) =>
+                updateSection("whatsapp", "accessToken", e.target.value),
               visible: visibleFields.whatsappAccessToken,
               onToggle: () =>
                 setVisibleFields((prev) => ({
@@ -302,7 +368,8 @@ const AuthSettingsSection = ({ theme }) => {
               id: "whatsappVerifyToken",
               label: "Verify Token",
               value: settings.whatsapp.verifyToken,
-              onChange: (e) => updateSection("whatsapp", "verifyToken", e.target.value),
+              onChange: (e) =>
+                updateSection("whatsapp", "verifyToken", e.target.value),
               visible: visibleFields.whatsappVerifyToken,
               onToggle: () =>
                 setVisibleFields((prev) => ({
@@ -313,19 +380,25 @@ const AuthSettingsSection = ({ theme }) => {
             })}
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Template Name
               </label>
               <input
                 type="text"
                 value={settings.whatsapp.templateName}
-                onChange={(e) => updateSection("whatsapp", "templateName", e.target.value)}
+                onChange={(e) =>
+                  updateSection("whatsapp", "templateName", e.target.value)
+                }
                 className={`${theme.input} ${fieldClassName}`}
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Business Account ID
               </label>
               <input
@@ -373,7 +446,9 @@ const AuthSettingsSection = ({ theme }) => {
         <div className="rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <KeyRound className="h-5 w-5 text-sky-600" />
-            <h3 className={`text-xl font-semibold ${theme.text}`}>Telegram Login Settings</h3>
+            <h3 className={`text-xl font-semibold ${theme.text}`}>
+              Telegram Login Settings
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -381,17 +456,22 @@ const AuthSettingsSection = ({ theme }) => {
               <input
                 type="checkbox"
                 checked={settings.telegram.enabled}
-                onChange={(e) => updateSection("telegram", "enabled", e.target.checked)}
+                onChange={(e) =>
+                  updateSection("telegram", "enabled", e.target.checked)
+                }
                 className="h-4 w-4"
               />
-              <span className={`text-sm font-medium ${theme.text}`}>Enable Telegram Login</span>
+              <span className={`text-sm font-medium ${theme.text}`}>
+                Enable Telegram Login
+              </span>
             </label>
 
             {renderTokenField({
               id: "telegramBotToken",
               label: "Telegram Bot Token",
               value: settings.telegram.botToken,
-              onChange: (e) => updateSection("telegram", "botToken", e.target.value),
+              onChange: (e) =>
+                updateSection("telegram", "botToken", e.target.value),
               visible: visibleFields.telegramBotToken,
               onToggle: () =>
                 setVisibleFields((prev) => ({
@@ -402,26 +482,34 @@ const AuthSettingsSection = ({ theme }) => {
             })}
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Telegram Bot Username
               </label>
               <input
                 type="text"
                 value={settings.telegram.botUsername}
-                onChange={(e) => updateSection("telegram", "botUsername", e.target.value)}
+                onChange={(e) =>
+                  updateSection("telegram", "botUsername", e.target.value)
+                }
                 className={`${theme.input} ${fieldClassName}`}
                 placeholder="@your_bot"
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Telegram Webhook URL
               </label>
               <input
                 type="url"
                 value={settings.telegram.webhookUrl}
-                onChange={(e) => updateSection("telegram", "webhookUrl", e.target.value)}
+                onChange={(e) =>
+                  updateSection("telegram", "webhookUrl", e.target.value)
+                }
                 className={`${theme.input} ${fieldClassName}`}
                 placeholder="https://example.com/webhook/telegram"
               />
@@ -460,13 +548,72 @@ const AuthSettingsSection = ({ theme }) => {
 
         <div className="rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
+            <KeyRound className="h-5 w-5 text-sky-600" />
+            <h3 className={`text-xl font-semibold ${theme.text}`}>
+              OTP Verification Settings
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={settings.emailOtp.enabled}
+                onChange={(e) =>
+                  updateSection("emailOtp", "enabled", e.target.checked)
+                }
+                className="h-4 w-4"
+              />
+              <span className={`text-sm font-medium ${theme.text}`}>
+                Require Email OTP Verification
+              </span>
+            </label>
+
+            <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={settings.phoneOtp.enabled}
+                onChange={(e) =>
+                  updateSection("phoneOtp", "enabled", e.target.checked)
+                }
+                className="h-4 w-4"
+              />
+              <span className={`text-sm font-medium ${theme.text}`}>
+                Require Phone OTP Verification
+              </span>
+            </label>
+          </div>
+
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => handleSave("otpVerification")}
+              disabled={savingSection === "otpVerification"}
+              className="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {savingSection === "otpVerification" ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save OTP Verification Settings
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
             <CheckCircle2 className="h-5 w-5 text-amber-600" />
-            <h3 className={`text-xl font-semibold ${theme.text}`}>OTP Security Settings</h3>
+            <h3 className={`text-xl font-semibold ${theme.text}`}>
+              OTP Security Settings
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 OTP Expiry Time
               </label>
               <input
@@ -475,14 +622,20 @@ const AuthSettingsSection = ({ theme }) => {
                 max="60"
                 value={settings.otpSecurity.expiryMinutes}
                 onChange={(e) =>
-                  updateSection("otpSecurity", "expiryMinutes", Number(e.target.value))
+                  updateSection(
+                    "otpSecurity",
+                    "expiryMinutes",
+                    Number(e.target.value),
+                  )
                 }
                 className={`${theme.input} ${fieldClassName}`}
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Resend Cooldown
               </label>
               <input
@@ -491,14 +644,20 @@ const AuthSettingsSection = ({ theme }) => {
                 max="300"
                 value={settings.otpSecurity.resendCooldown}
                 onChange={(e) =>
-                  updateSection("otpSecurity", "resendCooldown", Number(e.target.value))
+                  updateSection(
+                    "otpSecurity",
+                    "resendCooldown",
+                    Number(e.target.value),
+                  )
                 }
                 className={`${theme.input} ${fieldClassName}`}
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Max OTP Attempts
               </label>
               <input
@@ -507,14 +666,20 @@ const AuthSettingsSection = ({ theme }) => {
                 max="10"
                 value={settings.otpSecurity.maxAttempts}
                 onChange={(e) =>
-                  updateSection("otpSecurity", "maxAttempts", Number(e.target.value))
+                  updateSection(
+                    "otpSecurity",
+                    "maxAttempts",
+                    Number(e.target.value),
+                  )
                 }
                 className={`${theme.input} ${fieldClassName}`}
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+              <label
+                className={`block text-sm font-semibold ${theme.text} mb-2`}
+              >
                 Max Daily OTP Requests
               </label>
               <input
@@ -523,7 +688,11 @@ const AuthSettingsSection = ({ theme }) => {
                 max="50"
                 value={settings.otpSecurity.maxDailyRequests}
                 onChange={(e) =>
-                  updateSection("otpSecurity", "maxDailyRequests", Number(e.target.value))
+                  updateSection(
+                    "otpSecurity",
+                    "maxDailyRequests",
+                    Number(e.target.value),
+                  )
                 }
                 className={`${theme.input} ${fieldClassName}`}
               />

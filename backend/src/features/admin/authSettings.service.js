@@ -124,6 +124,14 @@ export const buildAuthSettingsUpdate = (payload = {}, existing = {}) => {
       ...mergedExisting.telegram,
       ...(payload.telegram || {}),
     },
+    emailOtp: {
+      ...mergedExisting.emailOtp,
+      ...(payload.emailOtp || {}),
+    },
+    phoneOtp: {
+      ...mergedExisting.phoneOtp,
+      ...(payload.phoneOtp || {}),
+    },
     otpSecurity: {
       ...mergedExisting.otpSecurity,
       ...(payload.otpSecurity || {}),
@@ -146,7 +154,7 @@ export const buildAuthSettingsUpdate = (payload = {}, existing = {}) => {
   return nextSettings;
 };
 
-export const validateAuthSettingsPayload = (payload = {}) => {
+export const validateAuthSettingsPayload = (payload = {}, existing = {}) => {
   const allowedSections = [
     "whatsapp",
     "telegram",
@@ -196,6 +204,38 @@ export const validateAuthSettingsPayload = (payload = {}) => {
         return "Telegram webhook URL must be a valid URL";
       }
     }
+  }
+
+  if (emailOtp && emailOtp.enabled !== undefined) {
+    if (typeof emailOtp.enabled !== "boolean") {
+      return "emailOtp.enabled must be a boolean";
+    }
+  }
+
+  if (phoneOtp && phoneOtp.enabled !== undefined) {
+    if (typeof phoneOtp.enabled !== "boolean") {
+      return "phoneOtp.enabled must be a boolean";
+    }
+  }
+
+  const mergedExisting = mergeAuthSettings(existing);
+  const nextSettings = mergeAuthSettings({
+    ...mergedExisting,
+    emailOtp: {
+      ...mergedExisting.emailOtp,
+      ...(emailOtp || {}),
+    },
+    phoneOtp: {
+      ...mergedExisting.phoneOtp,
+      ...(phoneOtp || {}),
+    },
+  });
+
+  if (
+    nextSettings.emailOtp.enabled === false &&
+    nextSettings.phoneOtp.enabled === false
+  ) {
+    return "At least one OTP verification method must remain enabled: email or phone.";
   }
 
   if (otpSecurity) {

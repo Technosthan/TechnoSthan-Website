@@ -125,9 +125,48 @@ const LoginPage = () => {
     try {
       const method = isEmail(contact) ? "email" : "sms";
 
+      // Attempt to get reCAPTCHA token (v3). Falls back to null.
+      const getRecaptchaToken = async () => {
+        try {
+          const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+          if (!siteKey) return null;
+
+          // If grecaptcha not loaded, inject script
+          if (!window.grecaptcha) {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement("script");
+              s.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+              s.async = true;
+              s.defer = true;
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+          }
+
+          if (window.grecaptcha && window.grecaptcha.execute) {
+            return await new Promise((resolve) => {
+              window.grecaptcha.ready(() => {
+                window.grecaptcha
+                  .execute(siteKey, { action: "send_otp" })
+                  .then((tok) => resolve(tok))
+                  .catch(() => resolve(null));
+              });
+            });
+          }
+        } catch (e) {
+          // ignore and continue without token
+          console.warn("reCAPTCHA unavailable:", e);
+        }
+        return null;
+      };
+
+      const recaptchaToken = await getRecaptchaToken();
+
       const res = await sendOTP({
         contact,
         method,
+        recaptchaToken,
       });
 
       // Optional backend response

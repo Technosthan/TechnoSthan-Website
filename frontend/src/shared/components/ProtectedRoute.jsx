@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAccessControl } from "../../contexts/AccessControlContext";
-import { normalizeRoutePattern } from "./RouteGuard";
+import { normalizeRoutePattern } from "./routeUtils";
 
 const isRoutePublic = (pathname, publicRoutes) => {
   if (!Array.isArray(publicRoutes)) {
@@ -34,16 +34,11 @@ const ProtectedRoute = ({ children }) => {
     "/login/whatsapp",
   ];
 
-  const publicEnabled =
-    typeof publicWebsiteEnabled === "boolean" ||
-    typeof publicAccessEnabled === "boolean"
-      ? Boolean(publicWebsiteEnabled || publicAccessEnabled)
-      : true;
-
   const routeIsPublic =
     alwaysPublicRoutes.includes(pathname) ||
-    publicEnabled ||
-    isRoutePublic(pathname, publicRoutes);
+    (publicWebsiteEnabled === true &&
+      publicAccessEnabled === true &&
+      isRoutePublic(pathname, publicRoutes));
 
   if (routeIsPublic) {
     return children;

@@ -1,7 +1,7 @@
 const otpTemplate = ({ name = "there", otp }) => `
 <!DOCTYPE html>
 <html>
-  <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#eef4fb;color:#2d3a4a;">
+  <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#eef4fb;color:#2d3a4a;font-size:16px;line-height:24px;">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
         <td align="center" style="padding:24px 16px;">
@@ -34,6 +34,20 @@ const otpTemplate = ({ name = "there", otp }) => `
     </table>
   </body>
 </html>
+`;
+
+export const otpTextTemplate = ({ name = "there", otp }) => `Hi ${name},
+
+Your AgriTech verification code is ${otp}.
+It expires in 10 minutes.
+
+Never share this code with anyone. AgriTech will never ask you for your verification code.
+
+If you did not request this code, please secure your account immediately.
+
+This code is valid for 10 minutes and can only be used once.
+
+Need help? Email support@agritech.com
 `;
 
 export default otpTemplate;

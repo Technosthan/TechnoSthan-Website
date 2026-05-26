@@ -37,7 +37,10 @@ import {
   resendWhatsappLoginOTP,
 } from "./whatsappOtp.service.js";
 import { buildPhoneNumberQuery } from "./whatsapp.service.js";
-import { getTelegramRuntimeSettings } from "../admin/authSettings.service.js";
+import {
+  getTelegramRuntimeSettings,
+  getOrCreateAuthSettings,
+} from "../admin/authSettings.service.js";
 
 import User from "./user.model.js";
 
@@ -63,23 +66,46 @@ export const register = async (req, res) => {
     });
 
     const contactType = result.contactType;
-    const method = contactType === "email" ? "email" : "sms";
+    const authSettings = await getOrCreateAuthSettings();
+    const emailEnabled = authSettings.emailOtp?.enabled ?? true;
+    const phoneEnabled = authSettings.phoneOtp?.enabled ?? true;
+    const isContactTypeEnabled =
+      (contactType === "email" && emailEnabled) ||
+      (contactType === "phone" && phoneEnabled);
 
-    await sendOTP(
-      contactValue,
-      contactType,
-      method,
-      result.pendingUserId,
-      name,
-    );
+    if (isContactTypeEnabled) {
+      const method = contactType === "email" ? "email" : "sms";
+      await sendOTP(
+        contactValue,
+        contactType,
+        method,
+        result.pendingUserId,
+        name,
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: `Registration started. OTP sent to ${contactType}`,
+        data: {
+          pendingUserId: result.pendingUserId,
+          contactType,
+          nextStep: "verify-otp",
+        },
+      });
+    }
+
+    const fallbackContactType = contactType === "email" ? "phone" : "email";
+    const fallbackStep =
+      emailEnabled || phoneEnabled ? "input-second-field" : "verify-otp";
 
     res.status(201).json({
       success: true,
-      message: `Registration started. OTP sent to ${contactType}`,
+      message: `Registration started. Please verify using ${fallbackContactType}`,
       data: {
         pendingUserId: result.pendingUserId,
         contactType,
-        nextStep: "verify-otp",
+        nextStep: fallbackStep,
+        missingContactType: fallbackContactType,
       },
     });
   } catch (error) {
@@ -113,14 +139,32 @@ export const login = async (req, res) => {
 // ================= UNIFIED AUTHENTICATE =================
 export const authenticate = async (req, res) => {
   try {
-    const { contact, password } = req.body;
+    console.log("[authenticate] incoming body:", JSON.stringify(req.body));
 
-    if (!contact || !password) {
+    const rawContact = req.body?.contact;
+    const password = req.body?.password;
+
+    if (!rawContact || !password) {
+      console.warn("[authenticate] missing contact or password", {
+        rawBody: req.body,
+      });
       return res.status(400).json({
         success: false,
         message: "Contact and password are required",
       });
     }
+
+    // Normalize contact: trim, lowercase for emails, strip non-digits for phones
+    let contact = String(rawContact).trim();
+    if (/@/.test(contact)) {
+      contact = contact.toLowerCase();
+    } else {
+      contact = contact.replace(/[^\d+]/g, "");
+      // If phone starts with country code like +91 and length > 10, keep as-is
+      // Many users enter with +91 or spaces; auth.service will validate numeric length
+    }
+
+    console.log("[authenticate] normalized contact:", contact);
 
     // Use the new service function
     const result = await authenticateUser({ contact, password });
@@ -165,7 +209,7 @@ export const authenticate = async (req, res) => {
 // ================= SEND OTP =================
 export const sendOTPController = async (req, res) => {
   try {
-    const { contact, method, pendingUserId, name } = req.body;
+    const { contact, method, pendingUserId, name, recaptchaToken } = req.body;
 
     if (!contact || !method) {
       return res.status(400).json({
@@ -182,6 +226,7 @@ export const sendOTPController = async (req, res) => {
       method,
       pendingUserId || null,
       name || "User",
+      recaptchaToken || null,
     );
 
     res.json({

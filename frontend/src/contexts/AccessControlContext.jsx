@@ -42,27 +42,43 @@ export const AccessControlProvider = ({ children }) => {
         return;
       }
 
-      const enabled =
-        typeof data.publicWebsiteEnabled === "boolean" ||
+      const resolveEnabled = (websiteEnabled, accessEnabled) => {
+        if (websiteEnabled === false || accessEnabled === false) {
+          return false;
+        }
+        if (typeof websiteEnabled === "boolean") {
+          return websiteEnabled;
+        }
+        if (typeof accessEnabled === "boolean") {
+          return accessEnabled;
+        }
+        return true;
+      };
+
+      const publicAccessEnabledValue =
         typeof data.publicAccessEnabled === "boolean"
-          ? Boolean(data.publicWebsiteEnabled || data.publicAccessEnabled)
-          : true;
+          ? data.publicAccessEnabled
+          : data.publicWebsiteEnabled;
+      const publicWebsiteEnabledValue =
+        typeof data.publicWebsiteEnabled === "boolean"
+          ? data.publicWebsiteEnabled
+          : data.publicAccessEnabled;
+      const enabled = resolveEnabled(
+        publicWebsiteEnabledValue,
+        publicAccessEnabledValue,
+      );
 
       console.log("[AccessControl] Settings fetched:", {
         enabled,
-        publicWebsiteEnabled: data.publicWebsiteEnabled,
-        publicAccessEnabled: data.publicAccessEnabled,
-        routeCount: Array.isArray(data.publicRoutes)
-          ? data.publicRoutes.length
-          : 0,
+        publicWebsiteEnabled: publicWebsiteEnabledValue,
+        publicAccessEnabled: publicAccessEnabledValue,
+        publicRoutes: Array.isArray(data.publicRoutes) ? data.publicRoutes : [],
       });
 
-      setPublicAccessEnabled(enabled);
-      setPublicWebsiteEnabled(enabled);
+      setPublicAccessEnabled(publicAccessEnabledValue);
+      setPublicWebsiteEnabled(publicWebsiteEnabledValue);
       setPublicRoutes(
-        Array.isArray(data.publicRoutes) && data.publicRoutes.length > 0
-          ? data.publicRoutes
-          : ["/"],
+        Array.isArray(data.publicRoutes) ? data.publicRoutes : [],
       );
     } catch (error) {
       console.error("[AccessControl] Failed to load access control settings:", {
@@ -78,25 +94,53 @@ export const AccessControlProvider = ({ children }) => {
   useEffect(() => {
     fetchPublicSettings();
 
+    const resolveEnabled = (websiteEnabled, accessEnabled) => {
+      if (websiteEnabled === false || accessEnabled === false) {
+        return false;
+      }
+      if (typeof websiteEnabled === "boolean") {
+        return websiteEnabled;
+      }
+      if (typeof accessEnabled === "boolean") {
+        return accessEnabled;
+      }
+      return true;
+    };
+
     const handlePublicAccessUpdated = (event) => {
       console.log("[AccessControl] publicAccessUpdated event received:", {
         publicWebsiteEnabled: event?.detail?.publicWebsiteEnabled,
         publicAccessEnabled: event?.detail?.publicAccessEnabled,
+        publicRoutes: event?.detail?.publicRoutes,
       });
 
       if (event?.detail) {
-        const enabled =
-          event.detail.publicWebsiteEnabled ??
-          event.detail.publicAccessEnabled ??
-          publicAccessEnabled;
-        setPublicAccessEnabled(enabled);
-        setPublicWebsiteEnabled(enabled);
+        const publicAccessEnabledValue =
+          typeof event.detail.publicAccessEnabled === "boolean"
+            ? event.detail.publicAccessEnabled
+            : publicAccessEnabled;
+        const publicWebsiteEnabledValue =
+          typeof event.detail.publicWebsiteEnabled === "boolean"
+            ? event.detail.publicWebsiteEnabled
+            : publicWebsiteEnabled;
+
+        setPublicAccessEnabled(publicAccessEnabledValue);
+        setPublicWebsiteEnabled(publicWebsiteEnabledValue);
         setPublicRoutes(
-          Array.isArray(event.detail.publicRoutes) &&
-            event.detail.publicRoutes.length > 0
+          Array.isArray(event.detail.publicRoutes)
             ? event.detail.publicRoutes
-            : ["/"],
+            : [],
         );
+
+        const enabled = resolveEnabled(
+          publicWebsiteEnabledValue,
+          publicAccessEnabledValue,
+        );
+        console.log("[AccessControl] Updated access control state:", {
+          enabled,
+          publicWebsiteEnabledValue,
+          publicAccessEnabledValue,
+        });
 
         // Also re-fetch from backend to ensure sync
         console.log("[AccessControl] Re-fetching settings after update");
@@ -112,7 +156,7 @@ export const AccessControlProvider = ({ children }) => {
         handlePublicAccessUpdated,
       );
     };
-  }, [publicAccessEnabled]); // Add dependency to refresh on auth state change
+  }, []);
 
   return (
     <AccessControlContext.Provider

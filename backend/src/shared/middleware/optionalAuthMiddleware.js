@@ -11,13 +11,21 @@ const getPublicAccessEnabled = async () => {
       );
       return true;
     }
+    const publicWebsiteEnabled = settings.publicWebsiteEnabled;
+    const publicAccessSetting = settings.publicAccessEnabled;
     const enabled =
-      settings.publicWebsiteEnabled != null
-        ? settings.publicWebsiteEnabled
-        : settings.publicAccessEnabled != null
-          ? settings.publicAccessEnabled
-          : true;
-    console.log("[optionalAuthMiddleware] Public access enabled:", enabled);
+      publicWebsiteEnabled === false || publicAccessSetting === false
+        ? false
+        : typeof publicWebsiteEnabled === "boolean"
+          ? publicWebsiteEnabled
+          : typeof publicAccessSetting === "boolean"
+            ? publicAccessSetting
+            : true;
+    console.log("[optionalAuthMiddleware] Public access enabled:", {
+      publicWebsiteEnabled,
+      publicAccessSetting,
+      effectivePublicAccessEnabled: enabled,
+    });
     return enabled;
   } catch (error) {
     console.error(

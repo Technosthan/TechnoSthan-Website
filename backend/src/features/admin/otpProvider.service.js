@@ -9,6 +9,7 @@ import {
 import OtpEmailProvider from "./otpEmailProvider.model.js";
 import OtpPhoneProvider from "./otpPhoneProvider.model.js";
 import AuthSettings from "./authSettings.model.js";
+import { OtpManager } from "../../services/otp/otpManager.js";
 
 const MASK_VALUE = "***";
 
@@ -51,6 +52,25 @@ const sanitizePayloadValue = (value, existingValue) => {
 
 const normalizeProviderStatus = (status) =>
   status === "active" ? "active" : "inactive";
+
+const applyEmailProviderDefaults = (payload) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const normalized = { ...payload };
+
+  if (normalized.providerType === "gmail_smtp") {
+    if (!normalized.host?.trim()) {
+      normalized.host = "smtp.gmail.com";
+    }
+    if (!normalized.port) {
+      normalized.port = 587;
+    }
+    if (!normalized.encryption) {
+      normalized.encryption = "tls";
+    }
+  }
+
+  return normalized;
+};
 
 const validateEmailProviderPayload = (payload, options = {}) => {
   if (!payload || typeof payload !== "object") {
@@ -266,19 +286,21 @@ const buildProviderSecrets = (payload = {}, existing = {}) => {
 const getActiveEmailProvider = async () => {
   return await OtpEmailProvider.findOne({
     status: "active",
-    isDefault: true,
     isDeleted: false,
-  }).select("+password +apiKey +accessKey +secretKey");
+  })
+    .sort({ isDefault: -1 })
+    .select("+password +apiKey +accessKey +secretKey");
 };
 
 const getActivePhoneProvider = async () => {
   return await OtpPhoneProvider.findOne({
     status: "active",
-    isDefault: true,
     isDeleted: false,
-  }).select(
-    "+twilioAccountSid +twilioAuthToken +msg91AuthKey +firebaseApiKey +firebaseRecaptchaToken +whatsappAccessToken +whatsappVerifyToken +vonageApiKey +vonageApiSecret +customApiAuthKey",
-  );
+  })
+    .sort({ isDefault: -1 })
+    .select(
+      "+twilioAccountSid +twilioAuthToken +msg91AuthKey +firebaseApiKey +firebaseRecaptchaToken +whatsappAccessToken +whatsappVerifyToken +vonageApiKey +vonageApiSecret +customApiAuthKey",
+    );
 };
 
 const resolvePhoneProviderForMethod = async (method) => {
@@ -318,18 +340,42 @@ const sendPhoneViaFirebase = async (provider, phone, otp) => {
   if (!provider.firebaseRecaptchaToken?.trim()) {
     throw new Error("Firebase reCAPTCHA token is required to send OTP");
   }
+  // Firebase requires E.164 format: +919636376269
+  const normalizedPhone = normalizePhoneNumber(phone);
+  console.log(`Firebase send: normalized ${phone} to ${normalizedPhone}`);
+
   const payload = {
-    phoneNumber: phone,
+    phoneNumber: normalizedPhone,
     recaptchaToken: provider.firebaseRecaptchaToken,
   };
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${encodeURIComponent(
     provider.firebaseApiKey,
   )}`;
-  await axios.post(url, payload, {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  try {
+    const resp = await axios.post(url, payload, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    console.log("Firebase send response:", resp.status, resp.data);
+    return resp.data;
+  } catch (err) {
+    console.error("Firebase send error:", {
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message,
+      provider: {
+        projectId: provider.firebaseConfig?.projectId,
+        keyPresent: !!provider.firebaseApiKey,
+        recaptchaPresent: !!provider.firebaseRecaptchaToken,
+      },
+    });
+    throw new Error(
+      `Firebase OTP send failed: ${err.response?.status || "network"} - ${
+        err.response?.data?.error?.message || err.message
+      }`,
+    );
+  }
 };
 
 const sendPhoneOtpViaActiveProvider = async (phone, otp, method = "sms") => {
@@ -538,12 +584,37 @@ const verifyTwilioProvider = async (provider) => {
   await client.api.accounts(provider.twilioAccountSid).fetch();
 };
 
+const normalizePhoneNumber = (phone, defaultCountryCode = "91") => {
+  if (!phone) return phone;
+
+  // Remove all non-digit characters except leading +
+  let normalized = phone.replace(/[^\d+]/g, "");
+
+  // If already starts with +, return as-is
+  if (normalized.startsWith("+")) {
+    return normalized;
+  }
+
+  // If doesn't start with +, remove any leading zeros and add country code
+  normalized = normalized.replace(/^0+/, "");
+
+  // If the number is too short to be a full E.164 number, add country code
+  if (!normalized.startsWith(defaultCountryCode) && normalized.length <= 10) {
+    normalized = defaultCountryCode + normalized;
+  }
+
+  return "+" + normalized;
+};
+
 const sendPhoneViaTwilio = async (provider, phone, otp) => {
+  const normalizedPhone = normalizePhoneNumber(phone);
+  console.log(`Twilio send: normalized ${phone} to ${normalizedPhone}`);
+
   const client = twilio(provider.twilioAccountSid, provider.twilioAuthToken);
   await client.messages.create({
     body: `Your OTP code is: ${otp}`,
     from: provider.twilioPhoneNumber,
-    to: phone,
+    to: normalizedPhone,
   });
 };
 
@@ -571,6 +642,12 @@ const verifyMsg91Provider = async (provider) => {
 };
 
 const sendPhoneViaMsg91 = async (provider, phone, otp) => {
+  // MSG91 expects mobile number without + but with country code (e.g., "919636376269")
+  const cleanPhone = phone.replace(/[^\d]/g, "").replace(/^0+/, "");
+  const msg91Phone = cleanPhone.length <= 10 ? "91" + cleanPhone : cleanPhone;
+
+  console.log(`MSG91 send: normalized ${phone} to ${msg91Phone}`);
+
   await axios.post(
     "https://api.msg91.com/api/v5/flow/",
     {
@@ -578,7 +655,7 @@ const sendPhoneViaMsg91 = async (provider, phone, otp) => {
       sender: provider.msg91TemplateId,
       recipients: [
         {
-          mobile: phone.replace(/^[^\d]+/, ""),
+          mobile: msg91Phone,
           country: "91",
           params: { otp },
         },
@@ -779,22 +856,23 @@ export const getPhoneProviderById = async (id) => {
     _id: id,
     isDeleted: false,
   }).select(
-    "+twilioAccountSid +twilioAuthToken +msg91AuthKey +firebaseApiKey +whatsappAccessToken +whatsappVerifyToken +vonageApiKey +vonageApiSecret +customApiAuthKey",
+    "+twilioAccountSid +twilioAuthToken +msg91AuthKey +firebaseApiKey +firebaseRecaptchaToken +whatsappAccessToken +whatsappVerifyToken +vonageApiKey +vonageApiSecret +customApiAuthKey",
   );
   return provider ? createPhoneProviderMask(provider) : null;
 };
 
 export const createEmailProvider = async (payload) => {
-  validateEmailProviderPayload(payload);
-  if (payload.isDefault) {
+  const normalizedPayload = applyEmailProviderDefaults(payload);
+  validateEmailProviderPayload(normalizedPayload);
+  if (normalizedPayload.isDefault) {
     await OtpEmailProvider.updateMany(
       { isDeleted: false },
       { isDefault: false },
     );
   }
   const provider = await OtpEmailProvider.create({
-    ...payload,
-    status: normalizeProviderStatus(payload.status),
+    ...normalizedPayload,
+    status: normalizeProviderStatus(normalizedPayload.status),
   });
   return createEmailProviderMask(provider);
 };
@@ -805,14 +883,14 @@ export const updateEmailProvider = async (providerId, payload) => {
     .lean();
   if (!existing) throw new Error("Email provider not found");
 
-  const merged = {
+  const merged = applyEmailProviderDefaults({
     ...existing,
     ...payload,
     ...buildProviderSecrets(payload, existing),
     status: payload.status
       ? normalizeProviderStatus(payload.status)
       : existing.status,
-  };
+  });
   validateEmailProviderPayload(merged, { keepExistingPassword: true });
 
   if (merged.isDefault) {
@@ -855,13 +933,19 @@ export const setDefaultEmailProvider = async (providerId) => {
 };
 
 export const testEmailProvider = async (providerId) => {
-  const provider = await OtpEmailProvider.findById(providerId).select(
-    "+password +apiKey +accessKey +secretKey",
-  );
-  if (!provider || provider.isDeleted)
-    throw new Error("Email provider not found");
-  await verifyEmailProviderConnection(provider);
-  return true;
+  const result = await OtpManager.testEmailProvider(providerId);
+  if (!result.success) {
+    throw new Error(result.message);
+  }
+  return result;
+};
+
+export const testPhoneProvider = async (providerId) => {
+  const result = await OtpManager.testPhoneProvider(providerId);
+  if (!result.success) {
+    throw new Error(result.message);
+  }
+  return result;
 };
 
 export const createPhoneProvider = async (payload) => {
@@ -938,16 +1022,6 @@ export const setDefaultPhoneProvider = async (providerId) => {
   return createPhoneProviderMask(provider);
 };
 
-export const testPhoneProvider = async (providerId) => {
-  const provider = await OtpPhoneProvider.findById(providerId).select(
-    "+twilioAccountSid +twilioAuthToken +msg91AuthKey +firebaseApiKey +whatsappAccessToken +whatsappVerifyToken +vonageApiKey +vonageApiSecret +customApiAuthKey",
-  );
-  if (!provider || provider.isDeleted)
-    throw new Error("Phone provider not found");
-  await verifyPhoneProviderConnection(provider);
-  return true;
-};
-
 export const resolveEmailProvider = async () => {
   const provider = await getActiveEmailProvider();
   if (!provider) {
@@ -981,10 +1055,24 @@ export const sendPhoneOtpWithActiveProvider = async (
   phone,
   otp,
   method = "sms",
+  options = {},
 ) => {
   const provider = await resolvePhoneProviderForMethod(method);
   if (!provider) {
     throw new Error("No active phone provider configured");
+  }
+  // If caller provided a recaptcha token (from client), attach it for Firebase
+  try {
+    if (
+      options &&
+      options.recaptchaToken &&
+      provider.providerType === "firebase"
+    ) {
+      provider.firebaseRecaptchaToken = options.recaptchaToken;
+      console.log("Attached recaptcha token for firebase send (masked)");
+    }
+  } catch (e) {
+    // no-op, proceed with existing provider config
   }
   return await sendPhoneViaProvider(provider, phone, otp);
 };

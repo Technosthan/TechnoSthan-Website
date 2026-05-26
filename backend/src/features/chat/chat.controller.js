@@ -1,5 +1,6 @@
 import { getAIResponse } from "./ai.service.js";
 import Chat from "./chat.model.js";
+import Conversation from "./conversation.model.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -59,7 +60,6 @@ const extractTextFromFile = async (filePath, mimeType) => {
       const data = await pdfParse(dataBuffer);
       return data.text;
     } else if (mimeType.startsWith("image/")) {
-      // For images, we'll use AI to describe them
       return "This is an image file. AI vision analysis would be implemented here to describe the image content.";
     } else {
       return `This is a ${mimeType} file. Content analysis would be implemented based on file type.`;
@@ -68,6 +68,26 @@ const extractTextFromFile = async (filePath, mimeType) => {
     console.error("Error extracting text from file:", error);
     return "Error reading file content.";
   }
+};
+
+const createOrGetConversation = async ({
+  userId,
+  conversationId,
+  title,
+  firstMessage,
+}) => {
+  if (conversationId) {
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      userId,
+    });
+    if (conversation) {
+      return conversation;
+    }
+  }
+
+  const conversationTitle = title || firstMessage?.slice(0, 40) || "New Chat";
+  return Conversation.create({ userId, title: conversationTitle });
 };
 
 export const uploadFile = async (req, res) => {
@@ -80,9 +100,8 @@ export const uploadFile = async (req, res) => {
     }
 
     const userId = req.user?.id;
-    const { message } = req.body;
+    const { message, conversationId, title } = req.body;
 
-    // Validation: Require message when file is uploaded
     if (!message || message.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -91,13 +110,9 @@ export const uploadFile = async (req, res) => {
     }
 
     const file = req.file;
-
-    // Extract text/content from the uploaded file
     const fileContent = await extractTextFromFile(file.path, file.mimetype);
 
-    // Create a comprehensive prompt for AI analysis
-    const analysisPrompt = `
-Please analyze this uploaded file and provide insights:
+    const analysisPrompt = `Please analyze this uploaded file and provide insights:
 
 File Name: ${file.originalname}
 File Type: ${file.mimetype}
@@ -115,14 +130,20 @@ Please structure your response to include:
 4. Agricultural relevance (if applicable)
 `;
 
-    // Get AI response
     const aiResponse = await getAIResponse(analysisPrompt, []);
 
-    // Save to database for authenticated users only
     if (userId) {
+      const conversation = await createOrGetConversation({
+        userId,
+        conversationId,
+        title,
+        firstMessage: `File uploaded: ${file.originalname}`,
+      });
+
       const chatEntry = new Chat({
         userId,
-        message: `File uploaded: ${file.originalname} - ${message || "Please analyze this file"}`,
+        conversationId: conversation._id,
+        message: `File uploaded: ${file.originalname} - ${message}`,
         response: aiResponse,
         file: {
           originalName: file.originalname,
@@ -133,9 +154,10 @@ Please structure your response to include:
       });
 
       await chatEntry.save();
+      conversation.updatedAt = new Date();
+      await conversation.save();
     }
 
-    // Clean up uploaded file after processing
     try {
       await promisify(fs.unlink)(file.path);
     } catch (cleanupError) {
@@ -156,7 +178,6 @@ Please structure your response to include:
   } catch (error) {
     console.error("File upload error:", error);
 
-    // Clean up file on error
     if (req.file && req.file.path) {
       try {
         await promisify(fs.unlink)(req.file.path);
@@ -186,12 +207,123 @@ Please structure your response to include:
   }
 };
 
+export const createConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { title } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const conversation = await Conversation.create({
+      userId,
+      title: title?.trim() || "New Chat",
+    });
+
+    res.status(201).json({
+      success: true,
+      data: conversation,
+    });
+  } catch (error) {
+    console.error("Create conversation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create conversation",
+      error: error.message,
+    });
+  }
+};
+
+export const getConversationMessages = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      userId,
+    });
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    const messages = await Chat.find({ conversationId: conversation._id })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: messages,
+    });
+  } catch (error) {
+    console.error("Get conversation messages error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load conversation messages",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteConversation = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      userId,
+    });
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    await Chat.deleteMany({ conversationId: conversation._id });
+    await conversation.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Conversation deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete conversation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete conversation",
+      error: error.message,
+    });
+  }
+};
+
 export const chat = async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, conversationId, title } = req.body;
     const userId = req.user?.id;
 
-    // Validation: Check if message is provided
     if (!message || typeof message !== "string" || message.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -200,26 +332,33 @@ export const chat = async (req, res) => {
     }
 
     const reply = await getAIResponse(message.trim(), history);
+    let responsePayload = { success: true, reply };
 
-    // Save chat to database for authenticated users only
     if (userId) {
+      const conversation = await createOrGetConversation({
+        userId,
+        conversationId,
+        title,
+        firstMessage: message.trim(),
+      });
+
       const chatEntry = new Chat({
         userId,
+        conversationId: conversation._id,
         message: message.trim(),
         response: reply,
       });
-
       await chatEntry.save();
+
+      conversation.updatedAt = new Date();
+      await conversation.save();
+
+      responsePayload.conversationId = conversation._id;
     }
 
-    res.json({
-      success: true,
-      reply: reply,
-    });
+    res.json(responsePayload);
   } catch (error) {
     console.error("Chat controller error:", error);
-
-    // Handle specific error messages from service
     let statusCode = 500;
     let errorMessage = "Internal server error";
 
@@ -256,13 +395,39 @@ export const getChatHistory = async (req, res) => {
       });
     }
 
-    const chats = await Chat.find({ userId }).sort({ createdAt: -1 }).limit(50); // Limit to last 50 chats
+    const conversations = await Conversation.find({ userId })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const conversationIds = conversations.map(
+      (conversation) => conversation._id,
+    );
+    const chats = await Chat.find({ conversationId: { $in: conversationIds } })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const latestMap = {};
+    chats.forEach((entry) => {
+      const key = entry.conversationId.toString();
+      latestMap[key] = entry;
+    });
+
+    const historyData = conversations.map((conversation) => ({
+      id: conversation._id,
+      title: conversation.title || "New Chat",
+      updatedAt: conversation.updatedAt,
+      preview:
+        latestMap[conversation._id.toString()]?.response ||
+        latestMap[conversation._id.toString()]?.message ||
+        "New conversation",
+    }));
 
     res.status(200).json({
       success: true,
-      data: chats,
+      data: historyData,
     });
   } catch (error) {
+    console.error("Get chat history error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch chat history",

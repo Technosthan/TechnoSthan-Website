@@ -1,5 +1,6 @@
-import React, { useState, useEffect  } from "react";
+import React, { useState, useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+
 import {
   Search,
   Users,
@@ -9,13 +10,16 @@ import {
   Calendar,
   Mail,
   User,
-  FileText,
+ FileText,
   Eye,
+  Sparkles,
 } from "lucide-react";
+
 import { globalSearch } from "./adminApi";
 
 const GlobalSearch = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -23,46 +27,44 @@ const GlobalSearch = () => {
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
-  
-  if (!query.trim()) {
-    setResults(null);
-    setError("");
-    return;
-  }
-
-
-  
-
-  const delayDebounce = setTimeout(async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await globalSearch(query);
-
-      setResults(response.data.data);
-    } catch (err) {
-      setError(err.response?.data?.message || "Search failed");
+    if (!query.trim()) {
       setResults(null);
-    } finally {
-      setLoading(false);
+      setError("");
+      return;
     }
-  }, 400); // debounce delay
 
-  return () => clearTimeout(delayDebounce);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-}, [query]);
-  
+        const response = await globalSearch(query);
+
+        setResults(response.data.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "Search failed");
+        setResults(null);
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounce);
+  }, [query]);
 
   const getResultCount = (type) => {
     if (!results) return 0;
+
     switch (type) {
       case "users":
         return results.users?.length || 0;
+
       case "content":
         return results.content?.length || 0;
+
       case "quizzes":
         return results.quizzes?.length || 0;
+
       default:
         return (
           (results.users?.length || 0) +
@@ -72,37 +74,69 @@ const GlobalSearch = () => {
     }
   };
 
+  const tabActiveClass = isDark
+    ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/30"
+    : "bg-blue-100 text-blue-700 border border-blue-200";
+
+  const cardHover = isDark
+    ? "hover:bg-white/[0.03]"
+    : "hover:bg-gray-50";
+
   const renderUserResults = () => (
     <div className="space-y-4">
       {results.users?.map((user) => (
         <div
           key={user._id}
-          className={`${theme.card} p-4 rounded-xl border ${theme.border} hover:shadow-md transition-shadow duration-200`}
+          className={`
+            ${theme.card}
+            border
+            ${theme.border}
+            rounded-2xl
+            p-5
+            transition-all
+            duration-300
+            ${cardHover}
+          `}
         >
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">
-                {user.name.charAt(0).toUpperCase()}
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <span className="text-white text-lg font-bold">
+                {user.name?.charAt(0)?.toUpperCase()}
               </span>
             </div>
+
             <div className="flex-1">
-              <h3 className={`font-semibold ${theme.text}`}>{user.name}</h3>
-              <div className="flex items-center text-sm text-gray-500 mt-1">
-                <Mail className="h-4 w-4 mr-1" />
+              <h3 className={`text-lg font-semibold ${theme.text}`}>
+                {user.name}
+              </h3>
+
+              <div
+                className={`flex items-center gap-2 mt-2 text-sm ${theme.textSecondary}`}
+              >
+                <Mail className="w-4 h-4" />
                 {user.email}
               </div>
-              <div className="flex items-center text-sm text-gray-500 mt-1">
-                <User className="h-4 w-4 mr-1" />
-                {user.role} • {user.status} • Joined{" "}
-                {new Date(user.createdAt).toLocaleDateString()}
+
+              <div
+                className={`flex items-center gap-2 mt-1 text-sm ${theme.textSecondary}`}
+              >
+                <User className="w-4 h-4" />
+                {user.role} • {user.status}
               </div>
             </div>
           </div>
         </div>
-      )) || (
-        <div className="text-center py-8">
-          <Users className={`h-12 w-12 ${theme.textSecondary} mx-auto mb-4`} />
-          <p className={`${theme.textSecondary}`}>No users found</p>
+      ))}
+
+      {(!results.users || results.users.length === 0) && (
+        <div className="text-center py-10">
+          <Users
+            className={`w-14 h-14 mx-auto mb-4 ${theme.textSecondary}`}
+          />
+
+          <p className={`${theme.textSecondary}`}>
+            No users found
+          </p>
         </div>
       )}
     </div>
@@ -113,35 +147,69 @@ const GlobalSearch = () => {
       {results.content?.map((content) => (
         <div
           key={content._id}
-          className={`${theme.card} p-4 rounded-xl border ${theme.border} hover:shadow-md transition-shadow duration-200`}
+          className={`
+            ${theme.card}
+            border
+            ${theme.border}
+            rounded-2xl
+            p-5
+            transition-all
+            duration-300
+            ${cardHover}
+          `}
         >
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <BookOpen className="h-6 w-6 text-white" />
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 flex items-center justify-center shadow-lg">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className={`font-semibold ${theme.text} truncate`}>
+
+            <div className="flex-1">
+              <h3 className={`text-lg font-semibold ${theme.text}`}>
                 {content.title}
               </h3>
-              <p className={`text-sm ${theme.textSecondary} mt-1 line-clamp-2`}>
+
+              <p
+                className={`mt-2 text-sm leading-relaxed ${theme.textSecondary}`}
+              >
                 {content.description}
               </p>
-              <div className="flex items-center text-sm text-gray-500 mt-2">
-                <Calendar className="h-4 w-4 mr-1" />
-                Created {new Date(content.createdAt).toLocaleDateString()}
+
+              <div
+                className={`flex items-center gap-2 mt-3 text-sm ${theme.textSecondary}`}
+              >
+                <Calendar className="w-4 h-4" />
+
+                {new Date(content.createdAt).toLocaleDateString()}
               </div>
             </div>
-            <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200">
-              <ExternalLink className="h-4 w-4" />
+
+            <button
+              className="
+                p-3
+                rounded-xl
+                border
+                border-cyan-500/20
+                bg-cyan-500/10
+                text-cyan-400
+                hover:bg-cyan-500/20
+                transition-all
+              "
+            >
+              <ExternalLink className="w-4 h-4" />
             </button>
           </div>
         </div>
-      )) || (
-        <div className="text-center py-8">
+      ))}
+
+      {(!results.content || results.content.length === 0) && (
+        <div className="text-center py-10">
           <BookOpen
-            className={`h-12 w-12 ${theme.textSecondary} mx-auto mb-4`}
+            className={`w-14 h-14 mx-auto mb-4 ${theme.textSecondary}`}
           />
-          <p className={`${theme.textSecondary}`}>No content found</p>
+
+          <p className={`${theme.textSecondary}`}>
+            No content found
+          </p>
         </div>
       )}
     </div>
@@ -152,184 +220,347 @@ const GlobalSearch = () => {
       {results.quizzes?.map((quiz) => (
         <div
           key={quiz._id}
-          className={`${theme.card} p-4 rounded-xl border ${theme.border} hover:shadow-md transition-shadow duration-200`}
+          className={`
+            ${theme.card}
+            border
+            ${theme.border}
+            rounded-2xl
+            p-5
+            transition-all
+            duration-300
+            ${cardHover}
+          `}
         >
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Brain className="h-6 w-6 text-white" />
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+              <Brain className="w-6 h-6 text-white" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className={`font-semibold ${theme.text}`}>{quiz.question}</h3>
-              <div className="flex items-center text-sm text-gray-500 mt-2">
-                <FileText className="h-4 w-4 mr-1" />
+
+            <div className="flex-1">
+              <h3 className={`text-lg font-semibold ${theme.text}`}>
+                {quiz.question}
+              </h3>
+
+              <div
+                className={`flex items-center gap-2 mt-2 text-sm ${theme.textSecondary}`}
+              >
+                <FileText className="w-4 h-4" />
                 Content ID: {quiz.contentId}
               </div>
-              <div className="flex items-center text-sm text-gray-500 mt-1">
-                <Calendar className="h-4 w-4 mr-1" />
-                Created {new Date(quiz.createdAt).toLocaleDateString()}
+
+              <div
+                className={`flex items-center gap-2 mt-2 text-sm ${theme.textSecondary}`}
+              >
+                <Calendar className="w-4 h-4" />
+
+                {new Date(quiz.createdAt).toLocaleDateString()}
               </div>
             </div>
-            <button className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors duration-200">
-              <Eye className="h-4 w-4" />
+
+            <button
+              className="
+                p-3
+                rounded-xl
+                border
+                border-purple-500/20
+                bg-purple-500/10
+                text-purple-400
+                hover:bg-purple-500/20
+                transition-all
+              "
+            >
+              <Eye className="w-4 h-4" />
             </button>
           </div>
         </div>
-      )) || (
-        <div className="text-center py-8">
-          <Brain className={`h-12 w-12 ${theme.textSecondary} mx-auto mb-4`} />
-          <p className={`${theme.textSecondary}`}>No quizzes found</p>
+      ))}
+
+      {(!results.quizzes || results.quizzes.length === 0) && (
+        <div className="text-center py-10">
+          <Brain
+            className={`w-14 h-14 mx-auto mb-4 ${theme.textSecondary}`}
+          />
+
+          <p className={`${theme.textSecondary}`}>
+            No quizzes found
+          </p>
         </div>
       )}
     </div>
   );
 
   return (
-    <div className={`p-6 w-full space-y-8 ${theme.text}`}>
-      {/* Header */}
+    <div className={`p-6 space-y-8 ${theme.text}`}>
+      {/* HEADER */}
       <div>
-        <h1 className={`text-3xl font-bold ${theme.text} mb-2`}>
+        <h1 className={`text-4xl font-bold ${theme.text}`}>
           Global Search
         </h1>
-        <p className={`${theme.textSecondary}`}>
+
+        <p className={`mt-2 ${theme.textSecondary}`}>
           Search across users, content, and quizzes
         </p>
       </div>
 
-      {/* Search Form */}
+      {/* SEARCH BOX */}
       <div
-        className={`${theme.card} rounded-2xl shadow-lg p-6 border ${theme.border}`}
+        className={`
+          ${theme.card}
+          border
+          ${theme.border}
+          rounded-3xl
+          p-6
+          shadow-xl
+        `}
       >
         <div className="flex gap-4">
           <div className="flex-1 relative">
             <Search
-              className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${theme.textSecondary} h-5 w-5`}
+              className={`
+                absolute
+                left-4
+                top-1/2
+                -translate-y-1/2
+                w-5
+                h-5
+                ${theme.textSecondary}
+              `}
             />
+
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for users, content, quizzes..."
-              className={`w-full pl-12 pr-4 py-4 border ${theme.border} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 text-lg ${theme.input}`}
+              placeholder="Search users, content, quizzes..."
+              className={`
+                ${theme.input}
+                w-full
+                pl-12
+                pr-4
+                py-4
+                rounded-2xl
+                text-lg
+              `}
             />
           </div>
+
           <button
-            type="submit"
             disabled={loading}
-            className="px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="
+              px-8
+              rounded-2xl
+              bg-gradient-to-r
+              from-cyan-500
+              to-blue-600
+              hover:from-cyan-600
+              hover:to-blue-700
+              text-white
+              font-semibold
+              flex
+              items-center
+              gap-2
+              transition-all
+              shadow-lg
+            "
           >
             {loading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <Search className="h-5 w-5 mr-2" />
+              <Search className="w-5 h-5" />
             )}
+
             {loading ? "Searching..." : "Search"}
           </button>
         </div>
       </div>
 
+      {/* ERROR */}
       {error && (
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center mb-4">
-            <div className="p-2 bg-red-100 rounded-lg mr-3">
-              <Search className="h-5 w-5 text-red-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-red-800">Search Error</h3>
-          </div>
-          <p className="text-red-700">{error}</p>
+        <div className="border border-red-500/20 bg-red-500/10 text-red-400 rounded-2xl p-5">
+          {error}
         </div>
       )}
 
-      {/* Results */}
+      {/* RESULTS */}
       {results && (
         <div
-          className={`${theme.card} rounded-2xl shadow-lg border ${theme.border}`}
+          className={`
+            ${theme.card}
+            border
+            ${theme.border}
+            rounded-3xl
+            overflow-hidden
+            shadow-xl
+          `}
         >
-          {/* Tabs */}
-          <div className={`px-6 py-4 border-b ${theme.border}`}>
-            <div className="flex space-x-6">
-              {[
-                { id: "all", label: "All Results", icon: Search },
-                { id: "users", label: "Users", icon: Users },
-                { id: "content", label: "Content", icon: BookOpen },
-                { id: "quizzes", label: "Quizzes", icon: Brain },
-              ].map((tab) => {
-                const Icon = tab.icon;
-                const count = getResultCount(tab.id);
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+          {/* TABS */}
+          <div
+            className={`
+              p-6
+              border-b
+              ${theme.border}
+              flex
+              flex-wrap
+              gap-3
+            `}
+          >
+            {[
+              {
+                id: "all",
+                label: "All Results",
+                icon: Sparkles,
+              },
+              {
+                id: "users",
+                label: "Users",
+                icon: Users,
+              },
+              {
+                id: "content",
+                label: "Content",
+                icon: BookOpen,
+              },
+              {
+                id: "quizzes",
+                label: "Quizzes",
+                icon: Brain,
+              },
+            ].map((tab) => {
+              const Icon = tab.icon;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    px-5
+                    py-3
+                    rounded-2xl
+                    border
+                    flex
+                    items-center
+                    gap-2
+                    transition-all
+                    ${
                       activeTab === tab.id
-                        ? "bg-blue-100 text-blue-700"
-                        : `${theme.textSecondary} hover:${theme.card}`
-                    }`}
+                        ? tabActiveClass
+                        : `${theme.border} ${theme.textSecondary}`
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4" />
+
+                  {tab.label}
+
+                  <span
+                    className="
+                      px-2
+                      py-1
+                      rounded-full
+                      text-xs
+                      bg-white/10
+                    "
                   >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {tab.label}
-                    {count > 0 && (
-                      <span className="ml-2 px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded-full">
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                    {getResultCount(tab.id)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Results Content */}
+          {/* CONTENT */}
           <div className="p-6">
             {activeTab === "all" && (
-              <div className="space-y-8">
+              <div className="space-y-10">
                 {getResultCount("users") > 0 && (
                   <div>
-                    <h3
-                      className={`text-lg font-semibold ${theme.text} mb-4 flex items-center`}
+                    <h2
+                      className={`
+                        text-2xl
+                        font-bold
+                        mb-5
+                        flex
+                        items-center
+                        gap-2
+                        ${theme.text}
+                      `}
                     >
-                      <Users className="h-5 w-5 mr-2 text-blue-600" />
-                      Users ({getResultCount("users")})
-                    </h3>
+                      <Users className="w-6 h-6 text-cyan-400" />
+                      Users
+                    </h2>
+
                     {renderUserResults()}
                   </div>
                 )}
+
                 {getResultCount("content") > 0 && (
                   <div>
-                    <h3
-                      className={`text-lg font-semibold ${theme.text} mb-4 flex items-center`}
+                    <h2
+                      className={`
+                        text-2xl
+                        font-bold
+                        mb-5
+                        flex
+                        items-center
+                        gap-2
+                        ${theme.text}
+                      `}
                     >
-                      <BookOpen className="h-5 w-5 mr-2 text-green-600" />
-                      Content ({getResultCount("content")})
-                    </h3>
+                      <BookOpen className="w-6 h-6 text-green-400" />
+                      Content
+                    </h2>
+
                     {renderContentResults()}
                   </div>
                 )}
+
                 {getResultCount("quizzes") > 0 && (
                   <div>
-                    <h3
-                      className={`text-lg font-semibold ${theme.text} mb-4 flex items-center`}
+                    <h2
+                      className={`
+                        text-2xl
+                        font-bold
+                        mb-5
+                        flex
+                        items-center
+                        gap-2
+                        ${theme.text}
+                      `}
                     >
-                      <Brain className="h-5 w-5 mr-2 text-purple-600" />
-                      Quizzes ({getResultCount("quizzes")})
-                    </h3>
+                      <Brain className="w-6 h-6 text-purple-400" />
+                      Quizzes
+                    </h2>
+
                     {renderQuizResults()}
                   </div>
                 )}
+
                 {getResultCount("all") === 0 && (
-                  <div className="text-center py-12">
+                  <div className="text-center py-20">
                     <Search
-                      className={`h-16 w-16 ${theme.textSecondary} mx-auto mb-4`}
+                      className={`
+                        w-16
+                        h-16
+                        mx-auto
+                        mb-4
+                        ${theme.textSecondary}
+                      `}
                     />
-                    <h3 className={`text-lg font-medium ${theme.text} mb-2`}>
-                      No results found
+
+                    <h3
+                      className={`text-2xl font-bold ${theme.text}`}
+                    >
+                      No Results Found
                     </h3>
-                    <p className={`${theme.textSecondary}`}>
-                      Try different keywords or check your spelling
+
+                    <p className={`mt-2 ${theme.textSecondary}`}>
+                      Try searching with different keywords
                     </p>
                   </div>
                 )}
               </div>
             )}
+
             {activeTab === "users" && renderUserResults()}
             {activeTab === "content" && renderContentResults()}
             {activeTab === "quizzes" && renderQuizResults()}

@@ -51,6 +51,13 @@ const otpPhoneProviderSchema = new mongoose.Schema(
       type: String,
       default: "",
       select: false,
+      trim: true,
+    },
+    firebaseRecaptchaToken: {
+      type: String,
+      default: "",
+      select: false,
+      trim: true,
     },
     firebaseConfig: {
       type: mongoose.Schema.Types.Mixed,

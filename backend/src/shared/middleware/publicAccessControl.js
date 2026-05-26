@@ -9,16 +9,22 @@ const publicAccessControl = async (req, res, next) => {
     }
 
     const settings = await Settings.findOne().lean();
+    const publicWebsiteEnabled = settings?.publicWebsiteEnabled;
+    const publicAccessSetting = settings?.publicAccessEnabled;
     const publicAccessEnabled =
-      settings?.publicWebsiteEnabled != null
-        ? settings.publicWebsiteEnabled
-        : settings?.publicAccessEnabled != null
-          ? settings.publicAccessEnabled
-          : true; // Default to public access enabled
+      publicWebsiteEnabled === false || publicAccessSetting === false
+        ? false
+        : typeof publicWebsiteEnabled === "boolean"
+          ? publicWebsiteEnabled
+          : typeof publicAccessSetting === "boolean"
+            ? publicAccessSetting
+            : true; // Default to public access enabled
 
     console.log("[publicAccessControl]", {
       path: req.path,
-      publicAccessEnabled,
+      publicWebsiteEnabled,
+      publicAccessSetting,
+      effectivePublicAccessEnabled: publicAccessEnabled,
       hasAuth: !!req.headers.authorization,
     });
 

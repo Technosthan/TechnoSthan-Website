@@ -7,7 +7,10 @@ import jwt from "jsonwebtoken";
 import twilio from "twilio";
 import axios from "axios";
 import qrcode from "qrcode";
-import { getOtpSecuritySettings } from "../admin/authSettings.service.js";
+import {
+  getOtpSecuritySettings,
+  getOrCreateAuthSettings,
+} from "../admin/authSettings.service.js";
 import * as otpProviderService from "../admin/otpProvider.service.js";
 import { getUserServicePermissionByUserId } from "../admin/userServicePermission.service.js";
 import {
@@ -55,7 +58,7 @@ export const validateContact = (contact, type) => {
 };
 
 const resolveOtpAvailability = async (method, user = null) => {
-  const authSettings = await getOtpSecuritySettings();
+  const authSettings = await getOrCreateAuthSettings();
   const userOverride = user
     ? await getUserServicePermissionByUserId(user._id)
     : null;
@@ -222,6 +225,7 @@ export const sendOTP = async (
   method,
   pendingUserId = null,
   name = null,
+  recaptchaToken = null,
 ) => {
   const otpSecurity = await getOtpSecuritySettings();
 
@@ -338,14 +342,24 @@ export const sendOTP = async (
     switch (method) {
       case "email":
         console.log(`EMAIL OTP via provider to ${normalizedContact}`);
-        await sendEmailWithActiveProvider(normalizedContact, otp, name);
+        await otpProviderService.sendEmailWithActiveProvider({
+          to: normalizedContact,
+          subject: "Your AgriTech Verification Code",
+          text: `Your verification code is ${otp}`,
+          html: `<div style="font-family: Arial, sans-serif; text-align: center;"><h2>Your Verification Code</h2><p style="font-size: 24px; font-weight: bold;">${otp}</p><p>Use this code to login to AgriTech.</p></div>`,
+        });
         break;
       case "sms":
       case "whatsapp":
         console.log(
           `${method.toUpperCase()} OTP via provider to ${normalizedContact}`,
         );
-        await sendPhoneOtpWithActiveProvider(normalizedContact, otp, method);
+        await otpProviderService.sendPhoneOtpWithActiveProvider(
+          normalizedContact,
+          otp,
+          method,
+          { recaptchaToken },
+        );
         break;
       case "telegram":
         console.log(`TELEGRAM OTP: ${otp} -> ${normalizedContact}`);
@@ -435,8 +449,19 @@ export const verifyOTP = async (contact, otp) => {
       }
       await pendingUser.save();
 
-      // Check if both email and phone are verified for finalization
-      if (pendingUser.emailVerified && pendingUser.phoneVerified) {
+      const authSettings = await getOrCreateAuthSettings();
+      const needsEmail = authSettings.emailOtp?.enabled ?? true;
+      const needsPhone = authSettings.phoneOtp?.enabled ?? true;
+      const hasEmailContact = !!pendingUser.email;
+      const hasPhoneContact = !!pendingUser.mobile;
+
+      const emailRequired = needsEmail && hasEmailContact;
+      const phoneRequired = needsPhone && hasPhoneContact;
+      const canFinalize =
+        (!emailRequired || pendingUser.emailVerified) &&
+        (!phoneRequired || pendingUser.phoneVerified);
+
+      if (canFinalize) {
         // Finalize registration
         const user = new User({
           name: pendingUser.name,
@@ -444,8 +469,8 @@ export const verifyOTP = async (contact, otp) => {
           email: pendingUser.email,
           mobile: pendingUser.mobile,
           role: "student",
-          emailVerified: true,
-          phoneVerified: true,
+          emailVerified: !emailRequired || !!pendingUser.emailVerified,
+          phoneVerified: !phoneRequired || !!pendingUser.phoneVerified,
           status: "active",
         });
         await user.save();
@@ -475,14 +500,29 @@ export const verifyOTP = async (contact, otp) => {
             telegramUsername: user.telegramUsername,
           },
         };
-      } else {
-        return {
-          success: true,
-          contactType: otpRecord.contactType,
-          pendingUserId: otpRecord.pendingUserId,
-          finalized: false,
-        };
       }
+
+      const nextStep =
+        !hasEmailContact || (otpRecord.contactType === "email" && needsPhone)
+          ? "input-second-field"
+          : "verify-otp";
+      const nextContactType =
+        nextStep === "input-second-field"
+          ? !hasEmailContact
+            ? "email"
+            : "phone"
+          : otpRecord.contactType === "email"
+            ? "phone"
+            : "email";
+
+      return {
+        success: true,
+        contactType: otpRecord.contactType,
+        pendingUserId: otpRecord.pendingUserId,
+        finalized: false,
+        nextStep,
+        nextContactType,
+      };
     }
   } else {
     // It's for login

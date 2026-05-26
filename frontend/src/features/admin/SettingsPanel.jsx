@@ -37,21 +37,9 @@ const defaultSettings = {
   },
 
   dashboardSettings: {
-    visibleCards: [
-      "stats",
-      "users",
-      "content",
-      "quiz",
-      "activity",
-    ],
+    visibleCards: ["stats", "users", "content", "quiz", "activity"],
 
-    cardOrder: [
-      "stats",
-      "users",
-      "content",
-      "quiz",
-      "activity",
-    ],
+    cardOrder: ["stats", "users", "content", "quiz", "activity"],
   },
 
   publicAccessEnabled: true,
@@ -86,19 +74,15 @@ const SettingsPanel = () => {
 
   const [error, setError] = useState("");
 
-  const [activeSection, setActiveSection] =
-    useState("general");
+  const [activeSection, setActiveSection] = useState("general");
 
   useEffect(() => {
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     if (token) {
       fetchSettings();
     } else {
-      setError(
-        "Please log in to access settings",
-      );
+      setError("Please log in to access settings");
     }
   }, []);
 
@@ -116,39 +100,36 @@ const SettingsPanel = () => {
         aiSettings: {
           ...defaultSettings.aiSettings,
 
-          ...(response.data.data
-            ?.aiSettings || {}),
+          ...(response.data.data?.aiSettings || {}),
         },
 
         featureFlags: {
           ...defaultSettings.featureFlags,
 
-          ...(response.data.data
-            ?.featureFlags || {}),
+          ...(response.data.data?.featureFlags || {}),
         },
 
         dashboardSettings: {
           ...defaultSettings.dashboardSettings,
 
-          ...(response.data.data
-            ?.dashboardSettings || {}),
+          ...(response.data.data?.dashboardSettings || {}),
         },
 
         publicAccessEnabled:
-          response.data.data
-            ?.publicAccessEnabled ??
+          response.data.data?.publicAccessEnabled ??
+          response.data.data?.publicWebsiteEnabled ??
           defaultSettings.publicAccessEnabled,
 
+        publicWebsiteEnabled:
+          response.data.data?.publicWebsiteEnabled ??
+          response.data.data?.publicAccessEnabled ??
+          defaultSettings.publicWebsiteEnabled,
+
         publicRoutes:
-          response.data.data
-            ?.publicRoutes ??
-          defaultSettings.publicRoutes,
+          response.data.data?.publicRoutes ?? defaultSettings.publicRoutes,
       });
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to load settings",
-      );
+      setError(err.response?.data?.message || "Failed to load settings");
     } finally {
       setLoading(false);
     }
@@ -160,45 +141,35 @@ const SettingsPanel = () => {
 
       setError("");
 
-      const response =
-        await updateSettings(settings);
+      const settingsToSave = settings || defaultSettings;
+      const payload = {
+        ...settingsToSave,
+        publicWebsiteEnabled: settingsToSave.publicAccessEnabled,
+        publicAccessEnabled: settingsToSave.publicAccessEnabled,
+        publicRoutes: settingsToSave.publicRoutes || [],
+      };
+
+      console.log("Saving settings payload:", payload);
+
+      const response = await updateSettings(payload);
 
       setSettings(response.data.data);
 
-      toast.success(
-        response.data?.message ||
-          "Settings saved successfully",
-      );
+      toast.success(response.data?.message || "Settings saved successfully");
 
       const eventDetail = {
-        publicWebsiteEnabled:
-          response.data.data
-            ?.publicWebsiteEnabled ??
-          response.data.data
-            ?.publicAccessEnabled,
-
-        publicAccessEnabled:
-          response.data.data
-            ?.publicAccessEnabled ??
-          response.data.data
-            ?.publicWebsiteEnabled,
-
-        publicRoutes:
-          response.data.data?.publicRoutes,
+        publicWebsiteEnabled: response.data.data?.publicWebsiteEnabled,
+        publicAccessEnabled: response.data.data?.publicAccessEnabled,
+        publicRoutes: response.data.data?.publicRoutes || [],
       };
 
       window.dispatchEvent(
-        new CustomEvent(
-          "publicAccessUpdated",
-          {
-            detail: eventDetail,
-          },
-        ),
+        new CustomEvent("publicAccessUpdated", {
+          detail: eventDetail,
+        }),
       );
     } catch (err) {
-      const message =
-        err.response?.data?.message ||
-        "Failed to save settings";
+      const message = err.response?.data?.message || "Failed to save settings";
 
       setError(message);
 
@@ -208,10 +179,7 @@ const SettingsPanel = () => {
     }
   };
 
-  const updateSetting = (
-    field,
-    value,
-  ) => {
+  const updateSetting = (field, value) => {
     setSettings((prev) => ({
       ...defaultSettings,
 
@@ -221,8 +189,7 @@ const SettingsPanel = () => {
     }));
   };
 
-  const currentSettings =
-    settings || defaultSettings;
+  const currentSettings = settings || defaultSettings;
 
   const publicRouteOptions = [
     {
@@ -261,33 +228,18 @@ const SettingsPanel = () => {
     },
   ];
 
-  const isRouteSelected = (
-    route,
-  ) =>
-    Array.isArray(
-      currentSettings.publicRoutes,
-    ) &&
-    currentSettings.publicRoutes.includes(
-      route,
-    );
+  const isRouteSelected = (route) =>
+    Array.isArray(currentSettings.publicRoutes) &&
+    currentSettings.publicRoutes.includes(route);
 
-  const togglePublicRoute = (
-    route,
-  ) => {
-    const currentRoutes =
-      currentSettings.publicRoutes || [];
+  const togglePublicRoute = (route) => {
+    const currentRoutes = currentSettings.publicRoutes || [];
 
-    const nextRoutes =
-      currentRoutes.includes(route)
-        ? currentRoutes.filter(
-            (item) => item !== route,
-          )
-        : [...currentRoutes, route];
+    const nextRoutes = currentRoutes.includes(route)
+      ? currentRoutes.filter((item) => item !== route)
+      : [...currentRoutes, route];
 
-    updateSetting(
-      "publicRoutes",
-      nextRoutes,
-    );
+    updateSetting("publicRoutes", nextRoutes);
   };
 
   const sections = [
@@ -296,8 +248,7 @@ const SettingsPanel = () => {
 
       title: "General Settings",
 
-      description:
-        "Branding, app identity, and organizational defaults.",
+      description: "Branding, app identity, and organizational defaults.",
 
       icon: SettingsIcon,
     },
@@ -305,11 +256,9 @@ const SettingsPanel = () => {
     {
       id: "public",
 
-      title:
-        "Public Website Settings",
+      title: "Public Website Settings",
 
-      description:
-        "Control guest access and route visibility.",
+      description: "Control guest access and route visibility.",
 
       icon: Globe,
     },
@@ -319,8 +268,7 @@ const SettingsPanel = () => {
 
       title: "Feature Toggles",
 
-      description:
-        "Enable or disable core modules.",
+      description: "Enable or disable core modules.",
 
       icon: SlidersHorizontal,
     },
@@ -328,11 +276,9 @@ const SettingsPanel = () => {
     {
       id: "authentication",
 
-      title:
-        "Authentication Settings",
+      title: "Authentication Settings",
 
-      description:
-        "Manage WhatsApp, Telegram, and OTP policies.",
+      description: "Manage WhatsApp, Telegram, and OTP policies.",
 
       icon: Shield,
     },
@@ -340,11 +286,9 @@ const SettingsPanel = () => {
     {
       id: "otp",
 
-      title:
-        "OTP Provider Management",
+      title: "OTP Provider Management",
 
-      description:
-        "Manage Email & Phone OTP providers.",
+      description: "Manage Email & Phone OTP providers.",
 
       icon: KeyRound,
     },
@@ -356,9 +300,7 @@ const SettingsPanel = () => {
         <div className="text-center">
           <RefreshCw className="animate-spin h-16 w-16 mx-auto mb-4 text-cyan-500" />
 
-          <p
-            className={`${theme.textSecondary} font-medium`}
-          >
+          <p className={`${theme.textSecondary} font-medium`}>
             Loading settings...
           </p>
         </div>
@@ -367,26 +309,18 @@ const SettingsPanel = () => {
   }
 
   return (
-    <div
-      className={`p-6 w-full space-y-8 ${theme.text}`}
-    >
+    <div className={`p-6 w-full space-y-8 ${theme.text}`}>
       {/* HEADER */}
 
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1
-            className={`text-5xl font-black ${theme.text} mb-3`}
-          >
+          <h1 className={`text-5xl font-black ${theme.text} mb-3`}>
             Enterprise Settings Console
           </h1>
 
-          <p
-            className={`${theme.textSecondary} text-lg`}
-          >
-            Manage company-wide
-            configuration with premium
-            access control and provider
-            orchestration.
+          <p className={`${theme.textSecondary} text-lg`}>
+            Manage company-wide configuration with premium access control and
+            provider orchestration.
           </p>
         </div>
 
@@ -401,9 +335,7 @@ const SettingsPanel = () => {
             <Save className="h-5 w-5" />
           )}
 
-          {saving
-            ? "Saving..."
-            : "Save Settings"}
+          {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
 
@@ -417,13 +349,9 @@ const SettingsPanel = () => {
             </div>
 
             <div>
-              <h3 className="text-red-300 font-semibold">
-                Error
-              </h3>
+              <h3 className="text-red-300 font-semibold">Error</h3>
 
-              <p className="text-red-400 text-sm">
-                {error}
-              </p>
+              <p className="text-red-400 text-sm">{error}</p>
             </div>
           </div>
         </div>
@@ -440,19 +368,13 @@ const SettingsPanel = () => {
           {sections.map((section) => {
             const Icon = section.icon;
 
-            const active =
-              section.id ===
-              activeSection;
+            const active = section.id === activeSection;
 
             return (
               <button
                 key={section.id}
                 type="button"
-                onClick={() =>
-                  setActiveSection(
-                    section.id,
-                  )
-                }
+                onClick={() => setActiveSection(section.id)}
                 className={`w-full text-left rounded-2xl p-4 transition-all duration-300 border ${
                   active
                     ? "border-cyan-500 bg-cyan-500/10"
@@ -469,12 +391,8 @@ const SettingsPanel = () => {
                       {section.title}
                     </h3>
 
-                    <p
-                      className={`text-sm mt-1 ${theme.textSecondary}`}
-                    >
-                      {
-                        section.description
-                      }
+                    <p className={`text-sm mt-1 ${theme.textSecondary}`}>
+                      {section.description}
                     </p>
                   </div>
                 </div>
@@ -489,34 +407,22 @@ const SettingsPanel = () => {
           className={`${theme.card} rounded-3xl border ${theme.border} p-6 shadow-2xl`}
         >
           <div className="mb-8">
-            <h2
-              className={`text-3xl font-black ${theme.text}`}
-            >
-              {sections.find(
-                (section) =>
-                  section.id ===
-                  activeSection,
-              )?.title ||
-                "General Settings"}
+            <h2 className={`text-3xl font-black ${theme.text}`}>
+              {sections.find((section) => section.id === activeSection)
+                ?.title || "General Settings"}
             </h2>
 
-            <p
-              className={`text-sm mt-2 ${theme.textSecondary}`}
-            >
+            <p className={`text-sm mt-2 ${theme.textSecondary}`}>
               {
-                sections.find(
-                  (section) =>
-                    section.id ===
-                    activeSection,
-                )?.description
+                sections.find((section) => section.id === activeSection)
+                  ?.description
               }
             </p>
           </div>
 
           {/* GENERAL */}
 
-          {activeSection ===
-            "general" && (
+          {activeSection === "general" && (
             <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -529,16 +435,8 @@ const SettingsPanel = () => {
 
                   <input
                     type="text"
-                    value={
-                      currentSettings.appName ||
-                      ""
-                    }
-                    onChange={(e) =>
-                      updateSetting(
-                        "appName",
-                        e.target.value,
-                      )
-                    }
+                    value={currentSettings.appName || ""}
+                    onChange={(e) => updateSetting("appName", e.target.value)}
                     className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
                     placeholder="Enter app name..."
                   />
@@ -554,16 +452,8 @@ const SettingsPanel = () => {
 
                   <input
                     type="url"
-                    value={
-                      currentSettings.logoUrl ||
-                      ""
-                    }
-                    onChange={(e) =>
-                      updateSetting(
-                        "logoUrl",
-                        e.target.value,
-                      )
-                    }
+                    value={currentSettings.logoUrl || ""}
+                    onChange={(e) => updateSetting("logoUrl", e.target.value)}
                     className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
                     placeholder="https://example.com/logo.png"
                   />
@@ -574,35 +464,26 @@ const SettingsPanel = () => {
 
           {/* PUBLIC */}
 
-          {activeSection ===
-            "public" && (
+          {activeSection === "public" && (
             <div className="space-y-6">
               <div className="rounded-3xl border border-white/10 bg-slate-950/40 p-6">
                 <div className="flex items-center justify-between gap-6">
                   <div>
                     <h3 className="text-2xl font-bold text-white">
-                      Public Website
-                      Access
+                      Public Website Access
                     </h3>
 
                     <p className="text-slate-400 mt-2">
-                      Control guest
-                      access to your
-                      platform.
+                      Control guest access to your platform.
                     </p>
                   </div>
 
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={
-                        currentSettings.publicAccessEnabled
-                      }
+                      checked={currentSettings.publicAccessEnabled}
                       onChange={(e) =>
-                        updateSetting(
-                          "publicAccessEnabled",
-                          e.target.checked,
-                        )
+                        updateSetting("publicAccessEnabled", e.target.checked)
                       }
                       className="sr-only peer"
                     />
@@ -615,45 +496,29 @@ const SettingsPanel = () => {
 
                 {!currentSettings.publicAccessEnabled && (
                   <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {publicRouteOptions.map(
-                      (
-                        routeOption,
-                      ) => (
-                        <label
-                          key={
-                            routeOption.value
-                          }
-                          className="flex items-center gap-3 p-4 rounded-2xl border border-white/10 bg-slate-900/60 hover:border-cyan-500 transition cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isRouteSelected(
-                              routeOption.value,
-                            )}
-                            onChange={() =>
-                              togglePublicRoute(
-                                routeOption.value,
-                              )
-                            }
-                            className="w-5 h-5 rounded"
-                          />
+                    {publicRouteOptions.map((routeOption) => (
+                      <label
+                        key={routeOption.value}
+                        className="flex items-center gap-3 p-4 rounded-2xl border border-white/10 bg-slate-900/60 hover:border-cyan-500 transition cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isRouteSelected(routeOption.value)}
+                          onChange={() => togglePublicRoute(routeOption.value)}
+                          className="w-5 h-5 rounded"
+                        />
 
-                          <div>
-                            <p className="text-white font-medium">
-                              {
-                                routeOption.label
-                              }
-                            </p>
+                        <div>
+                          <p className="text-white font-medium">
+                            {routeOption.label}
+                          </p>
 
-                            <p className="text-slate-400 text-xs">
-                              {
-                                routeOption.value
-                              }
-                            </p>
-                          </div>
-                        </label>
-                      ),
-                    )}
+                          <p className="text-slate-400 text-xs">
+                            {routeOption.value}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 )}
               </div>
@@ -662,68 +527,41 @@ const SettingsPanel = () => {
 
           {/* FEATURES */}
 
-          {activeSection ===
-            "features" && (
+          {activeSection === "features" && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(
-                  currentSettings.featureFlags ||
-                    {},
-                ).map(
-                  ([
-                    key,
-                    value,
-                  ]) => (
+                {Object.entries(currentSettings.featureFlags || {}).map(
+                  ([key, value]) => (
                     <div
                       key={key}
                       className="rounded-3xl border border-white/10 bg-slate-950/40 p-5 flex items-center justify-between"
                     >
                       <div>
                         <h4 className="text-white font-semibold">
-                          {key
-                            .replace(
-                              /([A-Z])/g,
-                              " $1",
-                            )
-                            .trim()}
+                          {key.replace(/([A-Z])/g, " $1").trim()}
                         </h4>
 
                         <p className="text-slate-400 text-sm mt-1">
-                          Toggle
-                          module
-                          availability
+                          Toggle module availability
                         </p>
                       </div>
 
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={
-                            value
-                          }
-                          onChange={(
-                            e,
-                          ) =>
-                            setSettings(
-                              (
-                                prev,
-                              ) => ({
-                                ...prev,
+                          checked={value}
+                          onChange={(e) =>
+                            setSettings((prev) => ({
+                              ...prev,
 
-                                featureFlags:
-                                  {
-                                    ...defaultSettings.featureFlags,
+                              featureFlags: {
+                                ...defaultSettings.featureFlags,
 
-                                    ...(prev?.featureFlags ||
-                                      {}),
+                                ...(prev?.featureFlags || {}),
 
-                                    [key]:
-                                      e
-                                        .target
-                                        .checked,
-                                  },
-                              }),
-                            )
+                                [key]: e.target.checked,
+                              },
+                            }))
                           }
                           className="sr-only peer"
                         />
@@ -741,25 +579,17 @@ const SettingsPanel = () => {
 
           {/* AUTH */}
 
-          {activeSection ===
-            "authentication" && (
-            <AuthSettingsSection
-              theme={theme}
-            />
+          {activeSection === "authentication" && (
+            <AuthSettingsSection theme={theme} />
           )}
 
           {/* OTP */}
 
-          {activeSection ===
-            "otp" && (
+          {activeSection === "otp" && (
             <div className="grid gap-6 xl:grid-cols-2">
-              <EmailOtpProviderSettings
-                theme={theme}
-              />
+              <EmailOtpProviderSettings theme={theme} />
 
-              <PhoneOtpProviderSettings
-                theme={theme}
-              />
+              <PhoneOtpProviderSettings theme={theme} />
             </div>
           )}
         </section>

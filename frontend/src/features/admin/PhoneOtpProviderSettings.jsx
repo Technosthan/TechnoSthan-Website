@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Save,
@@ -171,6 +171,8 @@ const getPhoneProviderFields = (providerType) => {
         options: [
           { value: "POST", label: "POST" },
           { value: "GET", label: "GET" },
+          { value: "PUT", label: "PUT" },
+          { value: "PATCH", label: "PATCH" },
         ],
       },
       {
@@ -179,6 +181,13 @@ const getPhoneProviderFields = (providerType) => {
         type: "textarea",
         required: true,
         placeholder: '{"phone":"{{phone}}","otp":"{{otp}}"}',
+      },
+      {
+        name: "customApiHeaders",
+        label: "Custom Headers (JSON)",
+        type: "textarea",
+        required: false,
+        placeholder: '{"Authorization":"Bearer <token>","X-Api-Key":"..."}',
       },
       {
         name: "customApiAuthKey",
@@ -207,12 +216,68 @@ const PhoneOtpProviderSettings = ({ theme }) => {
   const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [providerForm, setProviderForm] = useState({});
   const [showSecrets, setShowSecrets] = useState({});
+  const [jsonFieldErrors, setJsonFieldErrors] = useState({});
+  const [newProviderType, setNewProviderType] = useState("twilio");
 
-  useEffect(() => {
-    void fetchProviders();
-  }, []);
+  const formatFieldValue = (field, value) => {
+    if (
+      (field.name === "firebaseConfig" || field.name === "customApiHeaders") &&
+      typeof value === "object" &&
+      value !== null
+    ) {
+      return JSON.stringify(value, null, 2);
+    }
+    return value ?? "";
+  };
 
-  const fetchProviders = async () => {
+  const validateJsonField = (fieldName, rawValue) => {
+    if (!rawValue || typeof rawValue !== "string") {
+      setJsonFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+      return true;
+    }
+
+    try {
+      JSON.parse(rawValue);
+      setJsonFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+      return true;
+    } catch {
+      const label =
+        fieldName === "firebaseConfig" ? "Firebase config" : "Custom headers";
+      const message = `${label} must be valid JSON.`;
+      setJsonFieldErrors((prev) => ({ ...prev, [fieldName]: message }));
+      return false;
+    }
+  };
+
+  const buildPhoneProviderPayload = (form) => {
+    const payload = { ...form };
+
+    if (payload.providerType === "firebase") {
+      if (typeof payload.firebaseConfig === "string") {
+        try {
+          payload.firebaseConfig = JSON.parse(payload.firebaseConfig);
+        } catch {
+          throw new Error("Firebase config must be valid JSON.");
+        }
+      }
+    }
+
+    if (payload.providerType === "custom_api") {
+      if (typeof payload.customApiHeaders === "string") {
+        try {
+          payload.customApiHeaders = payload.customApiHeaders.trim()
+            ? JSON.parse(payload.customApiHeaders)
+            : {};
+        } catch {
+          throw new Error("Custom headers must be valid JSON.");
+        }
+      }
+    }
+
+    return payload;
+  };
+
+  const fetchProviders = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -230,14 +295,18 @@ const PhoneOtpProviderSettings = ({ theme }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProviderId]);
 
-  const handleCreate = async () => {
+  useEffect(() => {
+    void fetchProviders();
+  }, [fetchProviders]);
+
+  const handleCreate = async (providerType = newProviderType) => {
     try {
       setCreating(true);
       const payload = {
         providerName: "New Phone Provider",
-        providerType: "twilio",
+        providerType: providerType || "twilio",
         status: "inactive",
       };
       const res = await createPhoneProvider(payload);
@@ -270,8 +339,14 @@ const PhoneOtpProviderSettings = ({ theme }) => {
   };
 
   const handleUpdate = async (providerId) => {
+    if (Object.values(jsonFieldErrors).some(Boolean)) {
+      toast.error("Fix invalid JSON fields before saving.");
+      return;
+    }
+
     try {
-      await updatePhoneProvider(providerId, providerForm);
+      const payload = buildPhoneProviderPayload(providerForm);
+      await updatePhoneProvider(providerId, payload);
       toast.success("Phone provider updated");
       setEditingProviderId(null);
       setProviderForm({});
@@ -279,7 +354,9 @@ const PhoneOtpProviderSettings = ({ theme }) => {
       await fetchProviders();
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Update failed");
+      toast.error(
+        err?.message || err?.response?.data?.message || "Update failed",
+      );
     }
   };
 
@@ -316,9 +393,6 @@ const PhoneOtpProviderSettings = ({ theme }) => {
     }
   };
 
-  const selectedProvider = providers.find(
-    (provider) => provider._id === selectedProviderId,
-  );
   const fields = providerForm.providerType
     ? getPhoneProviderFields(providerForm.providerType)
     : [];
@@ -344,18 +418,31 @@ const PhoneOtpProviderSettings = ({ theme }) => {
             Configure SMS, WhatsApp, and phone-based OTP providers.
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {creating ? (
-            <RefreshCw className="h-4 w-4 animate-spin" />
-          ) : (
-            <PlusCircle size={16} />
-          )}
-          Add provider
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={newProviderType}
+            onChange={(e) => setNewProviderType(e.target.value)}
+            className={`${theme.input} rounded-xl border ${theme.border} px-3 py-2`}
+          >
+            {phoneProviderTypes.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => handleCreate(newProviderType)}
+            disabled={creating}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {creating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <PlusCircle size={16} />
+            )}
+            Add provider
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -451,6 +538,31 @@ const PhoneOtpProviderSettings = ({ theme }) => {
                   <div
                     className={`mt-5 rounded-3xl border ${theme.border} p-5 dark:bg-gray-900/50 bg-slate-50`}
                   >
+                    {/* Provider type selector - allows admin to change provider type */}
+                    <div className="mb-4">
+                      <label
+                        className={`block text-sm font-semibold ${theme.text} mb-2`}
+                      >
+                        Provider Type
+                      </label>
+                      <select
+                        value={providerForm.providerType || "twilio"}
+                        onChange={(e) =>
+                          setProviderForm((prev) => ({
+                            ...prev,
+                            providerType: e.target.value,
+                          }))
+                        }
+                        className={`${theme.input} w-full rounded-xl border ${theme.border} px-4 py-3`}
+                      >
+                        {phoneProviderTypes.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {fields.map((field) => {
                         const key = `${editingProviderId}-${field.name}`;
@@ -506,13 +618,20 @@ const PhoneOtpProviderSettings = ({ theme }) => {
                                 )}
                               </label>
                               <textarea
-                                value={value}
-                                onChange={(e) =>
+                                value={formatFieldValue(field, value)}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value;
                                   setProviderForm((prev) => ({
                                     ...prev,
-                                    [field.name]: e.target.value,
-                                  }))
-                                }
+                                    [field.name]: rawValue,
+                                  }));
+                                  if (
+                                    field.name === "firebaseConfig" ||
+                                    field.name === "customApiHeaders"
+                                  ) {
+                                    validateJsonField(field.name, rawValue);
+                                  }
+                                }}
                                 placeholder={field.placeholder}
                                 rows={4}
                                 className={`${theme.input} w-full rounded-xl border ${theme.border} px-4 py-3 font-mono text-sm`}
@@ -522,6 +641,11 @@ const PhoneOtpProviderSettings = ({ theme }) => {
                                   className={`text-xs ${theme.textSecondary} mt-1`}
                                 >
                                   {field.hint}
+                                </p>
+                              )}
+                              {jsonFieldErrors[field.name] && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {jsonFieldErrors[field.name]}
                                 </p>
                               )}
                             </div>
@@ -589,7 +713,8 @@ const PhoneOtpProviderSettings = ({ theme }) => {
                     <div className="mt-4 flex flex-wrap gap-3">
                       <button
                         onClick={() => handleUpdate(provider._id)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 transition-all duration-200"
+                        disabled={Object.values(jsonFieldErrors).some(Boolean)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Save size={16} /> Save changes
                       </button>

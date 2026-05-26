@@ -30,6 +30,15 @@ const emailProviderTypes = [
   { value: "custom_smtp", label: "Custom SMTP", icon: "⚙️" },
 ];
 
+const getEmailProviderDefaults = (providerType) => {
+  return getEmailProviderFields(providerType).reduce((acc, field) => {
+    if (field.value !== undefined) {
+      acc[field.name] = field.value;
+    }
+    return acc;
+  }, {});
+};
+
 const getEmailProviderFields = (providerType) => {
   const base = [
     {
@@ -230,6 +239,7 @@ const EmailOtpProviderSettings = ({ theme }) => {
   const [editingProviderId, setEditingProviderId] = useState(null);
   const [providerForm, setProviderForm] = useState({});
   const [showSecrets, setShowSecrets] = useState({});
+  const [newProviderType, setNewProviderType] = useState("smtp");
 
   useEffect(() => {
     void fetchProviders();
@@ -251,12 +261,12 @@ const EmailOtpProviderSettings = ({ theme }) => {
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (providerType = newProviderType) => {
     try {
       setCreating(true);
       const payload = {
         providerName: "New Email Provider",
-        providerType: "smtp",
+        providerType: providerType || "smtp",
         status: "inactive",
       };
       const res = await createEmailProvider(payload);
@@ -265,7 +275,11 @@ const EmailOtpProviderSettings = ({ theme }) => {
       const newProviderId = res.data?.data?._id;
       if (newProviderId) {
         setEditingProviderId(newProviderId);
-        setProviderForm(res.data?.data || payload);
+        setProviderForm({
+          ...getEmailProviderDefaults(providerType),
+          ...res.data?.data,
+          ...payload,
+        });
       }
     } catch (err) {
       console.error(err);
@@ -277,7 +291,10 @@ const EmailOtpProviderSettings = ({ theme }) => {
 
   const beginEdit = (provider) => {
     setEditingProviderId(provider._id);
-    setProviderForm({ ...provider });
+    setProviderForm({
+      ...getEmailProviderDefaults(provider.providerType),
+      ...provider,
+    });
   };
 
   const cancelEdit = () => {
@@ -359,18 +376,31 @@ const EmailOtpProviderSettings = ({ theme }) => {
           </p>
         </div>
 
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-white hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {creating ? (
-            <RefreshCw className="h-4 w-4 animate-spin" />
-          ) : (
-            <PlusCircle size={16} />
-          )}
-          Add provider
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={newProviderType}
+            onChange={(e) => setNewProviderType(e.target.value)}
+            className={`${theme.input} rounded-xl border ${theme.border} px-3 py-2`}
+          >
+            {emailProviderTypes.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => handleCreate(newProviderType)}
+            disabled={creating}
+            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-white hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {creating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <PlusCircle size={16} />
+            )}
+            Add provider
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -459,13 +489,40 @@ const EmailOtpProviderSettings = ({ theme }) => {
                 <div
                   className={`mt-5 rounded-3xl border ${theme.border} p-5 dark:bg-gray-900/50 bg-slate-50`}
                 >
+                  {/* Provider type selector - allows admin to change provider type */}
+                  <div className="mb-4">
+                    <label
+                      className={`block text-sm font-semibold ${theme.text} mb-2`}
+                    >
+                      Provider Type
+                    </label>
+                    <select
+                      value={providerForm.providerType || "smtp"}
+                      onChange={(e) => {
+                        const newType = e.target.value;
+                        setProviderForm((prev) => ({
+                          ...prev,
+                          providerType: newType,
+                          ...getEmailProviderDefaults(newType),
+                        }));
+                      }}
+                      className={`${theme.input} w-full rounded-xl border ${theme.border} px-4 py-3`}
+                    >
+                      {emailProviderTypes.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {fields.map((field) => {
                       const key = `${editingProviderId}-${field.name}`;
                       const isSecret = field.secret;
                       const showSecret = showSecrets[key];
                       const value =
-                        providerForm[field.name] || field.value || "";
+                        providerForm[field.name] ?? field.value ?? "";
 
                       if (field.type === "select") {
                         return (

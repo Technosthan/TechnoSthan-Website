@@ -96,11 +96,13 @@ export const getAccessControlSettings = async (req, res) => {
   try {
     const settings = await Settings.findOne().lean();
     const publicAccessEnabled =
+      settings?.publicAccessEnabled != null
+        ? settings.publicAccessEnabled
+        : true;
+    const publicWebsiteEnabled =
       settings?.publicWebsiteEnabled != null
         ? settings.publicWebsiteEnabled
-        : settings?.publicAccessEnabled != null
-          ? settings.publicAccessEnabled
-          : true;
+        : publicAccessEnabled;
     const publicRoutes =
       settings?.publicRoutes != null
         ? settings.publicRoutes
@@ -123,13 +125,13 @@ export const getAccessControlSettings = async (req, res) => {
     const hideLoginButton =
       settings?.hideLoginButton != null
         ? settings.hideLoginButton
-        : publicAccessEnabled;
+        : publicWebsiteEnabled;
 
     res.json({
       success: true,
       data: {
         publicAccessEnabled,
-        publicWebsiteEnabled: publicAccessEnabled,
+        publicWebsiteEnabled,
         hideLoginButton,
         publicRoutes,
       },
@@ -145,6 +147,8 @@ export const getAccessControlSettings = async (req, res) => {
 
 export const updateAccessControlSettings = async (req, res) => {
   try {
+    console.log("Incoming settings update:", JSON.stringify(req.body, null, 2));
+
     const {
       publicAccessEnabled,
       publicWebsiteEnabled,
@@ -152,42 +156,59 @@ export const updateAccessControlSettings = async (req, res) => {
       publicRoutes,
     } = req.body || {};
 
-    const publicEnabledValue =
-      typeof publicWebsiteEnabled === "boolean"
-        ? publicWebsiteEnabled
-        : publicAccessEnabled;
-
-    if (typeof publicEnabledValue !== "boolean") {
+    if (
+      publicAccessEnabled != null &&
+      typeof publicAccessEnabled !== "boolean"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "publicAccessEnabled/publicWebsiteEnabled must be a boolean",
+        message: "publicAccessEnabled must be a boolean",
       });
     }
 
-    if (!Array.isArray(publicRoutes)) {
+    if (
+      publicWebsiteEnabled != null &&
+      typeof publicWebsiteEnabled !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "publicWebsiteEnabled must be a boolean",
+      });
+    }
+
+    if (publicRoutes != null && !Array.isArray(publicRoutes)) {
       return res.status(400).json({
         success: false,
         message: "publicRoutes must be an array of strings",
       });
     }
 
-    const normalizedRoutes = publicRoutes
-      .filter((route) => typeof route === "string")
-      .map((route) => route.trim())
-      .filter(Boolean);
+    const normalizedRoutes = Array.isArray(publicRoutes)
+      ? publicRoutes
+          .filter((route) => typeof route === "string")
+          .map((route) => route.trim())
+          .filter(Boolean)
+      : undefined;
+
+    const updatePayload = {
+      ...(publicAccessEnabled != null && {
+        publicAccessEnabled,
+      }),
+      ...(publicWebsiteEnabled != null && {
+        publicWebsiteEnabled,
+      }),
+      ...(typeof hideLoginButton === "boolean" && {
+        hideLoginButton,
+      }),
+      ...(normalizedRoutes != null && {
+        publicRoutes: normalizedRoutes,
+      }),
+    };
 
     const updatedSettings = await Settings.findOneAndUpdate(
       {},
       {
-        $set: {
-          publicAccessEnabled: publicEnabledValue,
-          publicWebsiteEnabled: publicEnabledValue,
-          hideLoginButton:
-            typeof hideLoginButton === "boolean"
-              ? hideLoginButton
-              : publicEnabledValue,
-          publicRoutes: normalizedRoutes,
-        },
+        $set: updatePayload,
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     ).lean();
@@ -197,6 +218,7 @@ export const updateAccessControlSettings = async (req, res) => {
       message: "Access control settings updated successfully",
       data: {
         publicAccessEnabled: updatedSettings.publicAccessEnabled,
+        publicWebsiteEnabled: updatedSettings.publicWebsiteEnabled,
         publicRoutes: updatedSettings.publicRoutes,
       },
     });

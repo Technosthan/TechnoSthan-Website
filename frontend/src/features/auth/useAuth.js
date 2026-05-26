@@ -65,10 +65,25 @@ export const useAuth = () => {
     setLoading(true);
     try {
       const res = await registerUser(data);
-      const { pendingUserId, contactType } = res.data.data;
+      const {
+        pendingUserId,
+        contactType,
+        nextStep,
+        missingContactType,
+        nextContactType,
+      } = res.data.data;
       setTempData({ pendingUserId, [contactType]: data.contact });
       setOtpMethod(contactType === "email" ? "email" : "sms");
-      return { pendingUserId, contactType };
+      const nextInputType =
+        nextStep === "input-second-field"
+          ? missingContactType ||
+            nextContactType ||
+            (contactType === "email" ? "phone" : "email")
+          : contactType;
+      setInputType(nextInputType);
+      setStep(nextStep || "verify-otp");
+      setInputValue(nextStep === "input-second-field" ? "" : data.contact);
+      return { pendingUserId, contactType, nextStep };
     } catch (error) {
       throw new Error(getErrorMessage(error));
     } finally {
@@ -230,12 +245,22 @@ export const useAuth = () => {
         return { token, user: userData };
       }
 
-      // If registration not finalized, move to second-field input to collect remaining contact
+      // If registration not finalized, move to the next step returned by the backend
       if (!innerData?.finalized && isRegister) {
-        setStep("input-second-field");
-        // Keep the verified contact type so the UI can ask for the missing contact
-        setInputType(otpMethod === "email" ? "email" : "phone");
-        setInputValue("");
+        const nextStep = innerData?.nextStep || "input-second-field";
+        const nextContactType =
+          innerData?.nextContactType ||
+          innerData?.missingContactType ||
+          (otpMethod === "email" ? "phone" : "email");
+
+        setStep(nextStep);
+        setInputType(nextContactType);
+
+        if (nextStep === "verify-otp") {
+          setInputValue(tempData[nextContactType] || inputValue || "");
+        } else {
+          setInputValue("");
+        }
       }
 
       return res.data;
