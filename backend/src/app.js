@@ -12,6 +12,7 @@ import adminRoutes from "./features/admin/admin.route.js";
 import settingsRoutes from "./features/settings/settings.route.js";
 import announcementsRoutes from "./features/announcements/announcements.route.js";
 import { sendEmail } from "./services/email/sendEmail.js";
+import { resolveEmailProvider } from "./features/admin/otpProvider.service.js";
 
 // Rate limiting
 import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
@@ -82,32 +83,38 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ✅ test route
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
+  const activeProvider = await resolveEmailProvider();
   res.send("API is running 🚀");
 });
 
-app.get("/api/health", (req, res) => {
+app.get("/api/health", async (req, res) => {
+  const activeProvider = await resolveEmailProvider();
   res.json({
     success: true,
     message: "API is running",
     timestamp: new Date().toISOString(),
-    resendConfigured: !!process.env.RESEND_API_KEY,
+    emailProviderConfigured: !!activeProvider || !!process.env.RESEND_API_KEY,
     emailFrom: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
   });
 });
 
 app.get("/api/health/email", async (req, res) => {
-  if (!process.env.RESEND_API_KEY) {
+  const activeProvider = await resolveEmailProvider();
+  if (!activeProvider && !process.env.RESEND_API_KEY) {
     return res.status(500).json({
       success: false,
-      message: "RESEND_API_KEY is not configured",
+      message:
+        "No active email provider configured and RESEND_API_KEY is not set",
     });
   }
 
   const healthData = {
     success: true,
-    message: "Resend API key is configured",
-    resendConfigured: true,
+    message: activeProvider
+      ? "Active email provider is configured"
+      : "RESEND_API_KEY is configured",
+    emailProviderConfigured: true,
     emailFrom: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
   };
 
