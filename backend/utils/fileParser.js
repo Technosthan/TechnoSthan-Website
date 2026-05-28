@@ -2,6 +2,10 @@
 const xlsx = require("xlsx");
 const fs = require("fs");
 const path = require("path");
+const {
+  normalizeHeaderWithAliases,
+  DEFAULT_FIELD_ALIASES,
+} = require("./fieldNormalization");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[\d\s+\-()\\.]{7,20}$/;
@@ -91,17 +95,29 @@ const mergeFieldValue = (target, key, rawValue) => {
   }
 };
 
-const normalizeRow = (row, headerMap, headerKeyMap, usedKeys) => {
+const normalizeRow = (
+  row,
+  headerMap,
+  headerKeyMap,
+  usedKeys,
+  fieldAliases = DEFAULT_FIELD_ALIASES,
+) => {
   const normalized = {};
   for (const rawKey of Object.keys(row)) {
     const originalLabel = normalizeHeader(rawKey);
-    const baseKey = normalizeKey(originalLabel) || "field";
+
+    // Apply alias normalization first
+    const aliasedLabel = normalizeHeaderWithAliases(
+      originalLabel,
+      fieldAliases,
+    );
+    const baseKey = normalizeKey(aliasedLabel) || "field";
 
     let key = headerKeyMap[baseKey];
     if (!key) {
       key = buildUniqueKey(baseKey, usedKeys);
       headerKeyMap[baseKey] = key;
-      if (!headerMap[key]) headerMap[key] = originalLabel || key;
+      if (!headerMap[key]) headerMap[key] = aliasedLabel || key;
     }
 
     mergeFieldValue(normalized, key, row[rawKey]);
@@ -118,18 +134,25 @@ const buildRowFromValues = (
   headerMap,
   headerKeyMap,
   usedKeys,
+  fieldAliases = DEFAULT_FIELD_ALIASES,
 ) => {
   const normalized = {};
   for (let index = 0; index < headers.length; index += 1) {
     const rawHeader = normalizeHeader(headers[index]);
     if (!rawHeader) continue;
 
-    const baseKey = normalizeKey(rawHeader) || "field";
+    // Apply alias normalization first
+    const aliasedLabel = normalizeHeaderWithAliases(
+      rawHeader,
+      fieldAliases,
+    );
+    const baseKey = normalizeKey(aliasedLabel) || "field";
+
     let key = headerKeyMap[baseKey];
     if (!key) {
       key = buildUniqueKey(baseKey, usedKeys);
       headerKeyMap[baseKey] = key;
-      if (!headerMap[key]) headerMap[key] = rawHeader || key;
+      if (!headerMap[key]) headerMap[key] = aliasedLabel || key;
     }
 
     mergeFieldValue(normalized, key, values[index]);
@@ -137,7 +160,10 @@ const buildRowFromValues = (
   return normalized;
 };
 
-const parseCSV = (filePath) =>
+const parseCSV = (
+  filePath,
+  fieldAliases = DEFAULT_FIELD_ALIASES,
+) =>
   new Promise((resolve, reject) => {
     const results = [];
     const headerMap = {};
@@ -160,6 +186,7 @@ const parseCSV = (filePath) =>
           headerMap,
           headerKeyMap,
           usedKeys,
+          fieldAliases,
         );
 
         if (Object.keys(normalized).length) results.push(normalized);
@@ -170,7 +197,10 @@ const parseCSV = (filePath) =>
       .on("error", reject);
   });
 
-const parseExcel = (filePath) => {
+const parseExcel = (
+  filePath,
+  fieldAliases = DEFAULT_FIELD_ALIASES,
+) => {
   const wb = xlsx.readFile(filePath);
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const rawRows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "" });
@@ -190,6 +220,7 @@ const parseExcel = (filePath) => {
       headerMap,
       headerKeyMap,
       usedKeys,
+      fieldAliases,
     );
   });
   return {
@@ -198,10 +229,15 @@ const parseExcel = (filePath) => {
   };
 };
 
-const parseFile = async (filePath, originalName) => {
+const parseFile = async (
+  filePath,
+  originalName,
+  fieldAliases = DEFAULT_FIELD_ALIASES,
+) => {
   const ext = path.extname(originalName).toLowerCase();
-  if (ext === ".csv") return parseCSV(filePath);
-  if ([".xlsx", ".xls"].includes(ext)) return parseExcel(filePath);
+  if (ext === ".csv") return parseCSV(filePath, fieldAliases);
+  if ([".xlsx", ".xls"].includes(ext))
+    return parseExcel(filePath, fieldAliases);
   throw new Error("Unsupported file format");
 };
 

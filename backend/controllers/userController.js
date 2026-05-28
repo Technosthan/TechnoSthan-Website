@@ -5,6 +5,13 @@ const SystemSettings = require("../models/SystemSettings");
 const { parseFile, extractFields } = require("../utils/fileParser");
 const { sendEmailsInBatches } = require("../services/emailService");
 const { log } = require("../utils/logger");
+const {
+  calculateMergeScore,
+  buildFieldWeights,
+  valuesMatch,
+  DEFAULT_FIELD_WEIGHTS,
+  DEFAULT_MERGE_THRESHOLD,
+} = require("../utils/fieldNormalization");
 
 const normalizeData = (data) => {
   if (!data) return {};
@@ -127,52 +134,26 @@ const isExactDuplicate = (existingData, incomingData) => {
   return true;
 };
 
-const isSameUser = (existingData, incomingData) => {
-  const existingEmails = getNormalizedValues(existingData, "email");
+const isSameUserDynamic = (
+  existingData,
+  incomingData,
+  fieldWeights = DEFAULT_FIELD_WEIGHTS,
+  mergeThreshold = DEFAULT_MERGE_THRESHOLD,
+) => {
+  // Build field types map for normalization
+  const fieldTypes = {};
+  Object.keys(fieldWeights).forEach((key) => {
+    fieldTypes[key] = key; // Field type = field name for now
+  });
 
-  const incomingEmails = getNormalizedValues(incomingData, "email");
-
-  const existingNames = getNormalizedValues(existingData, "name");
-
-  const incomingNames = getNormalizedValues(incomingData, "name");
-
-  const existingPhones = [
-    ...getNormalizedValues(existingData, "phone"),
-
-    ...getNormalizedValues(existingData, "mobile"),
-  ];
-
-  const incomingPhones = [
-    ...getNormalizedValues(incomingData, "phone"),
-
-    ...getNormalizedValues(incomingData, "mobile"),
-  ];
-
-  const emailMatched = incomingEmails.some((email) =>
-    existingEmails.includes(email),
+  const score = calculateMergeScore(
+    existingData,
+    incomingData,
+    fieldWeights,
+    fieldTypes,
   );
 
-  const nameMatched = incomingNames.some((name) =>
-    existingNames.includes(name),
-  );
-
-  const phoneMatched = incomingPhones.some((phone) =>
-    existingPhones.includes(phone),
-  );
-
-  // RULE 1
-  // same name + same email
-  if (nameMatched && emailMatched) {
-    return true;
-  }
-
-  // RULE 2
-  // same name + same phone
-  if (nameMatched && phoneMatched) {
-    return true;
-  }
-
-  return false;
+  return score >= mergeThreshold;
 };
 
 const mergeDataRecords = (existingData, incomingData) => {
@@ -324,48 +305,39 @@ const syncHeaderConfig = async (userId, fileHeaders) => {
 const buildCandidateQuery = (incoming, userId) => {
   const conditions = [];
 
-  const emails = [...normalizeValue(incoming.email)];
+  // Search all non-empty fields in incoming data
+  // This is now dynamic - works with ANY fields, not just email/phone/name
+  Object.entries(incoming).forEach(([key, value]) => {
+    if (!value) return;
 
-  const phones = [
-    ...normalizeValue(incoming.phone),
-    ...normalizeValue(incoming.mobile),
-  ];
-
-  const names = [...normalizeValue(incoming.name)];
-
-  emails.forEach((email) => {
-    conditions.push({
-      email: email.toLowerCase(),
-    });
-
-    conditions.push({
-      "data.email": email.toLowerCase(),
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach((v) => {
+      if (v && typeof v === "string") {
+        const normalizedVal = v.toLowerCase().trim();
+        // Search both flat fields and nested data fields
+        conditions.push({ [`data.${key}`]: normalizedVal });
+      }
     });
   });
 
-  phones.forEach((phone) => {
-    conditions.push({
-      phone,
+  // If we have high-confidence identity fields, add them too
+  if (incoming.email) {
+    const emails = normalizeValue(incoming.email);
+    emails.forEach((email) => {
+      conditions.push({ email: email.toLowerCase() });
     });
+  }
 
-    conditions.push({
-      "data.phone": phone,
-    });
+  if (incoming.phone) {
+    conditions.push({ phone: normalizeValue(incoming.phone)[0] });
+  }
 
-    conditions.push({
-      "data.mobile": phone,
+  if (incoming.name) {
+    const names = normalizeValue(incoming.name);
+    names.forEach((name) => {
+      conditions.push({ name: name.toLowerCase() });
     });
-  });
-
-  names.forEach((name) => {
-    conditions.push({
-      name: name.toLowerCase(),
-    });
-
-    conditions.push({
-      "data.name": name.toLowerCase(),
-    });
-  });
+  }
 
   return {
     uploadedBy: userId,
@@ -382,9 +354,23 @@ const uploadContacts = async (req, res, next) => {
   }
 
   try {
+    // Load system settings for field aliases and weights
+    const settings = (await SystemSettings.findOne()) || {};
+    const systemFieldAliases =
+      settings.fieldAliases instanceof Map
+        ? Object.fromEntries(settings.fieldAliases)
+        : settings.fieldAliases || DEFAULT_FIELD_ALIASES;
+    const fieldWeights =
+      settings.fieldWeights instanceof Map
+        ? Object.fromEntries(settings.fieldWeights)
+        : settings.fieldWeights || DEFAULT_FIELD_WEIGHTS;
+    const mergeThreshold = settings.mergeThreshold || DEFAULT_MERGE_THRESHOLD;
+
+    // Parse file with dynamic field aliases only
     const { rows, headers } = await parseFile(
       req.file.path,
       req.file.originalname,
+      systemFieldAliases,
     );
 
     fs.unlinkSync(req.file.path);
@@ -398,15 +384,11 @@ const uploadContacts = async (req, res, next) => {
       });
     }
 
-    const settings = (await SystemSettings.findOne()) || {
-      requireApproval: false,
-    };
+    // Settings already loaded above - use for requireApproval
+    const requireApproval = settings.requireApproval || false;
 
-    const initialStatus = settings.requireApproval
-      ? "waiting_approval"
-      : "pending";
-
-    const initialMessage = settings.requireApproval
+    const initialStatus = requireApproval ? "waiting_approval" : "pending";
+    const initialMessage = requireApproval
       ? "Waiting for Admin Approval"
       : "Not Sent Yet";
 
@@ -417,8 +399,13 @@ const uploadContacts = async (req, res, next) => {
     let newRecords = 0;
 
     const pendingSendIds = [];
-
     const newContacts = [];
+
+    // Build field weights for this batch
+    const batchFieldWeights = buildFieldWeights(
+      headers.map((h) => h.key),
+      fieldWeights,
+    );
 
     for (const row of validRows) {
       const incoming = {
@@ -440,7 +427,6 @@ const uploadContacts = async (req, res, next) => {
       }
 
       const candidateQuery = buildCandidateQuery(incoming, req.user._id);
-
       const candidates = await Contact.find(candidateQuery).lean();
 
       let existing = null;
@@ -451,21 +437,27 @@ const uploadContacts = async (req, res, next) => {
 
         const existingPayload = {
           ...existingData,
-
           email: candidate.email || existingData.email || "",
-
           phone: candidate.phone || existingData.phone || "",
-
           name: candidate.name || existingData.name || "",
         };
 
+        // Exact duplicate check (all fields identical)
         if (isExactDuplicate(existingPayload, incoming)) {
           exactDuplicate = true;
           existing = candidate;
           break;
         }
 
-        if (isSameUser(existingPayload, incoming)) {
+        // Dynamic merge scoring - replaces hardcoded isSameUser logic
+        if (
+          isSameUserDynamic(
+            existingPayload,
+            incoming,
+            batchFieldWeights,
+            mergeThreshold,
+          )
+        ) {
           existing = candidate;
           break;
         }
@@ -481,13 +473,10 @@ const uploadContacts = async (req, res, next) => {
 
         await Contact.findByIdAndUpdate(existing._id, {
           data: mergedData,
-
           searchText: buildSearchText(mergedData),
-
           headerKeys: Array.from(
             new Set([
               ...(existing.headerKeys || []),
-
               ...Object.keys(mergedData),
             ]),
           ),
@@ -495,7 +484,7 @@ const uploadContacts = async (req, res, next) => {
 
         mergedRecords += 1;
 
-        if (!settings.requireApproval && existing.status === "pending") {
+        if (!requireApproval && existing.status === "pending") {
           pendingSendIds.push(existing._id);
         }
 
@@ -504,26 +493,18 @@ const uploadContacts = async (req, res, next) => {
 
       const contact = await Contact.create({
         email: incoming.email || "",
-
         phone: incoming.phone || incoming.mobile || "",
-
         name: incoming.name || "",
-
         data: incoming,
-
         headerKeys: Object.keys(incoming),
-
         searchText: buildSearchText(incoming),
-
         uploadedBy: req.user._id,
-
         status: initialStatus,
-
         message: initialMessage,
       });
 
       newContacts.push(contact);
-      if (!settings.requireApproval) pendingSendIds.push(contact._id);
+      if (!requireApproval) pendingSendIds.push(contact._id);
 
       newRecords += 1;
     }
@@ -534,7 +515,7 @@ const uploadContacts = async (req, res, next) => {
       `Uploaded ${newRecords} new contacts, merged ${mergedRecords}, skipped ${skippedDuplicates}`,
     );
 
-    if (!settings.requireApproval && pendingSendIds.length) {
+    if (!requireApproval && pendingSendIds.length) {
       setImmediate(async () => {
         try {
           const contactsToSend = await Contact.find({
