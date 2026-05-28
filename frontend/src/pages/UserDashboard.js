@@ -1,4 +1,10 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
+﻿import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import StatsRow from "../components/StatsRow";
@@ -32,6 +38,8 @@ export default function UserDashboard() {
   const [pageLimit] = useState(50);
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState(-1);
+  const pollingRef = useRef(null);
+  const lastSnapshotRef = useRef("");
 
   const fetchStatus = useCallback(
     async (search = "", page = 1) => {
@@ -54,50 +62,103 @@ export default function UserDashboard() {
         });
         setHeaderLabels(labels);
         setHeaderEdits({});
-        setStats(res.data.stats || {
-          pending: 0,
-          sent: 0,
-          failed: 0,
-          waiting_approval: 0,
-        });
+        setStats(
+          res.data.stats || {
+            pending: 0,
+            sent: 0,
+            failed: 0,
+            waiting_approval: 0,
+          },
+        );
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     },
-    [pageLimit, sortBy, sortOrder]
+    [pageLimit, sortBy, sortOrder],
   );
 
   useEffect(() => {
-    fetchStatus("", 1);
-  }, [fetchStatus]);
+    const shouldPoll = stats.pending > 0 || stats.waiting_approval > 0;
 
- useEffect(() => {
-  if (
-    stats.pending > 0 ||
-    stats.waiting_approval > 0
-  ) {
+    if (!shouldPoll) {
+      setPolling(false);
+
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+
+        pollingRef.current = null;
+      }
+
+      return;
+    }
+
     setPolling(true);
 
-    const id = setInterval(() => {
-      fetchStatus(
-        searchTerm,
-        currentPage,
-      );
+    if (pollingRef.current) return;
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const params = {
+          page: currentPage,
+          limit: pageLimit,
+        };
+
+        if (searchTerm) params.search = searchTerm;
+
+        if (sortBy) params.sortBy = sortBy;
+
+        if (sortOrder) params.sortOrder = sortOrder;
+
+        const res = await getMyStatus(params);
+
+        const snapshot = JSON.stringify({
+          contacts: res.data.data?.contacts || [],
+
+          stats: res.data.stats || {},
+        });
+
+        // ONLY UPDATE UI IF DATA CHANGED
+        if (snapshot !== lastSnapshotRef.current) {
+          lastSnapshotRef.current = snapshot;
+
+          setContacts(res.data.data?.contacts || []);
+
+          setHeaders(res.data.data?.headers || []);
+
+          setStats(
+            res.data.stats || {
+              pending: 0,
+              sent: 0,
+              failed: 0,
+              waiting_approval: 0,
+            },
+          );
+
+          setTotalRecords(res.data.pagination?.total || 0);
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }, 1000);
 
-    return () => clearInterval(id);
-  }
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
 
-  setPolling(false);
-}, [
-  stats.pending,
-  stats.waiting_approval,
-  fetchStatus,
-  searchTerm,
-  currentPage,
-]);
+        pollingRef.current = null;
+      }
+    };
+  }, [
+    stats.pending,
+    stats.waiting_approval,
+    currentPage,
+    searchTerm,
+    pageLimit,
+    sortBy,
+    sortOrder,
+  ]);
 
   const handleDelete = async () => {
     if (!window.confirm("Delete all your contacts? This cannot be undone."))
@@ -125,7 +186,7 @@ export default function UserDashboard() {
     setProgress(0);
     try {
       const res = await uploadFile(fd, (e) =>
-        setProgress(Math.round((e.loaded * 100) / e.total))
+        setProgress(Math.round((e.loaded * 100) / e.total)),
       );
       toast.success(res.data.message);
       setFile(null);
@@ -495,9 +556,7 @@ export default function UserDashboard() {
                   key={page}
                   onClick={() => handlePageChange(page)}
                   className={
-                    page === currentPage
-                      ? "btn btn-primary"
-                      : "btn btn-ghost"
+                    page === currentPage ? "btn btn-primary" : "btn btn-ghost"
                   }
                   style={{
                     padding: "6px 12px",

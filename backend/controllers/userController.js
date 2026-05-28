@@ -128,40 +128,47 @@ const isExactDuplicate = (existingData, incomingData) => {
 };
 
 const isSameUser = (existingData, incomingData) => {
-  const keys = new Set([
-    ...Object.keys(existingData || {}),
-    ...Object.keys(incomingData || {}),
-  ]);
+  const existingEmails = getNormalizedValues(existingData, "email");
 
-  let sameCount = 0;
-  let differentCount = 0;
+  const incomingEmails = getNormalizedValues(incomingData, "email");
 
-  for (const key of keys) {
-    const existingValues = getNormalizedValues(existingData, key);
+  const existingNames = getNormalizedValues(existingData, "name");
 
-    const incomingValues = getNormalizedValues(incomingData, key);
+  const incomingNames = getNormalizedValues(incomingData, "name");
 
-    if (!existingValues.length || !incomingValues.length) {
-      continue;
-    }
+  const existingPhones = [
+    ...getNormalizedValues(existingData, "phone"),
 
-    const matched = incomingValues.some((value) =>
-      existingValues.includes(value),
-    );
+    ...getNormalizedValues(existingData, "mobile"),
+  ];
 
-    if (matched) {
-      sameCount++;
-    } else {
-      differentCount++;
-    }
+  const incomingPhones = [
+    ...getNormalizedValues(incomingData, "phone"),
+
+    ...getNormalizedValues(incomingData, "mobile"),
+  ];
+
+  const emailMatched = incomingEmails.some((email) =>
+    existingEmails.includes(email),
+  );
+
+  const nameMatched = incomingNames.some((name) =>
+    existingNames.includes(name),
+  );
+
+  const phoneMatched = incomingPhones.some((phone) =>
+    existingPhones.includes(phone),
+  );
+
+  // RULE 1
+  // same name + same email
+  if (nameMatched && emailMatched) {
+    return true;
   }
 
-  // exact duplicate already handled separately
-
-  // merge only if most fields same
-  // and only few fields different
-
-  if (sameCount >= 2 && differentCount <= 1) {
+  // RULE 2
+  // same name + same phone
+  if (nameMatched && phoneMatched) {
     return true;
   }
 
@@ -527,65 +534,52 @@ const uploadContacts = async (req, res, next) => {
       `Uploaded ${newRecords} new contacts, merged ${mergedRecords}, skipped ${skippedDuplicates}`,
     );
 
-   if (
-  !settings.requireApproval &&
-  pendingSendIds.length
-) {
-  setImmediate(async () => {
-    try {
-      const contactsToSend =
-        await Contact.find({
-          _id: {
-            $in: pendingSendIds,
-          },
-        });
+    if (!settings.requireApproval && pendingSendIds.length) {
+      setImmediate(async () => {
+        try {
+          const contactsToSend = await Contact.find({
+            _id: {
+              $in: pendingSendIds,
+            },
+          });
 
-      await sendEmailsInBatches(
-        contactsToSend,
-      );
+          await sendEmailsInBatches(contactsToSend);
 
-      await Contact.updateMany(
-        {
-          _id: {
-            $in: pendingSendIds,
-          },
-        },
-        {
-          $set: {
-            status: "sent",
-            message:
-              "Mail Sent Successfully",
-            sentAt: new Date(),
-          },
-        },
-      );
+          await Contact.updateMany(
+            {
+              _id: {
+                $in: pendingSendIds,
+              },
+            },
+            {
+              $set: {
+                status: "sent",
+                message: "Mail Sent Successfully",
+                sentAt: new Date(),
+              },
+            },
+          );
 
-      console.log(
-        "Emails sent successfully",
-      );
-    } catch (emailError) {
-      console.error(
-        "Email sending failed:",
-        emailError,
-      );
+          console.log("Emails sent successfully");
+        } catch (emailError) {
+          console.error("Email sending failed:", emailError);
 
-      await Contact.updateMany(
-        {
-          _id: {
-            $in: pendingSendIds,
-          },
-        },
-        {
-          $set: {
-            status: "failed",
-            message:
-              "Email Sending Failed",
-          },
-        },
-      );
+          await Contact.updateMany(
+            {
+              _id: {
+                $in: pendingSendIds,
+              },
+            },
+            {
+              $set: {
+                status: "failed",
+                message: "Email Sending Failed",
+              },
+            },
+          );
+        }
+      });
     }
-  });
-}
 
     res.json({
       success: true,
