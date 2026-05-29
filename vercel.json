@@ -2,12 +2,12 @@
   "redirects": [
     {
       "source": "/services/technosthan-agritech",
-      "destination": "https://technosthan-agritech.vercel.app",
+      "destination": "https://agritech.technosthan.com",
       "permanent": false
     },
     {
       "source": "/services/technosthan-agritech/:path*",
-      "destination": "https://technosthan-agritech.vercel.app/:path*",
+      "destination": "https://agritech.technosthan.com/:path*",
       "permanent": false
     }
   ],
