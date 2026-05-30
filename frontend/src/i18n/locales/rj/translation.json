@@ -1,0 +1,155 @@
+{
+  "navbar": {
+    "home": "घर",
+    "about": "हमारे बारे में",
+    "contact": "संपर्क",
+    "wiki": "AgriTech विकी",
+    "aiChat": "AI चैट",
+    "adminPanel": "एडमिन पैनल",
+    "login": "लॉगिन",
+    "logout": "लॉगआउट"
+  },
+  "common": {
+    "publicAccessEnabled": "पब्लिक पहुँच चालू है",
+    "languageTitle": "भासा",
+    "welcome": "स्वागत है, {{name}}",
+    "logout": "लॉगआउट"
+  },
+  "buttons": {
+    "languageEnglish": "English",
+    "languageHindi": "हिन्दी",
+    "languageRajasthani": "Rajasthani",
+    "uploadFiles": "फाइल अपलोड करो"
+  },
+  "home": {
+    "hero": {
+      "badge": "एआई चालित खेती प्लेटफ़ॉर्म",
+      "titleLine1": "स्मार्ट खेती",
+      "titleLine2": "भारत री खातर 🇮🇳",
+      "subtitle": "आधुनिक खेती री तकनीक सिखो, खेत रो प्रदर्शन देखो, AgriTech इनोवेशन खोजो अणे AI टूल सूं उत्पादकता बढ़ाओ।",
+      "featureSmartFarming": "स्मार्ट खेती",
+      "featureAISolutions": "AI समाधान",
+      "featureFarmAnalytics": "खेत आँकड़ा",
+      "exploreWiki": "विकी देखो",
+      "viewDashboard": "डैशबोर्ड देखो"
+    },
+    "features": {
+      "badge": "TECHNOSTHAN सेवावां",
+      "title": "हमारी सेवावां 🚀",
+      "agriTechTitle": "AgriTech",
+      "agriTechSubtitle": "स्मार्ट खेती इकोसिस्टम",
+      "serviceWiki": "विकी",
+      "serviceQuiz": "क्विज़",
+      "serviceAIChatbot": "AI चैटबोट",
+      "serviceProgress": "प्रगति",
+      "otherServiceInnovationHub": "इनोवेशन हब",
+      "otherServiceITDevelopment": "आईटी विकास",
+      "otherServiceHospitality": "हॉस्पिटैलिटी"
+    },
+    "aboutSection": {
+      "badge": "भरोसेमंद AgriTech प्लेटफ़ॉर्म",
+      "titleLine1": "किसानां ने मजबूत बनावणो",
+      "titleLine2": "अणे छात्र 🌾",
+      "subtitle": "आधुनिक तकनीक सूं कृषि जोके भलका किसान अणे छात्र ने स्मार्ट, तेज़ अणे टिकाऊ बनावणों है।",
+      "cardTitle": "स्मार्ट खेती",
+      "cardDescription": "आधुनिक कृषि समाधान",
+      "learnMore": "और जाणो"
+    },
+    "contactSection": {
+      "badge": "स्मार्ट खेती शुरू करो",
+      "titleLine1": "स्मार्ट खेती",
+      "titleLine2": "यहाँ सूं शुरू होवे है 🌱",
+      "description": "AgriTech सीखो, AI उपकरण देखो, खेती री प्रगति देखो, अणे TECHNOSTHAN AGRITECH सूं कृषि उत्पादकता बढ़ाओ।",
+      "button": "AgriTech देखो",
+      "cardTitle": "AI कृषि",
+      "cardSubtitle": "स्मार्ट अणे टिकाऊ खेती",
+      "featureCropMonitoring": "स्मार्ट फसल मॉनिटरिंग",
+      "featureFarmingSolutions": "AI खेती समाधान",
+      "featureSustainableAgriculture": "टिकाऊ कृषि"
+    }
+  },
+  "about": {
+    "pageTitle": "TECHNOSTHAN AGRITECH बारे में",
+    "description1": "TECHNOSTHAN AGRITECH एक नवीन AgriTech प्लेटफ़ॉर्म है जिको मकसद किसानां अणे छात्रां ने आधुनिक कृषि ज्ञान अणे AI चालित टूल सूं समर्थ बनावणो है।",
+    "description2": "हमारो मिशन पारंपरिक खेती अणे उन्नत तकनीक बीच रो फासलो घटावणो है, जासां भारत अणे इसके बाहिर टिकाऊ अणे उत्पादक कृषि संभव हो सके।",
+    "description3": "हमारा प्लेटफ़ॉर्म यूज़र्स ने स्मार्ट खेती तकनीकां बारे में सिखावै है, क्विज़ लेवां खाती ज्ञान परखणो है, त्वरित सलाह खाती AI चैटबोट सूं बातचीत कर सकै है, अणे डेटा-आधारित खेती अभ्यास लागू कर सकै है। हम मानै है के खेती समुदाय में हर किसी खातर टेक्नोलॉजी सुलभ होणी चाहिए।"
+  },
+  "contact": {
+    "pageTitle": "संपर्क करें",
+    "description": "कोई सवाल या सुझाव हो तो हमें agritech@technosthan.com पर संपर्क करो। हम थारी स्मार्ट खेती यात्रा मै मदद करवा खातर यहाँ हैं!",
+    "emailLabel": "ईमेल:",
+    "phoneLabel": "फ़ोन:",
+    "addressLabel": "पता:",
+    "email": "agritech@technosthan.com",
+    "phone": "+91-9477288288",
+    "address": "47/1 न्यू संगानेर रोड, सोडाला, जयपुर, राजस्थान 302019"
+  },
+  "aiChat": {
+    "sidebar": {
+      "newChat": "न्यू चैट",
+      "startNewConversation": "नई बातचीत शुरू करो..."
+    },
+    "header": {
+      "title": "AI सहायक"
+    },
+    "empty": {
+      "heading": "बातचीत शुरू करो",
+      "description": "खेती, कृषि, या फसल प्रबंधन बारे में कुछ भी पूछो!"
+    },
+    "messages": {
+      "emptyContent": "संदेश सामग्री उपलब्ध न्हीं है"
+    },
+    "status": {
+      "thinking": "सोच रो हूं..."
+    },
+    "errors": {
+      "unableLoadConversations": "बातचीत लोड करबा में नाकाम। कृपया पेज रीफ्रेश करो।",
+      "unableLoadMessages": "इस बातचीत री संदेश लोड करबा में नाकाम।",
+      "unableCreateChat": "नई चैट सत्र बनावबा में नाकाम। कृपया फेर कोशिश करो।",
+      "noResponse": "AI सूं कोई जवाब न मिल्यो। कृपया फेर कोशिश करो।",
+      "failedSend": "संदेश भेजबा में नाकाम। कृपया फेर कोशिश करो।",
+      "deleteFailed": "बातचीत हटावबा में नाकाम। कृपया फेर कोशिश करो।",
+      "describeFile": "कृपया बतावो के थम फ़ाइल सूं के करवा चाहो हो"
+    },
+    "suggestions": {
+      "summarizeFile": "इस फ़ाइल रो सारांश बनावो",
+      "analyzeData": "इस डाटा रो विश्लेषण करो",
+      "explainContent": "इस सामग्री ने समझावो"
+    },
+    "placeholders": {
+      "file": "इस फ़ाइल सूं थम के करवा चाहो हो, बतावो...",
+      "question": "खेती, फसल, मौसम, या कोई कृषि सवाल पूचो..."
+    },
+    "footerNote": "Enter दबाओ भेजबा खातर • फाइलां खातर + दबावो • आवाज़ इनपुट खातर माइक्रोफ़ोन दबावो",
+    "file": {
+      "processed": "मैं थारी फ़ाइल \"{{fileName}}\" को प्रोसेस कर लियो।"
+    },
+    "alerts": {
+      "voiceNotSupported": "इ ब्राउज़र में वॉइस रिकग्निशन सपोर्टेड नइ है।",
+      "unsupportedFileType": "फ़ाइल टाइप {{fileType}} सपोर्टेड नइ है। कृपया इमेज, पीडीएफ, या डॉक्युमेंट अपलोड करो।",
+      "fileTooLarge": "फ़ाइल {{fileName}} बहुत बड़ी है। मैक्सिमम साइज़ 10MB है।"
+    }
+  },
+  "footer": {
+    "brandName": "TECHNOSTHAN",
+    "brandTagline": "AGRItech",
+    "tagline": "एआई, नवाचार अणे आधुनिक खेती समाधान सूं स्मार्ट कृषि ने समर्थ बनावणो।",
+    "quickLinks": "क्विक लिंक",
+    "services": "सेवावां",
+    "serviceAIChatbot": "AI चैटबोट",
+    "serviceSmartFarming": "स्मार्ट खेती",
+    "serviceQuizLearning": "क्विज़ अणे सीखणो",
+    "serviceProgressTracking": "प्रगति ट्रैकिंग",
+    "contact": "संपर्क",
+    "email": "agritech@technosthan.com",
+    "phone": "+91 9477288288",
+    "location": "जयपुर, राजस्थान, भारत",
+    "privacyPolicy": "गोपनीयता नीति",
+    "termsOfService": "सेवा शर्तां",
+    "rights": "© 2026 TECHNOSTHAN AGRITECH। सभी अधिकार सुरक्षित।",
+    "linkHome": "घर",
+    "linkAbout": "हमारे बारे में",
+    "linkContact": "संपर्क",
+    "linkWiki": "AgriTech विकी"
+  }
+}

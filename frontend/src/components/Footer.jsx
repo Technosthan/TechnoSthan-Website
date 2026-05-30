@@ -1,15 +1,11 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 
-import {
-  Leaf,
-  Mail,
-  Phone,
-  MapPin,
-  ArrowUpRight,
-} from "lucide-react";
+import { Leaf, Mail, Phone, MapPin, ArrowUpRight } from "lucide-react";
 
 const Footer = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -31,44 +27,42 @@ const Footer = () => {
 
               <div>
                 <h3 className="text-xl font-bold text-white">
-                  TECHNOSTHAN
+                  {t("footer.brandName")}
                 </h3>
 
                 <p className="text-sm text-green-400">
-                  AGRITECH
+                  {t("footer.brandTagline")}
                 </p>
               </div>
             </div>
 
             <p className="text-sm leading-relaxed text-gray-400 max-w-sm">
-              Empowering smart agriculture with AI,
-              innovation, and modern farming
-              solutions for farmers and students.
+              {t("footer.tagline")}
             </p>
           </div>
 
           {/* LINKS */}
           <div>
             <h4 className="text-white font-semibold mb-5">
-              Quick Links
+              {t("footer.quickLinks")}
             </h4>
 
             <ul className="space-y-3 text-sm">
               {[
                 {
-                  name: "Home",
+                  name: t("footer.linkHome"),
                   path: "/",
                 },
                 {
-                  name: "About",
+                  name: t("footer.linkAbout"),
                   path: "/about",
                 },
                 {
-                  name: "Contact",
+                  name: t("footer.linkContact"),
                   path: "/contact",
                 },
                 {
-                  name: "AgriTech Wiki",
+                  name: t("footer.linkWiki"),
                   path: "/AgriTech Wiki",
                 },
               ].map((item, index) => (
@@ -92,24 +86,24 @@ const Footer = () => {
           {/* SERVICES */}
           <div>
             <h4 className="text-white font-semibold mb-5">
-              Services
+              {t("footer.services")}
             </h4>
 
             <ul className="space-y-3 text-sm text-gray-400">
               <li className="hover:text-green-400 transition cursor-pointer">
-                AI Chatbot
+                {t("footer.serviceAIChatbot")}
               </li>
 
               <li className="hover:text-green-400 transition cursor-pointer">
-                Smart Farming
+                {t("footer.serviceSmartFarming")}
               </li>
 
               <li className="hover:text-green-400 transition cursor-pointer">
-                Quiz & Learning
+                {t("footer.serviceQuizLearning")}
               </li>
 
               <li className="hover:text-green-400 transition cursor-pointer">
-                Progress Tracking
+                {t("footer.serviceProgressTracking")}
               </li>
             </ul>
           </div>
@@ -117,41 +111,26 @@ const Footer = () => {
           {/* CONTACT */}
           <div>
             <h4 className="text-white font-semibold mb-5">
-              Contact
+              {t("footer.contact")}
             </h4>
 
             <ul className="space-y-4 text-sm text-gray-400">
               <li className="flex items-start gap-3">
-                <Mail
-                  size={16}
-                  className="text-green-400 mt-0.5"
-                />
+                <Mail size={16} className="text-green-400 mt-0.5" />
 
-                <span>
-                  agritech@technosthan.com
-                </span>
+                <span>{t("footer.email")}</span>
               </li>
 
               <li className="flex items-start gap-3">
-                <Phone
-                  size={16}
-                  className="text-green-400 mt-0.5"
-                />
+                <Phone size={16} className="text-green-400 mt-0.5" />
 
-                <span>
-                  +91 9477288288
-                </span>
+                <span>{t("footer.phone")}</span>
               </li>
 
               <li className="flex items-start gap-3">
-                <MapPin
-                  size={16}
-                  className="text-green-400 mt-0.5"
-                />
+                <MapPin size={16} className="text-green-400 mt-0.5" />
 
-                <span>
-                  Jaipur, Rajasthan, India
-                </span>
+                <span>{t("footer.location")}</span>
               </li>
             </ul>
           </div>
@@ -160,8 +139,7 @@ const Footer = () => {
         {/* BOTTOM */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6">
           <p className="text-sm text-gray-500 text-center md:text-left">
-            © 2026 TECHNOSTHAN AGRITECH. All
-            rights reserved.
+            {t("footer.rights")}
           </p>
 
           <div className="flex items-center gap-5 text-sm">
@@ -169,14 +147,14 @@ const Footer = () => {
               to="/privacy"
               className="text-gray-500 hover:text-green-400 transition"
             >
-              Privacy Policy
+              {t("footer.privacyPolicy")}
             </Link>
 
             <Link
               to="/terms"
               className="text-gray-500 hover:text-green-400 transition"
             >
-              Terms of Service
+              {t("footer.termsOfService")}
             </Link>
           </div>
         </div>

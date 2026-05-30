@@ -47,7 +47,18 @@ import {
   getUserServicePermissionByUserId,
   updateUserServicePermissions,
   bulkUpdateUserServicePermissions,
+  generateAdminTelegramProfileLinkingCode,
+  getAdminTelegramStatus,
+  unlinkAdminTelegramProfile,
 } from "./admin.controller.js";
+import {
+  createForm,
+  getAdminForms,
+  updateForm,
+  deleteForm,
+  getFormSubmissions,
+  updateSubmissionStatus,
+} from "../form/form.controller.js";
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
 import adminOnly from "../../shared/middleware/adminOnly.js";
@@ -118,6 +129,10 @@ router.post("/user-service-permissions/bulk", bulkUpdateUserServicePermissions);
 
 router.post("/test-whatsapp", testWhatsappConnection);
 router.post("/test-telegram", testTelegramConnection);
+// Admin self-service Telegram linking
+router.post("/telegram/generate-code", generateAdminTelegramProfileLinkingCode);
+router.get("/telegram/status", getAdminTelegramStatus);
+router.post("/telegram/unlink", unlinkAdminTelegramProfile);
 // AI config endpoints (provider-independent)
 router.get("/ai-config", getAIConfig);
 router.put("/ai-config", updateAIConfig);
@@ -138,5 +153,16 @@ router.delete("/announcements/:announcementId", deleteAnnouncement);
 
 // Global search
 router.get("/search", globalSearch);
+
+// Admin form management
+router.get("/forms", getAdminForms);
+router.post("/forms", createForm);
+router.put("/forms/:formId", updateForm);
+router.delete("/forms/:formId", deleteForm);
+router.get("/forms/:formId/submissions", getFormSubmissions);
+router.patch(
+  "/forms/:formId/submissions/:submissionId",
+  updateSubmissionStatus,
+);
 
 export default router;

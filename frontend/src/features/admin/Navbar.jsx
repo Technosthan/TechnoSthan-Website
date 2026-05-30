@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { LogOut, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -49,15 +49,15 @@ const Navbar = () => {
           {/* User Info */}
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 <User className="h-4 w-4 text-white" />
               </div>
-              <div className="hidden md:block">
+              <Link to="profile" className="hidden md:block text-left">
                 <p className={`text-sm font-medium ${theme.text}`}>
                   {user.name}
                 </p>
                 <p className={`text-xs ${theme.textSecondary}`}>{user.email}</p>
-              </div>
+              </Link>
             </div>
           </div>
 

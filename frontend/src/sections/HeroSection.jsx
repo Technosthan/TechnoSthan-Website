@@ -1,18 +1,14 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 
-import {
-  ArrowRight,
-  Sparkles,
-  Leaf,
-  Cpu,
-  BarChart3,
-} from "lucide-react";
+import { ArrowRight, Sparkles, Leaf, Cpu, BarChart3 } from "lucide-react";
 
 const HeroSection = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <section className="relative overflow-hidden">
@@ -38,7 +34,7 @@ const HeroSection = () => {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium text-sm mb-6 shadow-md"
           >
             <Sparkles size={16} />
-            AI Powered Farming Platform
+            {t("home.hero.badge")}
           </motion.div>
 
           {/* Heading */}
@@ -48,11 +44,11 @@ const HeroSection = () => {
             transition={{ delay: 0.3 }}
             className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 ${theme.text}`}
           >
-            Smart Agriculture
+            {t("home.hero.titleLine1")}
             <br />
 
             <span className={`${theme.accent}`}>
-              for India 🇮🇳
+              {t("home.hero.titleLine2")}
             </span>
           </motion.h1>
 
@@ -63,9 +59,7 @@ const HeroSection = () => {
             transition={{ delay: 0.45 }}
             className={`${theme.textSecondary} text-lg md:text-xl leading-relaxed mb-8 max-w-xl`}
           >
-            Learn modern farming techniques, monitor farm
-            performance, explore AgriTech innovations, and
-            improve productivity using AI-powered tools.
+            {t("home.hero.subtitle")}
           </motion.p>
 
           {/* Features */}
@@ -79,7 +73,7 @@ const HeroSection = () => {
               <Leaf className="text-green-500" size={22} />
 
               <span className="font-medium text-sm">
-                Smart Farming
+                {t("home.hero.featureSmartFarming")}
               </span>
             </div>
 
@@ -87,18 +81,15 @@ const HeroSection = () => {
               <Cpu className="text-blue-500" size={22} />
 
               <span className="font-medium text-sm">
-                AI Solutions
+                {t("home.hero.featureAISolutions")}
               </span>
             </div>
 
             <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
-              <BarChart3
-                className="text-yellow-500"
-                size={22}
-              />
+              <BarChart3 className="text-yellow-500" size={22} />
 
               <span className="font-medium text-sm">
-                Farm Analytics
+                {t("home.hero.featureFarmAnalytics")}
               </span>
             </div>
           </motion.div>
@@ -118,12 +109,10 @@ const HeroSection = () => {
               whileTap={{
                 scale: 0.96,
               }}
-              onClick={() =>
-                navigate("/AgriTech Wiki")
-              }
+              onClick={() => navigate("/AgriTech Wiki")}
               className={`${theme.button} group px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold flex items-center gap-3 cursor-pointer`}
             >
-              Explore Wiki
+              {t("home.hero.exploreWiki")}
 
               <ArrowRight
                 size={20}
@@ -139,12 +128,10 @@ const HeroSection = () => {
               whileTap={{
                 scale: 0.96,
               }}
-              onClick={() =>
-                navigate("/dashboard")
-              }
+              onClick={() => navigate("/dashboard")}
               className="px-8 py-4 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md text-gray-800 dark:text-white shadow-lg font-semibold hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
             >
-              View Dashboard
+              {t("home.hero.viewDashboard")}
             </motion.button>
           </motion.div>
         </motion.div>

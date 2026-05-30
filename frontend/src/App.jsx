@@ -26,6 +26,8 @@ import SettingsPanel from "./features/admin/SettingsPanel";
 import AnnouncementManager from "./features/admin/AnnouncementManager";
 import GlobalSearch from "./features/admin/GlobalSearch";
 import MonitoringPage from "./features/admin/MonitoringPage";
+import AdminProfilePage from "./features/admin/AdminProfilePage";
+import FormsPage from "./features/forms/FormsPage";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import { AccessControlProvider } from "./contexts/AccessControlContext.jsx";
 import RouteGuard from "./shared/components/RouteGuard";
@@ -87,10 +89,19 @@ function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="ai-control" element={<AIControlPanel />} />
               <Route path="settings/*" element={<SettingsPanel />} />
+              <Route path="profile" element={<AdminProfilePage />} />
               <Route path="announcements" element={<AnnouncementManager />} />
               <Route path="search" element={<GlobalSearch />} />
               <Route path="monitoring" element={<MonitoringPage />} />
             </Route>
+            <Route
+              path="/forms"
+              element={
+                <ProtectedRoute>
+                  <FormsPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </AccessControlProvider>

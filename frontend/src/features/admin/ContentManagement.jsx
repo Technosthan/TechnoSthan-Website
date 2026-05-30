@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -25,6 +25,7 @@ import {
   FileText,
 } from "lucide-react";
 
+import FormManagement from "./FormManagement";
 import {
   getAllContent,
   createContent,
@@ -44,13 +45,12 @@ const ContentManagement = () => {
   const [error, setError] = useState("");
 
   const [showForm, setShowForm] = useState(false);
+  const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [editingContent, setEditingContent] = useState(null);
 
-  const [searchTerm, setSearchTerm] = useState("");
   const [searchContent, setSearchContent] = useState("");
 
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterType, setFilterType] = useState("all");
 
   const [resourcesCollapsed, setResourcesCollapsed] = useState(false);
   const [isQuizOpen, setIsQuizOpen] = useState(false);
@@ -58,13 +58,6 @@ const ContentManagement = () => {
 
   const [openRows, setOpenRows] = useState({});
   const [openMenu, setOpenMenu] = useState(null);
-
-  const [searchName, setSearchName] = useState("");
-  const [searchUrl, setSearchUrl] = useState("");
-  const [activeSearchColumn, setActiveSearchColumn] = useState(null);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -94,10 +87,7 @@ const ContentManagement = () => {
     document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside,
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -109,10 +99,7 @@ const ContentManagement = () => {
 
       setContents(response.data.data || []);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to load content",
-      );
+      setError(err.response?.data?.message || "Failed to load content");
     } finally {
       setLoading(false);
     }
@@ -152,10 +139,7 @@ const ContentManagement = () => {
         content.resources?.length > 0
           ? content.resources.map((resource) => ({
               ...resource,
-              name:
-                resource.name ||
-                resource.label ||
-                "",
+              name: resource.name || resource.label || "",
               type: resource.type || "video",
             }))
           : [{ name: "", url: "", type: "video" }],
@@ -213,10 +197,7 @@ const ContentManagement = () => {
     e.preventDefault();
 
     for (const resource of formData.resources) {
-      if (
-        !resource.name.trim() &&
-        !resource.url.trim()
-      ) {
+      if (!resource.name.trim() && !resource.url.trim()) {
         continue;
       }
 
@@ -239,15 +220,10 @@ const ContentManagement = () => {
       };
 
       const content = editingContent
-        ? await updateContent(
-            editingContent._id,
-            contentData,
-          )
+        ? await updateContent(editingContent._id, contentData)
         : await createContent(contentData);
 
-      await deleteQuestionsByContentId(
-        content.data.data._id,
-      );
+      await deleteQuestionsByContentId(content.data.data._id);
 
       for (const quiz of formData.quizzes) {
         if (quiz.question.trim()) {
@@ -266,19 +242,12 @@ const ContentManagement = () => {
         navigate("/admin/dashboard/content");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to save content",
-      );
+      setError(err.response?.data?.message || "Failed to save content");
     }
   };
 
   const handleDelete = async (contentId) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this content?",
-      )
-    )
+    if (!window.confirm("Are you sure you want to delete this content?"))
       return;
 
     try {
@@ -286,10 +255,7 @@ const ContentManagement = () => {
 
       await fetchContents();
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to delete content",
-      );
+      setError(err.response?.data?.message || "Failed to delete content");
     }
   };
 
@@ -306,11 +272,7 @@ const ContentManagement = () => {
     });
   };
 
-  const updateSubtopic = (
-    index,
-    field,
-    value,
-  ) => {
+  const updateSubtopic = (index, field, value) => {
     const updated = [...formData.subtopics];
 
     updated[index][field] = value;
@@ -325,9 +287,7 @@ const ContentManagement = () => {
     if (formData.subtopics.length > 1) {
       setFormData({
         ...formData,
-        subtopics: formData.subtopics.filter(
-          (_, i) => i !== index,
-        ),
+        subtopics: formData.subtopics.filter((_, i) => i !== index),
       });
     }
   };
@@ -364,11 +324,7 @@ const ContentManagement = () => {
     });
   };
 
-  const updateResource = (
-    index,
-    field,
-    value,
-  ) => {
+  const updateResource = (index, field, value) => {
     const updated = [...formData.resources];
 
     updated[index][field] = value;
@@ -386,11 +342,7 @@ const ContentManagement = () => {
         detectedType = "video";
       } else if (url.endsWith(".pdf")) {
         detectedType = "pdf";
-      } else if (
-        url.match(
-          /\.(jpg|jpeg|png|gif|webp|svg)$/i,
-        )
-      ) {
+      } else if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
         detectedType = "image";
       }
 
@@ -407,9 +359,7 @@ const ContentManagement = () => {
     if (formData.resources.length > 1) {
       setFormData({
         ...formData,
-        resources: formData.resources.filter(
-          (_, i) => i !== index,
-        ),
+        resources: formData.resources.filter((_, i) => i !== index),
       });
     }
   };
@@ -428,11 +378,7 @@ const ContentManagement = () => {
     });
   };
 
-  const updateQuiz = (
-    index,
-    field,
-    value,
-  ) => {
+  const updateQuiz = (index, field, value) => {
     const updated = [...formData.quizzes];
 
     if (field === "options") {
@@ -451,9 +397,7 @@ const ContentManagement = () => {
     if (formData.quizzes.length > 1) {
       setFormData({
         ...formData,
-        quizzes: formData.quizzes.filter(
-          (_, i) => i !== index,
-        ),
+        quizzes: formData.quizzes.filter((_, i) => i !== index),
       });
     }
   };
@@ -465,75 +409,26 @@ const ContentManagement = () => {
     }));
   };
 
-  const filteredResources = useMemo(() => {
-    return formData.resources.filter((resource) => {
-      const matchesName =
-        !searchName ||
-        resource.name
-          ?.toLowerCase()
-          .includes(searchName.toLowerCase());
-
-      const matchesUrl =
-        !searchUrl ||
-        resource.url
-          ?.toLowerCase()
-          .includes(searchUrl.toLowerCase());
-
-      const matchesType =
-        filterType === "all" ||
-        resource.type === filterType;
-
-      return (
-        matchesName &&
-        matchesUrl &&
-        matchesType
-      );
-    });
-  }, [
-    formData.resources,
-    searchName,
-    searchUrl,
-    filterType,
-  ]);
-
-  const totalPages = Math.ceil(
-    filteredResources.length / itemsPerPage,
-  );
-
-  const paginatedResources =
-    filteredResources.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage,
-    );
-
   const filteredContent = contents.filter((item) => {
     const matchesSearch =
-      item.title
-        .toLowerCase()
-        .includes(searchContent.toLowerCase()) ||
-      item.description
-        .toLowerCase()
-        .includes(searchContent.toLowerCase());
+      item.title.toLowerCase().includes(searchContent.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchContent.toLowerCase());
 
     const matchesFilter =
       filterStatus === "all" ||
-      (filterStatus === "with-resources" &&
-        item.resources?.length > 0) ||
-      (filterStatus === "no-resources" &&
-        item.resources?.length === 0);
+      (filterStatus === "with-resources" && item.resources?.length > 0) ||
+      (filterStatus === "no-resources" && item.resources?.length === 0);
 
     return matchesSearch && matchesFilter;
   });
 
   if (loading) {
     return (
-      <div className="min-h-[500px] flex items-center justify-center">
+      <div className="min-h-125 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
 
-          <p
-            className={`${theme.textSecondary} font-medium`}
-          >
+          <p className={`${theme.textSecondary} font-medium`}>
             Loading Content...
           </p>
         </div>
@@ -542,14 +437,12 @@ const ContentManagement = () => {
   }
 
   return (
-    <div
-      className={`w-full p-6 space-y-8 ${theme.text}`}
-    >
+    <div className={`w-full p-6 space-y-8 ${theme.text}`}>
       {/* HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
+            <div className="p-3 rounded-2xl bg-linear-to-r from-green-500 to-emerald-600 text-white shadow-lg">
               <Sparkles className="h-6 w-6" />
             </div>
 
@@ -559,20 +452,31 @@ const ContentManagement = () => {
           </div>
 
           <p className={theme.textSecondary}>
-            Create and manage AgriTech Wiki
-            materials
+            Create and manage AgriTech Wiki materials
           </p>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => setShowForm(true)}
-          className={`${theme.button} px-6 py-3 rounded-2xl flex items-center font-semibold shadow-xl`}
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add New Content
-        </motion.button>
+        <div className="flex flex-wrap gap-3">
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setShowFormBuilder(true)}
+            className={`${theme.button} px-6 py-3 rounded-2xl flex items-center font-semibold shadow-xl`}
+          >
+            <LinkIcon className="h-5 w-5 mr-2" />
+            Create Form
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setShowForm(true)}
+            className={`${theme.button} px-6 py-3 rounded-2xl flex items-center font-semibold shadow-xl`}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add New Content
+          </motion.button>
+        </div>
       </div>
 
       {/* SEARCH */}
@@ -590,37 +494,24 @@ const ContentManagement = () => {
               type="text"
               placeholder="Search content..."
               value={searchContent}
-              onChange={(e) =>
-                setSearchContent(e.target.value)
-              }
+              onChange={(e) => setSearchContent(e.target.value)}
               className={`${theme.input} w-full pl-12 pr-4 py-4 rounded-2xl border ${theme.border} focus:ring-2 focus:ring-green-500`}
             />
           </div>
 
           <div className="flex items-center gap-3">
-            <Filter
-              className={theme.textSecondary}
-              size={20}
-            />
+            <Filter className={theme.textSecondary} size={20} />
 
             <select
               value={filterStatus}
-              onChange={(e) =>
-                setFilterStatus(e.target.value)
-              }
+              onChange={(e) => setFilterStatus(e.target.value)}
               className={`${theme.input} w-full py-4 px-4 rounded-2xl border ${theme.border}`}
             >
-              <option value="all">
-                All Content
-              </option>
+              <option value="all">All Content</option>
 
-              <option value="with-resources">
-                With Resources
-              </option>
+              <option value="with-resources">With Resources</option>
 
-              <option value="no-resources">
-                No Resources
-              </option>
+              <option value="no-resources">No Resources</option>
             </select>
           </div>
         </div>
@@ -666,16 +557,11 @@ const ContentManagement = () => {
               >
                 <div>
                   <h2 className="text-2xl font-bold">
-                    {editingContent
-                      ? "Edit Content"
-                      : "Create New Content"}
+                    {editingContent ? "Edit Content" : "Create New Content"}
                   </h2>
 
-                  <p
-                    className={`mt-1 text-sm ${theme.textSecondary}`}
-                  >
-                    Manage content, resources &
-                    quizzes
+                  <p className={`mt-1 text-sm ${theme.textSecondary}`}>
+                    Manage content, resources & quizzes
                   </p>
                 </div>
 
@@ -687,10 +573,7 @@ const ContentManagement = () => {
                 </button>
               </div>
 
-              <form
-                onSubmit={handleSubmit}
-                className="p-6 space-y-8"
-              >
+              <form onSubmit={handleSubmit} className="p-6 space-y-8">
                 {/* BASIC INFO */}
                 <div
                   className={`${theme.card} border ${theme.border} rounded-3xl p-6`}
@@ -698,16 +581,12 @@ const ContentManagement = () => {
                   <div className="flex items-center gap-2 mb-5">
                     <FileText className="text-green-500" />
 
-                    <h3 className="text-xl font-bold">
-                      Basic Information
-                    </h3>
+                    <h3 className="text-xl font-bold">Basic Information</h3>
                   </div>
 
                   <div className="space-y-5">
                     <div>
-                      <label className="block mb-2 font-medium">
-                        Title
-                      </label>
+                      <label className="block mb-2 font-medium">Title</label>
 
                       <input
                         type="text"
@@ -715,8 +594,7 @@ const ContentManagement = () => {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            title:
-                              e.target.value,
+                            title: e.target.value,
                           })
                         }
                         placeholder="Enter content title..."
@@ -732,14 +610,11 @@ const ContentManagement = () => {
 
                       <textarea
                         rows={5}
-                        value={
-                          formData.description
-                        }
+                        value={formData.description}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            description:
-                              e.target.value,
+                            description: e.target.value,
                           })
                         }
                         placeholder="Enter content description..."
@@ -758,9 +633,7 @@ const ContentManagement = () => {
                     <div className="flex items-center gap-2">
                       <Layers className="text-blue-500" />
 
-                      <h3 className="text-xl font-bold">
-                        Subtopics
-                      </h3>
+                      <h3 className="text-xl font-bold">Subtopics</h3>
                     </div>
 
                     <button
@@ -774,70 +647,50 @@ const ContentManagement = () => {
                   </div>
 
                   <div className="space-y-5">
-                    {formData.subtopics.map(
-                      (subtopic, index) => (
-                        <div
-                          key={index}
-                          className="border border-gray-200 dark:border-gray-700 rounded-2xl p-5"
-                        >
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="font-semibold">
-                              Subtopic{" "}
-                              {index + 1}
-                            </span>
+                    {formData.subtopics.map((subtopic, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 dark:border-gray-700 rounded-2xl p-5"
+                      >
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="font-semibold">
+                            Subtopic {index + 1}
+                          </span>
 
-                            {formData.subtopics
-                              .length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  removeSubtopic(
-                                    index,
-                                  )
-                                }
-                                className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="space-y-4">
-                            <input
-                              type="text"
-                              value={
-                                subtopic.heading
-                              }
-                              onChange={(e) =>
-                                updateSubtopic(
-                                  index,
-                                  "heading",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="Subtopic heading..."
-                              className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
-                            />
-
-                            <textarea
-                              rows={4}
-                              value={
-                                subtopic.body
-                              }
-                              onChange={(e) =>
-                                updateSubtopic(
-                                  index,
-                                  "body",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="Subtopic content..."
-                              className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border} resize-none`}
-                            />
-                          </div>
+                          {formData.subtopics.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeSubtopic(index)}
+                              className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
-                      ),
-                    )}
+
+                        <div className="space-y-4">
+                          <input
+                            type="text"
+                            value={subtopic.heading}
+                            onChange={(e) =>
+                              updateSubtopic(index, "heading", e.target.value)
+                            }
+                            placeholder="Subtopic heading..."
+                            className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
+                          />
+
+                          <textarea
+                            rows={4}
+                            value={subtopic.body}
+                            onChange={(e) =>
+                              updateSubtopic(index, "body", e.target.value)
+                            }
+                            placeholder="Subtopic content..."
+                            className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border} resize-none`}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -847,31 +700,18 @@ const ContentManagement = () => {
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      setResourcesCollapsed(
-                        !resourcesCollapsed,
-                      )
-                    }
+                    onClick={() => setResourcesCollapsed(!resourcesCollapsed)}
                     className="w-full flex items-center justify-between px-6 py-5"
                   >
                     <div className="flex items-center gap-3">
                       <LinkIcon className="text-purple-500" />
 
                       <h3 className="text-xl font-bold">
-                        Resources (
-                        {
-                          formData.resources
-                            .length
-                        }
-                        )
+                        Resources ({formData.resources.length})
                       </h3>
                     </div>
 
-                    {resourcesCollapsed ? (
-                      <ChevronRight />
-                    ) : (
-                      <ChevronDown />
-                    )}
+                    {resourcesCollapsed ? <ChevronRight /> : <ChevronDown />}
                   </button>
 
                   {!resourcesCollapsed && (
@@ -887,112 +727,66 @@ const ContentManagement = () => {
                         </button>
                       </div>
 
-                      {formData.resources.map(
-                        (
-                          resource,
-                          index,
-                        ) => (
-                          <div
-                            key={index}
-                            className="grid grid-cols-1 md:grid-cols-12 gap-4 border border-gray-200 dark:border-gray-700 rounded-2xl p-4"
-                          >
-                            <div className="md:col-span-2">
-                              <select
-                                value={
-                                  resource.type
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateResource(
-                                    index,
-                                    "type",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                                className={`${theme.input} w-full px-3 py-3 rounded-xl border ${theme.border}`}
-                              >
-                                <option value="video">
-                                  🎥 Video
-                                </option>
+                      {formData.resources.map((resource, index) => (
+                        <div
+                          key={index}
+                          className="grid grid-cols-1 md:grid-cols-12 gap-4 border border-gray-200 dark:border-gray-700 rounded-2xl p-4"
+                        >
+                          <div className="md:col-span-2">
+                            <select
+                              value={resource.type}
+                              onChange={(e) =>
+                                updateResource(index, "type", e.target.value)
+                              }
+                              className={`${theme.input} w-full px-3 py-3 rounded-xl border ${theme.border}`}
+                            >
+                              <option value="video">🎥 Video</option>
 
-                                <option value="pdf">
-                                  📄 PDF
-                                </option>
+                              <option value="pdf">📄 PDF</option>
 
-                                <option value="image">
-                                  🖼️ Image
-                                </option>
+                              <option value="image">🖼️ Image</option>
 
-                                <option value="link">
-                                  🔗 Link
-                                </option>
-                              </select>
-                            </div>
-
-                            <div className="md:col-span-3">
-                              <input
-                                type="text"
-                                value={
-                                  resource.name
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateResource(
-                                    index,
-                                    "name",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                                placeholder="Resource name..."
-                                className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
-                              />
-                            </div>
-
-                            <div className="md:col-span-6">
-                              <input
-                                type="url"
-                                value={
-                                  resource.url
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateResource(
-                                    index,
-                                    "url",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                                placeholder="Resource URL..."
-                                className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
-                              />
-                            </div>
-
-                            <div className="md:col-span-1 flex items-center justify-center">
-                              {formData.resources
-                                .length >
-                                1 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removeResource(
-                                      index,
-                                    )
-                                  }
-                                  className="text-red-500 hover:bg-red-50 p-3 rounded-xl"
-                                >
-                                  <Trash2 className="h-5 w-5" />
-                                </button>
-                              )}
-                            </div>
+                              <option value="link">🔗 Link</option>
+                            </select>
                           </div>
-                        ),
-                      )}
+
+                          <div className="md:col-span-3">
+                            <input
+                              type="text"
+                              value={resource.name}
+                              onChange={(e) =>
+                                updateResource(index, "name", e.target.value)
+                              }
+                              placeholder="Resource name..."
+                              className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
+                            />
+                          </div>
+
+                          <div className="md:col-span-6">
+                            <input
+                              type="url"
+                              value={resource.url}
+                              onChange={(e) =>
+                                updateResource(index, "url", e.target.value)
+                              }
+                              placeholder="Resource URL..."
+                              className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
+                            />
+                          </div>
+
+                          <div className="md:col-span-1 flex items-center justify-center">
+                            {formData.resources.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeResource(index)}
+                                className="text-red-500 hover:bg-red-50 p-3 rounded-xl"
+                              >
+                                <Trash2 className="h-5 w-5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1003,31 +797,18 @@ const ContentManagement = () => {
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      setIsQuizOpen(
-                        !isQuizOpen,
-                      )
-                    }
+                    onClick={() => setIsQuizOpen(!isQuizOpen)}
                     className="w-full flex items-center justify-between px-6 py-5"
                   >
                     <div className="flex items-center gap-3">
                       <BookOpen className="text-indigo-500" />
 
                       <h3 className="text-xl font-bold">
-                        Quiz (
-                        {
-                          formData.quizzes
-                            .length
-                        }
-                        )
+                        Quiz ({formData.quizzes.length})
                       </h3>
                     </div>
 
-                    {isQuizOpen ? (
-                      <ChevronDown />
-                    ) : (
-                      <ChevronRight />
-                    )}
+                    {isQuizOpen ? <ChevronDown /> : <ChevronRight />}
                   </button>
 
                   {isQuizOpen && (
@@ -1044,152 +825,85 @@ const ContentManagement = () => {
                       </div>
 
                       <div className="space-y-5">
-                        {formData.quizzes.map(
-                          (
-                            quiz,
-                            index,
-                          ) => (
-                            <div
-                              key={index}
-                              className="rounded-2xl border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/10 p-5"
-                            >
-                              <div className="flex items-center justify-between mb-4">
-                                <span className="font-semibold">
-                                  Question{" "}
-                                  {index +
-                                    1}
-                                </span>
+                        {formData.quizzes.map((quiz, index) => (
+                          <div
+                            key={index}
+                            className="rounded-2xl border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/10 p-5"
+                          >
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="font-semibold">
+                                Question {index + 1}
+                              </span>
 
-                                {formData
-                                  .quizzes
-                                  .length >
-                                  1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      removeQuiz(
-                                        index,
-                                      )
-                                    }
-                                    className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="space-y-4">
-                                <input
-                                  type="text"
-                                  value={
-                                    quiz.question
-                                  }
-                                  onChange={(
-                                    e,
-                                  ) =>
-                                    updateQuiz(
-                                      index,
-                                      "question",
-                                      e.target
-                                        .value,
-                                    )
-                                  }
-                                  placeholder="Question..."
-                                  className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
-                                />
-
-                                {quiz.options.map(
-                                  (
-                                    option,
-                                    optIndex,
-                                  ) => (
-                                    <div
-                                      key={
-                                        optIndex
-                                      }
-                                      className="flex items-center gap-3"
-                                    >
-                                      <span className="font-medium w-6">
-                                        {String.fromCharCode(
-                                          65 +
-                                            optIndex,
-                                        )}
-                                      </span>
-
-                                      <input
-                                        type="text"
-                                        value={
-                                          option
-                                        }
-                                        onChange={(
-                                          e,
-                                        ) => {
-                                          const updated =
-                                            [
-                                              ...quiz.options,
-                                            ];
-
-                                          updated[
-                                            optIndex
-                                          ] =
-                                            e
-                                              .target
-                                              .value;
-
-                                          updateQuiz(
-                                            index,
-                                            "options",
-                                            updated,
-                                          );
-                                        }}
-                                        placeholder={`Option ${
-                                          optIndex +
-                                          1
-                                        }`}
-                                        className={`${theme.input} flex-1 px-4 py-3 rounded-xl border ${theme.border}`}
-                                      />
-                                    </div>
-                                  ),
-                                )}
-
-                                <select
-                                  value={
-                                    quiz.correctAnswer
-                                  }
-                                  onChange={(
-                                    e,
-                                  ) =>
-                                    updateQuiz(
-                                      index,
-                                      "correctAnswer",
-                                      parseInt(
-                                        e.target
-                                          .value,
-                                      ),
-                                    )
-                                  }
-                                  className={`${theme.input} px-4 py-3 rounded-xl border ${theme.border}`}
+                              {formData.quizzes.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeQuiz(index)}
+                                  className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
                                 >
-                                  <option value={0}>
-                                    Correct: A
-                                  </option>
-
-                                  <option value={1}>
-                                    Correct: B
-                                  </option>
-
-                                  <option value={2}>
-                                    Correct: C
-                                  </option>
-
-                                  <option value={3}>
-                                    Correct: D
-                                  </option>
-                                </select>
-                              </div>
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
-                          ),
-                        )}
+
+                            <div className="space-y-4">
+                              <input
+                                type="text"
+                                value={quiz.question}
+                                onChange={(e) =>
+                                  updateQuiz(index, "question", e.target.value)
+                                }
+                                placeholder="Question..."
+                                className={`${theme.input} w-full px-4 py-3 rounded-xl border ${theme.border}`}
+                              />
+
+                              {quiz.options.map((option, optIndex) => (
+                                <div
+                                  key={optIndex}
+                                  className="flex items-center gap-3"
+                                >
+                                  <span className="font-medium w-6">
+                                    {String.fromCharCode(65 + optIndex)}
+                                  </span>
+
+                                  <input
+                                    type="text"
+                                    value={option}
+                                    onChange={(e) => {
+                                      const updated = [...quiz.options];
+
+                                      updated[optIndex] = e.target.value;
+
+                                      updateQuiz(index, "options", updated);
+                                    }}
+                                    placeholder={`Option ${optIndex + 1}`}
+                                    className={`${theme.input} flex-1 px-4 py-3 rounded-xl border ${theme.border}`}
+                                  />
+                                </div>
+                              ))}
+
+                              <select
+                                value={quiz.correctAnswer}
+                                onChange={(e) =>
+                                  updateQuiz(
+                                    index,
+                                    "correctAnswer",
+                                    parseInt(e.target.value),
+                                  )
+                                }
+                                className={`${theme.input} px-4 py-3 rounded-xl border ${theme.border}`}
+                              >
+                                <option value={0}>Correct: A</option>
+
+                                <option value={1}>Correct: B</option>
+
+                                <option value={2}>Correct: C</option>
+
+                                <option value={3}>Correct: D</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -1213,13 +927,11 @@ const ContentManagement = () => {
                       scale: 0.97,
                     }}
                     type="submit"
-                    className="px-6 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-xl flex items-center"
+                    className="px-6 py-3 rounded-2xl bg-linear-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-xl flex items-center"
                   >
                     <Save className="h-5 w-5 mr-2" />
 
-                    {editingContent
-                      ? "Update Content"
-                      : "Create Content"}
+                    {editingContent ? "Update Content" : "Create Content"}
                   </motion.button>
                 </div>
               </form>
@@ -1232,36 +944,19 @@ const ContentManagement = () => {
       <div
         className={`${theme.card} border ${theme.border} rounded-3xl overflow-hidden shadow-xl`}
       >
-        <div
-          className={`p-6 border-b ${theme.border}`}
-        >
+        <div className={`p-6 border-b ${theme.border}`}>
           <div className="flex items-center justify-between">
             <button
-              onClick={() =>
-                setShowContent(
-                  !showContent,
-                )
-              }
+              onClick={() => setShowContent(!showContent)}
               className="flex items-center gap-3"
             >
-              {showContent ? (
-                <ChevronDown />
-              ) : (
-                <ChevronRight />
-              )}
+              {showContent ? <ChevronDown /> : <ChevronRight />}
 
               <div className="text-left">
-                <h2 className="text-2xl font-bold">
-                  All Content
-                </h2>
+                <h2 className="text-2xl font-bold">All Content</h2>
 
-                <p
-                  className={`text-sm ${theme.textSecondary}`}
-                >
-                  {
-                    filteredContent.length
-                  }{" "}
-                  items
+                <p className={`text-sm ${theme.textSecondary}`}>
+                  {filteredContent.length} items
                 </p>
               </div>
             </button>
@@ -1277,24 +972,15 @@ const ContentManagement = () => {
                   size={60}
                 />
 
-                <h3 className="text-xl font-semibold mb-2">
-                  No content found
-                </h3>
+                <h3 className="text-xl font-semibold mb-2">No content found</h3>
 
-                <p
-                  className={
-                    theme.textSecondary
-                  }
-                >
-                  Try changing search or
-                  filters
+                <p className={theme.textSecondary}>
+                  Try changing search or filters
                 </p>
               </div>
             ) : (
               <table className="w-full">
-                <thead
-                  className={`${theme.card} border-b ${theme.border}`}
-                >
+                <thead className={`${theme.card} border-b ${theme.border}`}>
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       #
@@ -1311,266 +997,176 @@ const ContentManagement = () => {
                 </thead>
 
                 <tbody>
-                  {filteredContent.map(
-                    (
-                      content,
-                      index,
-                    ) => (
-                      <React.Fragment
-                        key={
-                          content._id
-                        }
-                      >
-                        <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-green-50/40 dark:hover:bg-gray-800/40 transition-all">
-                          <td className="px-6 py-5">
-                            <button
-                              onClick={() =>
-                                toggleRow(
-                                  content._id,
-                                )
-                              }
-                              className="flex items-center gap-2"
-                            >
-                              {openRows[
-                                content
-                                  ._id
-                              ] ? (
-                                <ChevronDown size={16} />
-                              ) : (
-                                <ChevronRight size={16} />
-                              )}
+                  {filteredContent.map((content, index) => (
+                    <React.Fragment key={content._id}>
+                      <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-green-50/40 dark:hover:bg-gray-800/40 transition-all">
+                        <td className="px-6 py-5">
+                          <button
+                            onClick={() => toggleRow(content._id)}
+                            className="flex items-center gap-2"
+                          >
+                            {openRows[content._id] ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
 
-                              <span className="font-medium">
-                                {index +
-                                  1}
-                              </span>
-                            </button>
-                          </td>
+                            <span className="font-medium">{index + 1}</span>
+                          </button>
+                        </td>
 
-                          <td className="px-6 py-5">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg">
-                                <BookOpen size={20} />
-                              </div>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-linear-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg">
+                              <BookOpen size={20} />
+                            </div>
 
-                              <div>
-                                <h3 className="font-semibold text-lg">
-                                  {
-                                    content.title
-                                  }
-                                </h3>
+                            <div>
+                              <h3 className="font-semibold text-lg">
+                                {content.title}
+                              </h3>
 
-                                <div
-                                  className={`flex items-center gap-4 text-sm mt-1 ${theme.textSecondary}`}
-                                >
-                                  <div className="flex items-center">
-                                    <Calendar
-                                      size={
-                                        14
-                                      }
-                                      className="mr-1"
-                                    />
+                              <div
+                                className={`flex items-center gap-4 text-sm mt-1 ${theme.textSecondary}`}
+                              >
+                                <div className="flex items-center">
+                                  <Calendar size={14} className="mr-1" />
 
-                                    {new Date(
-                                      content.createdAt,
-                                    ).toLocaleDateString()}
-                                  </div>
+                                  {new Date(
+                                    content.createdAt,
+                                  ).toLocaleDateString()}
+                                </div>
 
-                                  <div className="flex items-center">
-                                    <User
-                                      size={
-                                        14
-                                      }
-                                      className="mr-1"
-                                    />
+                                <div className="flex items-center">
+                                  <User size={14} className="mr-1" />
 
-                                    {content
-                                      .authorId
-                                      ?.name ||
-                                      "Admin"}
-                                  </div>
+                                  {content.authorId?.name || "Admin"}
                                 </div>
                               </div>
                             </div>
-                          </td>
+                          </div>
+                        </td>
 
-                          <td className="px-6 py-5">
-                            <div className="relative menu-container">
-                              <button
-                                onClick={() =>
-                                  setOpenMenu(
-                                    openMenu ===
-                                      content._id
-                                      ? null
-                                      : content._id,
-                                  )
-                                }
-                                className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
-                              >
-                                <MoreVertical size={18} />
-                              </button>
+                        <td className="px-6 py-5">
+                          <div className="relative menu-container">
+                            <button
+                              onClick={() =>
+                                setOpenMenu(
+                                  openMenu === content._id ? null : content._id,
+                                )
+                              }
+                              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+                            >
+                              <MoreVertical size={18} />
+                            </button>
 
-                              {openMenu ===
-                                content._id && (
-                                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-50">
-                                  <button
-                                    onClick={() => {
-                                      handleEdit(
-                                        content,
-                                      );
+                            {openMenu === content._id && (
+                              <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-50">
+                                <button
+                                  onClick={() => {
+                                    handleEdit(content);
 
-                                      setOpenMenu(
-                                        null,
-                                      );
-                                    }}
-                                    className="w-full px-5 py-3 text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 flex items-center"
-                                  >
-                                    <Edit
-                                      size={
-                                        16
-                                      }
-                                      className="mr-2"
-                                    />
-                                    Edit
-                                  </button>
+                                    setOpenMenu(null);
+                                  }}
+                                  className="w-full px-5 py-3 text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 flex items-center"
+                                >
+                                  <Edit size={16} className="mr-2" />
+                                  Edit
+                                </button>
 
-                                  <button
-                                    onClick={() => {
-                                      handleDelete(
-                                        content._id,
-                                      );
+                                <button
+                                  onClick={() => {
+                                    handleDelete(content._id);
 
-                                      setOpenMenu(
-                                        null,
-                                      );
-                                    }}
-                                    className="w-full px-5 py-3 text-left hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 flex items-center"
-                                  >
-                                    <Trash2
-                                      size={
-                                        16
-                                      }
-                                      className="mr-2"
-                                    />
-                                    Delete
-                                  </button>
+                                    setOpenMenu(null);
+                                  }}
+                                  className="w-full px-5 py-3 text-left hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 flex items-center"
+                                >
+                                  <Trash2 size={16} className="mr-2" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* EXPANDED */}
+                      {openRows[content._id] && (
+                        <tr className="bg-gray-50 dark:bg-gray-900/20">
+                          <td colSpan="3" className="px-6 py-6">
+                            <div className="space-y-6">
+                              <div>
+                                <h4 className="font-semibold mb-2">
+                                  Description
+                                </h4>
+
+                                <p className={theme.textSecondary}>
+                                  {content.description}
+                                </p>
+                              </div>
+
+                              {content.subtopics?.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold mb-3">
+                                    Subtopics
+                                  </h4>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    {content.subtopics.map((subtopic, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium"
+                                      >
+                                        {subtopic.heading}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {content.resources?.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold mb-3">
+                                    Resources
+                                  </h4>
+
+                                  <div className="flex flex-wrap gap-3">
+                                    {content.resources.map((resource, idx) => (
+                                      <a
+                                        key={idx}
+                                        href={resource.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center px-4 py-2 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all text-sm font-medium"
+                                      >
+                                        <ExternalLink
+                                          size={14}
+                                          className="mr-2"
+                                        />
+
+                                        {resource.label || resource.name}
+                                      </a>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
                           </td>
                         </tr>
-
-                        {/* EXPANDED */}
-                        {openRows[
-                          content._id
-                        ] && (
-                          <tr className="bg-gray-50 dark:bg-gray-900/20">
-                            <td
-                              colSpan="3"
-                              className="px-6 py-6"
-                            >
-                              <div className="space-y-6">
-                                <div>
-                                  <h4 className="font-semibold mb-2">
-                                    Description
-                                  </h4>
-
-                                  <p
-                                    className={
-                                      theme.textSecondary
-                                    }
-                                  >
-                                    {
-                                      content.description
-                                    }
-                                  </p>
-                                </div>
-
-                                {content
-                                  .subtopics
-                                  ?.length >
-                                  0 && (
-                                  <div>
-                                    <h4 className="font-semibold mb-3">
-                                      Subtopics
-                                    </h4>
-
-                                    <div className="flex flex-wrap gap-2">
-                                      {content.subtopics.map(
-                                        (
-                                          subtopic,
-                                          idx,
-                                        ) => (
-                                          <span
-                                            key={
-                                              idx
-                                            }
-                                            className="px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium"
-                                          >
-                                            {
-                                              subtopic.heading
-                                            }
-                                          </span>
-                                        ),
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {content
-                                  .resources
-                                  ?.length >
-                                  0 && (
-                                  <div>
-                                    <h4 className="font-semibold mb-3">
-                                      Resources
-                                    </h4>
-
-                                    <div className="flex flex-wrap gap-3">
-                                      {content.resources.map(
-                                        (
-                                          resource,
-                                          idx,
-                                        ) => (
-                                          <a
-                                            key={
-                                              idx
-                                            }
-                                            href={
-                                              resource.url
-                                            }
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center px-4 py-2 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all text-sm font-medium"
-                                          >
-                                            <ExternalLink
-                                              size={
-                                                14
-                                              }
-                                              className="mr-2"
-                                            />
-
-                                            {resource.label ||
-                                              resource.name}
-                                          </a>
-                                        ),
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ),
-                  )}
+                      )}
+                    </React.Fragment>
+                  ))}
                 </tbody>
               </table>
             )}
           </div>
         )}
       </div>
+      <FormManagement
+        isOpen={showFormBuilder}
+        onClose={() => setShowFormBuilder(false)}
+      />
     </div>
   );
 };

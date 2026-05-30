@@ -25,6 +25,22 @@ export const updateContent = (contentId, contentData) =>
 export const deleteContent = (contentId) =>
   axiosInstance.delete(`/api/content/${contentId}`);
 
+// Form management
+export const getAllForms = () => axiosInstance.get("/api/admin/forms");
+export const createForm = (formData) =>
+  axiosInstance.post("/api/admin/forms", formData);
+export const updateForm = (formId, formData) =>
+  axiosInstance.put(`/api/admin/forms/${formId}`, formData);
+export const deleteForm = (formId) =>
+  axiosInstance.delete(`/api/admin/forms/${formId}`);
+export const getFormSubmissions = (formId) =>
+  axiosInstance.get(`/api/admin/forms/${formId}/submissions`);
+export const updateSubmissionStatus = (formId, submissionId, status) =>
+  axiosInstance.patch(
+    `/api/admin/forms/${formId}/submissions/${submissionId}`,
+    { status },
+  );
+
 // Settings management
 export const getSettings = () => axiosInstance.get("/api/admin/settings");
 export const updateSettings = (settingsData) =>
@@ -119,6 +135,19 @@ export const setDefaultPhoneProvider = (id) =>
   axiosInstance.patch(`/api/admin/otp-providers/phone/${id}/default`);
 export const testPhoneProvider = (id) =>
   axiosInstance.post(`/api/admin/otp-providers/phone/${id}/test`);
+
+// Admin self-service Telegram linking (for admin users to link their own account)
+export const generateAdminTelegramProfileLinkCode = async () => {
+  return await axiosInstance.post("/api/admin/telegram/generate-code");
+};
+
+export const getAdminTelegramStatus = async () => {
+  return await axiosInstance.get("/api/admin/telegram/status");
+};
+
+export const unlinkAdminTelegramProfile = async () => {
+  return await axiosInstance.post("/api/admin/telegram/unlink");
+};
 
 // User Service Permissions (Granular overrides)
 export const getUserServicePermissions = (params) =>

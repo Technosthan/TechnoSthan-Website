@@ -212,12 +212,20 @@ const DashboardPage = () => {
                   Ready to continue your agricultural AgriTech Wiki journey?
                 </p>
               </div>
-              <button
-                onClick={() => navigate("/profile")}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 cursor-pointer text-white px-4 py-2 rounded-lg"
-              >
-                Edit Profile
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 cursor-pointer text-white px-4 py-2 rounded-lg"
+                >
+                  Edit Profile
+                </button>
+                <button
+                  onClick={() => navigate("/forms")}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 cursor-pointer text-white px-4 py-2 rounded-lg"
+                >
+                  Open Forms
+                </button>
+              </div>
             </div>
           </motion.div>
           {/* Stats Cards */}

@@ -12,6 +12,11 @@ const settingsSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    language: {
+      type: String,
+      enum: ["english", "hindi", "rajasthani"],
+      default: "english",
+    },
 
     aiSettings: {
       mode: {

@@ -1,0 +1,18 @@
+{
+  "home": "घरो",
+  "about": "हमारे बारे में",
+  "contact": "संपर्क",
+  "agritech_wiki": "AgriTech विकी",
+  "ai_chat": "AI चैट",
+  "admin_panel": "एडमिन पैनल",
+  "login": "लॉगिन",
+  "logout": "लॉगआउट",
+  "welcome": "स्वागत है, {{name}}",
+  "dashboard": "डैशबोर्ड",
+  "enterprise_settings_console": "एंटरप्राइज़ सेटिंग्स कंसोल",
+  "save_settings": "सेटिंग्स सहेजें",
+  "website_language": "वेबसाइट भाषा",
+  "selected_language_apply": "चयनित भाषा सभी उपयोगकर्ताओं पर लागू होगी।",
+  "public_website_access": "सार्वजनिक वेबसाइट पहुँच",
+  "choose_theme": "थीम चुनो"
+}

@@ -19,10 +19,26 @@ import AuthSettingsSection from "./AuthSettingsSection";
 import EmailOtpProviderSettings from "./EmailOtpProviderSettings";
 import PhoneOtpProviderSettings from "./PhoneOtpProviderSettings";
 
+const LANGUAGE_CODE_MAP = {
+  en: "en",
+  hi: "hi",
+  rj: "rj",
+  english: "en",
+  hindi: "hi",
+  rajasthani: "rj",
+};
+
+const normalizeLanguageCode = (language) => {
+  if (!language) return null;
+  return LANGUAGE_CODE_MAP[String(language).trim().toLowerCase()] || null;
+};
+
 const defaultSettings = {
   appName: "Technosthan AgriTech",
 
   logoUrl: "",
+
+  language: "english",
 
   aiSettings: {
     systemPrompt: "",
@@ -156,6 +172,18 @@ const SettingsPanel = () => {
       setSettings(response.data.data);
 
       toast.success(response.data?.message || "Settings saved successfully");
+
+      // If language changed, notify app
+      try {
+        const code =
+          normalizeLanguageCode(response.data.data?.language) || "en";
+        try {
+          localStorage.setItem("adminLanguage", code);
+        } catch (e) {}
+        window.dispatchEvent(
+          new CustomEvent("languageUpdated", { detail: code }),
+        );
+      } catch (e) {}
 
       const eventDetail = {
         publicWebsiteEnabled: response.data.data?.publicWebsiteEnabled,
@@ -440,6 +468,31 @@ const SettingsPanel = () => {
                     className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
                     placeholder="Enter app name..."
                   />
+                </div>
+                <div>
+                  <label
+                    className={`block text-sm font-semibold ${theme.text} mb-2 flex items-center`}
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    Website Language
+                  </label>
+
+                  <select
+                    value={currentSettings.language || "english"}
+                    onChange={(e) => updateSetting("language", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500 bg-slate-900`}
+                  >
+                    <option value="english">English</option>
+
+                    <option value="hindi">Hindi</option>
+
+                    <option value="rajasthani">Rajasthani</option>
+                  </select>
+
+                  <p className="text-xs text-slate-400 mt-2">
+                    Selected language will apply to all users across the
+                    platform.
+                  </p>
                 </div>
 
                 <div>

@@ -1,0 +1,155 @@
+{
+  "navbar": {
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "wiki": "AgriTech Wiki",
+    "aiChat": "AI Chat",
+    "adminPanel": "Admin Panel",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "common": {
+    "publicAccessEnabled": "Public Access Enabled",
+    "languageTitle": "Language",
+    "welcome": "Welcome, {{name}}",
+    "logout": "Logout"
+  },
+  "buttons": {
+    "languageEnglish": "English",
+    "languageHindi": "हिन्दी",
+    "languageRajasthani": "Rajasthani",
+    "uploadFiles": "Upload files"
+  },
+  "home": {
+    "hero": {
+      "badge": "AI Powered Farming Platform",
+      "titleLine1": "Smart Agriculture",
+      "titleLine2": "for India 🇮🇳",
+      "subtitle": "Learn modern farming techniques, monitor farm performance, explore AgriTech innovations, and improve productivity using AI-powered tools.",
+      "featureSmartFarming": "Smart Farming",
+      "featureAISolutions": "AI Solutions",
+      "featureFarmAnalytics": "Farm Analytics",
+      "exploreWiki": "Explore Wiki",
+      "viewDashboard": "View Dashboard"
+    },
+    "features": {
+      "badge": "TECHNOSTHAN SERVICES",
+      "title": "Our Services 🚀",
+      "agriTechTitle": "AgriTech",
+      "agriTechSubtitle": "Smart farming ecosystem",
+      "serviceWiki": "Wiki",
+      "serviceQuiz": "Quiz",
+      "serviceAIChatbot": "AI Chatbot",
+      "serviceProgress": "Progress",
+      "otherServiceInnovationHub": "Innovation Hub",
+      "otherServiceITDevelopment": "IT Development",
+      "otherServiceHospitality": "Hospitality"
+    },
+    "aboutSection": {
+      "badge": "Trusted AgriTech Platform",
+      "titleLine1": "Empowering Farmers",
+      "titleLine2": "& Students 🌾",
+      "subtitle": "Connecting agriculture with modern technology to help Indian farmers and students grow smarter, faster, and more sustainably.",
+      "cardTitle": "Smart Farming",
+      "cardDescription": "Modern agricultural solutions",
+      "learnMore": "Learn More"
+    },
+    "contactSection": {
+      "badge": "Start Smart Farming",
+      "titleLine1": "Smart Farming",
+      "titleLine2": "Starts Here 🌱",
+      "description": "Learn AgriTech, explore AI tools, monitor farming progress, and improve agricultural productivity with TECHNOSTHAN AGRITECH.",
+      "button": "Explore AgriTech",
+      "cardTitle": "AI Agriculture",
+      "cardSubtitle": "Smart & sustainable farming",
+      "featureCropMonitoring": "Smart Crop Monitoring",
+      "featureFarmingSolutions": "AI Farming Solutions",
+      "featureSustainableAgriculture": "Sustainable Agriculture"
+    }
+  },
+  "about": {
+    "pageTitle": "About TECHNOSTHAN AGRITECH",
+    "description1": "TECHNOSTHAN AGRITECH is an innovative AgriTech platform designed to empower farmers and students with modern agricultural knowledge and AI-powered tools.",
+    "description2": "Our mission is to bridge the gap between traditional farming practices and cutting-edge technology, enabling sustainable and productive agriculture for India and beyond.",
+    "description3": "Through our platform, users can learn about smart farming techniques, take quizzes to test their knowledge, interact with an AI chatbot for instant advice, and apply data-driven farming practices. We believe in making technology accessible to everyone in the agricultural community."
+  },
+  "contact": {
+    "pageTitle": "Contact Us",
+    "description": "Have questions or feedback? Reach out to us at agritech@technosthan.com. We're here to help you on your smart farming journey!",
+    "emailLabel": "Email:",
+    "phoneLabel": "Phone:",
+    "addressLabel": "Address:",
+    "email": "agritech@technosthan.com",
+    "phone": "+91-9477288288",
+    "address": "47/1 New Sanganer Road, Sodala, Jaipur, Rajasthan 302019"
+  },
+  "aiChat": {
+    "sidebar": {
+      "newChat": "New Chat",
+      "startNewConversation": "Start a new conversation..."
+    },
+    "header": {
+      "title": "AI Assistant"
+    },
+    "empty": {
+      "heading": "Start a conversation",
+      "description": "Ask me anything about farming, agriculture, or crop management!"
+    },
+    "messages": {
+      "emptyContent": "Message content unavailable"
+    },
+    "status": {
+      "thinking": "Thinking..."
+    },
+    "errors": {
+      "unableLoadConversations": "Unable to load conversations. Please refresh the page.",
+      "unableLoadMessages": "Unable to load messages for this conversation.",
+      "unableCreateChat": "Unable to create a new chat session. Please try again.",
+      "noResponse": "No response received from AI. Please try again.",
+      "failedSend": "Failed to send message. Please try again.",
+      "deleteFailed": "Could not delete the conversation. Please try again.",
+      "describeFile": "Please describe what you want to do with this file"
+    },
+    "suggestions": {
+      "summarizeFile": "Summarize this file",
+      "analyzeData": "Analyze this data",
+      "explainContent": "Explain this content"
+    },
+    "placeholders": {
+      "file": "Describe what you want to do with this file...",
+      "question": "Ask about farming, crops, weather, or any agricultural question..."
+    },
+    "footerNote": "Press Enter to send • Click + for files • Click microphone for voice input",
+    "file": {
+      "processed": "I've processed your file \"{{fileName}}\"."
+    },
+    "alerts": {
+      "voiceNotSupported": "Voice recognition is not supported in this browser.",
+      "unsupportedFileType": "File type {{fileType}} is not supported. Please upload images, PDFs, or documents.",
+      "fileTooLarge": "File {{fileName}} is too large. Maximum size is 10MB."
+    }
+  },
+  "footer": {
+    "brandName": "TECHNOSTHAN",
+    "brandTagline": "AGRItech",
+    "tagline": "Empowering smart agriculture with AI, innovation, and modern farming solutions for farmers and students.",
+    "quickLinks": "Quick Links",
+    "services": "Services",
+    "serviceAIChatbot": "AI Chatbot",
+    "serviceSmartFarming": "Smart Farming",
+    "serviceQuizLearning": "Quiz & Learning",
+    "serviceProgressTracking": "Progress Tracking",
+    "contact": "Contact",
+    "email": "agritech@technosthan.com",
+    "phone": "+91 9477288288",
+    "location": "Jaipur, Rajasthan, India",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "rights": "© 2026 TECHNOSTHAN AGRITECH. All rights reserved.",
+    "linkHome": "Home",
+    "linkAbout": "About",
+    "linkContact": "Contact",
+    "linkWiki": "AgriTech Wiki"
+  }
+}

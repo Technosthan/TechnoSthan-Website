@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 
 import {
@@ -11,13 +12,10 @@ import {
 } from "lucide-react";
 
 const AboutSection = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
-  const farmers = [
-    "/farmer1.png",
-    "/farmer2.png",
-    "/farmer3.png",
-  ];
+  const farmers = ["/farmer1.png", "/farmer2.png", "/farmer3.png"];
 
   return (
     <section className="relative overflow-hidden">
@@ -65,24 +63,19 @@ const AboutSection = () => {
             Trusted AgriTech Platform
           </motion.div>
 
-          <h2
-            className={`text-4xl md:text-5xl font-black mb-5 ${theme.text}`}
-          >
-            Empowering Farmers
+          <h2 className={`text-4xl md:text-5xl font-black mb-5 ${theme.text}`}>
+            {t("home.aboutSection.titleLine1")}
             <br />
 
             <span className={theme.accent}>
-              & Students 🌾
+              {t("home.aboutSection.titleLine2")}
             </span>
           </h2>
 
           <p
             className={`max-w-3xl mx-auto text-lg leading-relaxed ${theme.textSecondary}`}
           >
-            Connecting agriculture with modern
-            technology to help Indian farmers and
-            students grow smarter, faster, and more
-            sustainably.
+            {t("home.aboutSection.subtitle")}
           </p>
         </div>
 
@@ -129,17 +122,17 @@ const AboutSection = () => {
 
                   <div>
                     <h3 className="text-white font-bold text-lg">
-                      Smart Farming
+                      {t("home.aboutSection.cardTitle")}
                     </h3>
 
                     <p className="text-gray-200 text-sm">
-                      Modern agricultural solutions
+                      {t("home.aboutSection.cardDescription")}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center text-green-300 font-medium text-sm">
-                  Learn More
+                  {t("home.aboutSection.learnMore")}
 
                   <ArrowRight
                     size={16}
@@ -153,11 +146,6 @@ const AboutSection = () => {
       </motion.section>
 
       {/* ABOUT SECTION */}
-      
-      
-      
-        
-                   
     </section>
   );
 };

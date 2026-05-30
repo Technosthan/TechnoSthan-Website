@@ -1,10 +1,27 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { getPublicSettings } from "../shared/lib/settingsApi";
+import i18n from "../i18n/i18n.js";
+
+const LANGUAGE_CODE_MAP = {
+  en: "en",
+  hi: "hi",
+  rj: "rj",
+  english: "en",
+  hindi: "hi",
+  rajasthani: "rj",
+};
+
+const normalizeLanguageCode = (lang) => {
+  if (!lang) return null;
+  return LANGUAGE_CODE_MAP[String(lang).trim().toLowerCase()] || null;
+};
+
+const getStoredUserLanguage = () =>
+  normalizeLanguageCode(localStorage.getItem("language"));
+const getStoredAdminLanguage = () =>
+  normalizeLanguageCode(localStorage.getItem("adminLanguage"));
+const resolveFinalLanguage = () =>
+  getStoredUserLanguage() || getStoredAdminLanguage() || "en";
 
 /* =====================================================
    🎨 ADVANCED THEMES
@@ -27,8 +44,7 @@ export const themes = {
     textSecondary: "text-gray-600 dark:text-gray-400",
 
     /* Cards */
-    card:
-      "bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg",
+    card: "bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg",
 
     /* Navbar */
     navbar:
@@ -63,9 +79,7 @@ export const themes = {
       "bg-white/80 dark:bg-gray-900/80 border-t border-gray-200 dark:border-gray-700",
 
     /* Hero */
-    heroGradient:
-      "bg-gradient-to-r from-green-600 via-yellow-500 to-green-700",
-      
+    heroGradient: "bg-gradient-to-r from-green-600 via-yellow-500 to-green-700",
   },
 
   "blue-dark": {
@@ -81,11 +95,9 @@ export const themes = {
     text: "text-white",
     textSecondary: "text-slate-300",
 
-    card:
-      "bg-slate-900/80 backdrop-blur border border-slate-700 shadow-xl",
+    card: "bg-slate-900/80 backdrop-blur border border-slate-700 shadow-xl",
 
-    navbar:
-      "bg-slate-950/80 backdrop-blur border-b border-slate-700",
+    navbar: "bg-slate-950/80 backdrop-blur border-b border-slate-700",
 
     surface: "bg-slate-900",
 
@@ -102,14 +114,11 @@ export const themes = {
 
     link: "text-blue-400 hover:underline",
 
-    sidebar:
-      "bg-slate-950/90 border-r border-slate-700",
+    sidebar: "bg-slate-950/90 border-r border-slate-700",
 
-    footer:
-      "bg-slate-950/80 border-t border-slate-700",
+    footer: "bg-slate-950/80 border-t border-slate-700",
 
-    heroGradient:
-      "bg-gradient-to-r from-blue-700 via-cyan-500 to-blue-800",
+    heroGradient: "bg-gradient-to-r from-blue-700 via-cyan-500 to-blue-800",
   },
 
   "purple-neon": {
@@ -125,11 +134,9 @@ export const themes = {
     text: "text-white",
     textSecondary: "text-purple-200",
 
-    card:
-      "bg-purple-950/40 backdrop-blur border border-purple-700 shadow-2xl",
+    card: "bg-purple-950/40 backdrop-blur border border-purple-700 shadow-2xl",
 
-    navbar:
-      "bg-black/60 backdrop-blur border-b border-purple-700",
+    navbar: "bg-black/60 backdrop-blur border-b border-purple-700",
 
     surface: "bg-purple-950",
 
@@ -146,21 +153,17 @@ export const themes = {
 
     link: "text-pink-400 hover:underline",
 
-    sidebar:
-      "bg-black/70 border-r border-purple-700",
+    sidebar: "bg-black/70 border-r border-purple-700",
 
-    footer:
-      "bg-black/60 border-t border-purple-700",
+    footer: "bg-black/60 border-t border-purple-700",
 
-    heroGradient:
-      "bg-gradient-to-r from-purple-600 via-pink-500 to-purple-700",
+    heroGradient: "bg-gradient-to-r from-purple-600 via-pink-500 to-purple-700",
   },
 
   "red-black": {
     name: "Red Black",
 
-    layout:
-      "min-h-screen bg-gradient-to-br from-black via-red-950 to-gray-950",
+    layout: "min-h-screen bg-gradient-to-br from-black via-red-950 to-gray-950",
 
     primary: "bg-red-600 hover:bg-red-700",
     secondary: "bg-gray-800 hover:bg-gray-700",
@@ -169,11 +172,9 @@ export const themes = {
     text: "text-white",
     textSecondary: "text-gray-300",
 
-    card:
-      "bg-black/80 backdrop-blur border border-red-900 shadow-2xl",
+    card: "bg-black/80 backdrop-blur border border-red-900 shadow-2xl",
 
-    navbar:
-      "bg-black/90 backdrop-blur border-b border-red-900",
+    navbar: "bg-black/90 backdrop-blur border-b border-red-900",
 
     surface: "bg-black",
 
@@ -190,14 +191,11 @@ export const themes = {
 
     link: "text-red-400 hover:underline",
 
-    sidebar:
-      "bg-black/90 border-r border-red-900",
+    sidebar: "bg-black/90 border-r border-red-900",
 
-    footer:
-      "bg-black/90 border-t border-red-900",
+    footer: "bg-black/90 border-t border-red-900",
 
-    heroGradient:
-      "bg-gradient-to-r from-red-700 via-red-500 to-black",
+    heroGradient: "bg-gradient-to-r from-red-700 via-red-500 to-black",
   },
 };
 
@@ -210,9 +208,7 @@ export const useTheme = () => {
   const context = useContext(ThemeContext);
 
   if (!context) {
-    throw new Error(
-      "useTheme must be used within ThemeProvider"
-    );
+    throw new Error("useTheme must be used within ThemeProvider");
   }
 
   return context;
@@ -231,6 +227,8 @@ export const ThemeProvider = ({ children }) => {
     logoUrl: "/hero.png",
   });
 
+  const [language, setLanguage] = useState(resolveFinalLanguage);
+
   /* =========================================
      LOAD SETTINGS
   ========================================= */
@@ -246,17 +244,37 @@ export const ThemeProvider = ({ children }) => {
         if (!mounted) return;
 
         setAppSettings({
-          appName:
-            settings.appName ||
-            "Technosthan AgriTech",
+          appName: settings.appName || "Technosthan AgriTech",
 
-          logoUrl:
-            settings.logoUrl || "/hero.png",
+          logoUrl: settings.logoUrl || "/hero.png",
         });
 
-        document.title =
-          settings.appName ||
-          "Technosthan AgriTech";
+        document.title = settings.appName || "Technosthan AgriTech";
+        const storedUserLanguage = getStoredUserLanguage();
+        const adminLanguageCode = normalizeLanguageCode(settings.language);
+        const finalLanguage = storedUserLanguage || adminLanguageCode || "en";
+
+        if (adminLanguageCode) {
+          try {
+            localStorage.setItem("adminLanguage", adminLanguageCode);
+          } catch (e) {}
+        }
+
+        setLanguage(finalLanguage);
+        i18n
+          .changeLanguage(finalLanguage)
+          .then(() => {
+            console.log("[i18n] loaded settings", {
+              adminLanguage: settings.language,
+              adminLanguageCode,
+              userLanguage: storedUserLanguage,
+              finalLanguage,
+            });
+            console.log("[i18n] current language", i18n.language);
+          })
+          .catch((error) => {
+            console.error("[i18n] failed to change language on startup", error);
+          });
       } catch (error) {
         console.log("Theme settings load failed");
       }
@@ -269,14 +287,77 @@ export const ThemeProvider = ({ children }) => {
     };
   }, []);
 
+  // Listen for external language updates (admin save)
+  useEffect(() => {
+    const applyLanguage = (langCode, source) => {
+      const normalized = normalizeLanguageCode(langCode);
+      if (!normalized) return;
+
+      const storedUserLanguage = getStoredUserLanguage();
+      if (source === "adminUpdate" && storedUserLanguage) {
+        console.log(
+          "[i18n] user override active, skipping admin update",
+          storedUserLanguage,
+        );
+        return;
+      }
+
+      setLanguage(normalized);
+      i18n
+        .changeLanguage(normalized)
+        .then(() => {
+          console.log(
+            `[i18n] applied ${source} language`,
+            normalized,
+            "current",
+            i18n.language,
+          );
+        })
+        .catch((error) => {
+          console.error(`[i18n] failed to apply ${source} language`, error);
+        });
+    };
+
+    const handleAdminLanguageUpdated = (event) => {
+      const adminLanguageCode = normalizeLanguageCode(event?.detail);
+      if (!adminLanguageCode) return;
+
+      try {
+        localStorage.setItem("adminLanguage", adminLanguageCode);
+      } catch (e) {}
+
+      applyLanguage(adminLanguageCode, "adminUpdate");
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === "adminLanguage") {
+        if (!getStoredUserLanguage()) {
+          applyLanguage(event.newValue, "storage-admin");
+        }
+      } else if (event.key === "language") {
+        const storedUserLanguage = getStoredUserLanguage();
+        if (storedUserLanguage) {
+          applyLanguage(storedUserLanguage, "storage-user");
+        } else {
+          applyLanguage(getStoredAdminLanguage() || "en", "storage-fallback");
+        }
+      }
+    };
+
+    window.addEventListener("languageUpdated", handleAdminLanguageUpdated);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("languageUpdated", handleAdminLanguageUpdated);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
   /* =========================================
      SAVE THEME
   ========================================= */
   useEffect(() => {
-    localStorage.setItem(
-      "theme",
-      currentTheme
-    );
+    localStorage.setItem("theme", currentTheme);
   }, [currentTheme]);
 
   /* =========================================
@@ -286,6 +367,25 @@ export const ThemeProvider = ({ children }) => {
     if (themes[themeKey]) {
       setCurrentTheme(themeKey);
     }
+  };
+
+  const changeLanguage = (langCode) => {
+    const normalized = normalizeLanguageCode(langCode);
+    if (!normalized) return;
+
+    setLanguage(normalized);
+    try {
+      localStorage.setItem("language", normalized);
+    } catch (e) {}
+
+    i18n
+      .changeLanguage(normalized)
+      .then(() => {
+        console.log("[i18n] user selected language", normalized);
+      })
+      .catch((error) => {
+        console.error("[i18n] failed to apply user selected language", error);
+      });
   };
 
   /* =========================================
@@ -300,6 +400,8 @@ export const ThemeProvider = ({ children }) => {
         themes,
         currentTheme,
         changeTheme,
+        language,
+        changeLanguage,
         appSettings,
       }}
     >

@@ -11,6 +11,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   Send,
@@ -108,7 +109,9 @@ const ChatPage = () => {
   const recognitionRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const { t } = useTranslation();
   const { theme } = useTheme();
+  const defaultChatTitle = t("aiChat.sidebar.newChat");
 
   const getCurrentChat = () => {
     return chats.find((chat) => chat.id === currentChatId);
@@ -150,7 +153,7 @@ const ChatPage = () => {
       const data = response.data?.data || [];
       const mappedChats = data.map((conversation) => ({
         id: conversation.id,
-        title: conversation.title || "New Chat",
+        title: conversation.title || defaultChatTitle,
         preview: conversation.preview || "",
         updatedAt: conversation.updatedAt,
         messages: [],
@@ -163,7 +166,7 @@ const ChatPage = () => {
       }
     } catch (err) {
       console.error("Failed to load chat history", err);
-      setError("Unable to load conversations. Please refresh the page.");
+      setError(t("aiChat.errors.unableLoadConversations"));
       const localChats = loadLocalChats();
       if (localChats.length > 0) {
         setChats(localChats);
@@ -200,7 +203,7 @@ const ChatPage = () => {
       updateChat(conversationId, { messages });
     } catch (err) {
       console.error("Failed to load conversation messages", err);
-      setError("Unable to load messages for this conversation.");
+      setError(t("aiChat.errors.unableLoadMessages"));
     }
   };
 
@@ -214,14 +217,14 @@ const ChatPage = () => {
   const createLocalChat = () => {
     const newChat = {
       id: `chat-${Date.now()}`,
-      title: "New Chat",
+      title: defaultChatTitle,
       messages: [],
     };
     setChats((prev) => [newChat, ...prev]);
     setCurrentChatId(newChat.id);
   };
 
-  const createNewChat = async (title = "New Chat") => {
+  const createNewChat = async (title = defaultChatTitle) => {
     if (!isAuthenticated) {
       createLocalChat();
       return;
@@ -243,7 +246,7 @@ const ChatPage = () => {
       }
     } catch (err) {
       console.error("Failed to create conversation", err);
-      setError("Unable to create a new chat session. Please try again.");
+      setError(t("aiChat.errors.unableCreateChat"));
     }
   };
 
@@ -293,7 +296,7 @@ const ChatPage = () => {
   const handleSendMessage = async (message = inputMessage) => {
     if (!message.trim()) {
       if (uploadedFiles.length > 0) {
-        setError("Please describe what you want to do with this file");
+        setError(t("aiChat.errors.describeFile"));
         return;
       }
       return;
@@ -335,7 +338,7 @@ const ChatPage = () => {
           }
 
           if (!aiResponse.trim()) {
-            aiResponse = `I've processed your file "${file.name}".`;
+            aiResponse = t("aiChat.file.processed", { fileName: file.name });
           }
 
           const botMessage = {
@@ -349,7 +352,7 @@ const ChatPage = () => {
           updateChat(currentChatId, {
             messages: [...currentMessages, userMessage, botMessage],
             title:
-              currentChat.title === "New Chat"
+              currentChat.title === defaultChatTitle
                 ? `Analysis: ${file.name}`
                 : currentChat.title,
             preview: aiResponse,
@@ -368,7 +371,7 @@ const ChatPage = () => {
         const currentMessages = currentChat.messages || [];
         const updatedMessages = [...currentMessages, userMessage];
         const title =
-          currentChat.title === "New Chat"
+          currentChat.title === defaultChatTitle
             ? message.slice(0, 30) + (message.length > 30 ? "..." : "")
             : currentChat.title;
 
@@ -395,7 +398,7 @@ const ChatPage = () => {
         }
 
         if (!aiResponse.trim()) {
-          aiResponse = "No response received from AI. Please try again.";
+          aiResponse = t("aiChat.errors.noResponse");
         }
 
         const botMessage = {
@@ -415,8 +418,7 @@ const ChatPage = () => {
     } catch (err) {
       console.error("Chat error:", err);
       const errorMessage =
-        err.response?.data?.message ||
-        "Failed to send message. Please try again.";
+        err.response?.data?.message || t("aiChat.errors.failedSend");
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -432,7 +434,7 @@ const ChatPage = () => {
 
   const startVoiceRecognition = () => {
     if (!("webkitSpeechRecognition" in window)) {
-      alert("Voice recognition is not supported in this browser.");
+      alert(t("aiChat.alerts.voiceNotSupported"));
       return;
     }
 
@@ -478,7 +480,7 @@ const ChatPage = () => {
         await deleteChatConversation(chatId);
       } catch (err) {
         console.error("Failed to delete conversation", err);
-        setError("Could not delete the conversation. Please try again.");
+        setError(t("aiChat.errors.deleteFailed"));
         return;
       }
     }
@@ -514,14 +516,12 @@ const ChatPage = () => {
       const maxSize = 10 * 1024 * 1024; // 10MB
 
       if (!validTypes.includes(file.type)) {
-        alert(
-          `File type ${file.type} is not supported. Please upload images, PDFs, or documents.`,
-        );
+        alert(t("aiChat.alerts.unsupportedFileType", { fileType: file.type }));
         return false;
       }
 
       if (file.size > maxSize) {
-        alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+        alert(t("aiChat.alerts.fileTooLarge", { fileName: file.name }));
         return false;
       }
 
@@ -558,7 +558,7 @@ const ChatPage = () => {
                 className={`w-full flex items-center gap-3 px-3 py-2 ${theme.button} rounded-lg transition-colors`}
               >
                 <Plus size={16} />
-                <span className="text-sm font-medium">New Chat</span>
+                <span className="text-sm font-medium">{defaultChatTitle}</span>
               </button>
             </div>
 
@@ -580,7 +580,8 @@ const ChatPage = () => {
                   <p className="text-xs text-gray-400 truncate mt-1">
                     {chat.messages?.length > 0
                       ? chat.messages[chat.messages.length - 1].text
-                      : chat.preview || "Start a new conversation..."}
+                      : chat.preview ||
+                        t("aiChat.sidebar.startNewConversation")}
                   </p>
                   <button
                     onClick={(e) => {
@@ -608,7 +609,9 @@ const ChatPage = () => {
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="ml-4 text-lg font-semibold">AI Assistant</h1>
+          <h1 className="ml-4 text-lg font-semibold">
+            {t("aiChat.header.title")}
+          </h1>
         </div>
 
         {/* Messages */}
@@ -618,11 +621,10 @@ const ChatPage = () => {
               <div className="text-center py-12">
                 <Bot className="mx-auto mb-4 text-gray-400" size={48} />
                 <h3 className="text-xl font-semibold text-gray-300 mb-2">
-                  Start a conversation
+                  {t("aiChat.empty.heading")}
                 </h3>
                 <p className={`${theme.textSecondary}`}>
-                  Ask me anything about farming, agriculture, or crop
-                  management!
+                  {t("aiChat.empty.description")}
                 </p>
               </div>
             )}
@@ -658,7 +660,7 @@ const ChatPage = () => {
                         pre: ({ children }) => <>{children}</>,
                       }}
                     >
-                      {message.text || "Message content unavailable"}
+                      {message.text || t("aiChat.messages.emptyContent")}
                     </ReactMarkdown>
                   </div>
                   <p
@@ -693,7 +695,7 @@ const ChatPage = () => {
                   <div className="flex items-center gap-2">
                     <Loader2 className="animate-spin" size={16} />
                     <span className={`text-sm ${theme.textSecondary}`}>
-                      Thinking...
+                      {t("aiChat.status.thinking")}
                     </span>
                   </div>
                 </div>
@@ -746,22 +748,28 @@ const ChatPage = () => {
                 {/* Suggestion Buttons */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
-                    onClick={() => setInputMessage("Summarize this file")}
+                    onClick={() =>
+                      setInputMessage(t("aiChat.suggestions.summarizeFile"))
+                    }
                     className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                   >
-                    Summarize this file
+                    {t("aiChat.suggestions.summarizeFile")}
                   </button>
                   <button
-                    onClick={() => setInputMessage("Analyze this data")}
+                    onClick={() =>
+                      setInputMessage(t("aiChat.suggestions.analyzeData"))
+                    }
                     className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
                   >
-                    Analyze this data
+                    {t("aiChat.suggestions.analyzeData")}
                   </button>
                   <button
-                    onClick={() => setInputMessage("Explain this content")}
+                    onClick={() =>
+                      setInputMessage(t("aiChat.suggestions.explainContent"))
+                    }
                     className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
                   >
-                    Explain this content
+                    {t("aiChat.suggestions.explainContent")}
                   </button>
                 </div>
               </div>
@@ -773,8 +781,8 @@ const ChatPage = () => {
                 onKeyPress={handleKeyPress}
                 placeholder={
                   uploadedFiles.length > 0
-                    ? "Describe what you want to do with this file..."
-                    : "Ask about farming, crops, weather, or any agricultural question..."
+                    ? t("aiChat.placeholders.file")
+                    : t("aiChat.placeholders.question")
                 }
                 className={`${theme.input} ${theme.text} w-full px-4 py-3 pr-12 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder-gray-400`}
                 rows="1"
@@ -793,7 +801,7 @@ const ChatPage = () => {
                   onClick={() => fileInputRef.current?.click()}
                   className="p-1 text-gray-400 hover:text-gray-300 rounded-full transition-colors"
                   disabled={isLoading}
-                  title="Upload files"
+                  title={t("buttons.uploadFiles")}
                 >
                   <Plus size={18} />
                 </button>
@@ -820,8 +828,7 @@ const ChatPage = () => {
               </div>
             </div>
             <p className={`text-xs ${theme.textSecondary} mt-2 text-center`}>
-              Press Enter to send • Click + for files • Click microphone for
-              voice input
+              {t("aiChat.footerNote")}
             </p>
           </div>
         </div>

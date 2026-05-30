@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Outlet, useLocation, NavLink } from "react-router-dom";
+import { useNavigate, Outlet, useLocation, NavLink,Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
+
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -263,7 +264,8 @@ const AdminDashboard = () => {
                 {user?.name?.charAt(0)?.toUpperCase()}
               </span>
             </motion.div>
-            <div className="ml-4 flex-1 min-w-0">
+
+            <Link to="profile" className="ml-4 flex-1 min-w-0 cursor-pointer">
               <p
                 className={`text-sm font-semibold truncate ${darkMode ? "text-white" : theme.text}`}
               >
@@ -282,7 +284,7 @@ const AdminDashboard = () => {
                   Admin Online
                 </span>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Logout Button */}

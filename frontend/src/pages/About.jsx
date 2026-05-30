@@ -1,8 +1,10 @@
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 
 const About = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -12,21 +14,16 @@ const About = () => {
       <Navbar />
       <div className="px-6 md:px-16 py-20 max-w-7xl mx-auto">
         <h1 className={`text-4xl font-bold mb-8 ${theme.accent} text-center`}>
-          About TECHNOSTHAN AGRITECH
+          {t("about.pageTitle")}
         </h1>
         <p className={`text-lg leading-relaxed ${theme.text}`}>
-          TECHNOSTHAN AGRITECH is an innovative AgriTech platform designed to
-          empower farmers and students with modern agricultural knowledge and
-          AI-powered tools. Our mission is to bridge the gap between traditional
-          farming practices and cutting-edge technology, enabling sustainable
-          and productive agriculture for India and beyond.
+          {t("about.description1")}
         </p>
         <p className={`text-lg leading-relaxed mt-4 ${theme.text}`}>
-          Through our platform, users can learn about smart farming techniques,
-          take quizzes to test their knowledge, interact with an AI chatbot for
-          instant advice, and apply data-driven farming practices. We believe in
-          making technology accessible to everyone in the agricultural
-          community.
+          {t("about.description2")}
+        </p>
+        <p className={`text-lg leading-relaxed mt-4 ${theme.text}`}>
+          {t("about.description3")}
         </p>
       </div>
       <Footer />

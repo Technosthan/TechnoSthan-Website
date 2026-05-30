@@ -3,12 +3,84 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, Shield, Bell, Menu, X } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
+import { Globe, Palette } from "lucide-react";
 import { useAccessControl } from "../contexts/AccessControlContext";
 import { getUnreadCount } from "../shared/lib/announcementsApi";
+
+const LanguageSelector = ({
+  currentLanguage = "en",
+  changeLanguage,
+  theme,
+}) => {
+  const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
+
+  const mapLabel = (c) => ({ en: "EN", hi: "HI", rj: "RJ" })[c] || c;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`p-2 rounded-lg ${theme.navItem} transition-colors flex items-center gap-2`}
+        title={t("common.languageTitle")}
+      >
+        <Globe size={16} className={theme.text} />
+        <span className="text-sm hidden sm:inline">
+          {mapLabel(currentLanguage)}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+            className={`absolute right-0 mt-2 w-40 rounded-xl p-2 shadow-xl ${theme.card} border ${theme.border}`}
+          >
+            <div className="flex flex-col">
+              <button
+                onClick={() => {
+                  changeLanguage("en");
+                  setOpen(false);
+                }}
+                className={`text-left px-3 py-2 rounded-md ${currentLanguage === "en" ? "bg-cyan-600 text-white" : "hover:bg-white/5"}`}
+              >
+                {t("buttons.languageEnglish")}
+              </button>
+              <button
+                onClick={() => {
+                  changeLanguage("hi");
+                  setOpen(false);
+                }}
+                className={`text-left px-3 py-2 rounded-md ${currentLanguage === "hi" ? "bg-cyan-600 text-white" : "hover:bg-white/5"}`}
+              >
+                {t("buttons.languageHindi")}
+              </button>
+              <button
+                onClick={() => {
+                  changeLanguage("rj");
+                  setOpen(false);
+                }}
+                className={`text-left px-3 py-2 rounded-md ${currentLanguage === "rj" ? "bg-cyan-600 text-white" : "hover:bg-white/5"}`}
+              >
+                {t("buttons.languageRajasthani")}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { theme, appSettings } = useTheme();
+  const { language: currentLanguage, changeLanguage } = useTheme();
+  const { t } = useTranslation();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user") || "null"),
   );
@@ -118,31 +190,42 @@ const Navbar = () => {
           onClick={handleHomeClick}
           className={`${theme.navItem} transition cursor-pointer`}
         >
-          Home
+          {t("navbar.home")}
         </button>
         <Link to="/about" className={`${theme.navItem} transition`}>
-          About
+          {t("navbar.about")}
         </Link>
         <Link to="/contact" className={`${theme.navItem} transition`}>
-          Contact
+          {t("navbar.contact")}
         </Link>
         {appSettings.featureFlags?.contentVisibility !== false && (
           <Link to="/AgriTech Wiki" className={`${theme.navItem} transition`}>
-            AgriTech Wiki
+            {t("navbar.wiki")}
           </Link>
         )}
         {appSettings.featureFlags?.aiChat !== false && (
           <Link to="/chat" className={`${theme.navItem} transition`}>
-            AI Chat
+            {t("navbar.aiChat")}
           </Link>
         )}
       </div>
 
       {/* Desktop User Section */}
       <div className="hidden md:flex items-center gap-4">
+        {/* Theme Button */}
+        <div className="relative"></div>
+
+        {/* Language Selector */}
+        <div className="relative">
+          <LanguageSelector
+            currentLanguage={currentLanguage}
+            changeLanguage={changeLanguage}
+            theme={theme}
+          />
+        </div>
         {hideLoginButton && (
           <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-2">
-            Public Access Enabled
+            {t("common.publicAccessEnabled")}
           </span>
         )}
         {token ? (
@@ -153,7 +236,7 @@ const Navbar = () => {
                 className={`${theme.navItem} transition flex items-center gap-1`}
               >
                 <Shield size={16} />
-                Admin Panel
+                {t("navbar.adminPanel")}
               </Link>
             )}
             <button
@@ -172,7 +255,7 @@ const Navbar = () => {
               onClick={() => navigate("/dashboard")}
               className={`${theme.textSecondary} cursor-pointer text-sm`}
             >
-              Welcome, {user.name}
+              {t("common.welcome", { name: user.name })}
             </span>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -181,7 +264,7 @@ const Navbar = () => {
               className={`${theme.logoutButton} px-4 py-2 cursor-pointer rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 text-sm`}
             >
               <LogOut size={16} />
-              Logout
+              {t("common.logout")}
             </motion.button>
           </>
         ) : (
@@ -191,7 +274,7 @@ const Navbar = () => {
               className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
             >
               <Shield size={16} />
-              Login
+              {t("navbar.login")}
             </Link>
           )
         )}
@@ -248,21 +331,21 @@ const Navbar = () => {
                 onClick={handleHomeClick}
                 className={`text-left ${theme.navItem} transition cursor-pointer py-2`}
               >
-                Home
+                {t("navbar.home")}
               </button>
               <Link
                 to="/about"
                 className={`${theme.navItem} transition py-2`}
                 onClick={handleNavClick}
               >
-                About
+                {t("navbar.about")}
               </Link>
               <Link
                 to="/contact"
                 className={`${theme.navItem} transition py-2`}
                 onClick={handleNavClick}
               >
-                Contact
+                {t("navbar.contact")}
               </Link>
               {appSettings.featureFlags?.contentVisibility !== false && (
                 <Link
@@ -270,7 +353,7 @@ const Navbar = () => {
                   className={`${theme.navItem} transition py-2`}
                   onClick={handleNavClick}
                 >
-                  AgriTech Wiki
+                  {t("navbar.wiki")}
                 </Link>
               )}
               {appSettings.featureFlags?.aiChat !== false && (
@@ -279,7 +362,7 @@ const Navbar = () => {
                   className={`${theme.navItem} transition py-2`}
                   onClick={handleNavClick}
                 >
-                  AI Chat
+                  {t("navbar.aiChat")}
                 </Link>
               )}
 
@@ -291,7 +374,7 @@ const Navbar = () => {
                   onClick={handleNavClick}
                 >
                   <Shield size={16} />
-                  Admin Panel
+                  {t("navbar.adminPanel")}
                 </Link>
               )}
 
@@ -305,7 +388,7 @@ const Navbar = () => {
                     className={`${theme.logoutButton} w-full px-4 py-3 cursor-pointer rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all duration-300`}
                   >
                     <LogOut size={18} />
-                    Logout
+                    {t("common.logout")}
                   </motion.button>
                 ) : (
                   !hideLoginButton && (
@@ -315,10 +398,45 @@ const Navbar = () => {
                       onClick={handleNavClick}
                     >
                       <Shield size={16} />
-                      Login
+                      {t("navbar.login")}
                     </Link>
                   )
                 )}
+              </div>
+              {/* Mobile Language Selector */}
+              <div className="pt-3 mt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm mb-2 text-slate-400">
+                  {t("common.languageTitle")}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      changeLanguage("en");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-3 py-2 rounded-xl ${currentLanguage === "en" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => {
+                      changeLanguage("hi");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-3 py-2 rounded-xl ${currentLanguage === "hi" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
+                  >
+                    HI
+                  </button>
+                  <button
+                    onClick={() => {
+                      changeLanguage("rj");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-3 py-2 rounded-xl ${currentLanguage === "rj" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
+                  >
+                    RJ
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>

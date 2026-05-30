@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Palette } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
@@ -10,6 +10,13 @@ const FloatingThemeSelector = () => {
   const toggleSelector = () => {
     setIsOpen(!isOpen);
   };
+
+  // Listen for external open event (from navbar compact button)
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener("openThemeSelector", handler);
+    return () => window.removeEventListener("openThemeSelector", handler);
+  }, []);
 
   const selectTheme = (themeKey) => {
     changeTheme(themeKey);

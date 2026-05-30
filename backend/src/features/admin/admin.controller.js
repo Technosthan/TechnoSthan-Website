@@ -11,7 +11,12 @@ import {
   getOrCreateAuthSettings,
   sanitizeAuthSettings,
   validateAuthSettingsPayload,
+  getTelegramRuntimeSettings,
 } from "./authSettings.service.js";
+import {
+  generateLinkingCode,
+  unlinkTelegramAccount,
+} from "../auth/telegramLinking.service.js";
 import bcrypt from "bcryptjs";
 import axios from "axios";
 import * as otpProviderService from "./otpProvider.service.js";
@@ -135,6 +140,91 @@ export const getAdminStats = async (req, res) => {
       success: false,
       message: "Failed to fetch admin statistics",
     });
+  }
+};
+
+// ===== ADMIN TELEGRAM SELF-LINKING (admin user) =====
+export const generateAdminTelegramProfileLinkingCode = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    if (!user.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Add and verify your phone number before linking Telegram",
+      });
+    }
+    if (!user.phoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Verify your phone number before linking Telegram",
+      });
+    }
+
+    const code = await generateLinkingCode(user.mobile);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const telegramSettings = await getTelegramRuntimeSettings();
+
+    user.telegramLinkCode = code;
+    user.telegramLinkCodeExpires = expiresAt;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Telegram linking code generated successfully",
+      data: {
+        code,
+        expiresIn: "15 minutes",
+        botLink: telegramSettings.botUsername
+          ? "https://t.me/" + telegramSettings.botUsername.replace(/^@/, "")
+          : null,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAdminTelegramStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    res.json({
+      success: true,
+      data: {
+        telegramLinked: !!user.telegramLinked,
+        telegramUsername: user.telegramUsername,
+        telegramChatId: user.telegramChatId,
+        telegramLinkCode: user.telegramLinkCode,
+        telegramLinkCodeExpires: user.telegramLinkCodeExpires,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const unlinkAdminTelegramProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    await unlinkTelegramAccount(user.mobile);
+    user.telegramLinkCode = null;
+    user.telegramLinkCodeExpires = null;
+    await user.save();
+    res.json({ success: true, message: "Telegram unlinked successfully" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -617,6 +707,7 @@ export const getSettings = async (req, res) => {
   try {
     const defaultSettings = {
       appName: "Technosthan AgriTech",
+      language: "english",
       logoUrl: "",
       aiSettings: {
         systemPrompt: "",
@@ -1135,6 +1226,16 @@ export const updateSettings = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "appName must be a string",
+      });
+    }
+    // Validate language if provided
+    if (
+      updateData.language &&
+      !["english", "hindi", "rajasthani"].includes(updateData.language)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid language selected",
       });
     }
 

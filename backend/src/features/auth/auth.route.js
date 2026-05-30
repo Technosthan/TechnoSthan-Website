@@ -178,25 +178,69 @@ router.get("/me", authMiddleware, getMe);
 // routes/user.js
 
 router.put("/update", authMiddleware, async (req, res) => {
-  const { name } = req.body;
+  const { name, email, mobile, picture } = req.body;
 
   try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
     const updateData = {};
-    if (typeof name === "string" && name.trim()) updateData.name = name.trim();
+
+    if (typeof name === "string" && name.trim()) {
+      updateData.name = name.trim();
+    }
+
+    if (typeof email === "string" && email.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email address",
+        });
+      }
+      if (normalizedEmail !== user.email) {
+        updateData.email = normalizedEmail;
+        updateData.emailVerified = false;
+      }
+    }
+
+    if (typeof mobile === "string" && mobile.trim()) {
+      const normalizedPhone = mobile.trim().replace(/\s+/g, "");
+      const phoneRegex = /^\+?[1-9]\d{9,14}$/;
+      if (!phoneRegex.test(normalizedPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid phone number",
+        });
+      }
+      if (normalizedPhone !== user.mobile) {
+        updateData.mobile = normalizedPhone;
+        updateData.phoneVerified = false;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "picture")) {
+      updateData.picture = picture ? picture : null;
+    }
 
     if (!Object.keys(updateData).length) {
       return res.status(400).json({
         success: false,
-        message: "At least one valid field (name) is required",
+        message: "At least one valid field is required",
       });
     }
 
-    const user = await User.findByIdAndUpdate(req.user.id, updateData, {
+    const updatedUser = await User.findByIdAndUpdate(req.user.id, updateData, {
       new: true,
       runValidators: true,
     });
 
-    if (!user) {
+    if (!updatedUser) {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -205,13 +249,33 @@ router.put("/update", authMiddleware, async (req, res) => {
 
     res.json({
       success: true,
-      user,
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        mobile: updatedUser.mobile,
+        role: updatedUser.role,
+        status: updatedUser.status,
+        picture: updatedUser.picture,
+        emailVerified: updatedUser.emailVerified,
+        phoneVerified: updatedUser.phoneVerified,
+        telegramLinked: updatedUser.telegramLinked,
+        telegramUsername: updatedUser.telegramUsername,
+        telegramChatId: updatedUser.telegramChatId,
+        telegramLinkCode: updatedUser.telegramLinkCode,
+        telegramLinkCodeExpires: updatedUser.telegramLinkCodeExpires,
+      },
     });
   } catch (err) {
     if (err?.code === 11000) {
+      const field = err.keyPattern?.email
+        ? "Email"
+        : err.keyPattern?.mobile
+          ? "Phone number"
+          : "Field";
       return res.status(409).json({
         success: false,
-        message: "Email is already in use",
+        message: `${field} is already in use`,
       });
     }
 

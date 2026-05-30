@@ -4,6 +4,7 @@ export const getPublicSettings = async (req, res) => {
   try {
     const defaultSettings = {
       appName: "Technosthan AgriTech",
+      language: "english",
       logoUrl: "",
       featureFlags: {
         aiChat: true,

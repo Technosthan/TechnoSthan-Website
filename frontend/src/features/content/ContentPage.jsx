@@ -60,7 +60,7 @@ const ContentPage = () => {
         }
       } catch (err) {
         console.error("API Error:", err);
-        setError("Failed to load content. Please try again later.");
+        setError("Please login to view content");
       } finally {
         setLoading(false);
       }

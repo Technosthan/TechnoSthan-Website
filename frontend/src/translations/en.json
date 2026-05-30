@@ -1,0 +1,18 @@
+{
+  "home": "Home",
+  "about": "About",
+  "contact": "Contact",
+  "agritech_wiki": "AgriTech Wiki",
+  "ai_chat": "AI Chat",
+  "admin_panel": "Admin Panel",
+  "login": "Login",
+  "logout": "Logout",
+  "welcome": "Welcome, {{name}}",
+  "dashboard": "Dashboard",
+  "enterprise_settings_console": "Enterprise Settings Console",
+  "save_settings": "Save Settings",
+  "website_language": "Website Language",
+  "selected_language_apply": "Selected language will apply to all users across the platform.",
+  "public_website_access": "Public Website Access",
+  "choose_theme": "Choose Theme"
+}

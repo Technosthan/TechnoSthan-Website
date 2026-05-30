@@ -1,16 +1,13 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 
-import {
-  ArrowRight,
-  Sparkles,
-  Leaf,
-  Tractor,
-} from "lucide-react";
+import { ArrowRight, Sparkles, Leaf, Tractor } from "lucide-react";
 
 const ContactSection = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -54,23 +51,20 @@ const ContactSection = () => {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-400/20 text-green-400 text-sm font-medium mb-5">
               <Sparkles size={14} />
-              Start Smart Farming
+              {t("home.contactSection.badge")}
             </div>
 
             {/* HEADING */}
             <h2 className="text-4xl md:text-5xl font-black text-white leading-tight mb-5">
-              Smart Farming
+              {t("home.contactSection.titleLine1")}
               <br />
 
-              Starts Here 🌱
+              {t("home.contactSection.titleLine2")}
             </h2>
 
             {/* TEXT */}
             <p className="text-gray-300 text-base md:text-lg leading-relaxed max-w-xl mb-8">
-              Learn AgriTech, explore AI tools,
-              monitor farming progress, and improve
-              agricultural productivity with
-              TECHNOSTHAN AGRITECH.
+              {t("home.contactSection.description")}
             </p>
 
             {/* BUTTON */}
@@ -81,9 +75,7 @@ const ContactSection = () => {
               whileTap={{
                 scale: 0.96,
               }}
-              onClick={() =>
-                navigate("/AgriTech Wiki")
-              }
+              onClick={() => navigate("/AgriTech Wiki")}
               className="
                 group
                 inline-flex
@@ -101,7 +93,7 @@ const ContactSection = () => {
                 duration-300
               "
             >
-              Explore AgriTech
+              {t("home.contactSection.button")}
 
               <ArrowRight
                 size={18}
@@ -147,11 +139,11 @@ const ContactSection = () => {
 
               <div>
                 <h3 className="text-2xl font-bold text-white">
-                  AI Agriculture
+                  {t("home.contactSection.cardTitle")}
                 </h3>
 
                 <p className="text-sm text-gray-300">
-                  Smart & sustainable farming
+                  {t("home.contactSection.cardSubtitle")}
                 </p>
               </div>
             </div>
@@ -159,9 +151,9 @@ const ContactSection = () => {
             {/* FEATURES */}
             <div className="relative z-10 space-y-3">
               {[
-                "Smart Crop Monitoring",
-                "AI Farming Solutions",
-                "Sustainable Agriculture",
+                t("home.contactSection.featureCropMonitoring"),
+                t("home.contactSection.featureFarmingSolutions"),
+                t("home.contactSection.featureSustainableAgriculture"),
               ].map((item, index) => (
                 <motion.div
                   key={index}
@@ -187,9 +179,7 @@ const ContactSection = () => {
                     <Leaf size={18} />
                   </div>
 
-                  <span className="text-white font-medium text-sm">
-                    {item}
-                  </span>
+                  <span className="text-white font-medium text-sm">{item}</span>
                 </motion.div>
               ))}
             </div>

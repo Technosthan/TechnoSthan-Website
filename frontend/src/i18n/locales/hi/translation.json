@@ -1,0 +1,155 @@
+{
+  "navbar": {
+    "home": "होम",
+    "about": "हमारे बारे में",
+    "contact": "संपर्क",
+    "wiki": "एग्रीटेक विकी",
+    "aiChat": "AI चैट",
+    "adminPanel": "एडमिन पैनल",
+    "login": "लॉगिन",
+    "logout": "लॉगआउट"
+  },
+  "common": {
+    "publicAccessEnabled": "सार्वजनिक पहुँच सक्षम है",
+    "languageTitle": "भाषा",
+    "welcome": "स्वागत है, {{name}}",
+    "logout": "लॉगआउट"
+  },
+  "buttons": {
+    "languageEnglish": "English",
+    "languageHindi": "हिन्दी",
+    "languageRajasthani": "Rajasthani",
+    "uploadFiles": "फ़ाइलें अपलोड करें"
+  },
+  "home": {
+    "hero": {
+      "badge": "एआई संचालित कृषि प्लेटफ़ॉर्म",
+      "titleLine1": "स्मार्ट कृषि",
+      "titleLine2": "भारत के लिए 🇮🇳",
+      "subtitle": "आधुनिक खेती की तकनीक सीखें, खेत का प्रदर्शन देखें, AgriTech नवाचार एक्सप्लोर करें और AI-समर्थित उपकरणों से उत्पादकता बढ़ाएं।",
+      "featureSmartFarming": "स्मार्ट खेती",
+      "featureAISolutions": "एआई समाधान",
+      "featureFarmAnalytics": "फार्म विश्लेषण",
+      "exploreWiki": "विकी एक्सप्लोर करें",
+      "viewDashboard": "डैशबोर्ड देखें"
+    },
+    "features": {
+      "badge": "TECHNOSTHAN सेवाएँ",
+      "title": "हमारी सेवाएँ 🚀",
+      "agriTechTitle": "AgriTech",
+      "agriTechSubtitle": "स्मार्ट खेती इकोसिस्टम",
+      "serviceWiki": "विकी",
+      "serviceQuiz": "क्विज़",
+      "serviceAIChatbot": "AI चैटबोट",
+      "serviceProgress": "प्रोग्रेस",
+      "otherServiceInnovationHub": "इनोवेशन हब",
+      "otherServiceITDevelopment": "आईटी विकास",
+      "otherServiceHospitality": "हॉस्पिटैलिटी"
+    },
+    "aboutSection": {
+      "badge": "विश्वसनीय AgriTech प्लेटफ़ॉर्म",
+      "titleLine1": "किसानों को सशक्त बनाना",
+      "titleLine2": "& छात्र 🌾",
+      "subtitle": "आधुनिक तकनीक से कृषि को जोड़ना ताकि भारतीय किसान और छात्र अधिक स्मार्ट, तेज़ और स्थायी तरीके से बढ़ सकें।",
+      "cardTitle": "स्मार्ट खेती",
+      "cardDescription": "आधुनिक कृषि समाधान",
+      "learnMore": "और अधिक जानें"
+    },
+    "contactSection": {
+      "badge": "स्मार्ट खेती शुरू करें",
+      "titleLine1": "स्मार्ट खेती",
+      "titleLine2": "यहाँ से शुरू होती है 🌱",
+      "description": "AgriTech सीखें, AI उपकरण एक्सप्लोर करें, खेती की प्रगति मॉनिटर करें और TECHNOSTHAN AGRITECH के साथ कृषि उत्पादकता बढ़ाएं।",
+      "button": "AgriTech एक्सप्लोर करें",
+      "cardTitle": "एआई कृषि",
+      "cardSubtitle": "स्मार्ट और टिकाऊ खेती",
+      "featureCropMonitoring": "स्मार्ट फसल निगरानी",
+      "featureFarmingSolutions": "AI खेती समाधान",
+      "featureSustainableAgriculture": "सतत कृषि"
+    }
+  },
+  "about": {
+    "pageTitle": "TECHNOSTHAN AGRITECH के बारे में",
+    "description1": "TECHNOSTHAN AGRITECH एक नवीन AgriTech प्लेटफ़ॉर्म है जो किसानों और छात्रों को आधुनिक कृषि ज्ञान और एआई-समर्थित उपकरणों से सशक्त बनाने के लिए डिज़ाइन किया गया है।",
+    "description2": "हमारा मिशन पारंपरिक खेती अभ्यास और उन्नत तकनीक के बीच की खाई को पाटना है, जिससे भारत और उसके परे के लिए टिकाऊ और उत्पादक कृषि संभव हो सके।",
+    "description3": "हमारे प्लेटफ़ॉर्म के माध्यम से उपयोगकर्ता स्मार्ट खेती तकनीकों के बारे में सीख सकते हैं, अपने ज्ञान को परीक्षण करने के लिए क्विज़ ले सकते हैं, त्वरित सलाह के लिए AI चैटबोट के साथ बातचीत कर सकते हैं, और डेटा-आधारित खेती अभ्यास लागू कर सकते हैं। हम मानते हैं कि कृषि समुदाय में हर किसी के लिए तकनीक सुलभ होनी चाहिए।"
+  },
+  "contact": {
+    "pageTitle": "संपर्क करें",
+    "description": "कोई प्रश्न या प्रतिक्रिया है? हमें agritech@technosthan.com पर संपर्क करें। हम आपकी स्मार्ट खेती यात्रा में मदद करने के लिए यहाँ हैं!",
+    "emailLabel": "ईमेल:",
+    "phoneLabel": "फ़ोन:",
+    "addressLabel": "पता:",
+    "email": "agritech@technosthan.com",
+    "phone": "+91-9477288288",
+    "address": "47/1 न्यू संगानेर रोड, सोडाला, जयपुर, राजस्थान 302019"
+  },
+  "aiChat": {
+    "sidebar": {
+      "newChat": "नया चैट",
+      "startNewConversation": "नई बातचीत शुरू करें..."
+    },
+    "header": {
+      "title": "AI सहायक"
+    },
+    "empty": {
+      "heading": "एक बातचीत शुरू करें",
+      "description": "खेती, कृषि या फसल प्रबंधन के बारे में मुझसे कुछ भी पूछें!"
+    },
+    "messages": {
+      "emptyContent": "संदेश सामग्री उपलब्ध नहीं"
+    },
+    "status": {
+      "thinking": "सोच रहा है..."
+    },
+    "errors": {
+      "unableLoadConversations": "बातचीत लोड करने में असमर्थ। कृपया पेज रीफ्रेश करें।",
+      "unableLoadMessages": "इस बातचीत के संदेश लोड करने में असमर्थ।",
+      "unableCreateChat": "नई चैट सत्र बनाने में असमर्थ। कृपया पुनः प्रयास करें।",
+      "noResponse": "AI से कोई उत्तर नहीं मिला। कृपया पुनः प्रयास करें।",
+      "failedSend": "संदेश भेजने में विफल। कृपया पुनः प्रयास करें।",
+      "deleteFailed": "बातचीत हटाने में असमर्थ। कृपया पुनः प्रयास करें।",
+      "describeFile": "कृपया बताएं कि आप इस फ़ाइल के साथ क्या करना चाहते हैं"
+    },
+    "suggestions": {
+      "summarizeFile": "इस फ़ाइल का सारांश दें",
+      "analyzeData": "इस डेटा का विश्लेषण करें",
+      "explainContent": "इस सामग्री को समझाएँ"
+    },
+    "placeholders": {
+      "file": "इस फ़ाइल के साथ आप क्या करना चाहते हैं, बताएं...",
+      "question": "खेती, फ़सल, मौसम या किसी कृषि प्रश्न के बारे में पूछें..."
+    },
+    "footerNote": "सेन्टर दबाएँ भेजने के लिए • फ़ाइलों के लिए + पर क्लिक करें • वॉइस इनपुट के लिए माइक्रोफ़ोन पर क्लिक करें",
+    "file": {
+      "processed": "मैंने आपकी फ़ाइल \"{{fileName}}\" को संसाधित कर लिया है।"
+    },
+    "alerts": {
+      "voiceNotSupported": "इस ब्राउज़र में वॉइस रिकग्निशन समर्थित नहीं है।",
+      "unsupportedFileType": "फ़ाइल प्रकार {{fileType}} समर्थित नहीं है। कृपया चित्र, पीडीएफ़, या दस्तावेज़ अपलोड करें।",
+      "fileTooLarge": "फ़ाइल {{fileName}} बहुत बड़ी है। अधिकतम आकार 10MB है।"
+    }
+  },
+  "footer": {
+    "brandName": "TECHNOSTHAN",
+    "brandTagline": "AGRItech",
+    "tagline": "एआई, नवाचार और आधुनिक खेती समाधान के साथ स्मार्ट कृषि को समर्थ बनाना।",
+    "quickLinks": "त्वरित लिंक",
+    "services": "सेवाएं",
+    "serviceAIChatbot": "AI चैटबोट",
+    "serviceSmartFarming": "स्मार्ट खेती",
+    "serviceQuizLearning": "क्विज़ और सीखना",
+    "serviceProgressTracking": "प्रगति ट्रैकिंग",
+    "contact": "संपर्क",
+    "email": "agritech@technosthan.com",
+    "phone": "+91 9477288288",
+    "location": "जयपुर, राजस्थान, भारत",
+    "privacyPolicy": "गोपनीयता नीति",
+    "termsOfService": "सेवा की शर्तें",
+    "rights": "© 2026 TECHNOSTHAN AGRITECH। सर्वाधिकार सुरक्षित।",
+    "linkHome": "होम",
+    "linkAbout": "हमारे बारे में",
+    "linkContact": "संपर्क",
+    "linkWiki": "AgriTech विकी"
+  }
+}

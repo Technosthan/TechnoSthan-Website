@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 import {
   ChevronDown,
@@ -16,45 +17,45 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const agritechServices = [
-  {
-    icon: <BookOpen size={20} />,
-    title: "Wiki",
-  },
-  {
-    icon: <ClipboardList size={20} />,
-    title: "Quiz",
-  },
-  {
-    icon: <Bot size={20} />,
-    title: "AI Chatbot",
-  },
-  {
-    icon: <BarChart3 size={20} />,
-    title: "Progress",
-  },
-];
-
-const otherServices = [
-  {
-    icon: <Building2 size={22} />,
-    title: "Innovation Hub",
-  },
-  {
-    icon: <Code2 size={22} />,
-    title: "IT Development",
-  },
-  {
-    icon: <Hotel size={22} />,
-    title: "Hospitality",
-  },
-];
-
 const FeaturesSection = () => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
-  const [openAgritech, setOpenAgritech] =
-    useState(false);
+  const agritechServices = [
+    {
+      icon: <BookOpen size={20} />,
+      title: t("home.features.serviceWiki"),
+    },
+    {
+      icon: <ClipboardList size={20} />,
+      title: t("home.features.serviceQuiz"),
+    },
+    {
+      icon: <Bot size={20} />,
+      title: t("home.features.serviceAIChatbot"),
+    },
+    {
+      icon: <BarChart3 size={20} />,
+      title: t("home.features.serviceProgress"),
+    },
+  ];
+
+  const otherServices = [
+    {
+      icon: <Building2 size={22} />,
+      title: t("home.features.otherServiceInnovationHub"),
+    },
+    {
+      icon: <Code2 size={22} />,
+      title: t("home.features.otherServiceITDevelopment"),
+    },
+    {
+      icon: <Hotel size={22} />,
+      title: t("home.features.otherServiceHospitality"),
+    },
+  ];
+
+  const [openAgritech, setOpenAgritech] = useState(false);
 
   return (
     <section className="py-16 px-6 md:px-12 relative overflow-hidden">
@@ -82,16 +83,11 @@ const FeaturesSection = () => {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium mb-5">
             <Sparkles size={15} />
-            TECHNOSTHAN SERVICES
+            {t("home.features.badge")}
           </div>
 
-          <h2
-            className={`text-4xl md:text-5xl font-black ${theme.text}`}
-          >
-            Our
-            <span className={`ml-3 ${theme.accent}`}>
-              Services 🚀
-            </span>
+          <h2 className={`text-4xl md:text-5xl font-black ${theme.text}`}>
+            {t("home.features.title")}
           </h2>
         </motion.div>
 
@@ -123,11 +119,7 @@ const FeaturesSection = () => {
           >
             {/* TOP BUTTON */}
             <button
-              onClick={() =>
-                setOpenAgritech(
-                  !openAgritech,
-                )
-              }
+              onClick={() => setOpenAgritech(!openAgritech)}
               className="w-full flex items-center justify-between p-6 text-left group"
             >
               <div className="flex items-center gap-4">
@@ -138,16 +130,12 @@ const FeaturesSection = () => {
 
                 {/* TEXT */}
                 <div>
-                  <h3
-                    className={`text-2xl font-black ${theme.text}`}
-                  >
-                    AgriTech
+                  <h3 className={`text-2xl font-black ${theme.text}`}>
+                    {t("home.features.agriTechTitle")}
                   </h3>
 
-                  <p
-                    className={`text-sm mt-1 ${theme.textSecondary}`}
-                  >
-                    Smart farming ecosystem
+                  <p className={`text-sm mt-1 ${theme.textSecondary}`}>
+                    {t("home.features.agriTechSubtitle")}
                   </p>
                 </div>
               </div>
@@ -184,30 +172,23 @@ const FeaturesSection = () => {
                   className="overflow-hidden"
                 >
                   <div className="grid grid-cols-2 gap-4 px-6 pb-6">
-                    {agritechServices.map(
-                      (
-                        service,
-                        index,
-                      ) => (
-                        <motion.div
-                          key={index}
-                          whileHover={{
-                            y: -4,
-                          }}
-                          className="bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg flex items-center gap-3 cursor-pointer"
-                        >
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-md">
-                            {service.icon}
-                          </div>
+                    {agritechServices.map((service, index) => (
+                      <motion.div
+                        key={index}
+                        whileHover={{
+                          y: -4,
+                        }}
+                        className="bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg flex items-center gap-3 cursor-pointer"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-md">
+                          {service.icon}
+                        </div>
 
-                          <span
-                            className={`font-semibold text-sm ${theme.text}`}
-                          >
-                            {service.title}
-                          </span>
-                        </motion.div>
-                      ),
-                    )}
+                        <span className={`font-semibold text-sm ${theme.text}`}>
+                          {service.title}
+                        </span>
+                      </motion.div>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -230,15 +211,14 @@ const FeaturesSection = () => {
             viewport={{ once: true }}
             className="flex-[1.2] grid sm:grid-cols-3 gap-5 w-full"
           >
-            {otherServices.map(
-              (service, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{
-                    y: -6,
-                    scale: 1.02,
-                  }}
-                  className={`
+            {otherServices.map((service, index) => (
+              <motion.div
+                key={index}
+                whileHover={{
+                  y: -6,
+                  scale: 1.02,
+                }}
+                className={`
                     ${theme.card}
                     border
                     ${theme.border}
@@ -256,24 +236,21 @@ const FeaturesSection = () => {
                     relative
                     overflow-hidden
                   `}
-                >
-                  {/* HOVER EFFECT */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-r from-green-500/10 to-emerald-500/10" />
+              >
+                {/* HOVER EFFECT */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-r from-green-500/10 to-emerald-500/10" />
 
-                  {/* ICON */}
-                  <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg mb-4">
-                    {service.icon}
-                  </div>
+                {/* ICON */}
+                <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg mb-4">
+                  {service.icon}
+                </div>
 
-                  {/* TITLE */}
-                  <h3
-                    className={`relative z-10 text-lg font-bold ${theme.text}`}
-                  >
-                    {service.title}
-                  </h3>
-                </motion.div>
-              ),
-            )}
+                {/* TITLE */}
+                <h3 className={`relative z-10 text-lg font-bold ${theme.text}`}>
+                  {service.title}
+                </h3>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </div>
