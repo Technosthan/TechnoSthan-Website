@@ -25,6 +25,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://www.technosthan.com",
+  "https://agritech.technosthan.com",
   "https://techno-sthan-website-z9yp.vercel.app",
 ];
 
@@ -58,7 +59,7 @@ app.use(
     },
 
     credentials: true,
-    methods: ["GET", "POST", "PUT","PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
