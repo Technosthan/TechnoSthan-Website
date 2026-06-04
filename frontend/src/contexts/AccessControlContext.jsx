@@ -27,7 +27,7 @@ export const AccessControlProvider = ({ children }) => {
     "/chat",
     "/quiz/:contentId",
   ]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchPublicSettings = async () => {
     try {
