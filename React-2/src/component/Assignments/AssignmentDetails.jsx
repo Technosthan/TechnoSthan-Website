@@ -44,6 +44,8 @@ const AssignmentDetails = ({
   canSubmitWork = true,
   canUploadFiles = true,
   showSubmissionActions = true,
+  submitWorkDenyReason = null,
+  uploadFilesDenyReason = null,
 }) => {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
@@ -120,7 +122,9 @@ const AssignmentDetails = ({
   };
 
   const removeAttachment = (url) => {
-    const nextAttachments = parsedAttachments.filter((item) => item.url !== url);
+    const nextAttachments = parsedAttachments.filter(
+      (item) => item.url !== url,
+    );
     setSubmissionForm((current) => ({
       ...current,
       attachmentsText: attachmentsToText(nextAttachments),
@@ -479,12 +483,52 @@ const AssignmentDetails = ({
   );
 
   const unavailableActions = (
-    <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
-      <h3 className="text-sm font-semibold text-white">Access Restricted</h3>
-      <p className="mt-3 text-sm text-slate-400">
-        Interactive actions for this assignment are not enabled for your
-        account right now.
-      </p>
+    <div className="space-y-3">
+      {!showSubmissionActions && (
+        <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500/20">
+                <X size={16} className="text-rose-400" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-rose-100">
+                Submission Actions Not Available
+              </h3>
+              <p className="mt-2 text-sm text-rose-300">
+                {uploadFilesDenyReason ||
+                  submitWorkDenyReason ||
+                  "You don't have permission to submit or upload files for this assignment."}
+              </p>
+              <p className="mt-2 text-xs text-rose-400">
+                Contact your administrator if you believe this is incorrect.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSubmissionActions && !canUploadFiles && (
+        <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20">
+                <Upload size={16} className="text-amber-400" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-amber-100">
+                File Upload Disabled
+              </h3>
+              <p className="mt-2 text-sm text-amber-300">
+                {uploadFilesDenyReason ||
+                  "File attachments are not enabled for this assignment."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -651,7 +695,9 @@ const AssignmentDetails = ({
                     </h3>
                     <div className="mt-4 space-y-4">
                       {(assignment.remarks || []).length === 0 ? (
-                        <p className="text-sm text-slate-500">No remarks yet.</p>
+                        <p className="text-sm text-slate-500">
+                          No remarks yet.
+                        </p>
                       ) : (
                         assignment.remarks.map((remark, index) => (
                           <div

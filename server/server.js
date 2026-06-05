@@ -42,7 +42,11 @@ const assignmentRoutes = require("./routes/assignmentRoutes");
 const userRoutes = require("./middleware/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const permissionRoutes = require("./routes/permissionRoutes");
 const { loadWorkspaceSettings } = require("./middleware/workspaceSettings");
+const {
+  initializeDefaultPermissions,
+} = require("./services/permissionService");
 
 // ================= EXPRESS APP =================
 
@@ -468,6 +472,14 @@ app.use(
   adminRoutes,
 );
 
+// PERMISSION ROUTES
+
+app.use(
+  "/api/permissions",
+
+  permissionRoutes,
+);
+
 // ICON GRID ROUTES
 
 app.use(
@@ -541,8 +553,10 @@ app.set("io", io);
 mongoose
   .connect(process.env.MONGO_URI)
 
-  .then(() => {
+  .then(async () => {
     console.log("✅ MongoDB Connected");
+    // Initialize default permissions on startup
+    await initializeDefaultPermissions();
   })
 
   .catch((err) => {

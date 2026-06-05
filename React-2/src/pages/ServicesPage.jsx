@@ -1,146 +1,85 @@
 import React from "react";
-import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import {
-  Code2,
-  Cloud,
-  TrendingUp,
-  Briefcase,
-  Rocket,
-  ArrowRight
-} from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import "./ServicesPage.css";
+
+import agritechIcon from "../assets/agri.png";
+import innovationIcon from "../assets/innovation.png";
+import itIcon from "../assets/it.png";
+import hospitalityIcon from "../assets/hospitality.png";
+
 const ServicesPage = () => {
+  const navigate = useNavigate();
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.2 }
-    }
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, scale: 0.85, y: 20 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: { type: "spring", stiffness: 120 }
-    }
-  };
-
-  // 🔥 FINAL 4 SERVICES (ORGANIZATION STRUCTURE)
   const services = [
     {
-      icon: <Code2 size={28} />,
-      title: "Engineering & Development",
-      desc: "Web, Mobile, API, and secure scalable systems.",
-      path: "/engineering"
+      title: "TECHNOSTHAN HOSPITALITY",
+      path: "/services/technosthan-hospitality",
+      desc: "Advanced hospitality platforms, booking systems, and management tools for hotels and resorts.",
+      icon: hospitalityIcon,
     },
     {
-      icon: <Cloud size={28} />,
-      title: "Cloud & DevOps",
-      desc: "Cloud infrastructure, CI/CD, and deployment automation.",
-      path: "/cloud"
+      title: "TECHNOSTHAN INNOVATIONS HUB",
+      path: "/services/technosthan-innovations-hub",
+      desc: "Product innovation, custom application development, and digital transformation solutions.",
+      icon: innovationIcon,
     },
     {
-      icon: <TrendingUp size={28} />,
-      title: "Digital Growth",
-      desc: "SEO, marketing, and data-driven growth strategies.",
-      path: "/digital-growth"
+      title: "TECHNOSTHAN AGRITECH",
+      path: "https://agritech.technosthan.com",
+      external: true,
+      desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services.",
+      icon: agritechIcon,
     },
     {
-      icon: <Briefcase size={28} />,
-      title: "IT Consulting",
-      desc: "Technology strategy, architecture, and business solutions.",
-      path: "/consulting"
-    }
+      title: "TECHNOSTHAN IT SERVICES",
+      path: "/services/technosthan-it-services",
+      desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
+      icon: itIcon,
+    },
   ];
 
+  const handleNavigation = (service) => {
+    if (service.external) {
+      window.location.href = service.path; // same tab/window
+      return;
+    }
+
+    navigate(service.path);
+  };
+
   return (
-    <div className="growth-wrapper">
+    <section className="services-page">
+      <Helmet>
+        <title>Our Business Services | TechnoSthan</title>
+      </Helmet>
 
-      {/* Background */}
-      <div className="circle-bg one"></div>
-      <div className="circle-bg two"></div>
+      <div className="services-container">
+        <h1 className="section-title">
+          Our Business Services
+        </h1>
 
-      <div className="growth-container">
-
-        {/* HEADER */}
-        <motion.div 
-          className="growth-header"
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7 }}
-        >
-          <div className="growth-badge">
-            <Rocket size={14} /> <span>Technology Solutions</span>
-          </div>
-
-          <h1 className="growth-title">
-            Our Core Services
-          </h1>
-
-          <p className="growth-lead">
-            We provide end-to-end technology solutions including development, 
-            cloud infrastructure, digital growth, and IT consulting.
-          </p>
-        </motion.div>
-
-        {/* SERVICES GRID */}
-        <motion.div 
-          className="strategy-grid"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          {services.map((item, index) => (
-            <motion.div
+        <div className="services-grid">
+          {services.map((service, index) => (
+            <div
               key={index}
-              variants={cardVariants}
-              whileHover={{ y: -10 }}
+              className="service-card"
+              onClick={() => handleNavigation(service)}
             >
-              <Link to={item.path} className="strategy-card">
-                <div className="strategy-icon">{item.icon}</div>
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
-                <div className="card-arrow">
-                  <span>Explore</span>
-                </div>
-              </Link>
-            </motion.div>
+              <img
+                src={service.icon}
+                alt={service.title}
+                className="service-icon"
+              />
+
+              <h2>{service.title}</h2>
+
+              <p>{service.desc}</p>
+            </div>
           ))}
-        </motion.div>
-
-        {/* STATS */}
-        <motion.div 
-          className="stats-banner"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <div className="stat"><strong>100+</strong> <span>Projects</span></div>
-          <div className="stat"><strong>99%</strong> <span>Client Satisfaction</span></div>
-          <div className="stat"><strong>24/7</strong> <span>Support</span></div>
-        </motion.div>
-
-        {/* CTA BUTTON */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          style={{ textAlign: "center", marginTop: "50px" }}
-        >
-          <Link to="/services" className="btn-premium btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-            Explore Services <ArrowRight size={16} />
-          </Link>
-        </motion.div>
-
+        </div>
       </div>
-    </div>
+    </section>
   );
 };
 

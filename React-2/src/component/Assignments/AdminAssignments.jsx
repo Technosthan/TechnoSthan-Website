@@ -26,6 +26,8 @@ import {
 } from "../../lib/assignments";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
+import usePermissions from "../../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../../lib/permissionResolver";
 import {
   DashboardActionLink,
   EmptyState,
@@ -54,7 +56,8 @@ const initialFilters = {
 
 const AdminAssignments = () => {
   const { showToast } = useToast();
-  const { canAccessFeature } = useWorkspaceAccess();
+  const { refreshAccess } = useWorkspaceAccess();
+  const { hasPermission, getPermissionDetails } = usePermissions();
   const [assignments, setAssignments] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
@@ -80,12 +83,24 @@ const AdminAssignments = () => {
 
   const currentRole = normalizeRole(getStoredUser()?.role);
   const isAdmin = currentRole === "ADMIN";
-  const canCreateAssignments = canAccessFeature("hrCanCreateAssignments");
-  const canEditAssignments = canAccessFeature("hrCanEditOwnAssignments");
-  const canDeleteAssignments = canAccessFeature("hrCanDeleteAssignments");
-  const canReviewSubmissions =
-    canAccessFeature("assignmentReviewsEnabled") &&
-    canAccessFeature("hrCanReviewSubmissions");
+  const canCreateAssignments = hasPermission(
+    PERMISSION_KEYS.CREATE_ASSIGNMENTS,
+  );
+  const canEditAssignments = hasPermission(PERMISSION_KEYS.EDIT_ASSIGNMENTS);
+  const canDeleteAssignments = hasPermission(
+    PERMISSION_KEYS.DELETE_ASSIGNMENTS,
+  );
+  const canReviewSubmissions = hasPermission(
+    PERMISSION_KEYS.REVIEW_SUBMISSIONS,
+  );
+
+  // Permission checks for submission interactions
+  const canUserSubmitWork = hasPermission(PERMISSION_KEYS.SUBMIT_WORK);
+  const canUserUploadFiles = hasPermission(PERMISSION_KEYS.UPLOAD_FILES);
+
+  // Get detailed permission reasons for UI display
+  const submitWorkDetails = getPermissionDetails(PERMISSION_KEYS.SUBMIT_WORK);
+  const uploadFilesDetails = getPermissionDetails(PERMISSION_KEYS.UPLOAD_FILES);
 
   const canManageAssignment = (assignment) => {
     if (
@@ -672,8 +687,19 @@ const AdminAssignments = () => {
         onReviewSubmission={handleReviewSubmission}
         onSubmitWork={() => {}}
         loading={saving}
-        canUploadFiles={false}
-        showSubmissionActions={false}
+        canUploadFiles={canUserUploadFiles}
+        canSubmitWork={canUserSubmitWork}
+        showSubmissionActions={canUserSubmitWork || canUserUploadFiles}
+        submitWorkDenyReason={
+          !canUserSubmitWork && submitWorkDetails?.reason
+            ? submitWorkDetails.reason
+            : null
+        }
+        uploadFilesDenyReason={
+          !canUserUploadFiles && uploadFilesDetails?.reason
+            ? uploadFilesDetails.reason
+            : null
+        }
       />
     </AdminLayout>
   );

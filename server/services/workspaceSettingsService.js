@@ -131,7 +131,9 @@ const FEATURE_DEFINITIONS = Object.freeze(
 
 const FEATURE_ACCESS_MODES = Object.freeze([
   ...new Set(
-    Object.values(FEATURE_SCOPE_OPTIONS).flat().concat(["roles", "roles_and_users"]),
+    Object.values(FEATURE_SCOPE_OPTIONS)
+      .flat()
+      .concat(["roles", "roles_and_users"]),
   ),
 ]);
 
@@ -153,8 +155,9 @@ const buildSafeChangeSummary = (current, updated) => {
   return changes;
 };
 
-const dedupeStrings = (values = []) =>
-  [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
+const dedupeStrings = (values = []) => [
+  ...new Set(values.map((value) => String(value).trim()).filter(Boolean)),
+];
 
 const normalizeAllowedRoles = (roles = []) =>
   dedupeStrings(roles)
@@ -179,7 +182,9 @@ const getDefaultScopeForFamily = (family) => {
 };
 
 const isSpecificScope = (scope) =>
-  ["specific_users", "specific_hr_users", "specific_admin_users"].includes(scope);
+  ["specific_users", "specific_hr_users", "specific_admin_users"].includes(
+    scope,
+  );
 
 const mapLegacyScopeToFamily = (rawScope, family) => {
   if (!rawScope) return null;
@@ -202,7 +207,11 @@ const mapLegacyScopeToFamily = (rawScope, family) => {
 
   if (family === FEATURE_FAMILIES.ADMIN) {
     if (rawScope === "specific_users") return "specific_admin_users";
-    if (rawScope === "everyone" || rawScope === "hr_only" || rawScope === "users_only")
+    if (
+      rawScope === "everyone" ||
+      rawScope === "hr_only" ||
+      rawScope === "users_only"
+    )
       return "all_admins";
     return null;
   }
@@ -221,7 +230,11 @@ const deriveGlobalScopeFromRoles = (roles = []) => {
   return "everyone";
 };
 
-const deriveScopeFromArrays = (family, allowedRoles = [], allowedUsers = []) => {
+const deriveScopeFromArrays = (
+  family,
+  allowedRoles = [],
+  allowedUsers = [],
+) => {
   if (allowedUsers.length > 0) {
     if (family === FEATURE_FAMILIES.HR) return "specific_hr_users";
     if (family === FEATURE_FAMILIES.ADMIN) return "specific_admin_users";
@@ -247,7 +260,9 @@ const deriveAllowedRolesForScope = (scope, family) => {
 
 const getDefaultFeatureEntry = (featureKey, enabled = false) => ({
   enabled: Boolean(enabled),
-  accessScope: getDefaultScopeForFamily(getFeatureDefinition(featureKey).family),
+  accessScope: getDefaultScopeForFamily(
+    getFeatureDefinition(featureKey).family,
+  ),
   allowedRoles: [],
   allowedUsers: [],
 });
@@ -266,7 +281,9 @@ const normalizeFeatureEntry = (
 
   if (entry && typeof entry === "object") {
     const enabled =
-      entry.enabled === undefined ? Boolean(defaultEnabled) : Boolean(entry.enabled);
+      entry.enabled === undefined
+        ? Boolean(defaultEnabled)
+        : Boolean(entry.enabled);
     let allowedRoles = normalizeAllowedRoles(entry.allowedRoles || []);
     let allowedUsers = normalizeAllowedUsers(entry.allowedUsers || []);
 
@@ -296,7 +313,10 @@ const normalizeUserOverrideEntry = (entry = {}) => {
   const role = rawRole ? normalizeRole(rawRole) : "";
   const permissions = Object.entries(entry.permissions || {}).reduce(
     (acc, [featureKey, value]) => {
-      if (BOOLEAN_FEATURE_KEYS.includes(featureKey) && typeof value === "boolean") {
+      if (
+        BOOLEAN_FEATURE_KEYS.includes(featureKey) &&
+        typeof value === "boolean"
+      ) {
         acc[featureKey] = value;
       }
       return acc;
@@ -362,7 +382,9 @@ const normalizeWorkspaceSettings = (
   settings = {},
   { includeMissingDefaults = true } = {},
 ) => {
-  const base = includeMissingDefaults ? { ...buildDefaultWorkspaceSettings() } : {};
+  const base = includeMissingDefaults
+    ? { ...buildDefaultWorkspaceSettings() }
+    : {};
 
   Object.entries(settings || {}).forEach(([key, value]) => {
     if (key === "userOverrides") {
@@ -437,11 +459,19 @@ const resolveWorkspaceFeatureAccess = (
   const normalizedSettings = normalizeWorkspaceSettings(settings);
   const definition = getFeatureDefinition(featureKey);
   const family = definition.family;
-  const feature = normalizeFeatureEntry(featureKey, normalizedSettings?.[featureKey], {
-    defaultEnabled: definition.defaultEnabled,
-  });
+  const feature = normalizeFeatureEntry(
+    featureKey,
+    normalizedSettings?.[featureKey],
+    {
+      defaultEnabled: definition.defaultEnabled,
+    },
+  );
 
-  const override = getUserOverrideDecision(featureKey, normalizedSettings, user);
+  const override = getUserOverrideDecision(
+    featureKey,
+    normalizedSettings,
+    user,
+  );
   if (override) {
     return { feature, allowed: override.allowed, reason: override.reason };
   }
@@ -451,9 +481,12 @@ const resolveWorkspaceFeatureAccess = (
   }
 
   const normalizedRole = normalizeRole(user?.role);
-  const normalizedUserId = String(user?.id || user?._id || user?.userId || "").trim();
+  const normalizedUserId = String(
+    user?.id || user?._id || user?.userId || "",
+  ).trim();
   const userAllowed =
-    normalizedUserId.length > 0 && feature.allowedUsers.includes(normalizedUserId);
+    normalizedUserId.length > 0 &&
+    feature.allowedUsers.includes(normalizedUserId);
 
   if (
     allowAdminBypass &&
@@ -463,7 +496,10 @@ const resolveWorkspaceFeatureAccess = (
     return { feature, allowed: true, reason: "admin_role" };
   }
 
-  if (family === FEATURE_FAMILIES.GLOBAL && feature.accessScope === "everyone") {
+  if (
+    family === FEATURE_FAMILIES.GLOBAL &&
+    feature.accessScope === "everyone"
+  ) {
     return { feature, allowed: true, reason: "everyone" };
   }
 
@@ -500,8 +536,7 @@ const resolveWorkspaceFeatureAccess = (
       return { feature, allowed: false, reason: "admin_only" };
     }
 
-    const allowed =
-      feature.accessScope === "all_admins" ? true : userAllowed;
+    const allowed = feature.accessScope === "all_admins" ? true : userAllowed;
     return {
       feature,
       allowed,
@@ -583,6 +618,36 @@ const getPublicSettings = async () => {
   return serializePublicWorkspaceSettings(doc.settings);
 };
 
+/**
+ * Resolve permission for a given user and feature key and return a canonical
+ * shape used by APIs and UI: { allowed, reason, source, feature }
+ * - source: 'global' | 'user_override' | 'role'
+ */
+const hasPermission = async (user, featureKey) => {
+  const doc = await getWorkspaceSettings();
+  const settings = normalizeWorkspaceSettings(doc.settings || {});
+
+  // use existing resolver which already considers user overrides and roles
+  const resolved = resolveWorkspaceFeatureAccess(featureKey, settings, user, {
+    allowAdminBypass: true,
+  });
+
+  const source =
+    resolved.reason && resolved.reason.startsWith("user_override")
+      ? "user_override"
+      : resolved.feature && resolved.feature.enabled === false
+        ? "global"
+        : "role";
+
+  return {
+    allowed: Boolean(resolved.allowed),
+    reason:
+      resolved.reason || (resolved.allowed ? "role_allowed" : "role_denied"),
+    source,
+    feature: resolved.feature,
+  };
+};
+
 const updateWorkspaceSettings = async (updates, changedBy) => {
   const settingsDoc = await getWorkspaceSettings({ bypassCache: true });
   const current = normalizeWorkspaceSettings(settingsDoc.settings || {});
@@ -640,4 +705,5 @@ module.exports = {
   resolveWorkspaceFeatureAccess,
   serializePublicWorkspaceSettings,
   updateWorkspaceSettings,
+  hasPermission,
 };

@@ -1,0 +1,142 @@
+.ws-container {
+  display: flex;
+  gap: 20px;
+  padding: 16px;
+}
+.ws-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ws-insights {
+  width: 300px;
+}
+.ws-section {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+  border-radius: 8px;
+}
+.ws-section-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+}
+.gs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.gs-card {
+  background: #0f1724;
+  padding: 12px;
+  border-radius: 8px;
+  color: #e6eef8;
+}
+.gs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.gs-title {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+.gs-desc {
+  color: #9aa7b7;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+.switch input {
+  display: none;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ccc;
+  border-radius: 24px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.switch input:checked + .slider {
+  background: #16a34a;
+}
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}
+.rp-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.rp-tabs button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px solid transparent;
+}
+.rp-tabs button.active {
+  background: #0b1220;
+  border-color: #1f2937;
+}
+.rp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-radius: 6px;
+  background: #0b1220;
+}
+.uo-wrap .uo-top {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.uo-results {
+  max-height: 180px;
+  overflow: auto;
+  border-radius: 6px;
+  background: #07101a;
+  padding: 8px;
+}
+.uo-row {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+.uo-drawer {
+  margin-top: 12px;
+  padding: 8px;
+  background: #06111a;
+  border-radius: 6px;
+}
+.pi-card {
+  background: #061018;
+  padding: 12px;
+  border-radius: 8px;
+  color: #cfe8ff;
+}

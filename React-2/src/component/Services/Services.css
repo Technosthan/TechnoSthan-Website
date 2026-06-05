@@ -499,3 +499,13 @@
     align-items: flex-start;
   }
 }
+
+.card-bg,
+.overlay,
+.content,
+.card-top,
+.card-body,
+.arrow-icon,
+.icon-box {
+  pointer-events: none;
+}

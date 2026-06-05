@@ -37,7 +37,7 @@ const AboutPage = () => {
     },
     {
       title: "TECHNOSTHAN AGRITECH",
-      path: "/services/technosthan-agritech",
+      path: "https://agritech.technosthan.com",
       icon: agritechIcon,
       theme: 2,
       desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services."

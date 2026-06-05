@@ -22,23 +22,16 @@ const Services = () => {
       desc: "Hospitality platforms, booking systems, and management tools built for hotels and resorts.",
       icon: hospitalityIcon, // ✅ correct
       color: "#10b981",
-      img: "https://images.unsplash.com/photo-1566073771259-6a8506099945"
-    },
-    {
-      title: "TECHNOSTHAN INNOVATIONS HUB",
-      path: "/services/technosthan-innovations-hub",
-      desc: "Product innovation, custom app development, and digital transformation solutions.",
-      icon: innovationIcon, // ✅ correct
-      color: "#f59e0b",
-      img: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0"
+      img: "https://images.unsplash.com/photo-1566073771259-6a8506099945",
     },
     {
       title: "TECHNOSTHAN AGRITECH",
-      path: "/services/technosthan-agritech",
+      path: "https://agritech.technosthan.com",
+      external: true,
       desc: "Agri-tech solutions, farm automation, and data-driven agriculture growth services.",
-      icon: agritechIcon, // ✅ correct
+      icon: agritechIcon,
       color: "#22c55e",
-      img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449"
+      img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449",
     },
     {
       title: "TECHNOSTHAN IT SERVICES",
@@ -46,9 +39,18 @@ const Services = () => {
       desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
       icon: itIcon, // ✅ correct
       color: "#6366f1",
-      img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
-    }
+      img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31",
+    },
   ];
+
+  const handleNavigation = (item) => {
+    if (item.external) {
+      window.location.assign(item.path);
+      return;
+    }
+
+    navigate(item.path);
+  };
 
   // Auto-slide effect
   useEffect(() => {
@@ -68,7 +70,9 @@ const Services = () => {
       if (scrollTo) {
         // Delay slightly to allow route mount and layout
         setTimeout(() => {
-          document.getElementById(scrollTo)?.scrollIntoView({ behavior: "smooth" });
+          document
+            .getElementById(scrollTo)
+            ?.scrollIntoView({ behavior: "smooth" });
         }, 120);
       }
     } catch (e) {
@@ -78,7 +82,6 @@ const Services = () => {
 
   return (
     <section className="services-page">
-
       <Helmet>
         <title>Our Verticals - TechnoSthan</title>
       </Helmet>
@@ -92,14 +95,10 @@ const Services = () => {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="hero-left">
-          <h1>
-            Our Business Verticals
-          </h1>
+          <h1>Our Business Verticals</h1>
 
           {/* Business Vertical Title (30% smaller) */}
-          <div className="vertical-label">
-            {services[activeVertical].title}
-          </div>
+          <div className="vertical-label">{services[activeVertical].title}</div>
 
           {/* Dynamic Description from Active Vertical */}
           <p className="vertical-description">
@@ -140,10 +139,12 @@ const Services = () => {
             >
               <div
                 className="vertical-card"
-                style={{ backgroundImage: `url(${services[activeVertical].img})` }}
+                style={{
+                  backgroundImage: `url(${services[activeVertical].img})`,
+                }}
               >
                 <div className="vertical-overlay"></div>
-                
+
                 <div className="vertical-content">
                   <img
                     src={services[activeVertical].icon}
@@ -177,7 +178,7 @@ const Services = () => {
           <motion.div
             key={index}
             className="service-card"
-            onClick={() => navigate(item.path)}
+            onClick={() => handleNavigation(item)}
           >
             <div
               className="card-bg"
@@ -215,7 +216,6 @@ const Services = () => {
           </motion.div>
         ))}
       </motion.div>
-
     </section>
   );
 };
