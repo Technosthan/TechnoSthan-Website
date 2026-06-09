@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../../lib/api";
+import ToggleSwitch from "./ToggleSwitch";
 
 const GlobalServices = () => {
   const [services, setServices] = useState([]);
@@ -32,15 +33,19 @@ const GlobalServices = () => {
       {services.map((s) => (
         <div key={s.key} className="gs-card">
           <div className="gs-row">
-            <div className="gs-title">{s.key}</div>
+            <div>
+              <div className="gs-title">{s.key}</div>
+              <div className="gs-desc">{s.description || ""}</div>
+            </div>
             <div className="gs-toggle">
-              <label className="switch">
-                <input type="checkbox" checked={s.enabled} readOnly />
-                <span className="slider" />
-              </label>
+              <ToggleSwitch
+                checked={s.enabled}
+                disabled={true}
+                onChange={() => {}}
+                label={`Toggle ${s.key}`}
+              />
             </div>
           </div>
-          <div className="gs-desc">{s.description || ""}</div>
         </div>
       ))}
     </div>

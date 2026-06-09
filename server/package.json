@@ -18,6 +18,8 @@
     "nodemailer": "^8.0.4",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "cloudinary": "^2.10.0",
+    "multer": "^2.0.0"
   }
 }

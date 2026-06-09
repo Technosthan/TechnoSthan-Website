@@ -43,6 +43,7 @@ const userRoutes = require("./middleware/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
+const campaignRoutes = require("./routes/campaignRoutes");
 const { loadWorkspaceSettings } = require("./middleware/workspaceSettings");
 const {
   initializeDefaultPermissions,
@@ -486,6 +487,14 @@ app.use(
   "/api/icon-grid",
 
   iconGridRoutes,
+);
+
+// CAMPAIGN ROUTES
+
+app.use(
+  "/api/campaigns",
+
+  campaignRoutes,
 );
 
 // POSTS ROUTES

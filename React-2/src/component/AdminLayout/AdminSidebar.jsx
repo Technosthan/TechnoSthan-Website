@@ -3,6 +3,7 @@ import {
   ChartNoAxesCombined,
   House,
   LogOut,
+  Megaphone,
   X,
   Users,
 } from "lucide-react";
@@ -45,6 +46,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               label: "Workspace Services",
               to: "/admin/workspace-services",
               icon: ChartNoAxesCombined,
+            },
+            {
+              label: "Campaign Manager",
+              to: "/admin/campaigns",
+              icon: Megaphone,
             },
             { label: "Users", to: "/admin/users", icon: Users },
           ].filter(Boolean);

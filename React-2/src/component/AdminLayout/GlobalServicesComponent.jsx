@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Power, AlertCircle, CheckCircle2 } from "lucide-react";
 import api from "../../lib/api";
+import ToggleSwitch from "./ToggleSwitch";
 
 /**
  * GLOBAL SERVICES COMPONENT
@@ -119,47 +120,17 @@ const GlobalServices = ({ onUpdate }) => {
                 </p>
               </div>
 
-              {/* Toggle Switch */}
-              <button
-                onClick={() =>
-                  updateService(service.serviceKey, !service.enabled)
-                }
-                disabled={saving}
-                className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition ${
-                  service.enabled
-                    ? "bg-emerald-500/30 ring-1 ring-emerald-500/50"
-                    : "bg-slate-700/40 ring-1 ring-slate-600/50"
-                }`}
-              >
-                {/* Toggle Circle */}
-                <div
-                  className={`absolute h-6 w-6 rounded-full bg-white/90 transition ${
-                    service.enabled ? "translate-x-7" : "translate-x-1"
-                  }`}
+              <div className="flex items-center gap-3">
+                <ToggleSwitch
+                  checked={service.enabled}
+                  disabled={saving}
+                  onChange={(next) => updateService(service.serviceKey, next)}
+                  label={`Toggle ${service.name}`}
                 />
-
-                {/* Icons */}
-                <div className="absolute inset-0 flex items-center justify-between px-1.5">
-                  {service.enabled && (
-                    <CheckCircle2 size={14} className="text-emerald-600" />
-                  )}
-                  {!service.enabled && (
-                    <AlertCircle size={14} className="text-slate-500" />
-                  )}
-                </div>
-              </button>
-            </div>
-
-            {/* Status Badge */}
-            <div className="mt-3 flex items-center gap-2">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  service.enabled ? "bg-emerald-400" : "bg-slate-500"
-                }`}
-              />
-              <span className="text-xs font-medium text-slate-300">
-                {service.enabled ? "Enabled" : "Disabled"}
-              </span>
+                <span className="text-sm font-medium text-slate-200">
+                  {service.enabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
             </div>
           </div>
         ))}

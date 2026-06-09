@@ -258,8 +258,11 @@
 .ws-switch {
   position: relative;
   display: inline-flex;
-  width: 52px;
+  width: 58px;
   height: 28px;
+  border-radius: 9999px;
+  background: #334155;
+  border: 1px solid #475569;
 }
 
 .ws-switch input {
@@ -270,31 +273,28 @@
 
 .ws-slider {
   position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background: rgba(148, 163, 184, 0.14);
+  inset: 2px;
+  background: #475569;
   border-radius: 9999px;
-  transition: background 0.2s ease;
 }
 
 .ws-switch input:checked + .ws-slider {
-  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  background: linear-gradient(135deg, #34d399, #3b82f6);
 }
 
 .ws-slider::before {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 4px;
-  width: 20px;
-  height: 20px;
+  left: 2px;
+  top: 2px;
+  width: 22px;
+  height: 22px;
   background: #ffffff;
-  border-radius: 50%;
-  transition: transform 0.2s ease;
+  border-radius: 9999px;
 }
 
 .ws-switch input:checked + .ws-slider::before {
-  transform: translateX(24px);
+  left: calc(100% - 24px);
 }
 
 .role-tabs {

@@ -50,6 +50,8 @@ import CloudPage from "./pages/CloudPage";
 import DigitalGrowth from "./pages/DigitalGrowth";
 import ConsultingPage from "./pages/ConsultingPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CampaignPopup from "./component/CampaignPopup";
+import CampaignManager from "./component/AdminLayout/CampaignManager";
 import TermsConditions from "./pages/TermsConditions";
 import DataDeletion from "./pages/DataDeletion";
 
@@ -93,6 +95,7 @@ function App() {
     <>
       {!hideLayout && <Navbar />}
       {!hideLayout && <SocialSidebar />}
+      {!hideLayout && <CampaignPopup />}
 
       <Routes>
         {/* HOME */}
@@ -208,6 +211,15 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <WorkspaceServices />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/campaigns"
+          element={
+            <ProtectedAdminRoute>
+              <CampaignManager />
             </ProtectedAdminRoute>
           }
         />

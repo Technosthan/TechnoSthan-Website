@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, Circle, Lock, Unlock } from "lucide-react";
 import api from "../../lib/api";
+import ToggleSwitch from "./ToggleSwitch";
 
 /**
  * ROLE PERMISSIONS COMPONENT
@@ -178,28 +179,15 @@ const RolePermissionsComponent = ({ onUpdate }) => {
                   </p>
                 </div>
 
-                {/* Toggle Switch */}
-                <button
-                  onClick={() =>
-                    updatePermission(
-                      activeRole,
-                      perm.permissionKey,
-                      !perm.enabled,
-                    )
-                  }
+                <ToggleSwitch
+                  checked={perm.enabled}
                   disabled={saving}
-                  className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition ${
-                    perm.enabled
-                      ? "bg-emerald-500/30 ring-1 ring-emerald-500/50"
-                      : "bg-slate-700/40 ring-1 ring-slate-600/50"
-                  }`}
-                >
-                  <div
-                    className={`absolute h-6 w-6 rounded-full bg-white/90 transition ${
-                      perm.enabled ? "translate-x-7" : "translate-x-1"
-                    }`}
-                  />
-                </button>
+                  loading={saving}
+                  onChange={(next) =>
+                    updatePermission(activeRole, perm.permissionKey, next)
+                  }
+                  label={`Toggle permission ${perm.name}`}
+                />
               </div>
 
               {/* Status */}
