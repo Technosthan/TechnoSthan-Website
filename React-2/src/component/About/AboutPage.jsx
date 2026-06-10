@@ -44,7 +44,7 @@ const AboutPage = () => {
     },
     {
       title: "TECHNOSTHAN IT SERVICES",
-       path: "/Pages/ServicesPage",   // ✅ FINAL CHANGE
+       path: "https://it.technosthan.com/",   // ✅ FINAL CHANGE
       icon: itIcon,
       theme: 3,
       desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services."

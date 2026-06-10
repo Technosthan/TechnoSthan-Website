@@ -35,7 +35,8 @@ const Services = () => {
     },
     {
       title: "TECHNOSTHAN IT SERVICES",
-      path: "/services/technosthan-it-services",
+      path: "https://it.technosthan.com/",
+      external: true,
       desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
       icon: itIcon, // ✅ correct
       color: "#6366f1",
