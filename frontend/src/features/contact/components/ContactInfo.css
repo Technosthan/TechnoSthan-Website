@@ -1,0 +1,22 @@
+.contact-info {
+  padding: 80px 20px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 25px;
+}
+
+.info-card {
+  text-align: center;
+  padding: 30px;
+}
+
+@media(max-width:768px){
+
+  .info-grid{
+    grid-template-columns:1fr;
+  }
+
+}

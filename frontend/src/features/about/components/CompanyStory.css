@@ -1,0 +1,43 @@
+.company-story {
+  padding: 100px 20px;
+}
+
+.story-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.story-content h2 {
+  margin: 20px 0;
+}
+
+.story-content p {
+  line-height: 1.8;
+}
+
+.story-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  transition: .3s;
+}
+
+.story-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--accent-primary);
+}
+
+.story-card h3 {
+  font-size: 3rem;
+  color: var(--accent-primary);
+}
+
+@media (max-width:768px) {
+  .story-content {
+    grid-template-columns: 1fr;
+  }
+}

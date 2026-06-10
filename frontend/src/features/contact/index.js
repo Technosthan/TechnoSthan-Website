@@ -1,0 +1,2 @@
+// Contact feature index
+export {};

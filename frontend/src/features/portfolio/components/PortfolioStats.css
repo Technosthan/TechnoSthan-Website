@@ -1,0 +1,25 @@
+.portfolio-stats {
+  padding: 80px 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 20px;
+}
+
+.stats-grid .glass-card {
+  text-align: center;
+  padding: 30px;
+}
+
+.stats-grid h3 {
+  color: var(--accent-primary);
+  font-size: 2rem;
+}
+
+@media(max-width:768px){
+  .stats-grid{
+    grid-template-columns: repeat(2,1fr);
+  }
+}

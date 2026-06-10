@@ -1,0 +1,13 @@
+.portfolio-hero {
+  padding: 120px 20px 100px;
+  text-align: center;
+}
+
+.portfolio-hero h1 {
+  margin: 20px 0;
+}
+
+.portfolio-hero p {
+  max-width: 700px;
+  margin: 0 auto;
+}

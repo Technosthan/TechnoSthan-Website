@@ -1,0 +1,25 @@
+.industries-section {
+  padding: 100px 20px;
+}
+
+.industries-section h2 {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.industry-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 25px;
+}
+
+.industry-card {
+  text-align: center;
+  padding: 30px;
+}
+
+@media(max-width:768px){
+  .industry-grid{
+    grid-template-columns:1fr;
+  }
+}

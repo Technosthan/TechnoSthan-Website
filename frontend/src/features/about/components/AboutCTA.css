@@ -1,0 +1,31 @@
+.about-cta {
+  padding: 120px 20px;
+}
+
+.about-cta .about-container {
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+
+  padding: 60px;
+
+  border-radius: 24px;
+
+  background: linear-gradient(
+    135deg,
+    rgba(0,212,255,.08),
+    rgba(124,58,237,.08)
+  );
+
+  border: 1px solid var(--border-secondary);
+}
+
+.about-cta h2 {
+  margin-bottom: 30px;
+}
+
+@media(max-width:768px){
+  .about-cta .about-container{
+    padding:40px 20px;
+  }
+}

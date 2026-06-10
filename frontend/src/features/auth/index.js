@@ -1,0 +1,2 @@
+// Auth feature index
+export {};

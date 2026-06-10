@@ -1,0 +1,12 @@
+.case-studies {
+  padding: 100px 20px;
+}
+
+.case-studies h2 {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.case-card {
+  padding: 40px;
+}

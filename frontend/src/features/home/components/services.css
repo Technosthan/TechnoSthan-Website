@@ -1,0 +1,328 @@
+/* ===== Services Section ===== */
+.services-preview {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    var(--bg-primary) 0%,
+    var(--bg-secondary) 100%
+  );
+}
+
+/* ===== Section Header ===== */
+.section-header {
+  max-width: 800px;
+  margin: 0 auto var(--spacing-3xl);
+  text-align: center;
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  margin-bottom: var(--spacing-lg);
+  backdrop-filter: blur(10px);
+}
+
+.section-badge .badge-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.section-header h2 {
+  margin-bottom: var(--spacing-md);
+}
+
+.section-header p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ===== Services Grid ===== */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-2xl);
+  margin-bottom: var(--spacing-3xl);
+}
+
+/* ===== Service Card ===== */
+.service-card {
+  position: relative;
+  padding: var(--spacing-2xl);
+  background: rgba(15, 20, 54, 0.6);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.service-card:hover {
+  background: rgba(15, 20, 54, 0.8);
+  border-color: var(--accent-primary);
+  box-shadow: 0 20px 60px rgba(0, 212, 255, 0.15);
+}
+
+/* ===== Icon Background Glow ===== */
+.icon-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(0, 212, 255, 0.1),
+    transparent 50%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.service-card:hover .icon-glow {
+  opacity: 1;
+}
+
+/* ===== Icon Container ===== */
+.icon-container {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.2),
+    rgba(124, 58, 237, 0.1)
+  );
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 12px;
+  color: var(--accent-primary);
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.service-card:hover .icon-container {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.4),
+    rgba(124, 58, 237, 0.3)
+  );
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+/* ===== Card Content ===== */
+.service-card h3 {
+  position: relative;
+  z-index: 1;
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.service-card p {
+  position: relative;
+  z-index: 1;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+  flex-grow: 1;
+}
+
+.service-card:hover h3 {
+  color: var(--accent-primary);
+}
+
+/* ===== Card Arrow ===== */
+.card-arrow {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 50%;
+  color: var(--accent-primary);
+  transition: all 0.3s ease;
+  margin-top: auto;
+}
+
+.service-card:hover .card-arrow {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+}
+
+/* ===== Card Border Glow (on hover) ===== */
+.card-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    transparent,
+    var(--accent-primary),
+    transparent
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.service-card:hover .card-glow {
+  opacity: 0.3;
+}
+
+/* ===== Services CTA Section ===== */
+.services-cta {
+  max-width: 600px;
+  margin: var(--spacing-3xl) auto 0;
+  padding: var(--spacing-2xl);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.05),
+    rgba(124, 58, 237, 0.05)
+  );
+  border: 1px solid var(--border-secondary);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.services-cta h3 {
+  font-size: 1.5rem;
+}
+
+.services-cta p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.services-cta button {
+  margin-top: var(--spacing-md);
+}
+
+/* ===== Tablet Responsive ===== */
+@media (max-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-xl);
+  }
+
+  .service-card {
+    padding: var(--spacing-xl);
+  }
+
+  .section-header h2 {
+    font-size: 2rem;
+  }
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+  .services-preview {
+    padding: var(--spacing-2xl) var(--spacing-md) !important;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+  }
+
+  .service-card {
+    padding: var(--spacing-lg);
+  }
+
+  .section-header {
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .section-header h2 {
+    font-size: 1.75rem;
+  }
+
+  .section-header p {
+    font-size: 1rem;
+  }
+
+  .icon-container {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+
+  .services-cta {
+    padding: var(--spacing-lg);
+    margin: var(--spacing-2xl) 0 0;
+  }
+
+  .services-cta h3 {
+    font-size: 1.3rem;
+  }
+
+  .services-cta p {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .services-grid {
+    gap: var(--spacing-lg);
+  }
+
+  .service-card {
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .service-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .service-card p {
+    font-size: 0.9rem;
+  }
+
+  .icon-container {
+    width: 45px;
+    height: 45px;
+    font-size: 1rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .section-badge {
+    font-size: 0.8rem;
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
+}

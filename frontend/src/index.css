@@ -1,0 +1,198 @@
+/* ===== CSS Variables & Theme ===== */
+:root {
+  /* Colors */
+  --bg-primary: #0a0e27;
+  --bg-secondary: #0f1436;
+  --bg-tertiary: #161b3e;
+  --bg-hover: #1a1f4a;
+
+  /* Accent Colors */
+  --accent-primary: #00d4ff;
+  --accent-secondary: #00a8ff;
+  --accent-tertiary: #7c3aed;
+
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #b8bcc8;
+  --text-tertiary: #888c99;
+
+  /* Borders & Dividers */
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-secondary: rgba(255, 255, 255, 0.12);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #00d4ff 0%, #00a8ff 100%);
+  --gradient-secondary: linear-gradient(135deg, #7c3aed 0%, #00d4ff 100%);
+
+  /* Font */
+  --font-primary:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+}
+
+/* ===== Base Styles ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.3s ease;
+}
+
+/* ===== Button Styles ===== */
+.btn-primary {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 10px;
+  background: var(--gradient-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 212, 255, 0.3);
+}
+
+.btn-secondary {
+  padding: 12px 32px;
+  border: 2px solid var(--border-secondary);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-primary);
+  background: rgba(0, 212, 255, 0.05);
+  color: var(--accent-primary);
+}
+
+/* ===== Typography ===== */
+h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  background: var(--gradient-secondary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+/* ===== Section Spacing ===== */
+section {
+  padding: var(--spacing-3xl) var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  section {
+    padding: var(--spacing-2xl) var(--spacing-md);
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.75rem;
+  }
+}
+
+/* ===== Additional Responsive Utilities ===== */
+@media (max-width: 768px) {
+  section {
+    padding: var(--spacing-2xl) var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  section {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* ===== Link Styles ===== */
+a {
+  position: relative;
+}
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-secondary);
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}

@@ -1,0 +1,21 @@
+.project-categories {
+  padding: 100px 20px;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 20px;
+  margin-top: 50px;
+}
+
+.categories-grid .glass-card {
+  text-align: center;
+  padding: 30px;
+}
+
+@media(max-width:768px){
+  .categories-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}

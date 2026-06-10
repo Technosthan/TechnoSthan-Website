@@ -1,0 +1,45 @@
+.services-hero {
+  padding: 140px 20px 100px;
+  text-align: center;
+  position: relative;
+}
+
+.services-hero .about-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.services-hero h1 {
+  margin: 24px 0;
+  font-size: 4rem;
+  line-height: 1.1;
+}
+
+.services-hero p {
+  max-width: 700px;
+  margin: 0 auto;
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+.services-hero-buttons {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .services-hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .services-hero-buttons {
+    flex-direction: column;
+  }
+
+  .services-hero-buttons button {
+    width: 100%;
+  }
+}
