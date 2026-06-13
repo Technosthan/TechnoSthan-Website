@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 import {
   FiLinkedin,
   FiTwitter,
@@ -9,6 +10,8 @@ import {
   FiArrowRight,
 } from "react-icons/fi";
 import "./footer.css";
+import toast from "react-hot-toast";
+import { subscribe } from "../../api/subscribers.api";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -35,8 +38,16 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: FiLinkedin, url: "https://www.linkedin.com/company/technosthan/", label: "LinkedIn" },
-    { icon: FiTwitter, url: "https://twitter.com/technosthan", label: "Twitter" },
+    {
+      icon: FiLinkedin,
+      url: "https://www.linkedin.com/company/technosthan/",
+      label: "LinkedIn",
+    },
+    {
+      icon: FiTwitter,
+      url: "https://twitter.com/technosthan",
+      label: "Twitter",
+    },
     { icon: FiGithub, url: "https://github.com/technosthan", label: "GitHub" },
     { icon: FiMail, url: "mailto:info@technosthan.com", label: "Email" },
   ];
@@ -61,6 +72,35 @@ const Footer = () => {
         duration: 0.6,
       },
     },
+  };
+
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email || !emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await subscribe({ email });
+      toast.success("Thank you for subscribing to Technosthan updates.");
+      setEmail("");
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message;
+      if (status === 409 || (msg && msg.toLowerCase().includes("already"))) {
+        toast.error("This email is already subscribed.");
+      } else {
+        toast.error("Failed to subscribe. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -92,13 +132,18 @@ const Footer = () => {
               type="email"
               placeholder="Enter your email"
               className="newsletter-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
             />
             <motion.button
               className="newsletter-btn"
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.95 }}
+              onClick={handleSubscribe}
+              disabled={loading}
             >
-              <FiArrowRight size={18} />
+              {loading ? "Subscribing..." : <FiArrowRight size={18} />}
             </motion.button>
           </div>
           <p className="newsletter-text">

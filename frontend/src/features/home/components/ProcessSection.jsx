@@ -8,6 +8,7 @@ import {
   FiArrowUp,
 } from "react-icons/fi";
 import "./process.css";
+import ProcessWheel from "./ProcessWheel";
 
 const ProcessSection = () => {
   const processSteps = [
@@ -99,102 +100,9 @@ const ProcessSection = () => {
         </p>
       </motion.div>
 
-      {/* Process Timeline */}
-      <motion.div
-        className="process-timeline"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-      >
-        {processSteps.map((item, index) => {
-          const IconComponent = item.icon;
-          return (
-            <motion.div
-              key={index}
-              className="process-step"
-              variants={itemVariants}
-              whileHover={{ y: -8 }}
-            >
-              {/* Timeline Connector */}
-              {index < processSteps.length - 1 && (
-                <div className="timeline-connector">
-                  <motion.div
-                    className="connector-progress"
-                    initial={{ scaleX: 0 }}
-                    whileInView={{ scaleX: 1 }}
-                    transition={{
-                      delay: 0.2 + index * 0.1,
-                      duration: 0.8,
-                    }}
-                    viewport={{ once: true }}
-                  />
-                </div>
-              )}
+      <ProcessWheel />
 
-              {/* Step Card */}
-              <div className="step-card">
-                {/* Step Number Circle */}
-                <motion.div
-                  className="step-number"
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {item.step}
-                </motion.div>
-
-                {/* Icon */}
-                <motion.div
-                  className="step-icon"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <IconComponent size={32} />
-                </motion.div>
-
-                {/* Content */}
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
-
-                {/* Duration Badge */}
-                <motion.div
-                  className="duration-badge"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  ⏱ {item.duration}
-                </motion.div>
-
-                {/* Bottom Accent Line */}
-                <div className="card-accent-line"></div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-
-      {/* Process Stats */}
-      <motion.div
-        className="process-stats"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-      >
-        <div className="stat-box">
-          <h4>6 Phases</h4>
-          <p>Comprehensive approach</p>
-        </div>
-        <div className="stat-divider"></div>
-        <div className="stat-box">
-          <h4>Agile</h4>
-          <p>Flexible & adaptive</p>
-        </div>
-        <div className="stat-divider"></div>
-        <div className="stat-box">
-          <h4>Transparent</h4>
-          <p>Full visibility</p>
-        </div>
-      </motion.div>
+      {/* (Process wheel replaces the previous timeline and stats) */}
     </section>
   );
 };

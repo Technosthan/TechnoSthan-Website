@@ -1,13 +1,33 @@
+import { useEffect, useState } from "react";
+
 import "./ServiceGrid.css";
 
-import { services } from "../data/sampleData";
+import { getServices } from "../../../api/services.api";
+
+import { useNavigate } from "react-router-dom";
 
 const ServiceGrid = () => {
+  const [services, setServices] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await getServices();
+
+        setServices(response.data.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   return (
     <section className="service-grid-section">
       <div className="about-container">
         <h2>Solutions We Offer</h2>
-        <div className="service-icon">{services[0].icon}</div>
 
         <div className="services-grid">
           {services.map((service) => (
@@ -16,7 +36,12 @@ const ServiceGrid = () => {
 
               <p>{service.description}</p>
 
-              <button className="service-btn">Learn More →</button>
+              <button
+                onClick={() => navigate("/contact")}
+                className="service-btn"
+              >
+                Learn More →
+              </button>
             </div>
           ))}
         </div>

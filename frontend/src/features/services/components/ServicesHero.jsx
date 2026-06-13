@@ -1,14 +1,12 @@
 import "./ServicesHero.css";
+import { useNavigate } from "react-router-dom";
 
 const ServicesHero = () => {
+  const navigate = useNavigate();
   return (
     <section className="services-hero">
-
       <div className="about-container">
-
-        <span className="section-badge">
-          Our Services
-        </span>
+        <span className="section-badge">Our Services</span>
 
         <h1>
           Transforming Ideas Into
@@ -17,25 +15,21 @@ const ServicesHero = () => {
         </h1>
 
         <p>
-          We help startups, SMEs and enterprises build
-          powerful software solutions, cloud infrastructure,
-          AI automation systems and modern digital platforms.
+          We help startups, SMEs and enterprises build powerful software
+          solutions, cloud infrastructure, AI automation systems and modern
+          digital platforms.
         </p>
 
         <div className="services-hero-buttons">
-
-          <button className="btn-primary">
+          <button onClick={() => navigate("/contact")} className="btn-primary">
             Get Free Consultation
           </button>
 
-          <button className="btn-secondary">
+          <button onClick={() => navigate("/portfolio")} className="btn-secondary">
             View Portfolio
           </button>
-
         </div>
-
       </div>
-
     </section>
   );
 };

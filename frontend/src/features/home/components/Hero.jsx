@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import herobanner from "../../../assets/images/hero/hero.png";
 import "./hero.css";
+import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
+  const navigate = useNavigate();
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -72,6 +74,7 @@ const Hero = () => {
           <motion.div className="hero-buttons" variants={itemVariants}>
             <motion.button
               className="btn-primary"
+               onClick={() => navigate("/contact")}
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -79,6 +82,7 @@ const Hero = () => {
             </motion.button>
             <motion.button
               className="btn-secondary"
+              onClick={() => navigate("/services")}
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
             >

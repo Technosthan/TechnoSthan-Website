@@ -1,4 +1,14 @@
-// Contact routes placeholder
-const express = require("express");
-const router = express.Router();
-module.exports = router;
+import { Router } from "express";
+
+import { create } from "./contact.controller.js";
+import { validateContact } from "./contact.validation.js";
+
+const router = Router();
+
+router.post(
+  "/",
+  validateContact,
+  create
+);
+
+export default router;

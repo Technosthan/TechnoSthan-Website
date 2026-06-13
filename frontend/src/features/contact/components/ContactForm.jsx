@@ -1,80 +1,183 @@
+import { useState, useEffect } from "react";
 import "./ContactForm.css";
 
+import { createContact } from "../../../api/contact.api";
+import { getServices } from "../../../api/services.api";
+import toast from "react-hot-toast";
+
 const ContactForm = () => {
-  return (
-    <section className="contact-form-section">
+const [loading, setLoading] = useState(false);
 
-      <div className="about-container">
+const [formData, setFormData] = useState({
+name: "",
+email: "",
+phone: "",
+company: "",
+subject: "",
+message: "",
+service: "",
+});
 
-        <h2>Send Us A Message</h2>
+const [services, setServices] = useState([]);
 
-        <form className="contact-form">
+useEffect(() => {
+const fetchServices = async () => {
+try {
+const response = await getServices();
+setServices(response.data.data);
+} catch (error) {
+console.error(error);
+}
+};
 
-          <input
-            type="text"
-            placeholder="Full Name"
-          />
 
-          <input
-            type="email"
-            placeholder="Email Address"
-          />
+fetchServices();
 
-          <input
-            type="text"
-            placeholder="Phone Number"
-          />
 
-          <input
-            type="text"
-            placeholder="Company Name"
-          />
+}, []);
 
-          <select>
-            <option>
-              Select Service
-            </option>
+const handleChange = (e) => {
+setFormData((prev) => ({
+...prev,
+[e.target.name]: e.target.value,
+}));
+};
 
-            <option>
-              Web Development
-            </option>
+const handleSubmit = async (e) => {
+e.preventDefault();
 
-            <option>
-              Mobile App Development
-            </option>
 
-            <option>
-              Cloud Solutions
-            </option>
+if (!formData.name.trim()) {
+  toast.error("Name is required");
+  return;
+}
 
-            <option>
-              AI Automation
-            </option>
-          </select>
+if (!formData.email.trim()) {
+  toast.error("Email is required");
+  return;
+}
 
-          <input
-            type="text"
-            placeholder="Project Budget"
-          />
+if (!formData.message.trim()) {
+  toast.error("Message is required");
+  return;
+}
 
-          <textarea
-            rows="6"
-            placeholder="Tell us about your project..."
-          />
+setLoading(true);
 
-          <button
-            type="submit"
-            className="btn-primary"
+try {
+  await createContact(formData);
+
+  toast.success("✅ Message Sent Successfully! Our team will contact you shortly.");
+
+  setFormData({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    service: "",
+    subject: "",
+    message: "",
+  });
+} catch (error) {
+  console.error(error);
+
+  toast.error("❌ Failed to send message. Please try again.");
+} finally {
+  setLoading(false);
+}
+
+
+};
+
+return ( <section className="contact-form-section"> <div className="about-container"> <h2>Send Us A Message</h2>
+
+
+    <form
+      className="contact-form"
+      onSubmit={handleSubmit}
+    >
+      <input
+        type="text"
+        name="name"
+        placeholder="Full Name"
+        value={formData.name}
+        onChange={handleChange}
+      />
+
+      <input
+        type="email"
+        name="email"
+        placeholder="Email Address"
+        value={formData.email}
+        onChange={handleChange}
+      />
+
+      <input
+        type="text"
+        name="phone"
+        placeholder="Phone Number"
+        value={formData.phone}
+        onChange={handleChange}
+      />
+
+      <input
+        type="text"
+        name="company"
+        placeholder="Company Name"
+        value={formData.company}
+        onChange={handleChange}
+      />
+
+      <select
+        name="service"
+        value={formData.service}
+        onChange={handleChange}
+      >
+        <option value="">
+          Select Service
+        </option>
+
+        {services.map((service) => (
+          <option
+            key={service.id}
+            value={service.title}
           >
-            Send Inquiry
-          </button>
+            {service.title}
+          </option>
+        ))}
+      </select>
 
-        </form>
+      <input
+        type="text"
+        name="subject"
+        placeholder="Subject"
+        value={formData.subject}
+        onChange={handleChange}
+      />
 
-      </div>
+      <textarea
+        rows="6"
+        name="message"
+        placeholder="Tell us about your project..."
+        value={formData.message}
+        onChange={handleChange}
+      />
 
-    </section>
-  );
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={loading}
+      >
+        {loading
+          ? "Sending..."
+          : "Send Inquiry"}
+      </button>
+    </form>
+  </div>
+</section>
+
+
+);
 };
 
 export default ContactForm;

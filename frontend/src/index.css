@@ -11,6 +11,10 @@
   --accent-secondary: #00a8ff;
   --accent-tertiary: #7c3aed;
 
+  /* Accessibility */
+  --focus-ring: 0 0 0 4px rgba(0, 212, 255, 0.18);
+  --max-content-width: 1200px;
+
   /* Text Colors */
   --text-primary: #ffffff;
   --text-secondary: #b8bcc8;
@@ -50,11 +54,35 @@ html {
 }
 
 body {
+  min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-primary);
   line-height: 1.6;
   overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 a {

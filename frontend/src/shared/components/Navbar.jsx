@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiMenu, FiX } from "react-icons/fi";
@@ -24,6 +24,8 @@ const Navbar = () => {
     { label: "Portfolio", path: "/portfolio" },
     { label: "Contact", path: "/contact" },
   ];
+
+  const navigate = useNavigate();
 
   return (
     <motion.nav
@@ -64,12 +66,14 @@ const Navbar = () => {
           </div>
 
           <motion.button
+            type="button"
             className="btn-primary navbar-cta"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => navigate("/contact")}
           >
             Let's Talk
           </motion.button>
@@ -77,7 +81,12 @@ const Navbar = () => {
 
         {/* Mobile Menu Button */}
         <button
+          type="button"
           className="mobile-menu-btn"
+          aria-label={
+            isMobileMenuOpen ? "Close mobile menu" : "Open mobile menu"
+          }
+          aria-expanded={isMobileMenuOpen}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
@@ -111,9 +120,14 @@ const Navbar = () => {
             </motion.div>
           ))}
           <motion.button
+            type="button"
             className="btn-primary mobile-cta"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              navigate("/contact");
+            }}
           >
             Let's Talk
           </motion.button>

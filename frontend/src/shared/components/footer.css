@@ -35,6 +35,10 @@
   z-index: 2;
 }
 
+.footer {
+  padding-bottom: var(--spacing-3xl);
+}
+
 /* ===== Footer Brand Section ===== */
 .footer-brand {
   display: flex;
@@ -78,6 +82,8 @@
   border-radius: 12px;
   padding: var(--spacing-sm);
   transition: all 0.3s ease;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .newsletter-form:focus-within {
@@ -88,6 +94,7 @@
 
 .newsletter-input {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -324,7 +331,7 @@
   }
 
   .footer-links-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: var(--spacing-xl);
   }
 

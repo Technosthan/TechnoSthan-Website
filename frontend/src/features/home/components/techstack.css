@@ -6,6 +6,7 @@
     var(--bg-secondary) 0%,
     var(--bg-primary) 100%
   );
+  padding: var(--spacing-3xl) var(--spacing-lg);
 }
 
 /* ===== Background Glows ===== */
@@ -43,13 +44,16 @@
 
 /* ===== Section Header ===== */
 .tech-stack .section-header {
-  margin-bottom: var(--spacing-3xl);
+  margin: 0 auto var(--spacing-3xl);
+  max-width: 760px;
+  text-align: center;
+  padding-top: var(--spacing-xl);
 }
 
 /* ===== Tech Grid ===== */
 .tech-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--spacing-xl);
   margin-bottom: var(--spacing-3xl);
   position: relative;
@@ -145,7 +149,7 @@
 }
 
 /* ===== Shine Effect ===== */
-.shine {
+/* .shine {
   position: absolute;
   top: 0;
   left: -100%;
@@ -160,7 +164,7 @@
   animation: shine 3s infinite;
   pointer-events: none;
   z-index: 1;
-}
+} */
 
 @keyframes shine {
   0% {
@@ -181,9 +185,9 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-lg);
   padding: var(--spacing-2xl);
-  background: rgba(0, 212, 255, 0.05);
-  border: 1px solid var(--border-primary);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
   text-align: center;
   position: relative;
   z-index: 2;

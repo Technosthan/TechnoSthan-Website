@@ -8,8 +8,10 @@ import {
   FiAward,
 } from "react-icons/fi";
 import "./whychooseus.css";
+import { useNavigate } from "react-router-dom";
 
 const WhyChooseUs = () => {
+  const navigate = useNavigate();
   const items = [
     {
       icon: FiUsers,
@@ -146,6 +148,7 @@ const WhyChooseUs = () => {
         <h3>Ready to transform your business?</h3>
         <motion.button
           className="btn-primary"
+          onClick={() => navigate("/contact")}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >

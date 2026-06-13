@@ -1,51 +1,56 @@
-import './FeaturedProjects.css';
+import { useEffect, useState } from "react";
+import "./FeaturedProjects.css";
 
-const projects = [
-  {
-    title: "Agritech Platform",
-    category: "Web Application",
-  },
-  {
-    title: "School ERP",
-    category: "Enterprise Software",
-  },
-  {
-    title: "Healthcare System",
-    category: "Management Portal",
-  },
-  {
-    title: "E-Commerce Store",
-    category: "Online Platform",
-  },
-];
+import { getProjects } from "../../../api/projects.api";
 
 const FeaturedProjects = () => {
-  return (
-    <section className="featured-projects">
+const [projects, setProjects] = useState([]);
 
-      <div className="about-container">
+useEffect(() => {
+const fetchProjects = async () => {
+try {
+const response = await getProjects();
+setProjects(response.data.data);
+} catch (error) {
+console.error("Failed to fetch projects:", error);
+}
+};
 
-        <h2>Featured Projects</h2>
 
-        <div className="projects-grid">
+fetchProjects();
 
-          {projects.map((project) => (
-            <div
-              key={project.title}
-              className="glass-card project-card"
-            >
-              <h3>{project.title}</h3>
 
-              <p>{project.category}</p>
-            </div>
-          ))}
+}, []);
 
-        </div>
+return ( <section className="featured-projects"> <div className="about-container">
 
-      </div>
 
-    </section>
-  );
+    <h2>Featured Projects</h2>
+
+    <div className="projects-grid">
+
+      {projects.length > 0 ? (
+        projects.map((project) => (
+          <div
+            key={project.id}
+            className="glass-card project-card"
+          >
+            <h3>{project.title}</h3>
+
+            <p>{project.description}</p>
+          </div>
+        ))
+      ) : (
+        <p>No Projects Found</p>
+      )}
+
+    </div>
+
+  </div>
+</section>
+
+
+);
 };
 
 export default FeaturedProjects;

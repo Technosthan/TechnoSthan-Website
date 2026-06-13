@@ -116,20 +116,30 @@
 
 /* ===== Mobile Navigation Menu ===== */
 .mobile-menu {
-  display: none;
+  max-height: 0;
+  opacity: 0;
   overflow: hidden;
-  background: rgba(10, 14, 39, 0.95);
+  background: rgba(10, 14, 39, 0.98);
   border-bottom: 1px solid var(--border-primary);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  width: 100%;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 999;
+  transition:
+    max-height 0.35s ease,
+    opacity 0.35s ease;
 }
 
 .mobile-menu.open {
-  display: block;
+  max-height: 420px;
+  opacity: 1;
 }
 
 .mobile-nav-links {
-  padding: var(--spacing-lg) var(--spacing-lg);
+  padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -185,8 +195,8 @@
   }
 
   .mobile-nav-links {
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
   }
 
   .mobile-nav-link {

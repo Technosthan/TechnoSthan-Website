@@ -76,7 +76,7 @@
   max-width: 1400px;
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 560px);
   gap: 4rem;
   align-items: center;
   position: relative;
@@ -88,6 +88,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  max-width: 720px;
 }
 
 .hero-badge {
@@ -99,7 +100,7 @@
   border: 1px solid rgba(0, 212, 255, 0.3);
   border-radius: 50px;
   width: fit-content;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--accent-primary);
   backdrop-filter: blur(10px);
@@ -108,7 +109,7 @@
 .badge-dot {
   width: 8px;
   height: 8px;
-  background: var(--accent-primary);          
+  background: var(--accent-primary);
   border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -134,10 +135,10 @@
 }
 
 .hero-description {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--text-secondary);
-  line-height: 1.8;
-  max-width: 500px;
+  line-height: 1.9;
+  max-width: 620px;
 }
 
 .hero-buttons {
@@ -149,16 +150,19 @@
 
 .hero-buttons button {
   font-size: 1rem;
+  min-width: 180px;
 }
 
 /* ===== Hero Stats ===== */
 .hero-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--spacing-lg);
   margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-xl);
-  border-top: 1px solid var(--border-primary);
+  padding: var(--spacing-2xl);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 30px;
 }
 
 .stat-item {
@@ -166,6 +170,17 @@
   flex-direction: column;
   gap: var(--spacing-xs);
   cursor: pointer;
+  padding: var(--spacing-lg);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    transform 0.3s ease,
+    background 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-6px);
+  background: rgba(0, 212, 255, 0.08);
 }
 
 .stat-number {
@@ -193,8 +208,8 @@
 .hero-image-wrapper {
   position: relative;
   width: 100%;
-  max-width: 500px;
-  aspect-ratio: 1;
+  max-width: 560px;
+  aspect-ratio: 1 / 1;
 }
 
 .image-glow {
