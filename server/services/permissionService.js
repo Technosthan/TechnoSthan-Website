@@ -1,7 +1,7 @@
 const GlobalService = require("../models/GlobalService");
 const RolePermission = require("../models/RolePermission");
 const UserPermissionOverride = require("../models/UserPermissionOverride");
-const { normalizeRole } = require("../constants/rbac");
+const { normalizeRole, ROLES } = require("../constants/rbac");
 
 /**
  * CENTRALIZED PERMISSION RESOLVER
@@ -120,6 +120,7 @@ const getUserOverride = async (userId, permissionKey) => {
  * MAIN RESOLVER: Check if user has permission
  *
  * Resolution steps:
+ * 0. ADMIN ENFORCEMENT: If user is admin, always allow all permissions
  * 1. Check global service disabled → return false
  * 2. Check user override → if exists, use it
  * 3. Fall back to role permission → return true/false
@@ -135,6 +136,16 @@ const hasPermission = async (user, permissionKey) => {
   const normalizedPermissionKey = permissionKey.toLowerCase().trim();
 
   try {
+    // Step 0: ADMIN ENFORCEMENT
+    // Admin users always have all permissions enabled
+    if (userRole === ROLES.ADMIN) {
+      return {
+        allowed: true,
+        source: "admin_always_enabled",
+        reason: "Admin users always have all permissions enabled.",
+      };
+    }
+
     // Step 1: Check global service
     // Try to infer service key from permission key
     const serviceKey = inferServiceKey(normalizedPermissionKey);
@@ -245,7 +256,30 @@ const getAllUserPermissions = async (user) => {
       };
     });
 
-    // Apply user overrides
+    // ADMIN ENFORCEMENT: If user is admin, all permissions must be enabled
+    if (userRole === ROLES.ADMIN) {
+      const allPermissionKeys =
+        RolePermission.schema.path("permissionKey").enumValues || [];
+      const permissionDocs = rolePerms.reduce((acc, perm) => {
+        acc[perm.permissionKey] = perm;
+        return acc;
+      }, {});
+
+      allPermissionKeys.forEach((permissionKey) => {
+        const perm = permissionDocs[permissionKey];
+        permissions[permissionKey] = {
+          allowed: true,
+          source: "admin_always_enabled",
+          category: perm?.category || "assignments",
+          reason: "Admin users always have all permissions enabled.",
+        };
+      });
+
+      // Return early for admin users - skip overrides and global service checks
+      return permissions;
+    }
+
+    // Apply user overrides (non-admin users only)
     userOverrides.forEach((override) => {
       if (override.enabled !== null) {
         permissions[override.permissionKey] = {

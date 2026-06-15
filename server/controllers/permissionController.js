@@ -2,6 +2,7 @@ const GlobalService = require("../models/GlobalService");
 const RolePermission = require("../models/RolePermission");
 const UserPermissionOverride = require("../models/UserPermissionOverride");
 const User = require("../models/User");
+const { ROLES } = require("../constants/rbac");
 const {
   hasPermission,
   clearCache,
@@ -191,7 +192,21 @@ const getUserOverrides = async (req, res) => {
       query.userRole = role.toUpperCase();
     }
 
-    const overrides = await UserPermissionOverride.find(query).lean();
+    let overrides = await UserPermissionOverride.find(query).lean();
+
+    // ADMIN ENFORCEMENT: If fetching overrides for an admin user,
+    // ensure all permissions are shown as enabled
+    if (userId) {
+      const targetUser = await User.findById(userId).lean();
+      if (targetUser && targetUser.role === ROLES.ADMIN) {
+        // For admin users, all overrides should show enabled: true
+        overrides = overrides.map((override) => ({
+          ...override,
+          enabled: true,
+          source: "admin_always_enabled",
+        }));
+      }
+    }
 
     res.json({
       success: true,
@@ -224,6 +239,15 @@ const setUserOverride = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    // ADMIN ENFORCEMENT: Prevent modifying permissions for admin users
+    if (targetUser.role === ROLES.ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Cannot modify permissions for admin users. Admin users always have all permissions enabled.",
       });
     }
 
@@ -272,6 +296,24 @@ const removeUserOverride = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "userId and permissionKey are required",
+      });
+    }
+
+    // Get user for context
+    const targetUser = await User.findById(userId).lean();
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ADMIN ENFORCEMENT: Prevent removing overrides for admin users
+    if (targetUser.role === ROLES.ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Cannot remove permissions for admin users. Admin users always have all permissions enabled.",
       });
     }
 
