@@ -156,6 +156,7 @@ const WhyChooseUs = () => {
         </motion.button>
       </motion.div>
     </section>
+    
   );
 };
 
