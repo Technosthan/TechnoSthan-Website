@@ -1,7 +1,45 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { RotateCcw, Search } from "lucide-react";
 import AdminLayout from "./AdminLayout";
 import api from "../../lib/api";
 import { useToast } from "../Toast/ToastProvider";
+
+const headerFieldClassName =
+  "w-full rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-xs text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-400/50";
+
+const initialFilters = {
+  userSearch: "",
+  actionSearch: "",
+  role: "",
+  module: "",
+  dateRange: "",
+};
+
+const roleOptions = [
+  { value: "admin", label: "Admin" },
+  { value: "user", label: "User" },
+  { value: "hr", label: "HR" },
+  { value: "intern", label: "Intern" },
+];
+
+const moduleOptions = [
+  { value: "Auth", label: "Auth" },
+  { value: "Assignments", label: "Assignments" },
+  { value: "Users", label: "Users" },
+  { value: "WorkspaceServices", label: "Workspace Services" },
+  { value: "Campaign", label: "Campaign Manager" },
+  { value: "Files", label: "Files" },
+  { value: "Settings", label: "Settings" },
+];
+
+const dateRangeOptions = [
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "30days", label: "Last 30 Days" },
+  { value: "custom", label: "Custom Range" },
+];
 
 const ActivityLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -9,14 +47,21 @@ const ActivityLogs = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
   const [pagination, setPagination] = useState(null);
+  const [filters, setFilters] = useState(initialFilters);
+  const [userSearchInput, setUserSearchInput] = useState("");
+  const [actionSearchInput, setActionSearchInput] = useState("");
 
   const { showToast } = useToast();
 
   const fetchLogs = useCallback(
-    async (p = page) => {
+    async (p = page, filterParams = {}) => {
       try {
         setLoading(true);
-        const params = { page: p, limit };
+        const params = {
+          page: p,
+          limit,
+          ...filterParams,
+        };
         const { data } = await api.get("/api/admin/activity-logs", { params });
         setLogs(data.data || []);
         setPagination(data.pagination || null);
@@ -35,12 +80,50 @@ const ActivityLogs = () => {
   );
 
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+    const timer = setTimeout(() => {
+      const filterParams = {
+        ...(userSearchInput.trim() && {
+          userName: userSearchInput.trim(),
+          email: userSearchInput.trim(),
+        }),
+        ...(actionSearchInput.trim() && { action: actionSearchInput.trim() }),
+        ...(filters.role && { role: filters.role }),
+        ...(filters.module && { module: filters.module }),
+        ...(filters.dateRange && { dateRange: filters.dateRange }),
+      };
+      fetchLogs(1, filterParams);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearchInput, actionSearchInput, filters]);
 
-  const handleExport = () => {
-    const href = `/api/admin/activity-logs?export=csv&page=${page}&limit=${limit}`;
-    window.open(href, "_blank");
+  useEffect(() => {
+    fetchLogs(page);
+  }, [page]);
+
+  const handleFilterChange = (field, value) => {
+    setFilters((current) => ({ ...current, [field]: value }));
+    setPage(1);
+  };
+
+  const handleReset = () => {
+    setFilters(initialFilters);
+    setUserSearchInput("");
+    setActionSearchInput("");
+    setPage(1);
+  };
+
+  const handleExport = (format = "csv") => {
+    const params = new URLSearchParams({
+      export: format,
+      page: page,
+      limit: limit,
+      ...(userSearchInput.trim() && { userName: userSearchInput.trim() }),
+      ...(actionSearchInput.trim() && { action: actionSearchInput.trim() }),
+      ...(filters.role && { role: filters.role }),
+      ...(filters.module && { module: filters.module }),
+      ...(filters.dateRange && { dateRange: filters.dateRange }),
+    });
+    window.open(`/api/admin/activity-logs?${params.toString()}`, "_blank");
   };
 
   return (
@@ -49,14 +132,24 @@ const ActivityLogs = () => {
       subtitle="System audit trail and operational history"
     >
       <div className="space-y-4">
+        {/* Export and Info Bar */}
         <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-400">Showing recent activity</div>
-          <div>
+          <div className="text-sm text-slate-400">
+            Showing page {pagination?.page || 1} of{" "}
+            {pagination?.totalPages || 1} ({pagination?.total || 0} total)
+          </div>
+          <div className="flex gap-2">
             <button
-              onClick={handleExport}
-              className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300"
+              onClick={() => handleExport("csv")}
+              className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/5"
             >
               Export CSV
+            </button>
+            <button
+              onClick={() => handleExport("excel")}
+              className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/5"
+            >
+              Export Excel
             </button>
           </div>
         </div>
@@ -66,18 +159,131 @@ const ActivityLogs = () => {
             Loading activity logs...
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[22px] border border-white/10 bg-slate-900/70">
-            <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full text-left text-sm">
-                <thead className="bg-slate-950/70 text-slate-400 text-[11px] uppercase tracking-[0.22em]">
-                  <tr>
-                    <th className="px-4 py-3">Time</th>
-                    <th className="px-4 py-3">User</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Action</th>
-                    <th className="px-4 py-3">Module</th>
-                    <th className="px-4 py-3">Details</th>
+          <div className="overflow-hidden rounded-[22px] border border-white/10 bg-slate-900/70 shadow-xl shadow-slate-950/30 backdrop-blur">
+            <div className="max-h-[820px] overflow-x-auto overflow-y-auto">
+              <table className="w-full min-w-full table-auto text-left">
+                <colgroup>
+                  <col className="w-[16%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                </colgroup>
+                <thead className="sticky top-0 z-10 bg-slate-950/90 backdrop-blur">
+                  <tr className="border-y border-white/10 bg-slate-950/75 align-top">
+                    {/* Time */}
+                    <th className="px-4 py-3">
+                      <div className="relative">
+                        <Search
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                          size={14}
+                        />
+                        <input
+                          className={`${headerFieldClassName} pl-9`}
+                          placeholder="Time"
+                          disabled
+                        />
+                      </div>
+                    </th>
+
+                    {/* User Search */}
+                    <th className="px-4 py-3">
+                      <div className="relative">
+                        <Search
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                          size={14}
+                        />
+                        <input
+                          className={`${headerFieldClassName} pl-9`}
+                          value={userSearchInput}
+                          onChange={(e) => setUserSearchInput(e.target.value)}
+                          placeholder="Search users"
+                        />
+                      </div>
+                    </th>
+
+                    {/* Action Search */}
+                    <th className="px-4 py-3">
+                      <div className="relative">
+                        <Search
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                          size={14}
+                        />
+                        <input
+                          className={`${headerFieldClassName} pl-9`}
+                          value={actionSearchInput}
+                          onChange={(e) => setActionSearchInput(e.target.value)}
+                          placeholder="Search actions"
+                        />
+                      </div>
+                    </th>
+
+                    {/* Role Dropdown */}
+                    <th className="px-4 py-3">
+                      <select
+                        className={headerFieldClassName}
+                        value={filters.role}
+                        onChange={(e) =>
+                          handleFilterChange("role", e.target.value)
+                        }
+                      >
+                        <option value="">All Roles</option>
+                        {roleOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Module Dropdown */}
+                    <th className="px-4 py-3">
+                      <select
+                        className={headerFieldClassName}
+                        value={filters.module}
+                        onChange={(e) =>
+                          handleFilterChange("module", e.target.value)
+                        }
+                      >
+                        <option value="">All Modules</option>
+                        {moduleOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Date Range Dropdown */}
+                    <th className="px-4 py-3">
+                      <select
+                        className={headerFieldClassName}
+                        value={filters.dateRange}
+                        onChange={(e) =>
+                          handleFilterChange("dateRange", e.target.value)
+                        }
+                      >
+                        <option value="">All Dates</option>
+                        {dateRangeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Reset Button */}
+                    <th className="px-4 py-3 text-right">
+                      <button
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/5"
+                        onClick={handleReset}
+                      >
+                        <RotateCcw size={13} />
+                        Reset
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-slate-200">
@@ -89,10 +295,10 @@ const ActivityLogs = () => {
                       <td className="px-4 py-3 align-top">
                         {l.userName || "-"}
                       </td>
-                      <td className="px-4 py-3 align-top">{l.email || "-"}</td>
-                      <td className="px-4 py-3 align-top">{l.role || "-"}</td>
                       <td className="px-4 py-3 align-top">{l.action}</td>
+                      <td className="px-4 py-3 align-top">{l.role || "-"}</td>
                       <td className="px-4 py-3 align-top">{l.module}</td>
+                      <td className="px-4 py-3 align-top">{l.email || "-"}</td>
                       <td className="px-4 py-3 align-top">
                         {l.description || "-"}
                       </td>

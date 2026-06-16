@@ -18,10 +18,60 @@ const buildFilterFromQuery = (query) => {
   if (query.email) filter.email = new RegExp(String(query.email).trim(), "i");
   if (query.role) filter.role = query.role;
   if (query.module) filter.module = query.module;
-  if (query.action) filter.action = query.action;
+  if (query.action)
+    filter.action = new RegExp(String(query.action).trim(), "i");
+
+  // Handle date range
+  if (query.dateRange) {
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    let dateFilter = {};
+    switch (query.dateRange) {
+      case "today":
+        dateFilter.$gte = startOfDay;
+        dateFilter.$lt = endOfDay;
+        break;
+      case "yesterday":
+        const yesterday = new Date(startOfDay);
+        yesterday.setDate(yesterday.getDate() - 1);
+        dateFilter.$gte = yesterday;
+        dateFilter.$lt = startOfDay;
+        break;
+      case "week":
+        const startOfWeek = new Date(startOfDay);
+        startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+        dateFilter.$gte = startOfWeek;
+        dateFilter.$lt = endOfDay;
+        break;
+      case "month":
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        dateFilter.$gte = startOfMonth;
+        dateFilter.$lt = endOfDay;
+        break;
+      case "30days":
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        dateFilter.$gte = thirtyDaysAgo;
+        dateFilter.$lt = endOfDay;
+        break;
+      default:
+        break;
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      filter.createdAt = dateFilter;
+    }
+  }
 
   if (query.startDate || query.endDate) {
-    filter.createdAt = {};
+    filter.createdAt = filter.createdAt || {};
     if (query.startDate) filter.createdAt.$gte = new Date(query.startDate);
     if (query.endDate) filter.createdAt.$lte = new Date(query.endDate);
   }

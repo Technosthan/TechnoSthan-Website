@@ -45,7 +45,6 @@ const AssignmentTable = ({
             <col className="w-[13%]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-slate-950/90 backdrop-blur">
-            
             <tr className="border-y border-white/10 bg-slate-950/75 align-top">
               <th className="px-4 py-3">
                 <div className="relative">
@@ -65,20 +64,30 @@ const AssignmentTable = ({
               </th>
               <th className="px-4 py-3">
                 {showAssigneeFilter ? (
-                  <select
-                    className={headerFieldClassName}
-                    value={filters.assignedTo || ""}
-                    onChange={(event) =>
-                      onFilterChange("assignedTo", event.target.value)
-                    }
-                  >
-                    <option value="">All assignees</option>
-                    {assignees.map((user) => (
-                      <option key={user._id} value={user._id}>
-                        {user.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                      size={14}
+                    />
+                    <input
+                      className={`${headerFieldClassName} pl-9`}
+                      value={filters.assignedTo || ""}
+                      onChange={(event) => {
+                        const searchTerm = event.target.value.toLowerCase();
+                        // Find matching assignee
+                        const matchingAssignee = assignees.find(
+                          (user) =>
+                            user.name.toLowerCase().includes(searchTerm) ||
+                            user.email.toLowerCase().includes(searchTerm),
+                        );
+                        onFilterChange(
+                          "assignedTo",
+                          matchingAssignee ? matchingAssignee._id : searchTerm,
+                        );
+                      }}
+                      placeholder="Search assignee"
+                    />
+                  </div>
                 ) : (
                   <div className="px-1 py-2 text-xs text-slate-500">
                     Assignee
@@ -115,7 +124,6 @@ const AssignmentTable = ({
                   <option value="completed">Completed</option>
                   <option value="rejected">Rejected</option>
                   <option value="rejected">Transfer</option>
-
                 </select>
               </th>
               <th className="px-4 py-3">
