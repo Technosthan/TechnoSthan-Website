@@ -45,14 +45,7 @@ const AssignmentTable = ({
             <col className="w-[13%]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-slate-950/90 backdrop-blur">
-            <tr className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-              <th className="px-4 py-3">Title</th>
-              <th className="px-4 py-3">Assignee</th>
-              <th className="px-4 py-3">Priority</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Deadline</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
+            
             <tr className="border-y border-white/10 bg-slate-950/75 align-top">
               <th className="px-4 py-3">
                 <div className="relative">
@@ -121,6 +114,8 @@ const AssignmentTable = ({
                   <option value="submitted">Submitted</option>
                   <option value="completed">Completed</option>
                   <option value="rejected">Rejected</option>
+                  <option value="rejected">Transfer</option>
+
                 </select>
               </th>
               <th className="px-4 py-3">

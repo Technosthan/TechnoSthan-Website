@@ -38,18 +38,20 @@ const getInitialForm = (assignment, canManageAllRoles) => {
     };
   }
 
-  return {
-    title: "",
-    description: "",
-    assignmentType: canManageAllRoles ? "role" : "user",
-    targetRole: "USER",
-    assignedUserId: "",
-    priority: "medium",
-    deadline: "",
-    status: "pending",
-    submissionLink: "",
-    attachmentsText: "",
-  };
+ return {
+  title: "",
+  description: "",
+  assignmentType: canManageAllRoles ? "role" : "user",
+  targetRole: "USER",
+  assignedUserId: "",
+  priority: "medium",
+  deadline: new Date(
+    Date.now() - new Date().getTimezoneOffset() * 60000
+  ).toISOString().slice(0, 16),
+  status: "pending",
+  submissionLink: "",
+  attachmentsText: "",
+};
 };
 
 const AssignmentModal = ({

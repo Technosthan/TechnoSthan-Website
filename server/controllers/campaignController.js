@@ -102,15 +102,27 @@ const createCampaign = async (req, res) => {
       isActive,
     });
 
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "CAMPAIGN_CREATED",
+          module: "Campaign",
+          description: `Campaign created ${campaign._id}`,
+          entityId: campaign._id?.toString(),
+          entityType: "Campaign",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
     return res.status(201).json({ success: true, data: campaign });
   } catch (err) {
     console.error("Create campaign error:", err);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: err.message || "Unable to create campaign",
-      });
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Unable to create campaign",
+    });
   }
 };
 
@@ -141,6 +153,20 @@ const toggleCampaign = async (req, res) => {
 
     campaign.isActive = isActive;
     await campaign.save();
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: isActive ? "CAMPAIGN_ENABLED" : "CAMPAIGN_DISABLED",
+          module: "Campaign",
+          description: `Campaign ${campaign._id} ${isActive ? "enabled" : "disabled"}`,
+          entityId: campaign._id?.toString(),
+          entityType: "Campaign",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(200).json({ success: true, data: campaign });
   } catch (err) {
@@ -173,6 +199,20 @@ const deleteCampaign = async (req, res) => {
     }
 
     await campaign.deleteOne();
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "CAMPAIGN_DELETED",
+          module: "Campaign",
+          description: `Campaign deleted ${campaign._id}`,
+          entityId: campaign._id?.toString(),
+          entityType: "Campaign",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(200).json({ success: true, message: "Campaign deleted" });
   } catch (err) {

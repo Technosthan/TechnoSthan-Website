@@ -26,6 +26,7 @@ import Dashboard from "./component/Dashboard/Dashboard";
 import AdminDashboard from "./component/AdminDashboard/AdminDashboard";
 import AdminAssignments from "./component/Assignments/AdminAssignments";
 import AdminUsers from "./component/AdminLayout/AdminUsers";
+import ActivityLogs from "./component/AdminLayout/ActivityLogs";
 import WorkspaceServices from "./component/AdminLayout/WorkspaceServices";
 import MyAssignments from "./component/Assignments/MyAssignments";
 import HRDashboard from "./component/HRDashboard/HRDashboard";
@@ -229,6 +230,15 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <AdminUsers />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/activity-logs"
+          element={
+            <ProtectedAdminRoute>
+              <ActivityLogs />
             </ProtectedAdminRoute>
           }
         />

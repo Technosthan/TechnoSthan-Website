@@ -22,6 +22,17 @@ const attachmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    fileName: { type: String, trim: true, default: "" },
+    originalFileName: { type: String, trim: true, default: "" },
+    fileType: { type: String, trim: true, default: "" },
+    uploadedAt: { type: Date, default: Date.now },
+    // Cloudinary metadata
+    public_id: { type: String, trim: true, default: null },
+    secure_url: { type: String, trim: true, default: null },
+    original_filename: { type: String, trim: true, default: null },
+    resource_type: { type: String, trim: true, default: null },
+    format: { type: String, trim: true, default: null },
+    bytes: { type: Number, default: 0 },
   },
   { _id: false },
 );

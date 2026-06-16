@@ -4,14 +4,24 @@ import { Menu } from "lucide-react";
 import AdminNavbar from "./AdminNavbar";
 import AdminSidebar from "./AdminSidebar";
 import { clearAuth } from "../../utils/auth";
+import api from "../../lib/api";
 
 const AdminLayout = ({ title, subtitle, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    clearAuth();
-    navigate("/login", { replace: true });
+    // Notify server for logout audit trail, then clear local auth
+    (async () => {
+      try {
+        await api.post("/api/auth/logout");
+      } catch (err) {
+        // ignore
+      } finally {
+        clearAuth();
+        navigate("/login", { replace: true });
+      }
+    })();
   };
 
   return (

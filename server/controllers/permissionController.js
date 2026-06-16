@@ -74,6 +74,19 @@ const updateGlobalService = async (req, res) => {
       message: `Global service '${serviceKey}' updated`,
       data: service,
     });
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "GLOBAL_SERVICE_UPDATED",
+          module: "WorkspaceServices",
+          description: `Global service ${serviceKey} set to ${enabled}`,
+          entityId: serviceKey,
+          entityType: "GlobalService",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -166,6 +179,19 @@ const updateRolePermission = async (req, res) => {
       message: `Permission updated for ${role} role`,
       data: permission,
     });
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ROLE_PERMISSION_UPDATED",
+          module: "Permissions",
+          description: `Permission ${permissionKey} for role ${role} set to ${enabled}`,
+          entityId: `${role}:${permissionKey}`,
+          entityType: "RolePermission",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -278,6 +304,19 @@ const setUserOverride = async (req, res) => {
       message: `Permission override set for ${targetUser.name}`,
       data: override,
     });
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "USER_PERMISSION_OVERRIDE_SET",
+          module: "Permissions",
+          description: `Permission override ${permissionKey}=${enabled} for ${targetUser.email}`,
+          entityId: `${targetUser._id}:${permissionKey}`,
+          entityType: "UserPermissionOverride",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -328,6 +367,19 @@ const removeUserOverride = async (req, res) => {
       success: true,
       message: "User override removed",
     });
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "USER_PERMISSION_OVERRIDE_REMOVED",
+          module: "Permissions",
+          description: `Permission override ${permissionKey} removed for ${targetUser.email}`,
+          entityId: `${targetUser._id}:${permissionKey}`,
+          entityType: "UserPermissionOverride",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
   } catch (error) {
     res.status(500).json({
       success: false,

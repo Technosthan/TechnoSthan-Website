@@ -134,6 +134,20 @@ exports.updateUserRole = async (req, res) => {
       console.error("Socket emit error (user role update):", e.message);
     }
 
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ROLE_CHANGED",
+          module: "Users",
+          description: `Role changed for ${user.email} -> ${normalizedRole}`,
+          entityId: user._id?.toString(),
+          entityType: "User",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
     return res.status(200).json({
       success: true,
       message: `User role updated to ${normalizedRole}`,
@@ -197,6 +211,20 @@ exports.updateUserStatus = async (req, res) => {
       console.error("Socket emit error (user status update):", e.message);
     }
 
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: isActive ? "USER_REACTIVATED" : "USER_SUSPENDED",
+          module: "Users",
+          description: `${isActive ? "Reactivated" : "Suspended"} user ${user.email}`,
+          entityId: user._id?.toString(),
+          entityType: "User",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
     return res.status(200).json({
       success: true,
       message: `User ${isActive ? "reactivated" : "suspended"}`,
@@ -247,6 +275,20 @@ exports.deleteUser = async (req, res) => {
       if (io) io.to("admins").emit("user_deleted", { id: userId });
     } catch (e) {
       console.error("Socket emit error (user delete):", e.message);
+    }
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "USER_DELETED",
+          module: "Users",
+          description: `User deleted: ${user.email}`,
+          entityId: userId,
+          entityType: "User",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
     }
 
     return res.status(200).json({ success: true, message: "User deleted" });

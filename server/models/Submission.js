@@ -4,9 +4,20 @@ const { ROLES } = require("../constants/rbac");
 const attachmentSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true, default: "" },
+    fileName: { type: String, trim: true, default: "" },
+    originalFileName: { type: String, trim: true, default: "" },
+    fileType: { type: String, trim: true, default: "" },
     url: { type: String, trim: true, required: true },
     mimeType: { type: String, trim: true, default: "" },
     size: { type: Number, default: 0 },
+    uploadedAt: { type: Date, default: Date.now },
+    // Cloudinary metadata
+    public_id: { type: String, trim: true, default: null },
+    secure_url: { type: String, trim: true, default: null },
+    original_filename: { type: String, trim: true, default: null },
+    resource_type: { type: String, trim: true, default: null },
+    format: { type: String, trim: true, default: null },
+    bytes: { type: Number, default: 0 },
   },
   { _id: false },
 );
@@ -61,7 +72,7 @@ const submissionSchema = new mongoose.Schema(
     },
     reviewerRole: {
       type: String,
-      enum: [ROLES.ADMIN, ROLES.HR, ROLES.USER, null],
+      enum: [ROLES.ADMIN, ROLES.HR, ROLES.USER],
       default: null,
     },
     revision: {

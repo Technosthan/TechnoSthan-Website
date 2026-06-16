@@ -31,6 +31,68 @@ const fieldClassName =
 const buttonClassName =
   "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+const getAttachmentValue = (attachment) => {
+  if (!attachment) return "";
+  if (typeof attachment === "string") {
+    return attachment.trim();
+  }
+  return String(attachment?.secure_url || attachment?.url || "").trim();
+};
+
+const getAttachmentDisplayName = (attachment) =>
+  attachment?.name ||
+  getAttachmentValue(attachment)
+    .replace(/^https?:\/\//i, "")
+    .slice(0, 40) ||
+  "Attachment";
+
+const isImageAttachment = (attachment) => {
+  const url = getAttachmentValue(attachment);
+  return (
+    /(image\/(png|jpeg|jpg|webp|gif))/i.test(attachment?.mimeType || "") ||
+    /(image)/i.test(attachment?.resource_type || "") ||
+    /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url)
+  );
+};
+
+const isPdfAttachment = (attachment) => {
+  const url = getAttachmentValue(attachment);
+  return (
+    /application\/pdf/i.test(attachment?.mimeType || "") ||
+    attachment?.format?.toLowerCase?.() === "pdf" ||
+    /\.pdf(\?.*)?$/i.test(url)
+  );
+};
+
+const isVideoAttachment = (attachment) => {
+  const url = getAttachmentValue(attachment);
+  return (
+    /(video\/(mp4|webm|quicktime))/i.test(attachment?.mimeType || "") ||
+    /video/i.test(attachment?.resource_type || "") ||
+    /\.(mp4|webm|mov)(\?.*)?$/i.test(url)
+  );
+};
+
+const isAudioAttachment = (attachment) => {
+  const url = getAttachmentValue(attachment);
+  return (
+    /(audio\/)/i.test(attachment?.mimeType || "") ||
+    /audio/i.test(attachment?.resource_type || "") ||
+    /\.(mp3|wav|m4a|aac)(\?.*)?$/i.test(url)
+  );
+};
+
+const getAttachmentUrl = (attachment) => {
+  const url = getAttachmentValue(attachment);
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+  return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
 const AssignmentDetails = ({
   assignment,
   open,
@@ -58,6 +120,7 @@ const AssignmentDetails = ({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -122,14 +185,26 @@ const AssignmentDetails = ({
   };
 
   const removeAttachment = (url) => {
+    const normalizedUrl = String(url || "").trim();
     const nextAttachments = parsedAttachments.filter(
-      (item) => item.url !== url,
+      (item) => getAttachmentValue(item) !== normalizedUrl,
     );
     setSubmissionForm((current) => ({
       ...current,
       attachmentsText: attachmentsToText(nextAttachments),
     }));
   };
+
+  const handlePreviewAttachment = (attachment) => {
+    const attachmentUrl = getAttachmentUrl(attachment);
+    setPreviewAttachment({
+      ...attachment,
+      url: attachmentUrl,
+      secure_url: attachmentUrl,
+    });
+  };
+
+  const closePreview = () => setPreviewAttachment(null);
 
   const submissionActions = (
     <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
@@ -181,7 +256,7 @@ const AssignmentDetails = ({
                 Drag and drop files here
               </span>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                PDF, DOC, DOCX, JPG, PNG, and WEBP are supported.
+                PDF, DOC, DOCX, XLSX, PPTX, ZIP, MP4, MP3, JPG, PNG, WEBP, GIF, and more are supported.
               </p>
             </div>
             <button
@@ -197,6 +272,7 @@ const AssignmentDetails = ({
           <input
             ref={fileInputRef}
             type="file"
+            accept="image/*,video/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip"
             className="hidden"
             onChange={handleInputUpload}
           />
@@ -233,33 +309,70 @@ const AssignmentDetails = ({
               </span>
             </div>
             <div className="mt-3 space-y-2">
-              {parsedAttachments.map((attachment) => (
-                <div
-                  key={attachment.url}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/55 px-3 py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-200">
-                      <FileText size={15} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-white">
-                        {attachment.name || attachment.url}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {attachment.url}
-                      </p>
+              {parsedAttachments.map((attachment, index) => {
+                const attachmentUrl = getAttachmentUrl(attachment);
+                const canPreview =
+                  isImageAttachment(attachment) ||
+                  isPdfAttachment(attachment) ||
+                  isVideoAttachment(attachment) ||
+                  isAudioAttachment(attachment);
+
+                return (
+                  <div
+                    key={getAttachmentValue(attachment) || index}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/55 px-3 py-3"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-200">
+                        <FileText size={15} />
+                      </span>
+                      <div className="min-w-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            canPreview
+                              ? handlePreviewAttachment(attachment)
+                              : window.open(
+                                  attachmentUrl,
+                                  "_blank",
+                                  "noreferrer",
+                                )
+                          }
+                          className="block truncate text-left text-sm font-semibold text-white underline underline-offset-4 transition hover:text-indigo-200"
+                        >
+                          {getAttachmentDisplayName(attachment)}
+                        </button>
+                        <p className="truncate text-xs text-slate-500">
+                          {attachmentUrl}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          canPreview
+                            ? handlePreviewAttachment(attachment)
+                            : window.open(attachmentUrl, "_blank", "noreferrer")
+                        }
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+                      >
+                        {canPreview ? "Preview" : "Open"}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full border border-white/10 p-2 text-slate-300 transition hover:bg-white/5 hover:text-white"
+                        onClick={() =>
+                          removeAttachment(getAttachmentValue(attachment))
+                        }
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="rounded-full border border-white/10 p-2 text-slate-300 transition hover:bg-white/5 hover:text-white"
-                    onClick={() => removeAttachment(attachment.url)}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -425,18 +538,39 @@ const AssignmentDetails = ({
                 ) : null}
                 {(submission.attachments || []).length > 0 ? (
                   <ul className="mt-3 space-y-2">
-                    {submission.attachments.map((attachment, index) => (
-                      <li key={`${attachment.url}-${index}`}>
-                        <a
-                          className="text-sm text-slate-200 underline underline-offset-4"
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {attachment.name || attachment.url}
-                        </a>
-                      </li>
-                    ))}
+                    {submission.attachments.map((attachment, index) => {
+                      const attachmentUrl = getAttachmentUrl(attachment);
+                      const canPreview =
+                        isImageAttachment(attachment) ||
+                        isPdfAttachment(attachment) ||
+                        isVideoAttachment(attachment) ||
+                        isAudioAttachment(attachment);
+
+                      return (
+                        <li key={`${getAttachmentValue(attachment)}-${index}`}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                canPreview
+                                  ? handlePreviewAttachment(attachment)
+                                  : window.open(
+                                      attachmentUrl,
+                                      "_blank",
+                                      "noreferrer",
+                                    )
+                              }
+                              className="text-sm text-slate-200 underline underline-offset-4 transition hover:text-indigo-200"
+                            >
+                              {getAttachmentDisplayName(attachment)}
+                            </button>
+                            <span className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-1 text-[11px] text-slate-400">
+                              {canPreview ? "Preview" : "Download"}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -668,18 +802,41 @@ const AssignmentDetails = ({
 
                       {(assignment.attachments || []).length > 0 ? (
                         <ul className="space-y-2">
-                          {assignment.attachments.map((attachment, index) => (
-                            <li key={`${attachment.url}-${index}`}>
-                              <a
-                                className="text-slate-200 underline underline-offset-4"
-                                href={attachment.url}
-                                target="_blank"
-                                rel="noreferrer"
+                          {assignment.attachments.map((attachment, index) => {
+                            const attachmentUrl = getAttachmentUrl(attachment);
+                            const canPreview =
+                              isImageAttachment(attachment) ||
+                              isPdfAttachment(attachment) ||
+                              isVideoAttachment(attachment) ||
+                              isAudioAttachment(attachment);
+
+                            return (
+                              <li
+                                key={`${getAttachmentValue(attachment)}-${index}`}
                               >
-                                {attachment.name || attachment.url}
-                              </a>
-                            </li>
-                          ))}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      canPreview
+                                        ? handlePreviewAttachment(attachment)
+                                        : window.open(
+                                            attachmentUrl,
+                                            "_blank",
+                                            "noreferrer",
+                                          )
+                                    }
+                                    className="text-slate-200 underline underline-offset-4 transition hover:text-indigo-200"
+                                  >
+                                    {getAttachmentDisplayName(attachment)}
+                                  </button>
+                                  <span className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-1 text-[11px] text-slate-400">
+                                    {canPreview ? "Preview" : "Download"}
+                                  </span>
+                                </div>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
                         <p className="text-slate-500">
@@ -688,6 +845,77 @@ const AssignmentDetails = ({
                       )}
                     </div>
                   </div>
+
+                  {previewAttachment ? (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/90 p-4">
+                      <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={closePreview}
+                          className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-slate-900/80 p-2 text-slate-200 transition hover:bg-slate-800"
+                        >
+                          <X size={18} />
+                        </button>
+                        <div className="border-b border-white/10 px-6 py-4">
+                          <p className="text-sm font-semibold text-white">
+                            {previewAttachment.name ||
+                              getAttachmentValue(previewAttachment)}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {previewAttachment.mimeType ||
+                              getAttachmentValue(previewAttachment)}
+                          </p>
+                        </div>
+                        <div className="max-h-[80vh] overflow-auto bg-slate-950/95 p-6">
+                          {isImageAttachment(previewAttachment) ? (
+                            <img
+                              src={getAttachmentUrl(previewAttachment)}
+                              alt={
+                                previewAttachment.name || "Attachment preview"
+                              }
+                              className="mx-auto max-h-[72vh] max-w-full rounded-3xl object-contain"
+                            />
+                          ) : isPdfAttachment(previewAttachment) ? (
+                            <iframe
+                              title="PDF preview"
+                              src={getAttachmentUrl(previewAttachment)}
+                              className="h-[72vh] w-full rounded-3xl border border-white/10"
+                            />
+                          ) : isVideoAttachment(previewAttachment) ? (
+                            <video
+                              controls
+                              src={getAttachmentUrl(previewAttachment)}
+                              className="mx-auto h-[72vh] w-full rounded-3xl bg-black object-contain"
+                            />
+                          ) : isAudioAttachment(previewAttachment) ? (
+                            <div className="mx-auto w-full max-w-2xl">
+                              <audio
+                                controls
+                                src={getAttachmentUrl(previewAttachment)}
+                                className="w-full"
+                              >
+                                Your browser does not support the audio element.
+                              </audio>
+                            </div>
+                          ) : (
+                            <div className="rounded-3xl border border-white/10 bg-slate-900 p-8 text-center text-sm text-slate-300">
+                              <p>
+                                This file type cannot be previewed directly.
+                              </p>
+                              <a
+                                href={getAttachmentUrl(previewAttachment)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-4 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+                              >
+                                Open or Download
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-5">
                     <h3 className="text-sm font-semibold text-white">

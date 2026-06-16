@@ -3,8 +3,12 @@ const passport = require("passport");
 const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 
-const { register, login } = require("../controllers/authController");
-const { ROLES, getRolePermissions, normalizeRole } = require("../constants/rbac");
+const { register, login, logout } = require("../controllers/authController");
+const {
+  ROLES,
+  getRolePermissions,
+  normalizeRole,
+} = require("../constants/rbac");
 
 const router = express.Router();
 
@@ -15,10 +19,13 @@ const authLimiter = rateLimit({
 });
 
 const getFrontendBaseUrl = () =>
-  process.env.FRONTEND_URL || process.env.CORS_ORIGIN?.split(",")[0]?.trim() || "http://localhost:5173";
+  process.env.FRONTEND_URL ||
+  process.env.CORS_ORIGIN?.split(",")[0]?.trim() ||
+  "http://localhost:5173";
 
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
+router.post("/logout", require("../middleware/authMiddleware").protect, logout);
 
 router.get(
   "/google",
@@ -53,7 +60,11 @@ router.get(
       };
 
       const redirect =
-        role === ROLES.ADMIN ? "/admin" : role === ROLES.HR ? "/hr" : "/dashboard";
+        role === ROLES.ADMIN
+          ? "/admin"
+          : role === ROLES.HR
+            ? "/hr"
+            : "/dashboard";
 
       res.redirect(
         `${getFrontendBaseUrl()}/login?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(userData))}&redirect=${encodeURIComponent(redirect)}`,

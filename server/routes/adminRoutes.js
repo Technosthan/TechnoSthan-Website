@@ -13,6 +13,7 @@ const {
   getPermissionInsights,
 } = require("../controllers/workspaceSettingsController");
 const { getUsers } = require("../controllers/adminController");
+const { getActivityLogs } = require("../controllers/activityLogController");
 
 router.use(protect, admin);
 
@@ -29,5 +30,6 @@ router.get("/workspace-services/users/:userId", getUserPermissions);
 router.patch("/workspace-services/users/:userId", updateUserPermissions);
 router.get("/workspace-services/insights", getPermissionInsights);
 router.get("/users", getUsers);
+router.get("/activity-logs", getActivityLogs);
 
 module.exports = router;

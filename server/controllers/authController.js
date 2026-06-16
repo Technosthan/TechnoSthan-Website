@@ -104,6 +104,21 @@ exports.register = async (req, res) => {
       role,
     });
 
+    // Log registration
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "REGISTER",
+          module: "AUTH",
+          description: `User registered: ${normalizedEmail}`,
+          entityId: user._id?.toString(),
+          entityType: "User",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
     return sendAuthResponse(
       res,
       201,
@@ -192,9 +207,39 @@ exports.login = async (req, res) => {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      // Log failed login attempt
+      try {
+        if (req && typeof req.logActivity === "function") {
+          req.logActivity({
+            action: "FAILED_LOGIN",
+            module: "AUTH",
+            description: `Failed login attempt for ${email}`,
+            entityId: user._id?.toString(),
+            entityType: "User",
+          });
+        }
+      } catch (err) {
+        console.error("Activity log failed:", err);
+      }
+
       return res
         .status(400)
         .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // Log successful login
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "LOGIN",
+          module: "AUTH",
+          description: `User logged in: ${email}`,
+          entityId: user._id?.toString(),
+          entityType: "User",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
     }
 
     return sendAuthResponse(res, 200, "Login successful", user);
@@ -211,5 +256,26 @@ exports.login = async (req, res) => {
       success: false,
       message: "Unable to login right now. Please try again.",
     });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    if (req && typeof req.logActivity === "function") {
+      req.logActivity({
+        action: "LOGOUT",
+        module: "AUTH",
+        description: `User logged out: ${req.user?.email || "unknown"}`,
+        entityId: req.user?.id || null,
+        entityType: "User",
+      });
+    }
+
+    return res.status(200).json({ success: true, message: "Logged out" });
+  } catch (err) {
+    console.error("Logout error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Unable to logout right now" });
   }
 };

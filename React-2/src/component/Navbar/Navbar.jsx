@@ -9,6 +9,7 @@ import {
   getStoredUser,
   normalizeRole,
 } from "../../utils/auth";
+import api from "../../lib/api";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -47,16 +48,26 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    clearAuth();
-    setCurrentUser(null);
-    setShowProfileMenu(false);
-    setMenuOpen(false);
-    navigate("/login");
+    (async () => {
+      try {
+        await api.post("/api/auth/logout");
+      } catch (err) {
+        // ignore
+      } finally {
+        clearAuth();
+        setCurrentUser(null);
+        setShowProfileMenu(false);
+        setMenuOpen(false);
+        navigate("/login");
+      }
+    })();
   };
 
   const avatarLabel = (currentUser?.name || "U").trim().charAt(0).toUpperCase();
   const currentRole = normalizeRole(currentUser?.role);
-  const dashboardPath = currentUser ? getDashboardPath(currentRole) : "/dashboard";
+  const dashboardPath = currentUser
+    ? getDashboardPath(currentRole)
+    : "/dashboard";
 
   return (
     <nav className="navbar">
@@ -69,23 +80,43 @@ const Navbar = () => {
       </div>
 
       <div className={`nav-links ${menuOpen ? "active" : ""}`}>
-        <Link to="/" onClick={handleClick} className={isActive("/") ? "active" : ""}>
+        <Link
+          to="/"
+          onClick={handleClick}
+          className={isActive("/") ? "active" : ""}
+        >
           Home
         </Link>
 
-        <Link to="/about" onClick={handleClick} className={isActive("/about") ? "active" : ""}>
+        <Link
+          to="/about"
+          onClick={handleClick}
+          className={isActive("/about") ? "active" : ""}
+        >
           About
         </Link>
 
-        <Link to="/services" onClick={handleClick} className={isActive("/services") ? "active" : ""}>
+        <Link
+          to="/services"
+          onClick={handleClick}
+          className={isActive("/services") ? "active" : ""}
+        >
           Our Verticals
         </Link>
 
-        <Link to="/contact" onClick={handleClick} className={isActive("/contact") ? "active" : ""}>
+        <Link
+          to="/contact"
+          onClick={handleClick}
+          className={isActive("/contact") ? "active" : ""}
+        >
           Contact
         </Link>
 
-        <Link to="/social" onClick={handleClick} className={isActive("/social") ? "active" : ""}>
+        <Link
+          to="/social"
+          onClick={handleClick}
+          className={isActive("/social") ? "active" : ""}
+        >
           Social Post
         </Link>
 
@@ -119,7 +150,11 @@ const Navbar = () => {
         {currentUser && (
           <div className="mobile-auth logged-in">
             <span className="mobile-user-name">{currentUser.name}</span>
-            <button type="button" className="mobile-logout-btn" onClick={handleLogout}>
+            <button
+              type="button"
+              className="mobile-logout-btn"
+              onClick={handleLogout}
+            >
               Logout
             </button>
           </div>

@@ -41,6 +41,7 @@ const hrRoutes = require("./routes/hrRoutes");
 const assignmentRoutes = require("./routes/assignmentRoutes");
 const userRoutes = require("./middleware/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const loggingMiddleware = require("./middleware/loggingMiddleware");
 const settingsRoutes = require("./routes/settingsRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const campaignRoutes = require("./routes/campaignRoutes");
@@ -245,18 +246,21 @@ app.use(limiter);
 
 app.use(
   express.json({
-    limit: "10mb",
+    limit: "100mb",
   }),
 );
 
 app.use(
   express.urlencoded({
     extended: true,
-    limit: "10mb",
+    limit: "100mb",
   }),
 );
 
 app.use("/api", loadWorkspaceSettings);
+
+// Attach global logging middleware so req.logActivity is available everywhere
+app.use(loggingMiddleware);
 
 // ================= STATIC FILES =================
 
@@ -446,6 +450,7 @@ app.use(
 app.use(
   "/api/assignments",
 
+  loggingMiddleware,
   assignmentRoutes,
 );
 

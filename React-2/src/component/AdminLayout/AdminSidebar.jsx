@@ -53,6 +53,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               icon: Megaphone,
             },
             { label: "Users", to: "/admin/users", icon: Users },
+            {
+              label: "Activity Logs",
+              to: "/admin/activity-logs",
+              icon: Megaphone,
+            },
           ].filter(Boolean);
 
   return (

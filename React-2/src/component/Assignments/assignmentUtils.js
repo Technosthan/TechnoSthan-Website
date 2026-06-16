@@ -39,8 +39,10 @@ const priorityStyles = {
   urgent: "bg-rose-500/15 text-rose-200 ring-rose-400/20",
 };
 
-export const getStatusStyle = (status) => statusStyles[status] || statusStyles.pending;
-export const getPriorityStyle = (priority) => priorityStyles[priority] || priorityStyles.medium;
+export const getStatusStyle = (status) =>
+  statusStyles[status] || statusStyles.pending;
+export const getPriorityStyle = (priority) =>
+  priorityStyles[priority] || priorityStyles.medium;
 
 export const getRoleTargetLabel = (value) => {
   if (value === "HR") {
@@ -55,7 +57,9 @@ export const getRoleTargetLabel = (value) => {
 };
 
 export const getAssignmentType = (assignment) =>
-  assignment?.assignedTo || (assignment?.assignedUsers || []).length > 0 ? "user" : "role";
+  assignment?.assignedTo || (assignment?.assignedUsers || []).length > 0
+    ? "user"
+    : "role";
 
 export const getAssignmentTargetLabel = (assignment) => {
   if (!assignment) {
@@ -79,13 +83,22 @@ export const getAssignmentTargetLabel = (assignment) => {
 };
 
 export const formatDateTime = (value) =>
-  value ? new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "N/A";
+  value
+    ? new Date(value).toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "N/A";
 
 export const formatDateOnly = (value) =>
-  value ? new Date(value).toLocaleDateString([], { dateStyle: "medium" }) : "N/A";
+  value
+    ? new Date(value).toLocaleDateString([], { dateStyle: "medium" })
+    : "N/A";
 
 export const isOverdue = (assignment) =>
-  assignment?.deadline && !["completed"].includes(assignment.status) && new Date(assignment.deadline) < new Date();
+  assignment?.deadline &&
+  !["completed"].includes(assignment.status) &&
+  new Date(assignment.deadline) < new Date();
 
 export const getDeadlineLabel = (assignment) => {
   if (!assignment?.deadline) {
@@ -183,7 +196,11 @@ export const getUserInitials = (name = "") =>
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "U";
 
-export const attachmentsToText = (attachments = []) => attachments.map((item) => item.url).join("\n");
+export const attachmentsToText = (attachments = []) =>
+  attachments
+    .map((item) => String(item.secure_url || item.url || "").trim())
+    .filter(Boolean)
+    .join("\n");
 
 export const textToAttachments = (value = "") =>
   value
@@ -193,6 +210,12 @@ export const textToAttachments = (value = "") =>
     .map((url) => ({
       name: url.replace(/^https?:\/\//, "").slice(0, 40),
       url,
+      secure_url: url,
       mimeType: "",
       size: 0,
+      public_id: null,
+      original_filename: null,
+      resource_type: null,
+      format: null,
+      bytes: 0,
     }));

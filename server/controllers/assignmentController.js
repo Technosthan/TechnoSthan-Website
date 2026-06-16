@@ -1,9 +1,47 @@
 const fs = require("fs");
 const path = require("path");
+const cloudinaryService = require("../services/cloudinaryService");
 const Assignment = require("../models/Assignment");
 const Submission = require("../models/Submission");
 const User = require("../models/User");
 const { ROLES, getRoleVariants, normalizeRole } = require("../constants/rbac");
+const createStoredAttachment = ({
+  name,
+  fileName,
+  originalFileName,
+  fileType,
+  url,
+  mimeType,
+  size,
+  uploadedAt,
+  public_id,
+  secure_url,
+  original_filename,
+  resource_type,
+  format,
+  bytes,
+}) => {
+  const normalizedUrl = String(secure_url || url || "").trim();
+
+  return {
+    name: String(name || fileName || "").trim(),
+    fileName: String(fileName || name || "").trim(),
+    originalFileName: String(
+      originalFileName || original_filename || name || "",
+    ).trim(),
+    fileType: String(fileType || mimeType || format || "").trim(),
+    url: normalizedUrl,
+    mimeType: String(mimeType || fileType || "").trim(),
+    size: Number(bytes || size || 0),
+    uploadedAt: uploadedAt ? new Date(uploadedAt) : new Date(),
+    public_id: public_id || null,
+    secure_url: normalizedUrl || null,
+    original_filename: original_filename || null,
+    resource_type: resource_type || null,
+    format: format || null,
+    bytes: bytes || size || 0,
+  };
+};
 
 const ASSIGNMENT_POPULATION = [
   { path: "assignedTo", select: "name email role isActive" },
@@ -38,17 +76,7 @@ const REVIEW_STATUS_TO_ASSIGNMENT_STATUS = {
   rejected: "rejected",
   pending: "submitted",
 };
-const FILE_SIZE_LIMIT = 5 * 1024 * 1024;
-const ALLOWED_FILE_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
-const uploadsDir = path.resolve(__dirname, "..", "uploads", "assignments");
-
+const FILE_SIZE_LIMIT = 50 * 1024 * 1024;
 const buildPagination = (query) => {
   const page = Math.max(Number.parseInt(query.page, 10) || 1, 1);
   const limit = Math.min(
@@ -282,18 +310,163 @@ const emitAssignmentEvent = (req, eventName, payload) => {
   }
 };
 
-const ensureUploadDirectory = () => {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+const isLocalUploadPath = (url) => {
+  if (!url) return false;
+  const normalized = String(url).trim();
+  if (/^https?:\/\//i.test(normalized)) {
+    return /(^https?:\/\/localhost(:\d+)?[\/\\]uploads[\/\\]|^https?:\/\/127\.0\.0\.1(:\d+)?[\/\\]uploads[\/\\])/i.test(
+      normalized,
+    );
+  }
+  return /(^[\/\\]?uploads[\/\\]|[\/\\]uploads[\/\\])/i.test(normalized);
+};
+
+const getLocalUploadPath = (url) => {
+  if (!url) return null;
+  let normalized = String(url).trim();
+  if (/^https?:\/\//i.test(normalized)) {
+    try {
+      normalized = new URL(normalized).pathname;
+    } catch (error) {
+      normalized = normalized.replace(/^https?:\/\/[^"]+/i, "");
+    }
+  }
+  const trimmed = normalized.replace(/^\/+/, "");
+  return path.resolve(__dirname, "..", trimmed);
+};
+
+const processAttachments = async (attachments = []) => {
+  let changed = false;
+  const processed = await Promise.all(
+    (attachments || []).map(async (item) => {
+      const attachment =
+        item && typeof item === "object" ? item : { url: String(item || "") };
+      const inputUrl = String(
+        attachment.secure_url || attachment.url || "",
+      ).trim();
+
+      if (isLocalUploadPath(inputUrl)) {
+        const uploaded = await uploadLocalFileToCloudinary(inputUrl);
+        if (uploaded) {
+          changed = true;
+          return uploaded;
+        }
+      }
+
+      return createStoredAttachment(attachment);
+    }),
+  );
+
+  return { attachments: processed, changed };
+};
+
+const uploadLocalFileToCloudinary = async (urlOrItem) => {
+  try {
+    const url =
+      typeof urlOrItem === "string"
+        ? urlOrItem
+        : String(urlOrItem.url || urlOrItem.secure_url || "");
+    if (!isLocalUploadPath(url)) return null;
+
+    const localPath = getLocalUploadPath(url);
+    if (!localPath || !fs.existsSync(localPath)) {
+      console.warn("Local attachment file not found for migration:", localPath);
+      return null;
+    }
+
+    const buffer = fs.readFileSync(localPath);
+    const mimeType = require("mime-types").lookup(localPath) || undefined;
+    const dataUri = `data:${mimeType || "application/octet-stream"};base64,${buffer.toString("base64")}`;
+
+    console.log("Uploading local attachment to Cloudinary:", localPath);
+    const result = await cloudinaryService.uploadFromDataUri(dataUri, {
+      folder: "assignments",
+      resource_type: "auto",
+    });
+
+    if (!result || !result.secure_url || !result.public_id) {
+      console.error(
+        "Cloudinary upload returned invalid result for:",
+        localPath,
+        result,
+      );
+      return null;
+    }
+
+    console.log("Cloudinary upload succeeded:", result.secure_url);
+
+    return {
+      name: path.basename(localPath),
+      fileName: result.public_id,
+      originalFileName: result.original_filename || path.basename(localPath),
+      fileType: result.format || mimeType || "",
+      url: result.secure_url,
+      mimeType: mimeType || "",
+      size: result.bytes || buffer.length,
+      uploadedAt: new Date(),
+      public_id: result.public_id,
+      secure_url: result.secure_url,
+      original_filename: result.original_filename || null,
+      resource_type: result.resource_type || null,
+      format: result.format || null,
+      bytes: result.bytes || buffer.length,
+    };
+  } catch (err) {
+    console.error(
+      "Error uploading local file to Cloudinary:",
+      err && err.message ? err.message : err,
+    );
+    return null;
   }
 };
 
-const createStoredAttachment = ({ name, url, mimeType, size }) => ({
-  name: String(name || "").trim(),
-  url: String(url || "").trim(),
-  mimeType: String(mimeType || "").trim(),
-  size: Number(size || 0),
-});
+const normalizeDocumentAttachments = async (doc, model) => {
+  if (!doc || !Array.isArray(doc.attachments)) {
+    return doc;
+  }
+
+  const result = await processAttachments(doc.attachments);
+  if (!result.changed) {
+    return doc;
+  }
+
+  if (doc._id && model) {
+    await model.findByIdAndUpdate(doc._id, {
+      attachments: result.attachments,
+    });
+  }
+
+  return { ...doc, attachments: result.attachments };
+};
+
+const normalizeSubmissionDocument = async (submission) => {
+  if (!submission || !Array.isArray(submission.attachments)) {
+    return submission;
+  }
+
+  const result = await processAttachments(submission.attachments);
+  if (!result.changed) {
+    return submission;
+  }
+
+  const latestProcessed = result.attachments[0] || {};
+  await Submission.findByIdAndUpdate(submission._id, {
+    attachments: result.attachments,
+    fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+    fileName: latestProcessed.name || latestProcessed.fileName || "",
+    mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
+    size: latestProcessed.size || 0,
+  });
+
+  return {
+    ...submission,
+    attachments: result.attachments,
+    fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+    fileName: latestProcessed.name || latestProcessed.fileName || "",
+    mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
+    size: latestProcessed.size || 0,
+  };
+};
 
 const buildAnalytics = async (filter = {}) => {
   const now = new Date();
@@ -474,7 +647,7 @@ exports.createAssignment = async (req, res) => {
       deadline: req.body.deadline,
       status: req.body.status || "pending",
       submissionLink: String(req.body.submissionLink || "").trim(),
-      attachments: req.body.attachments || [],
+      attachments: (await processAttachments(req.body.attachments)).attachments,
       remarks: [
         {
           message:
@@ -493,6 +666,20 @@ exports.createAssignment = async (req, res) => {
       Assignment.findById(assignment._id),
     ).lean();
     emitAssignmentEvent(req, "assignment_created", populatedAssignment);
+    // Activity log
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ASSIGNMENT_CREATED",
+          module: "Assignments",
+          description: `Created assignment ${assignment.title}`,
+          entityId: assignment._id?.toString(),
+          entityType: "Assignment",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(201).json({
       success: true,
@@ -551,6 +738,8 @@ exports.updateAssignment = async (req, res) => {
         .json({ success: false, message: scope.error });
     }
 
+    const priorAttachments = (assignment.attachments || []).slice();
+
     const editableFields = [
       "title",
       "description",
@@ -561,10 +750,44 @@ exports.updateAssignment = async (req, res) => {
       "attachments",
     ];
     editableFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
+      if (req.body[field] !== undefined && field !== "attachments") {
         assignment[field] = req.body[field];
       }
     });
+
+    if (req.body.attachments !== undefined) {
+      assignment.attachments = (
+        await processAttachments(req.body.attachments)
+      ).attachments;
+
+      // If attachments were provided, delete any removed Cloudinary assets
+      try {
+        const priorCloudIds = (priorAttachments || [])
+          .map((a) => a.public_id)
+          .filter(Boolean);
+        const newCloudIds = (assignment.attachments || [])
+          .map((a) => a.public_id)
+          .filter(Boolean);
+        const toDelete = (priorAttachments || []).filter(
+          (a) => a.public_id && !newCloudIds.includes(a.public_id),
+        );
+        await Promise.all(
+          toDelete.map((item) =>
+            cloudinaryService
+              .deleteAsset(item.public_id, item.resource_type || "auto")
+              .catch((err) => {
+                console.error(
+                  "Failed to delete cloudinary asset:",
+                  item.public_id,
+                  err,
+                );
+              }),
+          ),
+        );
+      } catch (err) {
+        console.error("Error while deleting removed attachments:", err);
+      }
+    }
 
     assignment.assignedToRole = scope.assignedToRole;
     assignment.assignedUsers = scope.assignedUsers;
@@ -588,6 +811,20 @@ exports.updateAssignment = async (req, res) => {
       Assignment.findById(assignment._id),
     ).lean();
     emitAssignmentEvent(req, "assignment_updated", populatedAssignment);
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ASSIGNMENT_UPDATED",
+          module: "Assignments",
+          description: `Updated assignment ${assignment.title}`,
+          entityId: assignment._id?.toString(),
+          entityType: "Assignment",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(200).json({
       success: true,
@@ -622,11 +859,58 @@ exports.deleteAssignment = async (req, res) => {
       });
     }
 
+    // Delete Cloudinary assets for the assignment and its submissions
+    try {
+      const submissions = await Submission.find({
+        assignmentId: req.params.id,
+      }).lean();
+      const assignmentAttachments = assignment.attachments || [];
+      const submissionAttachments = submissions.flatMap(
+        (s) => s.attachments || [],
+      );
+      const allToDelete = [
+        ...assignmentAttachments,
+        ...submissionAttachments,
+      ].filter((a) => a && a.public_id);
+      await Promise.all(
+        allToDelete.map((item) =>
+          cloudinaryService
+            .deleteAsset(item.public_id, item.resource_type || "auto")
+            .catch((err) => {
+              console.error(
+                "Failed to delete cloudinary asset during assignment delete:",
+                item.public_id,
+                err,
+              );
+            }),
+        ),
+      );
+    } catch (err) {
+      console.error(
+        "Error while deleting cloudinary assets for assignment:",
+        err,
+      );
+    }
+
     await Promise.all([
       Assignment.findByIdAndDelete(req.params.id),
       Submission.deleteMany({ assignmentId: req.params.id }),
     ]);
     emitAssignmentEvent(req, "assignment_deleted", assignment);
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ASSIGNMENT_DELETED",
+          module: "Assignments",
+          description: `Deleted assignment ${assignment.title}`,
+          entityId: req.params.id,
+          entityType: "Assignment",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(200).json({
       success: true,
@@ -650,7 +934,7 @@ exports.getAssignments = async (req, res) => {
     );
     const sort = buildSort(req.query);
 
-    const [assignments, total, analytics] = await Promise.all([
+    let [assignments, total, analytics] = await Promise.all([
       populateAssignment(
         Assignment.find(filter)
           .sort(sort)
@@ -660,6 +944,12 @@ exports.getAssignments = async (req, res) => {
       Assignment.countDocuments(filter),
       buildAnalytics(filter),
     ]);
+
+    assignments = await Promise.all(
+      assignments.map(async (assignment) =>
+        normalizeDocumentAttachments(assignment, Assignment),
+      ),
+    );
 
     return res.status(200).json({
       success: true,
@@ -683,7 +973,7 @@ exports.getAssignments = async (req, res) => {
 
 exports.getAssignmentById = async (req, res) => {
   try {
-    const assignment = await populateAssignment(
+    let assignment = await populateAssignment(
       Assignment.findById(req.params.id),
     ).lean();
 
@@ -700,17 +990,54 @@ exports.getAssignmentById = async (req, res) => {
       });
     }
 
+    const assignmentProcess = await processAttachments(assignment.attachments);
+    if (assignmentProcess.changed) {
+      await Assignment.findByIdAndUpdate(assignment._id, {
+        attachments: assignmentProcess.attachments,
+      });
+      assignment.attachments = assignmentProcess.attachments;
+    }
+
     const submissions = await populateSubmission(
       Submission.find({ assignmentId: assignment._id }).sort({
         submittedAt: -1,
       }),
     ).lean();
 
+    const migratedSubmissions = await Promise.all(
+      submissions.map(async (submission) => {
+        const submissionProcess = await processAttachments(
+          submission.attachments,
+        );
+        if (!submissionProcess.changed) {
+          return submission;
+        }
+
+        const latestProcessed = submissionProcess.attachments[0] || {};
+        await Submission.findByIdAndUpdate(submission._id, {
+          attachments: submissionProcess.attachments,
+          fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+          fileName: latestProcessed.name || latestProcessed.fileName || "",
+          mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
+          size: latestProcessed.size || 0,
+        });
+
+        return {
+          ...submission,
+          attachments: submissionProcess.attachments,
+          fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+          fileName: latestProcessed.name || latestProcessed.fileName || "",
+          mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
+          size: latestProcessed.size || 0,
+        };
+      }),
+    );
+
     return res.status(200).json({
       success: true,
       data: {
         ...assignment,
-        submissions,
+        submissions: migratedSubmissions,
       },
     });
   } catch (error) {
@@ -731,7 +1058,7 @@ exports.getMyAssignments = async (req, res) => {
       buildListFilter(req.query),
     );
 
-    const [assignments, total, analytics] = await Promise.all([
+    let [assignments, total, analytics] = await Promise.all([
       populateAssignment(
         Assignment.find(filter)
           .sort(sort)
@@ -741,6 +1068,12 @@ exports.getMyAssignments = async (req, res) => {
       Assignment.countDocuments(filter),
       buildAnalytics(filter),
     ]);
+
+    assignments = await Promise.all(
+      assignments.map(async (assignment) =>
+        normalizeDocumentAttachments(assignment, Assignment),
+      ),
+    );
 
     return res.status(200).json({
       success: true,
@@ -785,16 +1118,19 @@ exports.submitAssignment = async (req, res) => {
         userId: req.user.id,
       })) + 1;
 
-    const latestAttachment = req.body.attachments?.[0];
+    const processedResult = await processAttachments(req.body.attachments);
+    const processedAttachments = processedResult.attachments;
+    const latestProcessed = processedAttachments[0];
+
     const submission = await Submission.create({
       assignmentId: assignment._id,
       userId: req.user.id,
       submissionLink: String(req.body.submissionLink || "").trim(),
-      attachments: req.body.attachments || [],
-      fileUrl: latestAttachment?.url || "",
-      fileName: latestAttachment?.name || "",
-      mimeType: latestAttachment?.mimeType || "",
-      size: latestAttachment?.size || 0,
+      attachments: processedAttachments,
+      fileUrl: latestProcessed?.url || latestProcessed?.secure_url || "",
+      fileName: latestProcessed?.name || latestProcessed?.fileName || "",
+      mimeType: latestProcessed?.mimeType || latestProcessed?.fileType || "",
+      size: latestProcessed?.size || 0,
       note: String(req.body.note || "").trim(),
       status: "submitted",
       revision,
@@ -838,6 +1174,20 @@ exports.submitAssignment = async (req, res) => {
       assignment: populatedAssignment,
       submission: populatedSubmission,
     });
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ASSIGNMENT_SUBMITTED",
+          module: "Assignments",
+          description: `Submission ${submission._id} created for assignment ${assignment._id}`,
+          entityId: submission._id?.toString(),
+          entityType: "Submission",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(200).json({
       success: true,
@@ -907,6 +1257,20 @@ exports.updateAssignmentStatus = async (req, res) => {
         : "assignment_updated",
       populatedAssignment,
     );
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ASSIGNMENT_STATUS_UPDATED",
+          module: "Assignments",
+          description: `Assignment ${assignment._id} status set to ${nextStatus}`,
+          entityId: assignment._id?.toString(),
+          entityType: "Assignment",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(200).json({
       success: true,
@@ -996,7 +1360,7 @@ exports.getSubmissions = async (req, res) => {
     const assignmentIds = await Assignment.find(assignmentScope, "_id").lean();
     match.assignmentId = { $in: assignmentIds.map((item) => item._id) };
 
-    const [submissions, total] = await Promise.all([
+    let [submissions, total] = await Promise.all([
       populateSubmission(
         Submission.find(match)
           .sort({ submittedAt: -1 })
@@ -1005,6 +1369,12 @@ exports.getSubmissions = async (req, res) => {
       ).lean(),
       Submission.countDocuments(match),
     ]);
+
+    submissions = await Promise.all(
+      submissions.map(async (submission) =>
+        normalizeSubmissionDocument(submission),
+      ),
+    );
 
     return res.status(200).json({
       success: true,
@@ -1087,6 +1457,20 @@ exports.reviewSubmission = async (req, res) => {
       submission: populatedSubmission,
     });
 
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "SUBMISSION_REVIEWED",
+          module: "Assignments",
+          description: `Submission ${submission._id} reviewed: ${submission.status}`,
+          entityId: submission._id?.toString(),
+          entityType: "Submission",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
     return res.status(200).json({
       success: true,
       message: "Submission reviewed successfully",
@@ -1117,13 +1501,6 @@ exports.uploadAssignmentFile = async (req, res) => {
       });
     }
 
-    if (!ALLOWED_FILE_TYPES.includes(mimeType)) {
-      return res.status(400).json({
-        success: false,
-        message: "Only PDF, DOC, DOCX, and image files are allowed",
-      });
-    }
-
     const buffer = Buffer.from(match[2], "base64");
     if (buffer.length > FILE_SIZE_LIMIT) {
       return res.status(400).json({
@@ -1132,18 +1509,59 @@ exports.uploadAssignmentFile = async (req, res) => {
       });
     }
 
-    ensureUploadDirectory();
-    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${safeName}`;
-    const diskPath = path.join(uploadsDir, uniqueName);
-    fs.writeFileSync(diskPath, buffer);
+    // Upload directly to Cloudinary instead of saving locally
+    const dataUri = match[0];
+    let uploadResult;
+    try {
+      uploadResult = await cloudinaryService.uploadFromDataUri(dataUri, {
+        folder: "assignments",
+        resource_type: "auto",
+      });
+    } catch (err) {
+      console.error("Cloudinary upload failed:", err);
+      return res.status(500).json({
+        success: false,
+        message: "File upload failed",
+        error: err.message || String(err),
+      });
+    }
 
-    const attachment = {
+    console.log(
+      "Cloudinary upload succeeded for assignment file:",
+      uploadResult.secure_url,
+    );
+
+    const now = new Date();
+    const attachment = createStoredAttachment({
       name: fileName,
-      url: `/uploads/assignments/${uniqueName}`,
-      mimeType,
-      size: buffer.length,
-    };
+      fileName: uploadResult.public_id,
+      originalFileName: uploadResult.original_filename || fileName,
+      fileType: uploadResult.format || mimeType,
+      url: uploadResult.secure_url,
+      mimeType: mimeType,
+      size: uploadResult.bytes || buffer.length,
+      uploadedAt: now,
+      public_id: uploadResult.public_id,
+      secure_url: uploadResult.secure_url,
+      original_filename: uploadResult.original_filename,
+      resource_type: uploadResult.resource_type,
+      format: uploadResult.format,
+      bytes: uploadResult.bytes,
+    });
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "FILE_UPLOADED",
+          module: "Assignments",
+          description: `Uploaded file ${fileName}`,
+          entityId: uploadResult?.public_id || null,
+          entityType: "Attachment",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
 
     return res.status(201).json({
       success: true,

@@ -8,7 +8,12 @@ const VALID_ASSIGNMENT_STATUSES = [
   "completed",
   "rejected",
 ];
-const VALID_SUBMISSION_STATUSES = ["pending", "submitted", "approved", "rejected"];
+const VALID_SUBMISSION_STATUSES = [
+  "pending",
+  "submitted",
+  "approved",
+  "rejected",
+];
 const VALID_PRIORITIES = ["low", "medium", "high", "urgent"];
 const VALID_ROLE_TARGETS = [ROLES.HR, ROLES.USER, "BOTH"];
 const VALID_ASSIGNMENT_TYPES = ["role", "user"];
@@ -27,11 +32,18 @@ const normalizeAttachments = (attachments) => {
   const normalized = attachments
     .map((item) => {
       if (typeof item === "string") {
+        const url = String(item).trim();
         return {
           name: "",
-          url: item.trim(),
+          url,
+          secure_url: url,
           mimeType: "",
           size: 0,
+          public_id: null,
+          original_filename: null,
+          resource_type: null,
+          format: null,
+          bytes: 0,
         };
       }
 
@@ -39,16 +51,34 @@ const normalizeAttachments = (attachments) => {
         return null;
       }
 
+      const url = String(item.secure_url || item.url || "").trim();
       return {
         name: String(item.name || "").trim(),
-        url: String(item.url || "").trim(),
+        url,
+        secure_url: url || null,
         mimeType: String(item.mimeType || "").trim(),
-        size: Number(item.size || 0),
+        size: Number(item.size || item.bytes || 0),
+        fileName: String(item.fileName || item.name || "").trim(),
+        originalFileName: String(
+          item.originalFileName || item.original_filename || item.name || "",
+        ).trim(),
+        fileType: String(
+          item.fileType || item.mimeType || item.format || "",
+        ).trim(),
+        uploadedAt: item.uploadedAt ? new Date(item.uploadedAt) : undefined,
+        public_id: String(item.public_id || "").trim() || null,
+        original_filename:
+          String(
+            item.original_filename || item.originalFileName || "",
+          ).trim() || null,
+        resource_type: String(item.resource_type || "").trim() || null,
+        format: String(item.format || "").trim() || null,
+        bytes: Number(item.bytes || item.size || 0),
       };
     })
-    .filter(Boolean);
+    .filter((item) => item && item.url);
 
-  return normalized.some((item) => !item.url) ? null : normalized;
+  return normalized;
 };
 
 const parseDeadline = (value) => {
@@ -80,7 +110,8 @@ const sendValidationError = (res, message) =>
 exports.validateCreateAssignment = (req, res, next) => {
   const { title, description, priority, deadline, status } = req.body;
   const attachments = normalizeAttachments(req.body.attachments);
-  const { assignmentType, targetRole, assignedUserId } = normalizeAssignmentTarget(req.body);
+  const { assignmentType, targetRole, assignedUserId } =
+    normalizeAssignmentTarget(req.body);
 
   if (!title || !String(title).trim()) {
     return sendValidationError(res, "Title is required");
@@ -102,7 +133,10 @@ exports.validateCreateAssignment = (req, res, next) => {
     return sendValidationError(res, "Invalid assignment type");
   }
 
-  if (assignmentType === "role" && (!targetRole || !VALID_ROLE_TARGETS.includes(targetRole))) {
+  if (
+    assignmentType === "role" &&
+    (!targetRole || !VALID_ROLE_TARGETS.includes(targetRole))
+  ) {
     return sendValidationError(res, "Target role is required");
   }
 
@@ -144,17 +178,28 @@ exports.validateUpdateAssignment = (req, res, next) => {
     "attachments",
     "submissionLink",
   ];
-  const hasFieldToUpdate = editableFields.some((field) => req.body[field] !== undefined);
+  const hasFieldToUpdate = editableFields.some(
+    (field) => req.body[field] !== undefined,
+  );
 
   if (!hasFieldToUpdate) {
-    return sendValidationError(res, "No assignment fields were provided to update");
+    return sendValidationError(
+      res,
+      "No assignment fields were provided to update",
+    );
   }
 
-  if (req.body.priority !== undefined && !VALID_PRIORITIES.includes(req.body.priority)) {
+  if (
+    req.body.priority !== undefined &&
+    !VALID_PRIORITIES.includes(req.body.priority)
+  ) {
     return sendValidationError(res, "Invalid priority value");
   }
 
-  if (req.body.status !== undefined && !VALID_ASSIGNMENT_STATUSES.includes(req.body.status)) {
+  if (
+    req.body.status !== undefined &&
+    !VALID_ASSIGNMENT_STATUSES.includes(req.body.status)
+  ) {
     return sendValidationError(res, "Invalid status value");
   }
 
@@ -181,13 +226,17 @@ exports.validateUpdateAssignment = (req, res, next) => {
     req.body.assignedToRole !== undefined ||
     req.body.assignedTo !== undefined
   ) {
-    const { assignmentType, targetRole, assignedUserId } = normalizeAssignmentTarget(req.body);
+    const { assignmentType, targetRole, assignedUserId } =
+      normalizeAssignmentTarget(req.body);
 
     if (!VALID_ASSIGNMENT_TYPES.includes(assignmentType)) {
       return sendValidationError(res, "Invalid assignment type");
     }
 
-    if (assignmentType === "role" && (!targetRole || !VALID_ROLE_TARGETS.includes(targetRole))) {
+    if (
+      assignmentType === "role" &&
+      (!targetRole || !VALID_ROLE_TARGETS.includes(targetRole))
+    ) {
       return sendValidationError(res, "Target role is required");
     }
 
@@ -212,7 +261,10 @@ exports.validateAssignmentSubmission = (req, res, next) => {
   const attachments = normalizeAttachments(req.body.attachments);
 
   if (status !== undefined && !["in_progress", "submitted"].includes(status)) {
-    return sendValidationError(res, "Only progress or submitted statuses are allowed");
+    return sendValidationError(
+      res,
+      "Only progress or submitted statuses are allowed",
+    );
   }
 
   if (!submissionLink && (!attachments || attachments.length === 0) && !note) {
@@ -257,8 +309,15 @@ exports.validateAssignmentFeedback = (req, res, next) => {
 exports.validateSubmissionReview = (req, res, next) => {
   const { status } = req.body;
 
-  if (!status || !VALID_SUBMISSION_STATUSES.includes(status) || status === "submitted") {
-    return sendValidationError(res, "Review status must be approved, rejected, or pending");
+  if (
+    !status ||
+    !VALID_SUBMISSION_STATUSES.includes(status) ||
+    status === "submitted"
+  ) {
+    return sendValidationError(
+      res,
+      "Review status must be approved, rejected, or pending",
+    );
   }
 
   next();
