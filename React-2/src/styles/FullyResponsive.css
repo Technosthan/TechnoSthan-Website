@@ -639,12 +639,24 @@ nav > ol {
 }
 
 .full-width {
-  width: 100vw;
+  /* Avoid using 100vw which includes scrollbars; use safe full width */
+  width: 100%;
+  max-width: 100%;
   position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
+}
+
+/* Flex children should be allowed to shrink and not force overflow */
+.flex-1,
+.flex-auto,
+.flex-grow {
+  min-width: 0; /* allow flex items to shrink properly */
+}
+
+/* Ensure sidebar elements do not unexpectedly shrink */
+aside,
+.sidebar,
+[class*="-sidebar"] {
+  flex-shrink: 0;
 }
 
 /* ========== RESPONSIVE TYPOGRAPHY ========== */

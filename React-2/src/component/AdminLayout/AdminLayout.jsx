@@ -49,7 +49,7 @@ const AdminLayout = ({ title, subtitle, children }) => {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
-        <main className="flex-1 px-3 py-3 sm:px-4 lg:px-6 lg:py-5 xl:ml-64 xl:px-7 2xl:px-8">
+        <main className="flex-1 min-w-0 px-3 py-3 sm:px-4 lg:px-6 lg:py-5 xl:ml-64 xl:px-7 2xl:px-8">
           <AdminNavbar title={title} subtitle={subtitle} />
           <div className="mx-auto max-w-[1680px]">{children}</div>
         </main>
