@@ -1,4 +1,11 @@
-import { Clock3, Eye, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Clock3,
+  Eye,
+  MessageSquare,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import {
   getAssignmentProgress,
   getAssignmentTargetLabel,
@@ -13,9 +20,11 @@ const AssignmentCard = ({
   canManageAssignment = () => false,
   canEditAssignment = canManageAssignment,
   canDeleteAssignment = canManageAssignment,
+  canTransferAssignment = () => false,
   onView,
   onEdit,
   onDelete,
+  onTransfer,
 }) => (
   <div className="rounded-[24px] border border-white/10 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/40 backdrop-blur">
     <div className="flex items-start justify-between gap-4">
@@ -86,6 +95,17 @@ const AssignmentCard = ({
         <Eye size={16} />
         View
       </button>
+
+      {onTransfer && canTransferAssignment(assignment) && (
+        <button
+          className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-500/25"
+          onClick={() => onTransfer(assignment)}
+          type="button"
+        >
+          <ArrowRightLeft size={16} />
+          Transfer
+        </button>
+      )}
 
       {canEditAssignment(assignment) && (
         <button

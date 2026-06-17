@@ -9,6 +9,7 @@ const useAssignmentSocket = (handlers = {}, enabled = true) => {
   const onUpdated = handlers.assignment_updated;
   const onDeleted = handlers.assignment_deleted;
   const onCompleted = handlers.assignment_completed;
+  const onTransferred = handlers.assignment_transferred;
   const onSubmissionCreated = handlers.submission_created;
   const onSubmissionReviewed = handlers.submission_reviewed;
 
@@ -43,6 +44,10 @@ const useAssignmentSocket = (handlers = {}, enabled = true) => {
       socket.on("assignment_completed", onCompleted);
     }
 
+    if (onTransferred) {
+      socket.on("assignment_transferred", onTransferred);
+    }
+
     if (onSubmissionCreated) {
       socket.on("submission_created", onSubmissionCreated);
     }
@@ -54,7 +59,16 @@ const useAssignmentSocket = (handlers = {}, enabled = true) => {
     return () => {
       socket.disconnect();
     };
-  }, [enabled, onCompleted, onCreated, onDeleted, onSubmissionCreated, onSubmissionReviewed, onUpdated]);
+  }, [
+    enabled,
+    onCompleted,
+    onCreated,
+    onDeleted,
+    onSubmissionCreated,
+    onSubmissionReviewed,
+    onTransferred,
+    onUpdated,
+  ]);
 };
 
 export default useAssignmentSocket;

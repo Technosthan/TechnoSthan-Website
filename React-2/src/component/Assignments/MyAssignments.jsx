@@ -3,12 +3,15 @@ import AdminLayout from "../AdminLayout/AdminLayout";
 import AssignmentCard from "./AssignmentCard";
 import AssignmentDetails from "./AssignmentDetails";
 import AssignmentTable from "./AssignmentTable";
+import AssignmentTransferModal from "./AssignmentTransferModal";
 import useAssignmentSocket from "../../hooks/useAssignmentSocket";
 import { useToast } from "../Toast/ToastProvider";
 import {
+  getAssignableUsers,
   getAssignmentById,
   getMyAssignments,
   submitAssignment,
+  transferAssignment as transferAssignmentApi,
   updateAssignmentStatus,
 } from "../../lib/assignments";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
@@ -42,6 +45,12 @@ const MyAssignments = () => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [assignees, setAssignees] = useState([]);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferAssignment, setTransferAssignment] = useState(null);
+  const [transferRecipient, setTransferRecipient] = useState("");
+  const [transferNote, setTransferNote] = useState("");
+  const [transferSaving, setTransferSaving] = useState(false);
   const canSubmitAssignments = canAccessFeature("usersCanSubmitAssignments");
   const canUploadFiles =
     canAccessFeature("fileUploadsEnabled") &&
@@ -68,6 +77,23 @@ const MyAssignments = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchTransferTargets = async () => {
+      try {
+        const response = await getAssignableUsers();
+        setAssignees(response.data || []);
+      } catch (error) {
+        showToast({
+          title: "Unable to load transfer targets",
+          message: error.response?.data?.message || "Please try again shortly.",
+          type: "error",
+        });
+      }
+    };
+
+    void fetchTransferTargets();
+  }, [showToast]);
 
   useEffect(() => {
     const fetchCurrentAssignments = async () => {
@@ -128,6 +154,7 @@ const MyAssignments = () => {
       assignment_created: () => fetchAssignments(),
       assignment_updated: () => fetchAssignments(),
       assignment_completed: () => fetchAssignments(),
+      assignment_transferred: () => fetchAssignments(),
     },
     true,
   );
@@ -213,6 +240,63 @@ const MyAssignments = () => {
     }
   };
 
+  const handleOpenTransfer = (assignment) => {
+    const currentAssignmentAssignee =
+      assignment.assignedTo?._id ||
+      assignment.assignedTo ||
+      assignment.assignedUsers?.[0]?._id ||
+      "";
+
+    setTransferAssignment(assignment);
+    setTransferRecipient(currentAssignmentAssignee || "");
+    setTransferNote("");
+    setTransferOpen(true);
+  };
+
+  const closeTransferModal = () => {
+    setTransferOpen(false);
+    setTransferAssignment(null);
+    setTransferRecipient("");
+    setTransferNote("");
+    setTransferSaving(false);
+  };
+
+  const handleTransferAssignment = async () => {
+    if (!transferAssignment || !transferRecipient) {
+      showToast({
+        title: "Choose a recipient",
+        message: "Please select an HR user to transfer the assignment to.",
+        type: "warning",
+      });
+      return;
+    }
+
+    try {
+      setTransferSaving(true);
+      const response = await transferAssignmentApi(transferAssignment._id, {
+        assignedTo: transferRecipient,
+        note: transferNote,
+      });
+
+      showToast({
+        title: "Assignment transferred",
+        message: response.message,
+        type: "success",
+      });
+      closeTransferModal();
+      setSelectedAssignment(null);
+      fetchAssignments();
+    } catch (error) {
+      showToast({
+        title: "Transfer failed",
+        message: error.response?.data?.message || "Please try again.",
+        type: "error",
+      });
+    } finally {
+      setTransferSaving(false);
+    }
+  };
+
   return (
     <AdminLayout
       title="My Assignments"
@@ -254,7 +338,9 @@ const MyAssignments = () => {
             setPagination((current) => ({ ...current, page: 1 }));
           }}
           canManageAssignment={() => false}
+          canTransferAssignment={() => true}
           onView={handleOpenAssignment}
+          onTransfer={handleOpenTransfer}
           loading={loading}
           emptyMessage={emptyStateMessage}
         />
@@ -269,7 +355,9 @@ const MyAssignments = () => {
               <AssignmentCard
                 key={assignment._id}
                 assignment={assignment}
+                canTransferAssignment={() => true}
                 onView={handleOpenAssignment}
+                onTransfer={handleOpenTransfer}
               />
             ))
           ) : (
@@ -320,6 +408,18 @@ const MyAssignments = () => {
         loading={loading}
         canSubmitWork={canSubmitAssignments}
         canUploadFiles={canUploadFiles}
+      />
+      <AssignmentTransferModal
+        open={transferOpen}
+        assignment={transferAssignment}
+        assignees={assignees}
+        recipient={transferRecipient}
+        note={transferNote}
+        saving={transferSaving}
+        onRecipientChange={setTransferRecipient}
+        onNoteChange={setTransferNote}
+        onClose={closeTransferModal}
+        onConfirm={handleTransferAssignment}
       />
     </AdminLayout>
   );

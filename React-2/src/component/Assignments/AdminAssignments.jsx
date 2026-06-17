@@ -1,11 +1,11 @@
-import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import {
-  ArrowRightLeft,
   BriefcaseBusiness,
   CheckCheck,
   ClipboardList,
   Plus,
+  Search,
   TrendingUp,
 } from "lucide-react";
 import AdminLayout from "../AdminLayout/AdminLayout";
@@ -87,6 +87,7 @@ const AdminAssignments = () => {
   const [transferAssignment, setTransferAssignment] = useState(null);
   const [transferRecipient, setTransferRecipient] = useState("");
   const [transferNote, setTransferNote] = useState("");
+  const [transferSearch, setTransferSearch] = useState("");
   const [transferSaving, setTransferSaving] = useState(false);
 
   const currentRole = normalizeRole(getStoredUser()?.role);
@@ -128,10 +129,10 @@ const AdminAssignments = () => {
       return false;
     }
 
-    const creatorRole = normalizeRole(
-      assignment.creatorRole || assignment.assignedBy?.role,
-    );
-    return creatorRole === "HR";
+    const assignedById =
+      assignment.assignedBy?._id || assignment.assignedBy || "";
+    const currentUserId = getStoredUser()?.id || "";
+    return String(assignedById) === String(currentUserId);
   };
 
   const canUserTransferAssignment = (assignment) => {
@@ -183,6 +184,29 @@ const AdminAssignments = () => {
 
     return [];
   };
+
+  const filteredTransferableUsers = useMemo(() => {
+    const currentAssigneeId =
+      transferAssignment?.assignedTo?._id ||
+      transferAssignment?.assignedTo ||
+      transferAssignment?.assignedUsers?.[0]?._id ||
+      "";
+    const normalizedSearch = transferSearch.trim().toLowerCase();
+
+    return getTransferableUsers().filter((user) => {
+      if (!user?._id || String(user._id) === String(currentAssigneeId)) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return [user.name, user.email, user.role]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+    });
+  }, [assignees, currentRole, isAdmin, transferAssignment, transferSearch]);
 
   const fetchAssignments = useCallback(
     async (page = pagination.page) => {
@@ -250,6 +274,7 @@ const AdminAssignments = () => {
       assignment_updated: () => fetchAssignments(),
       assignment_deleted: () => fetchAssignments(),
       assignment_completed: () => fetchAssignments(),
+      assignment_transferred: () => fetchAssignments(),
       submission_created: () => fetchAssignments(),
       submission_reviewed: () => fetchAssignments(),
     },
@@ -362,6 +387,7 @@ const AdminAssignments = () => {
 
     setTransferRecipient(currentAssignmentAssignee || "");
     setTransferNote("");
+    setTransferSearch("");
     setTransferOpen(true);
   };
 
@@ -370,6 +396,7 @@ const AdminAssignments = () => {
     setTransferAssignment(null);
     setTransferRecipient("");
     setTransferNote("");
+    setTransferSearch("");
     setTransferSaving(false);
   };
 
@@ -402,7 +429,11 @@ const AdminAssignments = () => {
       closeTransferModal();
       fetchAssignments();
       if (selectedAssignment?._id === transferAssignment._id) {
-        handleOpenAssignment(transferAssignment);
+        if (isAdmin) {
+          setSelectedAssignment(response.data);
+        } else {
+          setSelectedAssignment(null);
+        }
       }
     } catch (error) {
       showToast({
@@ -675,6 +706,47 @@ const AdminAssignments = () => {
             />
           </div>
 
+          <div className="mt-5 grid gap-3 lg:hidden">
+            {loading ? (
+              <div className="rounded-[22px] border border-white/10 bg-slate-900/70 p-8 text-center text-slate-400">
+                Loading assignments...
+              </div>
+            ) : assignments.length > 0 ? (
+              assignments.map((assignment) => (
+                <AssignmentCard
+                  key={assignment._id}
+                  assignment={assignment}
+                  canManageAssignment={canManageAssignment}
+                  canEditAssignment={(item) =>
+                    canEditAssignments && canManageAssignment(item)
+                  }
+                  canDeleteAssignment={(item) =>
+                    canDeleteAssignments && canManageAssignment(item)
+                  }
+                  canTransferAssignment={canUserTransferAssignment}
+                  onView={handleOpenAssignment}
+                  onEdit={(item) => {
+                    setEditingAssignment(item);
+                    setModalOpen(true);
+                  }}
+                  onTransfer={handleOpenTransfer}
+                  onDelete={handleDeleteAssignment}
+                />
+              ))
+            ) : (
+              <div className="rounded-[22px] border border-dashed border-white/10 bg-slate-900/70 p-10 text-center">
+                <h3 className="text-xl font-semibold text-white">
+                  {emptyStateMessage}
+                </h3>
+                <p className="mt-3 text-sm text-slate-400">
+                  {hasActiveFilters
+                    ? "Try changing the search or filters."
+                    : "When new work is created, it will appear here automatically."}
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="mt-4 flex flex-col gap-3 rounded-[18px] border border-white/10 bg-slate-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-400">
               Showing page {pagination.page} of {pagination.totalPages} with{" "}
@@ -853,6 +925,24 @@ const AdminAssignments = () => {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Search user
+                  </label>
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                      size={16}
+                    />
+                    <input
+                      className="w-full rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 pl-11 text-sm text-white outline-none transition focus:border-emerald-400/60"
+                      value={transferSearch}
+                      onChange={(event) => setTransferSearch(event.target.value)}
+                      placeholder="Search by name, email, or role"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
                     New assignee
                   </label>
                   <select
@@ -863,7 +953,7 @@ const AdminAssignments = () => {
                     }
                   >
                     <option value="">Select user</option>
-                    {getTransferableUsers().map((user) => (
+                    {filteredTransferableUsers.map((user) => (
                       <option key={user._id} value={user._id}>
                         {user.name} — {user.email}
                       </option>

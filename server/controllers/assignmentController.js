@@ -290,14 +290,6 @@ const normalizeAssignmentScope = (assignment) => {
   };
 };
 
-const getAssignmentCreatorRole = (assignment) =>
-  normalizeRole(
-    assignment.creatorRole ||
-      assignment.assignedBy?.role ||
-      assignment.assignedToRole ||
-      ROLES.USER,
-  );
-
 const canManageAssignment = (assignment, user) => {
   if (user.role === ROLES.ADMIN) {
     return true;
@@ -306,21 +298,11 @@ const canManageAssignment = (assignment, user) => {
   if (user.role !== ROLES.HR) {
     return false;
   }
-
-  if (getAssignmentCreatorRole(assignment) !== ROLES.HR) {
-    return false;
-  }
-
-  const createdById =
-    assignment.createdBy?._id?.toString?.() ||
-    assignment.createdBy?.toString?.() ||
-    "";
   const assignedById =
     assignment.assignedBy?._id?.toString?.() ||
     assignment.assignedBy?.toString?.() ||
     "";
-
-  return createdById === String(user.id) || assignedById === String(user.id);
+  return assignedById === String(user.id);
 };
 
 const canAccessAssignment = (assignment, user, options = {}) => {
@@ -401,7 +383,6 @@ const buildAccessibleAssignmentFilter = async (
   const reviewerAssignmentIds = await getReviewerAssignmentIds(user.id);
 
   if (managerView && user.role === ROLES.HR) {
-    clauses.push({ createdBy: user.id });
     clauses.push({ assignedBy: user.id });
   }
 
@@ -782,10 +763,20 @@ const sanitizeAssignmentPayload = async (payload, actor) => {
 
 exports.getAssignableUsers = async (req, res) => {
   try {
-    const filter =
-      req.user.role === ROLES.HR
-        ? { role: { $in: getRoleVariants(ROLES.USER) }, isActive: true }
-        : { isActive: true };
+    const userRole = normalizeRole(req.user.role);
+    let filter = { isActive: true };
+
+    if (userRole === ROLES.HR) {
+      filter = {
+        role: { $in: [...getRoleVariants(ROLES.HR), ...getRoleVariants(ROLES.USER)] },
+        isActive: true,
+      };
+    } else if (userRole === ROLES.USER) {
+      filter = {
+        role: { $in: getRoleVariants(ROLES.HR) },
+        isActive: true,
+      };
+    }
 
     const users = await User.find(filter, "name email role isActive")
       .sort({ role: 1, name: 1 })
@@ -1129,24 +1120,10 @@ exports.transferAssignment = async (req, res) => {
         }
       : null;
 
-    // Update assignment
-    const scope = await sanitizeAssignmentPayload(
-      {
-        assignmentType: "user",
-        assignedUserId: req.body.assignedTo,
-      },
-      req.user,
-    );
-
-    if (scope.error) {
-      return res
-        .status(scope.status || 400)
-        .json({ success: false, message: scope.error });
-    }
-
-    assignment.assignedUsers = scope.assignedUsers;
-    assignment.assignedTo = scope.assignedTo;
-    assignment.assignedToRole = scope.assignedToRole;
+    assignment.assignedUsers = [newAssignee._id];
+    assignment.assignedTo = newAssignee._id;
+    assignment.assignedToRole = normalizeRole(newAssignee.role);
+    assignment.assignedBy = newAssignee._id;
 
     addRemark(assignment, {
       message:

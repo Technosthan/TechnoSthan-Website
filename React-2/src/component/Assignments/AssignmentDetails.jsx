@@ -109,7 +109,12 @@ const isAudioAttachment = (attachment) =>
 
 const getAttachmentUrlCandidates = (attachment) => {
   return {
-    previewUrl: String(attachment?.previewUrl || "").trim(),
+    previewUrl: String(
+      attachment?.previewUrl || attachment?.preview_url || "",
+    ).trim(),
+    secureUrl: String(
+      attachment?.secure_url || attachment?.secureUrl || "",
+    ).trim(),
     fileUrl: String(
       attachment?.fileUrl || attachment?.file_url || attachment?.url || "",
     ).trim(),
@@ -118,14 +123,24 @@ const getAttachmentUrlCandidates = (attachment) => {
 };
 
 const getAttachmentUrl = (attachment) => {
-  const { previewUrl, fileUrl, url } = getAttachmentUrlCandidates(attachment);
+  const { previewUrl, secureUrl, fileUrl, url } =
+    getAttachmentUrlCandidates(attachment);
 
-  const rawUrl = previewUrl || fileUrl || url || "";
+  const rawUrl = previewUrl || secureUrl || fileUrl || url || "";
   if (!rawUrl) return "";
   if (/^https?:\/\//i.test(rawUrl)) {
     return rawUrl;
   }
   return `${API_BASE_URL}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+};
+
+const getAttachmentPreviewSources = (attachment) => {
+  const { previewUrl, secureUrl, fileUrl, url } =
+    getAttachmentUrlCandidates(attachment);
+
+  return [previewUrl, secureUrl, fileUrl, url]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
 };
 
 const downloadAttachment = async (
@@ -253,6 +268,7 @@ const AssignmentDetails = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [previewSourceIndex, setPreviewSourceIndex] = useState(0);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -273,6 +289,10 @@ const AssignmentDetails = ({
     setUploading(false);
     setDragActive(false);
   }, [assignment]);
+
+  useEffect(() => {
+    setPreviewSourceIndex(0);
+  }, [previewAttachment?.previewUrl, previewAttachment?.secure_url, previewAttachment?.url]);
 
   if (!assignment) {
     return null;
@@ -396,6 +416,11 @@ const AssignmentDetails = ({
   };
 
   const closePreview = () => setPreviewAttachment(null);
+  const previewSources = previewAttachment
+    ? getAttachmentPreviewSources(previewAttachment)
+    : [];
+  const activePreviewSource =
+    previewSources[previewSourceIndex] || previewAttachment?.previewUrl || "";
 
   const submissionActions = (
     <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
@@ -1067,33 +1092,57 @@ const AssignmentDetails = ({
                             <div className="flex h-[72vh] items-center justify-center rounded-3xl border border-white/10 bg-slate-900 text-slate-300">
                               Loading preview...
                             </div>
-                          ) : previewAttachment.previewUrl ? (
+                          ) : activePreviewSource ? (
                             isImageAttachment(previewAttachment) ? (
                               <img
-                                src={previewAttachment.previewUrl}
+                                src={activePreviewSource}
                                 alt={
                                   previewAttachment.name || "Attachment preview"
                                 }
                                 className="mx-auto max-h-[72vh] max-w-full rounded-3xl object-contain"
+                                onError={() => {
+                                  setPreviewSourceIndex((current) =>
+                                    Math.min(
+                                      current + 1,
+                                      Math.max(previewSources.length - 1, 0),
+                                    ),
+                                  );
+                                }}
                               />
                             ) : isPdfAttachment(previewAttachment) ? (
                               <iframe
                                 title="PDF preview"
-                                src={previewAttachment.previewUrl}
+                                src={activePreviewSource}
                                 className="h-[72vh] w-full rounded-3xl border border-white/10"
                               />
                             ) : isVideoAttachment(previewAttachment) ? (
                               <video
                                 controls
-                                src={previewAttachment.previewUrl}
+                                src={activePreviewSource}
                                 className="mx-auto h-[72vh] w-full rounded-3xl bg-black object-contain"
+                                onError={() => {
+                                  setPreviewSourceIndex((current) =>
+                                    Math.min(
+                                      current + 1,
+                                      Math.max(previewSources.length - 1, 0),
+                                    ),
+                                  );
+                                }}
                               />
                             ) : isAudioAttachment(previewAttachment) ? (
                               <div className="mx-auto w-full max-w-2xl">
                                 <audio
                                   controls
-                                  src={previewAttachment.previewUrl}
+                                  src={activePreviewSource}
                                   className="w-full"
+                                  onError={() => {
+                                    setPreviewSourceIndex((current) =>
+                                      Math.min(
+                                        current + 1,
+                                        Math.max(previewSources.length - 1, 0),
+                                      ),
+                                    );
+                                  }}
                                 >
                                   Your browser does not support the audio
                                   element.

@@ -265,7 +265,7 @@ exports.validateUpdateAssignment = (req, res, next) => {
 
 exports.validateAssignmentTransfer = (req, res, next) => {
   const assignedTo = String(
-    req.body.assignedTo || req.body.assignedUserId || "",
+    req.body.assignedTo || req.body.assignedUserId || req.body.targetUserId || "",
   ).trim();
   const note = String(req.body.note || "").trim();
 

@@ -46,7 +46,7 @@ router.post(
   requireWorkspaceFeature("fileUploadsEnabled"),
   uploadAssignmentFile,
 );
-router.get("/assignees/list", hrOrAdmin, getAssignableUsers);
+router.get("/assignees/list", getAssignableUsers);
 router.get(
   "/submissions/all",
   hrOrAdmin,
@@ -94,8 +94,6 @@ router.put(
 );
 router.patch(
   "/:id/transfer",
-  hrOrAdmin,
-  requireWorkspaceFeature("hrCanEditOwnAssignments"),
   validateAssignmentTransfer,
   transferAssignment,
 );
