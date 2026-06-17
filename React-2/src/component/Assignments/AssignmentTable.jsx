@@ -1,4 +1,11 @@
-import { Eye, Pencil, RotateCcw, Search, Trash2 } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Eye,
+  Pencil,
+  RotateCcw,
+  Search,
+  Trash2,
+} from "lucide-react";
 import {
   formatDateOnly,
   getAssignmentProgress,
@@ -22,9 +29,11 @@ const AssignmentTable = ({
   canManageAssignment = () => false,
   canEditAssignment = canManageAssignment,
   canDeleteAssignment = canManageAssignment,
+  canTransferAssignment = canManageAssignment,
   onView,
   onEdit,
   onDelete,
+  onTransfer,
   showAssigneeFilter = false,
   loading = false,
   emptyMessage = "No assignments found",
@@ -270,6 +279,16 @@ const AssignmentTable = ({
                       >
                         <Eye size={15} />
                       </button>
+
+                      {onTransfer && canTransferAssignment(assignment) && (
+                        <button
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-500/20 text-emerald-100 transition hover:bg-emerald-500/30"
+                          onClick={() => onTransfer(assignment)}
+                          type="button"
+                        >
+                          <ArrowRightLeft size={15} />
+                        </button>
+                      )}
 
                       {canEditAssignment(assignment) && (
                         <button

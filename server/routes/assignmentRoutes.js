@@ -20,6 +20,8 @@ const {
   previewAssignmentByQuery,
   previewSubmissionAttachment,
   previewUploadedAttachment,
+  transferAssignment,
+  getAssignmentTransferHistory,
 } = require("../controllers/assignmentController");
 const { protect, hrOrAdmin } = require("../middleware/authMiddleware");
 const {
@@ -29,6 +31,7 @@ const {
   validateAssignmentStatus,
   validateAssignmentFeedback,
   validateSubmissionReview,
+  validateAssignmentTransfer,
 } = require("../middleware/assignmentValidation");
 const { requireWorkspaceFeature } = require("../middleware/workspaceSettings");
 
@@ -41,7 +44,6 @@ router.get("/my", getMyAssignments);
 router.post(
   "/upload",
   requireWorkspaceFeature("fileUploadsEnabled"),
-  requireWorkspaceFeature("usersCanUploadFiles"),
   uploadAssignmentFile,
 );
 router.get("/assignees/list", hrOrAdmin, getAssignableUsers);
@@ -90,6 +92,14 @@ router.put(
   validateUpdateAssignment,
   updateAssignment,
 );
+router.patch(
+  "/:id/transfer",
+  hrOrAdmin,
+  requireWorkspaceFeature("hrCanEditOwnAssignments"),
+  validateAssignmentTransfer,
+  transferAssignment,
+);
+router.get("/:id/transfer-history", getAssignmentTransferHistory);
 router.delete(
   "/:id",
   hrOrAdmin,

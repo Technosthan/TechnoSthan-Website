@@ -263,6 +263,36 @@ exports.validateUpdateAssignment = (req, res, next) => {
   next();
 };
 
+exports.validateAssignmentTransfer = (req, res, next) => {
+  const assignedTo = String(
+    req.body.assignedTo || req.body.assignedUserId || "",
+  ).trim();
+  const note = String(req.body.note || "").trim();
+
+  if (!assignedTo) {
+    return sendValidationError(res, "A transfer recipient is required");
+  }
+
+  if (!isValidObjectId(assignedTo)) {
+    return sendValidationError(
+      res,
+      "Transfer recipient must be a valid user id",
+    );
+  }
+
+  if (note.length > 2000) {
+    return sendValidationError(
+      res,
+      "Transfer note must be 2000 characters or less",
+    );
+  }
+
+  req.body.assignedTo = assignedTo;
+  req.body.assignedUserId = assignedTo;
+  req.body.note = note;
+  next();
+};
+
 exports.validateAssignmentSubmission = (req, res, next) => {
   const { submissionLink, status, note } = req.body;
   const attachments = normalizeAttachments(req.body.attachments);

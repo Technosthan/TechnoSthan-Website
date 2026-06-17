@@ -47,6 +47,7 @@ const generateSignedUrl = ({
   expiresInSeconds = 120,
   download = false,
   format,
+  mimeType,
 } = {}) => {
   if (!publicId) return null;
 
@@ -55,6 +56,16 @@ const generateSignedUrl = ({
     Math.max(60, Math.min(300, expiresInSeconds || 120));
 
   const normalizedFormat = resolveCloudinaryFormat(publicId, format);
+  const normalizedMimeType = String(mimeType || "").trim().toLowerCase();
+
+  // Cloudinary stores PDFs under the image resource type for inline preview delivery.
+  let requestedResourceType = resource_type || "auto";
+  if (
+    normalizedMimeType === "application/pdf" ||
+    normalizedFormat === "pdf"
+  ) {
+    requestedResourceType = "image";
+  }
 
   if (
     download &&
@@ -63,7 +74,7 @@ const generateSignedUrl = ({
   ) {
     try {
       return cloudinary.utils.private_download_url(publicId, normalizedFormat, {
-        resource_type,
+        resource_type: requestedResourceType,
         type,
         expires_at: expiresAt,
         attachment: true,
@@ -73,9 +84,38 @@ const generateSignedUrl = ({
     }
   }
 
+  // For authenticated/private delivery types, prefer private_download_url
+  if (
+    cloudinary.utils &&
+    typeof cloudinary.utils.private_download_url === "function" &&
+    (String(type || "").toLowerCase() === "authenticated" ||
+      String(type || "").toLowerCase() === "private")
+  ) {
+    try {
+      return cloudinary.utils.private_download_url(publicId, normalizedFormat, {
+        resource_type: requestedResourceType,
+        type,
+        expires_at: expiresAt,
+        attachment: download ? true : false,
+      });
+    } catch (err) {
+      // fall through to signed delivery url
+    }
+  }
+
   try {
+    // Log debug for PDF generation cases (helps diagnose preview issues)
+    if (normalizedFormat === "pdf") {
+      console.log("[CLOUDINARY] Generating signed URL for PDF", {
+        publicId,
+        resource_type: requestedResourceType,
+        type,
+        format: normalizedFormat,
+      });
+    }
+
     return cloudinary.url(publicId, {
-      resource_type,
+      resource_type: requestedResourceType,
       type,
       sign_url: true,
       expires_at: expiresAt,

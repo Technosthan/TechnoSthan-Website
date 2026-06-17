@@ -4,6 +4,7 @@ const cloudinaryService = require("../services/cloudinaryService");
 const Assignment = require("../models/Assignment");
 const Submission = require("../models/Submission");
 const User = require("../models/User");
+const AssignmentTransferHistory = require("../models/AssignmentTransferHistory");
 const { ROLES, getRoleVariants, normalizeRole } = require("../constants/rbac");
 const createStoredAttachment = ({
   name,
@@ -1018,6 +1019,226 @@ exports.updateAssignment = async (req, res) => {
   }
 };
 
+const canTransferToRole = (transferrerRole, recipientRole) => {
+  transferrerRole = normalizeRole(transferrerRole);
+  recipientRole = normalizeRole(recipientRole);
+
+  if (transferrerRole === ROLES.ADMIN) {
+    // Admin can transfer to anyone
+    return true;
+  }
+
+  if (transferrerRole === ROLES.HR) {
+    // HR can transfer to HR or USER, not ADMIN
+    return recipientRole === ROLES.HR || recipientRole === ROLES.USER;
+  }
+
+  if (transferrerRole === ROLES.USER) {
+    // USER can only transfer to HR
+    return recipientRole === ROLES.HR;
+  }
+
+  return false;
+};
+
+const canUserTransferAssignment = (assignment, transferrerUser) => {
+  const transferrerRole = normalizeRole(transferrerUser.role);
+
+  if (transferrerRole === ROLES.ADMIN) {
+    // Admin can transfer any assignment
+    return true;
+  }
+
+  if (transferrerRole === ROLES.HR) {
+    // HR can transfer assignments they own/manage
+    return canManageAssignment(assignment, transferrerUser);
+  }
+
+  if (transferrerRole === ROLES.USER) {
+    // USER can only transfer assignments assigned to them
+    const assignedTo =
+      assignment.assignedTo?._id?.toString?.() ||
+      assignment.assignedTo?.toString?.() ||
+      null;
+    return assignedTo === transferrerUser.id;
+  }
+
+  return false;
+};
+
+exports.transferAssignment = async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id)
+      .populate("assignedBy", "role")
+      .populate("assignedTo", "name email role");
+
+    if (!assignment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Assignment not found" });
+    }
+
+    // Check if user can transfer this assignment
+    if (!canUserTransferAssignment(assignment, req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to transfer this assignment",
+      });
+    }
+
+    const currentAssigneeId =
+      assignment.assignedTo?._id?.toString?.() ||
+      assignment.assignedTo?.toString?.() ||
+      null;
+
+    if (currentAssigneeId && currentAssigneeId === req.body.assignedTo) {
+      return res.status(400).json({
+        success: false,
+        message: "The selected user is already assigned to this task",
+      });
+    }
+
+    // Get the new assignee and check transfer permissions
+    const newAssignee = await User.findById(
+      req.body.assignedTo,
+      "name email role isActive",
+    );
+
+    if (!newAssignee || !newAssignee.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: "New assignee not found or is inactive",
+      });
+    }
+
+    // Check if transfer to this role is allowed
+    if (!canTransferToRole(req.user.role, newAssignee.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `You cannot transfer assignments to ${normalizeRole(newAssignee.role)} users`,
+      });
+    }
+
+    // Save old assignee info for history
+    const oldAssignee = assignment.assignedTo
+      ? {
+          _id: assignment.assignedTo._id,
+          name: assignment.assignedTo.name,
+          email: assignment.assignedTo.email,
+          role: assignment.assignedTo.role,
+        }
+      : null;
+
+    // Update assignment
+    const scope = await sanitizeAssignmentPayload(
+      {
+        assignmentType: "user",
+        assignedUserId: req.body.assignedTo,
+      },
+      req.user,
+    );
+
+    if (scope.error) {
+      return res
+        .status(scope.status || 400)
+        .json({ success: false, message: scope.error });
+    }
+
+    assignment.assignedUsers = scope.assignedUsers;
+    assignment.assignedTo = scope.assignedTo;
+    assignment.assignedToRole = scope.assignedToRole;
+
+    addRemark(assignment, {
+      message:
+        `Transferred assignment to ${newAssignee.name}` +
+        (req.body.note ? `: ${String(req.body.note).trim()}` : ""),
+      author: req.user.id,
+      authorName: req.user.email,
+      role: req.user.role,
+      kind: "system",
+    });
+
+    await assignment.save();
+
+    // Create transfer history
+    try {
+      await AssignmentTransferHistory.create({
+        assignmentId: assignment._id,
+        oldAssigneeId: oldAssignee?._id || null,
+        newAssigneeId: newAssignee._id,
+        transferredBy: req.user.id,
+        transferReason: String(req.body.note || "").trim(),
+        assignmentTitle: assignment.title,
+        oldAssigneeName: oldAssignee?.name || "Unassigned",
+        newAssigneeName: newAssignee.name,
+        transferredByName: req.user.email,
+        transferredByRole: normalizeRole(req.user.role),
+      });
+    } catch (err) {
+      console.error("Failed to create transfer history:", err);
+    }
+
+    const populatedAssignment = await populateAssignment(
+      Assignment.findById(assignment._id),
+    ).lean();
+
+    // Emit socket events to both old and new assignees
+    emitAssignmentEvent(req, "assignment_transferred", populatedAssignment);
+
+    // Notify new assignee
+    if (newAssignee._id) {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user:${newAssignee._id}`).emit("assignment_transferred", {
+          type: "transferred_to_you",
+          assignment: populatedAssignment,
+          message: `You received a transferred assignment: ${assignment.title}`,
+          timestamp: new Date(),
+        });
+      }
+    }
+
+    // Notify old assignee
+    if (oldAssignee?._id) {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user:${oldAssignee._id}`).emit("assignment_transferred", {
+          type: "transferred_from_you",
+          assignment: populatedAssignment,
+          message: `Assignment transferred: ${assignment.title}`,
+          timestamp: new Date(),
+        });
+      }
+    }
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "ASSIGNMENT_TRANSFERRED",
+          module: "Assignments",
+          description: `Transferred assignment "${assignment.title}" from ${oldAssignee?.name || "unassigned"} to ${newAssignee.name}`,
+          entityId: assignment._id?.toString(),
+          entityType: "Assignment",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Assignment transferred successfully",
+      data: populatedAssignment,
+    });
+  } catch (error) {
+    console.error("Transfer assignment error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to transfer assignment right now",
+    });
+  }
+};
+
 exports.deleteAssignment = async (req, res) => {
   try {
     const assignment = await Assignment.findById(req.params.id)
@@ -1832,20 +2053,60 @@ exports.previewAssignmentAttachment = async (req, res) => {
     }
 
     console.log("Preview assignment attachment object:", attachment);
+    console.log("Attachment mimeType:", attachment?.mimeType);
+    console.log("Attachment resource_type:", attachment?.resource_type);
 
     const previewKind = getAttachmentPreviewKind(attachment);
     const deliveryType = getAttachmentDeliveryType(attachment);
-    const previewUrl =
-      deliveryType === "upload" && attachment.secure_url
-        ? attachment.secure_url
-        : cloudinaryService.generateSignedUrl({
-            publicId: attachment.public_id,
-            resource_type: attachment.resource_type || "auto",
-            type: deliveryType,
-            expiresInSeconds: ttl,
-            download: req.query.download === "1",
-            format: attachment.format || undefined,
-          });
+
+    // Resolve Cloudinary resource metadata to determine actual type/resource_type/format
+    let cloudResource = null;
+    try {
+      cloudResource = await cloudinaryService.cloudinaryClient.api.resource(
+        attachment.public_id,
+        { resource_type: "auto" },
+      );
+    } catch (err) {
+      console.warn(
+        "Unable to fetch cloud resource metadata for assignment preview:",
+        err?.message || err,
+      );
+    }
+
+    const resolvedResourceType =
+      (cloudResource && cloudResource.resource_type) ||
+      attachment.resource_type ||
+      "auto";
+    const resolvedType =
+      (cloudResource && cloudResource.type) ||
+      attachment.type ||
+      deliveryType ||
+      "upload";
+    const resolvedFormat =
+      (cloudResource && cloudResource.format) || attachment.format || undefined;
+
+    console.log("Preview File:", attachment.public_id);
+    console.log("Resource Type:", resolvedResourceType);
+    console.log("Delivery Type:", resolvedType);
+
+    // Always generate a signed preview URL using resolved metadata
+    const previewUrl = cloudinaryService.generateSignedUrl({
+      publicId: attachment.public_id,
+      resource_type: resolvedResourceType,
+      type: resolvedType,
+      expiresInSeconds: ttl,
+      download: req.query.download === "1",
+      format: resolvedFormat,
+      mimeType: attachment?.mimeType,
+    });
+
+    console.log("Generated Preview URL:", previewUrl);
+    if (
+      attachment?.mimeType === "application/pdf" ||
+      String(resolvedFormat || "").toLowerCase() === "pdf"
+    ) {
+      console.log("PDF Preview URL:", previewUrl);
+    }
 
     logAttachmentPreviewDebug(
       "Assignment preview URL generated",
@@ -1854,8 +2115,9 @@ exports.previewAssignmentAttachment = async (req, res) => {
       {
         assignmentId,
         previewKind,
-        type: attachment?.type || null,
-        delivery_type: deliveryType,
+        type: resolvedType,
+        delivery_type: resolvedResourceType,
+        cloudResource,
       },
     );
 
@@ -1874,6 +2136,61 @@ exports.previewAssignmentAttachment = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Unable to generate preview URL" });
+  }
+};
+
+exports.getAssignmentTransferHistory = async (req, res) => {
+  try {
+    const { id: assignmentId } = req.params;
+    const pagination = buildPagination(req.query);
+
+    // Check if user has access to this assignment
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Assignment not found" });
+    }
+
+    if (
+      !(await ensureAssignmentAccess(assignment, req.user, {
+        managerView: true,
+      }))
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have access to this assignment",
+      });
+    }
+
+    const [history, total] = await Promise.all([
+      AssignmentTransferHistory.find({ assignmentId })
+        .populate("oldAssigneeId", "name email")
+        .populate("newAssigneeId", "name email")
+        .populate("transferredBy", "name email")
+        .sort({ createdAt: -1 })
+        .skip(pagination.skip)
+        .limit(pagination.limit)
+        .lean(),
+      AssignmentTransferHistory.countDocuments({ assignmentId }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: history,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        total,
+        totalPages: Math.ceil(total / pagination.limit) || 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get transfer history error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load transfer history right now",
+    });
   }
 };
 
@@ -1946,19 +2263,59 @@ exports.previewSubmissionAttachment = async (req, res) => {
       publicId,
     });
     console.log("Preview submission attachment object:", attachment);
+    console.log("Attachment mimeType:", attachment?.mimeType);
+    console.log("Attachment resource_type:", attachment?.resource_type);
 
     const deliveryType = getAttachmentDeliveryType(attachment);
-    const previewUrl =
-      deliveryType === "upload" && attachment.secure_url
-        ? attachment.secure_url
-        : cloudinaryService.generateSignedUrl({
-            publicId: attachment.public_id,
-            resource_type: attachment.resource_type || "auto",
-            type: deliveryType,
-            expiresInSeconds: ttl,
-            download: req.query.download === "1",
-            format: attachment.format || undefined,
-          });
+
+    // Resolve Cloudinary resource metadata to determine actual type/resource_type/format
+    let cloudResource = null;
+    try {
+      cloudResource = await cloudinaryService.cloudinaryClient.api.resource(
+        attachment.public_id,
+        { resource_type: "auto" },
+      );
+    } catch (err) {
+      console.warn(
+        "Unable to fetch cloud resource metadata for submission preview:",
+        err?.message || err,
+      );
+    }
+
+    const resolvedResourceType =
+      (cloudResource && cloudResource.resource_type) ||
+      attachment.resource_type ||
+      "auto";
+    const resolvedType =
+      (cloudResource && cloudResource.type) ||
+      attachment.type ||
+      deliveryType ||
+      "upload";
+    const resolvedFormat =
+      (cloudResource && cloudResource.format) || attachment.format || undefined;
+
+    console.log("Preview File:", attachment.public_id);
+    console.log("Resource Type:", resolvedResourceType);
+    console.log("Delivery Type:", resolvedType);
+
+    // Always generate a signed preview URL using resolved metadata
+    const previewUrl = cloudinaryService.generateSignedUrl({
+      publicId: attachment.public_id,
+      resource_type: resolvedResourceType,
+      type: resolvedType,
+      expiresInSeconds: ttl,
+      download: req.query.download === "1",
+      format: resolvedFormat,
+      mimeType: attachment?.mimeType,
+    });
+
+    console.log("Generated Preview URL:", previewUrl);
+    if (
+      attachment?.mimeType === "application/pdf" ||
+      String(resolvedFormat || "").toLowerCase() === "pdf"
+    ) {
+      console.log("PDF Preview URL:", previewUrl);
+    }
 
     logAttachmentPreviewDebug(
       "Submission preview URL generated",
@@ -1967,8 +2324,9 @@ exports.previewSubmissionAttachment = async (req, res) => {
       {
         assignmentId,
         submissionId,
-        type: attachment?.type || null,
-        delivery_type: deliveryType,
+        type: resolvedType,
+        delivery_type: resolvedResourceType,
+        cloudResource,
       },
     );
 
@@ -1992,11 +2350,40 @@ exports.previewSubmissionAttachment = async (req, res) => {
 
 exports.uploadAssignmentFile = async (req, res) => {
   try {
+    // ===== PERMISSION CHECK: Role-based authorization for file uploads =====
+    // ADMIN: Always allowed
+    // HR: Allowed (can upload for their assignments and submissions)
+    // USER: Allowed (can upload for their own assignments and submissions)
+    console.log("[UPLOAD] User initiating file upload:", {
+      userId: req.user?.id,
+      role: req.user?.role,
+      email: req.user?.email,
+    });
+
+    const isAdmin = req.user?.role === ROLES.ADMIN;
+    const isHR = req.user?.role === ROLES.HR;
+    const isUser = req.user?.role === ROLES.USER;
+
+    if (!isAdmin && !isHR && !isUser) {
+      console.log("[UPLOAD] DENIED: Invalid role", {
+        userId: req.user?.id,
+        role: req.user?.role,
+      });
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to upload files. Invalid role.",
+      });
+    }
+
+    console.log("[UPLOAD] Permission check passed for role:", req.user?.role);
+    // ===== END PERMISSION CHECK =====
+
     const match = String(req.body?.file || "").match(/^data:(.+);base64,(.+)$/);
     const fileName = String(req.body?.fileName || "").trim();
     const mimeType = String(req.body?.mimeType || "").trim() || match?.[1];
 
     if (!match || !fileName) {
+      console.log("[UPLOAD] FAILED: Invalid file payload");
       return res.status(400).json({
         success: false,
         message: "A valid file payload is required",
@@ -2005,6 +2392,10 @@ exports.uploadAssignmentFile = async (req, res) => {
 
     const buffer = Buffer.from(match[2], "base64");
     if (buffer.length > FILE_SIZE_LIMIT) {
+      console.log("[UPLOAD] FAILED: File too large", {
+        size: buffer.length,
+        limit: FILE_SIZE_LIMIT,
+      });
       return res.status(400).json({
         success: false,
         message: "File size must be 5MB or less",
@@ -2015,13 +2406,26 @@ exports.uploadAssignmentFile = async (req, res) => {
     const dataUri = match[0];
     let uploadResult;
     try {
+      console.log("[UPLOAD] Starting Cloudinary upload for file:", {
+        fileName,
+        mimeType,
+        size: buffer.length,
+      });
       uploadResult = await cloudinaryService.uploadFromDataUri(dataUri, {
         folder: "assignments",
         resource_type: "auto",
         type: "upload",
       });
+      console.log("[UPLOAD] Cloudinary upload succeeded:", {
+        public_id: uploadResult.public_id,
+        size: uploadResult.bytes,
+      });
     } catch (err) {
-      console.error("Cloudinary upload failed:", err);
+      console.error("[UPLOAD] Cloudinary upload failed:", {
+        error: err.message,
+        userId: req.user?.id,
+        role: req.user?.role,
+      });
       return res.status(500).json({
         success: false,
         message: "File upload failed",
@@ -2030,16 +2434,15 @@ exports.uploadAssignmentFile = async (req, res) => {
     }
 
     console.log(
-      "Cloudinary upload succeeded for assignment file:",
+      "[UPLOAD] Cloudinary upload succeeded for assignment file:",
       uploadResult.public_id,
     );
-    console.log("Cloudinary upload response:", uploadResult);
-    console.log("Cloudinary upload delivery debug:", {
+    console.log("[UPLOAD] Cloudinary response metadata:", {
       public_id: uploadResult.public_id,
       resource_type: uploadResult.resource_type,
-      type: uploadResult.type || null,
-      delivery_type: getAttachmentDeliveryType(uploadResult),
-      secure_url: uploadResult.secure_url || null,
+      format: uploadResult.format,
+      bytes: uploadResult.bytes,
+      secure_url: uploadResult.secure_url ? "present" : "missing",
     });
 
     const now = new Date();
@@ -2060,7 +2463,11 @@ exports.uploadAssignmentFile = async (req, res) => {
         uploadResult.type || getAttachmentDeliveryType(uploadResult),
       bytes: uploadResult.bytes,
     });
-    console.log("Stored attachment metadata:", attachment);
+    console.log("[UPLOAD] Attachment metadata created:", {
+      public_id: attachment.public_id,
+      mimeType: attachment.mimeType,
+      size: attachment.size,
+    });
 
     try {
       if (req && typeof req.logActivity === "function") {
@@ -2073,16 +2480,26 @@ exports.uploadAssignmentFile = async (req, res) => {
         });
       }
     } catch (err) {
-      console.error("Activity log failed:", err);
+      console.error("[UPLOAD] Activity log failed:", err);
     }
 
+    console.log("[UPLOAD] SUCCESS: File uploaded and returning to user:", {
+      userId: req.user?.id,
+      fileName,
+      public_id: attachment.public_id,
+    });
     return res.status(201).json({
       success: true,
       message: "File uploaded successfully",
       data: attachment,
     });
   } catch (error) {
-    console.error("Upload assignment file error:", error);
+    console.error("[UPLOAD] Unexpected error during upload:", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      role: req.user?.role,
+    });
     return res.status(500).json({
       success: false,
       message: "Unable to upload the file right now",
@@ -2106,9 +2523,9 @@ exports.previewUploadedAttachment = async (req, res) => {
         message: "publicId is required",
       });
     }
-
     console.log("Generating preview for uploaded attachment:", { publicId });
 
+    // Prefer explicit secure_url query param if caller provided it
     const rawSecureUrl = String(
       req.query.secure_url || req.query.secureUrl || "",
     ).trim();
@@ -2116,53 +2533,67 @@ exports.previewUploadedAttachment = async (req, res) => {
       ? decodeURIComponent(rawSecureUrl)
       : null;
 
-    if (!resolvedSecureUrl) {
-      try {
-        const resource = await cloudinaryService.cloudinaryClient.api.resource(
-          publicId,
-          {
-            resource_type: "auto",
-          },
-        );
-        resolvedSecureUrl = resource?.secure_url || null;
-      } catch (err) {
-        console.warn(
-          "Unable to resolve Cloudinary resource for preview-upload:",
-          err?.message || err,
-        );
-      }
+    let cloudResource = null;
+    // Try to fetch Cloudinary resource metadata to determine resource_type/type/format
+    try {
+      cloudResource = await cloudinaryService.cloudinaryClient.api.resource(
+        publicId,
+        {
+          resource_type: "auto",
+        },
+      );
+    } catch (err) {
+      console.warn(
+        "Unable to resolve Cloudinary resource for preview-upload:",
+        err?.message || err,
+      );
     }
 
-    const previewUrl = resolvedSecureUrl;
+    // Determine resource/type/format for signing
+    const resourceType =
+      (cloudResource && cloudResource.resource_type) || "auto";
+    const deliveryType = (cloudResource && cloudResource.type) || "upload";
+    const format =
+      (cloudResource && cloudResource.format) ||
+      String(req.query.format || "").trim() ||
+      undefined;
+    const mimeType = String(req.query.mimeType || "").trim() || undefined;
 
-    console.log("Uploaded attachment preview URL:", previewUrl);
+    console.log("Preview File:", publicId);
+    console.log("Resource Type:", resourceType);
+
+    // Always generate a signed preview URL rather than returning raw secure_url
+    const previewUrl = cloudinaryService.generateSignedUrl({
+      publicId,
+      resource_type: resourceType || "auto",
+      type: deliveryType,
+      expiresInSeconds: ttl,
+      download: req.query.download === "1",
+      format,
+      mimeType,
+    });
+
+    console.log("Uploaded attachment cloud resource:", cloudResource);
+    console.log("Generated Preview URL:", previewUrl);
+    if (String(format || "").toLowerCase() === "pdf") {
+      console.log("PDF Preview URL:", previewUrl);
+    }
 
     if (!previewUrl) {
       return res.status(500).json({
         success: false,
-        message: "Unable to resolve Cloudinary secure URL for preview",
+        message: "Unable to generate preview URL",
       });
-    }
-
-    const responseData = {
-      url: previewUrl,
-      previewUrl,
-      expiresIn: ttl,
-      previewable: true,
-      secure_url: previewUrl,
-    };
-
-    if (resolvedSecureUrl) {
-      responseData.secure_url = resolvedSecureUrl;
-    }
-
-    if (!resolvedSecureUrl) {
-      responseData.previewable = Boolean(previewUrl);
     }
 
     return res.status(200).json({
       success: true,
-      data: responseData,
+      data: {
+        previewUrl,
+        url: previewUrl,
+        expiresIn: ttl,
+        previewable: true,
+      },
     });
   } catch (err) {
     console.error("Preview uploaded attachment error:", err);

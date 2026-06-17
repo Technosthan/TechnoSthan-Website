@@ -191,6 +191,23 @@ const Contact = () => {
         </div>
 
       </div>
+      {/* OUR LOCATION MAP */}
+<div className="location-section">
+  <h2>Our Location</h2>
+
+  <div className="map-container">
+    <iframe
+      title="Technosthan Location"
+      src="https://maps.google.com/maps?q=Jaipur,Rajasthan,India&t=&z=12&ie=UTF8&iwloc=&output=embed"
+      width="100%"
+      height="600"
+      style={{ border: 0 }}
+      allowFullScreen=""
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+    />
+  </div>
+</div>
 
     </section>
   );

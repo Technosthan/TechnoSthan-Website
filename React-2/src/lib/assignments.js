@@ -21,7 +21,9 @@ export const getAssignableUsers = async () => {
 };
 
 export const getSubmissionMonitor = async (params = {}) => {
-  const { data } = await api.get("/api/assignments/submissions/all", { params });
+  const { data } = await api.get("/api/assignments/submissions/all", {
+    params,
+  });
   return data;
 };
 
@@ -52,6 +54,18 @@ export const updateAssignmentStatus = async (id, payload) => {
 
 export const addAssignmentFeedback = async (id, payload) => {
   const { data } = await api.post(`/api/assignments/${id}/feedback`, payload);
+  return data;
+};
+
+export const transferAssignment = async (id, payload) => {
+  const { data } = await api.patch(`/api/assignments/${id}/transfer`, payload);
+  return data;
+};
+
+export const getAssignmentTransferHistory = async (id, params = {}) => {
+  const { data } = await api.get(`/api/assignments/${id}/transfer-history`, {
+    params,
+  });
   return data;
 };
 

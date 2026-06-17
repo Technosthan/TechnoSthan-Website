@@ -59,7 +59,9 @@ const getAttachmentDisplayName = (attachment) =>
 
 const getAttachmentType = (attachment) => {
   const mimeType = String(attachment?.mimeType || "").toLowerCase();
-  const resourceType = String(attachment?.resource_type || "").toLowerCase();
+  const resourceType = String(
+    attachment?.resource_type || attachment?.resourceType || "",
+  ).toLowerCase();
   const format = String(
     attachment?.format || attachment?.fileType || "",
   ).toLowerCase();
@@ -68,41 +70,33 @@ const getAttachmentType = (attachment) => {
     `[getAttachmentType] mimeType: "${mimeType}", resourceType: "${resourceType}", format: "${format}"`,
   );
 
-  const imageFormats = ["png", "jpg", "jpeg", "webp", "gif", "svg"];
-  const videoFormats = ["mp4", "mov", "webm"];
-  const audioFormats = ["mp3", "wav", "aac", "m4a"];
-
-  if (
-    mimeType.startsWith("image/") ||
-    resourceType === "image" ||
-    imageFormats.includes(format)
-  ) {
-    console.log("[getAttachmentType] -> image");
-    return "image";
-  }
+  // Check PDF first (Cloudinary may store PDFs with resourceType 'image' but format 'pdf')
   if (mimeType === "application/pdf" || format === "pdf") {
     console.log("[getAttachmentType] -> pdf");
     return "pdf";
   }
-  if (
-    mimeType.startsWith("video/") ||
-    resourceType === "video" ||
-    videoFormats.includes(format)
-  ) {
+
+  // Video by explicit resource type or known formats
+  if (resourceType === "video" || mimeType.startsWith("video/")) {
     console.log("[getAttachmentType] -> video");
     return "video";
   }
-  if (
-    mimeType.startsWith("audio/") ||
-    resourceType === "audio" ||
-    audioFormats.includes(format)
-  ) {
+
+  // Image by explicit resource type or image mime
+  if (resourceType === "image" || mimeType.startsWith("image/")) {
+    console.log("[getAttachmentType] -> image");
+    return "image";
+  }
+
+  // Audio
+  if (resourceType === "audio" || mimeType.startsWith("audio/")) {
     console.log("[getAttachmentType] -> audio");
     return "audio";
   }
 
-  console.log("[getAttachmentType] -> unknown");
-  return "unknown";
+  // Fallback to generic file
+  console.log("[getAttachmentType] -> file");
+  return "file";
 };
 
 const isImageAttachment = (attachment) =>
@@ -211,8 +205,15 @@ const fetchPreviewUrl = async (
   if (!endpoint) return null;
 
   try {
+    const requestParams = {
+      ...(options.download ? { download: 1 } : {}),
+      ...(isNewUpload && attachment?.mimeType
+        ? { mimeType: attachment.mimeType }
+        : {}),
+      ...(isNewUpload && attachment?.format ? { format: attachment.format } : {}),
+    };
     const { data } = await api.get(endpoint, {
-      params: options.download ? { download: 1 } : undefined,
+      params: Object.keys(requestParams).length ? requestParams : undefined,
     });
     const previewPayload = data?.data || null;
     console.log("Preview URL response:", previewPayload);
@@ -344,23 +345,8 @@ const AssignmentDetails = ({
       const isNewUpload = uploadedAttachments.some(
         (item) => item.public_id === attachment.public_id,
       );
-      const secureUrl =
-        attachment?.secure_url ||
-        attachment?.secureUrl ||
-        attachment?.url ||
-        null;
 
-      if (isNewUpload && secureUrl) {
-        setPreviewAttachment({
-          ...attachment,
-          submissionId,
-          isNewUpload,
-          previewUrl: secureUrl,
-          loadingPreview: false,
-        });
-        return;
-      }
-
+      // Always fetch signed preview URL to avoid 401 (even for newly uploaded files)
       setPreviewAttachment({
         ...attachment,
         submissionId,

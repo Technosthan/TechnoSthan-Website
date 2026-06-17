@@ -1,5 +1,7 @@
+import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowRightLeft,
   BriefcaseBusiness,
   CheckCheck,
   ClipboardList,
@@ -21,6 +23,7 @@ import {
   getAssignmentById,
   getAssignments,
   reviewSubmission,
+  transferAssignment as transferAssignmentApi,
   updateAssignment,
   updateAssignmentStatus,
 } from "../../lib/assignments";
@@ -80,6 +83,11 @@ const AdminAssignments = () => {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferAssignment, setTransferAssignment] = useState(null);
+  const [transferRecipient, setTransferRecipient] = useState("");
+  const [transferNote, setTransferNote] = useState("");
+  const [transferSaving, setTransferSaving] = useState(false);
 
   const currentRole = normalizeRole(getStoredUser()?.role);
   const isAdmin = currentRole === "ADMIN";
@@ -124,6 +132,56 @@ const AdminAssignments = () => {
       assignment.creatorRole || assignment.assignedBy?.role,
     );
     return creatorRole === "HR";
+  };
+
+  const canUserTransferAssignment = (assignment) => {
+    // Admin can transfer any assignment
+    if (isAdmin) {
+      return true;
+    }
+
+    // HR can transfer assignments they manage
+    if (currentRole === "HR") {
+      return canManageAssignment(assignment);
+    }
+
+    // USER can only transfer assignments assigned to them
+    if (currentRole === "USER") {
+      const assignedTo =
+        assignment.assignedTo?._id ||
+        assignment.assignedTo ||
+        assignment.assignedUsers?.[0]?._id ||
+        null;
+      const currentUserId = getStoredUser()?.id;
+      return assignedTo === currentUserId;
+    }
+
+    return false;
+  };
+
+  const getTransferableUsers = () => {
+    if (isAdmin) {
+      // Admin can transfer to anyone
+      return assignees;
+    }
+
+    if (currentRole === "HR") {
+      // HR can transfer to HR or USER, not ADMIN
+      return assignees.filter((user) => {
+        const userRole = normalizeRole(user.role);
+        return userRole === "HR" || userRole === "USER";
+      });
+    }
+
+    if (currentRole === "USER") {
+      // USER can only transfer to HR
+      return assignees.filter((user) => {
+        const userRole = normalizeRole(user.role);
+        return userRole === "HR";
+      });
+    }
+
+    return [];
   };
 
   const fetchAssignments = useCallback(
@@ -290,6 +348,70 @@ const AdminAssignments = () => {
         message: error.response?.data?.message || "Please try again.",
         type: "error",
       });
+    }
+  };
+
+  const handleOpenTransfer = (assignment) => {
+    setTransferAssignment(assignment);
+
+    const currentAssignmentAssignee =
+      assignment.assignedTo?._id ||
+      assignment.assignedTo ||
+      assignment.assignedUsers?.[0]?._id ||
+      "";
+
+    setTransferRecipient(currentAssignmentAssignee || "");
+    setTransferNote("");
+    setTransferOpen(true);
+  };
+
+  const closeTransferModal = () => {
+    setTransferOpen(false);
+    setTransferAssignment(null);
+    setTransferRecipient("");
+    setTransferNote("");
+    setTransferSaving(false);
+  };
+
+  const handleTransferAssignment = async () => {
+    if (!transferAssignment) {
+      return;
+    }
+
+    if (!transferRecipient) {
+      showToast({
+        title: "Choose a recipient",
+        message: "Please select a user to transfer the assignment to.",
+        type: "warning",
+      });
+      return;
+    }
+
+    try {
+      setTransferSaving(true);
+      const response = await transferAssignmentApi(transferAssignment._id, {
+        assignedTo: transferRecipient,
+        note: transferNote,
+      });
+
+      showToast({
+        title: "Assignment transferred",
+        message: response.message,
+        type: "success",
+      });
+      closeTransferModal();
+      fetchAssignments();
+      if (selectedAssignment?._id === transferAssignment._id) {
+        handleOpenAssignment(transferAssignment);
+      }
+    } catch (error) {
+      showToast({
+        title: "Transfer failed",
+        message: error.response?.data?.message || "Please try again.",
+        type: "error",
+      });
+    } finally {
+      setTransferSaving(false);
     }
   };
 
@@ -540,11 +662,13 @@ const AdminAssignments = () => {
               canDeleteAssignment={(assignment) =>
                 canDeleteAssignments && canManageAssignment(assignment)
               }
+              canTransferAssignment={canUserTransferAssignment}
               onView={handleOpenAssignment}
               onEdit={(assignment) => {
                 setEditingAssignment(assignment);
                 setModalOpen(true);
               }}
+              onTransfer={handleOpenTransfer}
               onDelete={handleDeleteAssignment}
               loading={loading}
               emptyMessage={emptyStateMessage}
@@ -672,6 +796,115 @@ const AdminAssignments = () => {
         loading={saving}
         canManageAllRoles={isAdmin}
       />
+
+      <AnimatePresence>
+        {transferOpen && (
+          <div
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/95 px-4 py-6 backdrop-blur"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="transfer-assignment-title"
+          >
+            <div className="relative w-full max-w-2xl overflow-hidden rounded-[32px] border border-white/10 bg-slate-900/95 shadow-2xl shadow-slate-950/40">
+              <div className="flex flex-col gap-3 border-b border-white/10 bg-slate-950/80 px-6 py-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-200">
+                      <ArrowRightLeft size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                        Transfer Assignment
+                      </p>
+                      <h2
+                        id="transfer-assignment-title"
+                        className="mt-1 text-lg font-semibold text-white"
+                      >
+                        {transferAssignment?.title || "Transfer work"}
+                      </h2>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 bg-slate-950/80 p-2 text-slate-300 transition hover:border-white/20 hover:bg-slate-900"
+                    onClick={closeTransferModal}
+                  >
+                    <span className="sr-only">Close transfer dialog</span>✕
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-5 px-6 py-6">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Assignment
+                  </label>
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3">
+                    <p className="text-sm text-white">
+                      {transferAssignment?.title}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {transferAssignment?.assignedTo?.name ||
+                        transferAssignment?.assignedToRole ||
+                        "Unassigned"}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    New assignee
+                  </label>
+                  <select
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400/60"
+                    value={transferRecipient}
+                    onChange={(event) =>
+                      setTransferRecipient(event.target.value)
+                    }
+                  >
+                    <option value="">Select user</option>
+                    {getTransferableUsers().map((user) => (
+                      <option key={user._id} value={user._id}>
+                        {user.name} — {user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Transfer reason
+                  </label>
+                  <textarea
+                    className="min-h-[140px] w-full rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400/60"
+                    value={transferNote}
+                    onChange={(event) => setTransferNote(event.target.value)}
+                    placeholder="Optional reason for the transfer"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:bg-slate-900"
+                    onClick={closeTransferModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleTransferAssignment}
+                    disabled={transferSaving}
+                  >
+                    {transferSaving ? "Transferring..." : "Transfer Assignment"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AssignmentDetails
         assignment={selectedAssignment}
