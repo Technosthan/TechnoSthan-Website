@@ -7,7 +7,7 @@ const attachmentSchema = new mongoose.Schema(
     fileName: { type: String, trim: true, default: "" },
     originalFileName: { type: String, trim: true, default: "" },
     fileType: { type: String, trim: true, default: "" },
-    url: { type: String, trim: true, required: true },
+    url: { type: String, trim: true, default: "" },
     mimeType: { type: String, trim: true, default: "" },
     size: { type: Number, default: 0 },
     uploadedAt: { type: Date, default: Date.now },
@@ -17,7 +17,9 @@ const attachmentSchema = new mongoose.Schema(
     original_filename: { type: String, trim: true, default: null },
     resource_type: { type: String, trim: true, default: null },
     format: { type: String, trim: true, default: null },
+    delivery_type: { type: String, trim: true, default: "upload" },
     bytes: { type: Number, default: 0 },
+    previewable: { type: Boolean, default: false },
   },
   { _id: false },
 );

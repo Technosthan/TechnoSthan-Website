@@ -1,4 +1,5 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   CheckCircle2,
   ExternalLink,
@@ -23,6 +24,7 @@ import {
   getSubmissionStatusLabel,
   textToAttachments,
 } from "./assignmentUtils";
+import api from "../../lib/api";
 import { uploadAssignmentFile } from "../../lib/assignments";
 
 const fieldClassName =
@@ -38,59 +40,187 @@ const getAttachmentValue = (attachment) => {
   if (typeof attachment === "string") {
     return attachment.trim();
   }
-  return String(attachment?.secure_url || attachment?.url || "").trim();
+  return String(
+    attachment?.url ||
+      attachment?.originalFileName ||
+      attachment?.name ||
+      attachment?.public_id ||
+      "",
+  ).trim();
 };
 
 const getAttachmentDisplayName = (attachment) =>
+  attachment?.originalFileName ||
   attachment?.name ||
   getAttachmentValue(attachment)
     .replace(/^https?:\/\//i, "")
     .slice(0, 40) ||
   "Attachment";
 
-const isImageAttachment = (attachment) => {
-  const url = getAttachmentValue(attachment);
-  return (
-    /(image\/(png|jpeg|jpg|webp|gif))/i.test(attachment?.mimeType || "") ||
-    /(image)/i.test(attachment?.resource_type || "") ||
-    /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url)
+const getAttachmentType = (attachment) => {
+  const mimeType = String(attachment?.mimeType || "").toLowerCase();
+  const resourceType = String(attachment?.resource_type || "").toLowerCase();
+  const format = String(
+    attachment?.format || attachment?.fileType || "",
+  ).toLowerCase();
+
+  console.log(
+    `[getAttachmentType] mimeType: "${mimeType}", resourceType: "${resourceType}", format: "${format}"`,
   );
+
+  const imageFormats = ["png", "jpg", "jpeg", "webp", "gif", "svg"];
+  const videoFormats = ["mp4", "mov", "webm"];
+  const audioFormats = ["mp3", "wav", "aac", "m4a"];
+
+  if (
+    mimeType.startsWith("image/") ||
+    resourceType === "image" ||
+    imageFormats.includes(format)
+  ) {
+    console.log("[getAttachmentType] -> image");
+    return "image";
+  }
+  if (mimeType === "application/pdf" || format === "pdf") {
+    console.log("[getAttachmentType] -> pdf");
+    return "pdf";
+  }
+  if (
+    mimeType.startsWith("video/") ||
+    resourceType === "video" ||
+    videoFormats.includes(format)
+  ) {
+    console.log("[getAttachmentType] -> video");
+    return "video";
+  }
+  if (
+    mimeType.startsWith("audio/") ||
+    resourceType === "audio" ||
+    audioFormats.includes(format)
+  ) {
+    console.log("[getAttachmentType] -> audio");
+    return "audio";
+  }
+
+  console.log("[getAttachmentType] -> unknown");
+  return "unknown";
 };
 
-const isPdfAttachment = (attachment) => {
-  const url = getAttachmentValue(attachment);
-  return (
-    /application\/pdf/i.test(attachment?.mimeType || "") ||
-    attachment?.format?.toLowerCase?.() === "pdf" ||
-    /\.pdf(\?.*)?$/i.test(url)
-  );
-};
+const isImageAttachment = (attachment) =>
+  getAttachmentType(attachment) === "image";
+const isPdfAttachment = (attachment) => getAttachmentType(attachment) === "pdf";
+const isVideoAttachment = (attachment) =>
+  getAttachmentType(attachment) === "video";
+const isAudioAttachment = (attachment) =>
+  getAttachmentType(attachment) === "audio";
 
-const isVideoAttachment = (attachment) => {
-  const url = getAttachmentValue(attachment);
-  return (
-    /(video\/(mp4|webm|quicktime))/i.test(attachment?.mimeType || "") ||
-    /video/i.test(attachment?.resource_type || "") ||
-    /\.(mp4|webm|mov)(\?.*)?$/i.test(url)
-  );
-};
-
-const isAudioAttachment = (attachment) => {
-  const url = getAttachmentValue(attachment);
-  return (
-    /(audio\/)/i.test(attachment?.mimeType || "") ||
-    /audio/i.test(attachment?.resource_type || "") ||
-    /\.(mp3|wav|m4a|aac)(\?.*)?$/i.test(url)
-  );
+const getAttachmentUrlCandidates = (attachment) => {
+  return {
+    previewUrl: String(attachment?.previewUrl || "").trim(),
+    fileUrl: String(
+      attachment?.fileUrl || attachment?.file_url || attachment?.url || "",
+    ).trim(),
+    url: String(attachment?.url || "").trim(),
+  };
 };
 
 const getAttachmentUrl = (attachment) => {
-  const url = getAttachmentValue(attachment);
-  if (!url) return "";
-  if (/^https?:\/\//i.test(url)) {
-    return url;
+  const { previewUrl, fileUrl, url } = getAttachmentUrlCandidates(attachment);
+
+  const rawUrl = previewUrl || fileUrl || url || "";
+  if (!rawUrl) return "";
+  if (/^https?:\/\//i.test(rawUrl)) {
+    return rawUrl;
   }
-  return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+  return `${API_BASE_URL}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+};
+
+const downloadAttachment = async (
+  attachment,
+  assignmentId,
+  submissionId = null,
+  isNewUpload = false,
+) => {
+  console.log("Downloading attachment object:", attachment);
+
+  let preview = null;
+  if (attachment?.public_id) {
+    preview = await fetchPreviewUrl(
+      attachment,
+      assignmentId,
+      submissionId,
+      isNewUpload,
+      {
+        download: true,
+      },
+    );
+  }
+
+  const url = preview?.previewUrl || getAttachmentUrl(attachment);
+  console.log("Resolved download URL:", url);
+
+  if (url) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.rel = "noreferrer";
+    link.download = getAttachmentDisplayName(attachment);
+    document.body.append(link);
+    link.click();
+    link.remove();
+    return;
+  }
+
+  console.error("File URL missing for attachment:", attachment);
+  alert("File URL missing");
+};
+
+const getAttachmentPreviewEndpoint = (
+  attachment,
+  assignmentId,
+  submissionId = null,
+  isNewUpload = false,
+) => {
+  if (!attachment?.public_id) return null;
+  const publicId = encodeURIComponent(attachment.public_id);
+
+  // For newly uploaded files (not yet in database), use preview-upload endpoint
+  if (isNewUpload) {
+    return `/api/assignments/preview-upload/${publicId}`;
+  }
+
+  if (submissionId) {
+    return `/api/assignments/${assignmentId}/submissions/${submissionId}/attachments/${publicId}/preview`;
+  }
+  return `/api/assignments/${assignmentId}/attachments/${publicId}/preview`;
+};
+
+const fetchPreviewUrl = async (
+  attachment,
+  assignmentId,
+  submissionId = null,
+  isNewUpload = false,
+  options = {},
+) => {
+  const endpoint = getAttachmentPreviewEndpoint(
+    attachment,
+    assignmentId,
+    submissionId,
+    isNewUpload,
+  );
+  console.log("Fetching preview URL for attachment:", attachment);
+  console.log("Preview endpoint:", endpoint);
+  if (!endpoint) return null;
+
+  try {
+    const { data } = await api.get(endpoint, {
+      params: options.download ? { download: 1 } : undefined,
+    });
+    const previewPayload = data?.data || null;
+    console.log("Preview URL response:", previewPayload);
+    return previewPayload;
+  } catch (err) {
+    console.error("Failed to fetch attachment preview URL:", err);
+    return null;
+  }
 };
 
 const AssignmentDetails = ({
@@ -113,10 +243,11 @@ const AssignmentDetails = ({
   const [feedbackStatus, setFeedbackStatus] = useState("");
   const [submissionForm, setSubmissionForm] = useState({
     submissionLink: "",
-    attachmentsText: "",
+    linkAttachments: "",
     note: "",
     status: "submitted",
   });
+  const [uploadedAttachments, setUploadedAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
@@ -130,10 +261,11 @@ const AssignmentDetails = ({
 
     setSubmissionForm({
       submissionLink: assignment.submissionLink || "",
-      attachmentsText: attachmentsToText(assignment.attachments),
+      linkAttachments: "",
       note: "",
       status: assignment.status === "submitted" ? "submitted" : "in_progress",
     });
+    setUploadedAttachments([]);
     setFeedbackMessage("");
     setFeedbackStatus("");
     setUploadProgress(0);
@@ -145,7 +277,9 @@ const AssignmentDetails = ({
     return null;
   }
 
-  const parsedAttachments = textToAttachments(submissionForm.attachmentsText);
+  // Combine uploaded attachments with parsed link attachments
+  const linkAttachments = textToAttachments(submissionForm.linkAttachments);
+  const allAttachments = [...uploadedAttachments, ...linkAttachments];
 
   const handleFileUpload = async (file) => {
     if (!file) {
@@ -164,15 +298,8 @@ const AssignmentDetails = ({
         );
       });
 
-      const nextAttachments = [
-        ...textToAttachments(submissionForm.attachmentsText),
-        response.data,
-      ];
-
-      setSubmissionForm((current) => ({
-        ...current,
-        attachmentsText: attachmentsToText(nextAttachments),
-      }));
+      // Add to uploadedAttachments with full metadata preserved
+      setUploadedAttachments((current) => [...current, response.data]);
     } finally {
       setUploading(false);
     }
@@ -186,22 +313,100 @@ const AssignmentDetails = ({
 
   const removeAttachment = (url) => {
     const normalizedUrl = String(url || "").trim();
-    const nextAttachments = parsedAttachments.filter(
+
+    // Try to remove from uploaded attachments first (by public_id or url)
+    const uploadedFiltered = uploadedAttachments.filter(
+      (item) =>
+        item.public_id !== url && getAttachmentValue(item) !== normalizedUrl,
+    );
+
+    if (uploadedFiltered.length < uploadedAttachments.length) {
+      setUploadedAttachments(uploadedFiltered);
+      return;
+    }
+
+    // Otherwise remove from link attachments
+    const linkFiltered = linkAttachments.filter(
       (item) => getAttachmentValue(item) !== normalizedUrl,
     );
+
     setSubmissionForm((current) => ({
       ...current,
-      attachmentsText: attachmentsToText(nextAttachments),
+      linkAttachments: attachmentsToText(linkFiltered),
     }));
   };
 
-  const handlePreviewAttachment = (attachment) => {
-    const attachmentUrl = getAttachmentUrl(attachment);
-    setPreviewAttachment({
-      ...attachment,
-      url: attachmentUrl,
-      secure_url: attachmentUrl,
-    });
+  const handlePreviewAttachment = (attachment, submissionId = null) => {
+    console.log("Preview attachment:", attachment);
+
+    if (attachment?.public_id) {
+      // Check if this is a newly uploaded file (not yet in assignment)
+      const isNewUpload = uploadedAttachments.some(
+        (item) => item.public_id === attachment.public_id,
+      );
+      const secureUrl =
+        attachment?.secure_url ||
+        attachment?.secureUrl ||
+        attachment?.url ||
+        null;
+
+      if (isNewUpload && secureUrl) {
+        setPreviewAttachment({
+          ...attachment,
+          submissionId,
+          isNewUpload,
+          previewUrl: secureUrl,
+          loadingPreview: false,
+        });
+        return;
+      }
+
+      setPreviewAttachment({
+        ...attachment,
+        submissionId,
+        isNewUpload,
+        previewUrl: null,
+        loadingPreview: true,
+      });
+
+      fetchPreviewUrl(attachment, assignment._id, submissionId, isNewUpload)
+        .then((previewData) => {
+          console.log("Fetched preview payload:", previewData);
+          if (previewData?.previewUrl) {
+            setPreviewAttachment((current) => ({
+              ...current,
+              ...previewData,
+              previewUrl: previewData.previewUrl,
+              loadingPreview: false,
+            }));
+          } else {
+            const fallbackUrl = getAttachmentUrl(attachment);
+            if (fallbackUrl) {
+              setPreviewAttachment((current) => ({
+                ...current,
+                previewUrl: fallbackUrl,
+                loadingPreview: false,
+              }));
+            } else {
+              setPreviewAttachment((current) => ({
+                ...current,
+                loadingPreview: false,
+              }));
+            }
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching preview URL:", err);
+          setPreviewAttachment((current) => ({
+            ...current,
+            loadingPreview: false,
+          }));
+        });
+      return;
+    }
+
+    const resolvedUrl = getAttachmentUrl(attachment);
+    setPreviewAttachment({ ...attachment, previewUrl: resolvedUrl });
   };
 
   const closePreview = () => setPreviewAttachment(null);
@@ -256,7 +461,8 @@ const AssignmentDetails = ({
                 Drag and drop files here
               </span>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                PDF, DOC, DOCX, XLSX, PPTX, ZIP, MP4, MP3, JPG, PNG, WEBP, GIF, and more are supported.
+                PDF, DOC, DOCX, XLSX, PPTX, ZIP, MP4, MP3, JPG, PNG, WEBP, GIF,
+                and more are supported.
               </p>
             </div>
             <button
@@ -299,23 +505,25 @@ const AssignmentDetails = ({
           ) : null}
         </div>
 
-        {parsedAttachments.length > 0 ? (
+        {allAttachments.length > 0 ? (
           <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-3.5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-white">Uploaded files</p>
               <span className="text-xs text-slate-500">
-                {parsedAttachments.length} file
-                {parsedAttachments.length === 1 ? "" : "s"}
+                {allAttachments.length} file
+                {allAttachments.length === 1 ? "" : "s"}
               </span>
             </div>
             <div className="mt-3 space-y-2">
-              {parsedAttachments.map((attachment, index) => {
-                const attachmentUrl = getAttachmentUrl(attachment);
+              {allAttachments.map((attachment, index) => {
                 const canPreview =
                   isImageAttachment(attachment) ||
                   isPdfAttachment(attachment) ||
                   isVideoAttachment(attachment) ||
                   isAudioAttachment(attachment);
+                const isNewUpload = uploadedAttachments.some(
+                  (item) => item.public_id === attachment.public_id,
+                );
 
                 return (
                   <div
@@ -332,19 +540,17 @@ const AssignmentDetails = ({
                           onClick={() =>
                             canPreview
                               ? handlePreviewAttachment(attachment)
-                              : window.open(
-                                  attachmentUrl,
-                                  "_blank",
-                                  "noreferrer",
+                              : downloadAttachment(
+                                  attachment,
+                                  assignment._id,
+                                  null,
+                                  isNewUpload,
                                 )
                           }
                           className="block truncate text-left text-sm font-semibold text-white underline underline-offset-4 transition hover:text-indigo-200"
                         >
                           {getAttachmentDisplayName(attachment)}
                         </button>
-                        <p className="truncate text-xs text-slate-500">
-                          {attachmentUrl}
-                        </p>
                       </div>
                     </div>
 
@@ -354,7 +560,12 @@ const AssignmentDetails = ({
                         onClick={() =>
                           canPreview
                             ? handlePreviewAttachment(attachment)
-                            : window.open(attachmentUrl, "_blank", "noreferrer")
+                            : downloadAttachment(
+                                attachment,
+                                assignment._id,
+                                null,
+                                isNewUpload,
+                              )
                         }
                         className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10"
                       >
@@ -380,11 +591,11 @@ const AssignmentDetails = ({
         <textarea
           className={`${fieldClassName} min-h-[96px]`}
           placeholder="Attachment URLs, one per line"
-          value={submissionForm.attachmentsText}
+          value={submissionForm.linkAttachments}
           onChange={(event) =>
             setSubmissionForm((current) => ({
               ...current,
-              attachmentsText: event.target.value,
+              linkAttachments: event.target.value,
             }))
           }
         />
@@ -420,7 +631,7 @@ const AssignmentDetails = ({
             onClick={() =>
               onSubmitWork({
                 submissionLink: submissionForm.submissionLink,
-                attachments: parsedAttachments,
+                attachments: allAttachments,
                 note: submissionForm.note,
                 status: submissionForm.status,
               })
@@ -539,7 +750,6 @@ const AssignmentDetails = ({
                 {(submission.attachments || []).length > 0 ? (
                   <ul className="mt-3 space-y-2">
                     {submission.attachments.map((attachment, index) => {
-                      const attachmentUrl = getAttachmentUrl(attachment);
                       const canPreview =
                         isImageAttachment(attachment) ||
                         isPdfAttachment(attachment) ||
@@ -553,11 +763,14 @@ const AssignmentDetails = ({
                               type="button"
                               onClick={() =>
                                 canPreview
-                                  ? handlePreviewAttachment(attachment)
-                                  : window.open(
-                                      attachmentUrl,
-                                      "_blank",
-                                      "noreferrer",
+                                  ? handlePreviewAttachment(
+                                      attachment,
+                                      submission._id,
+                                    )
+                                  : downloadAttachment(
+                                      attachment,
+                                      assignment._id,
+                                      submission._id,
                                     )
                               }
                               className="text-sm text-slate-200 underline underline-offset-4 transition hover:text-indigo-200"
@@ -803,7 +1016,6 @@ const AssignmentDetails = ({
                       {(assignment.attachments || []).length > 0 ? (
                         <ul className="space-y-2">
                           {assignment.attachments.map((attachment, index) => {
-                            const attachmentUrl = getAttachmentUrl(attachment);
                             const canPreview =
                               isImageAttachment(attachment) ||
                               isPdfAttachment(attachment) ||
@@ -820,10 +1032,9 @@ const AssignmentDetails = ({
                                     onClick={() =>
                                       canPreview
                                         ? handlePreviewAttachment(attachment)
-                                        : window.open(
-                                            attachmentUrl,
-                                            "_blank",
-                                            "noreferrer",
+                                        : downloadAttachment(
+                                            attachment,
+                                            assignment._id,
                                           )
                                     }
                                     className="text-slate-200 underline underline-offset-4 transition hover:text-indigo-200"
@@ -858,8 +1069,7 @@ const AssignmentDetails = ({
                         </button>
                         <div className="border-b border-white/10 px-6 py-4">
                           <p className="text-sm font-semibold text-white">
-                            {previewAttachment.name ||
-                              getAttachmentValue(previewAttachment)}
+                            {getAttachmentDisplayName(previewAttachment)}
                           </p>
                           <p className="mt-1 text-xs text-slate-400">
                             {previewAttachment.mimeType ||
@@ -867,49 +1077,64 @@ const AssignmentDetails = ({
                           </p>
                         </div>
                         <div className="max-h-[80vh] overflow-auto bg-slate-950/95 p-6">
-                          {isImageAttachment(previewAttachment) ? (
-                            <img
-                              src={getAttachmentUrl(previewAttachment)}
-                              alt={
-                                previewAttachment.name || "Attachment preview"
-                              }
-                              className="mx-auto max-h-[72vh] max-w-full rounded-3xl object-contain"
-                            />
-                          ) : isPdfAttachment(previewAttachment) ? (
-                            <iframe
-                              title="PDF preview"
-                              src={getAttachmentUrl(previewAttachment)}
-                              className="h-[72vh] w-full rounded-3xl border border-white/10"
-                            />
-                          ) : isVideoAttachment(previewAttachment) ? (
-                            <video
-                              controls
-                              src={getAttachmentUrl(previewAttachment)}
-                              className="mx-auto h-[72vh] w-full rounded-3xl bg-black object-contain"
-                            />
-                          ) : isAudioAttachment(previewAttachment) ? (
-                            <div className="mx-auto w-full max-w-2xl">
-                              <audio
-                                controls
-                                src={getAttachmentUrl(previewAttachment)}
-                                className="w-full"
-                              >
-                                Your browser does not support the audio element.
-                              </audio>
+                          {previewAttachment.loadingPreview ? (
+                            <div className="flex h-[72vh] items-center justify-center rounded-3xl border border-white/10 bg-slate-900 text-slate-300">
+                              Loading preview...
                             </div>
+                          ) : previewAttachment.previewUrl ? (
+                            isImageAttachment(previewAttachment) ? (
+                              <img
+                                src={previewAttachment.previewUrl}
+                                alt={
+                                  previewAttachment.name || "Attachment preview"
+                                }
+                                className="mx-auto max-h-[72vh] max-w-full rounded-3xl object-contain"
+                              />
+                            ) : isPdfAttachment(previewAttachment) ? (
+                              <iframe
+                                title="PDF preview"
+                                src={previewAttachment.previewUrl}
+                                className="h-[72vh] w-full rounded-3xl border border-white/10"
+                              />
+                            ) : isVideoAttachment(previewAttachment) ? (
+                              <video
+                                controls
+                                src={previewAttachment.previewUrl}
+                                className="mx-auto h-[72vh] w-full rounded-3xl bg-black object-contain"
+                              />
+                            ) : isAudioAttachment(previewAttachment) ? (
+                              <div className="mx-auto w-full max-w-2xl">
+                                <audio
+                                  controls
+                                  src={previewAttachment.previewUrl}
+                                  className="w-full"
+                                >
+                                  Your browser does not support the audio
+                                  element.
+                                </audio>
+                              </div>
+                            ) : (
+                              <div className="rounded-3xl border border-white/10 bg-slate-900 p-8 text-center text-sm text-slate-300">
+                                <p>Preview not supported. Download file.</p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    downloadAttachment(
+                                      previewAttachment,
+                                      assignment._id,
+                                      previewAttachment.submissionId || null,
+                                      previewAttachment.isNewUpload || false,
+                                    )
+                                  }
+                                  className="mt-4 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+                                >
+                                  Download file
+                                </button>
+                              </div>
+                            )
                           ) : (
-                            <div className="rounded-3xl border border-white/10 bg-slate-900 p-8 text-center text-sm text-slate-300">
-                              <p>
-                                This file type cannot be previewed directly.
-                              </p>
-                              <a
-                                href={getAttachmentUrl(previewAttachment)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-4 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-                              >
-                                Open or Download
-                              </a>
+                            <div className="flex h-[72vh] items-center justify-center rounded-3xl border border-white/10 bg-slate-900 text-slate-300">
+                              No preview available for this attachment.
                             </div>
                           )}
                         </div>

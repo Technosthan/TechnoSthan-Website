@@ -11,7 +11,7 @@ const attachmentSchema = new mongoose.Schema(
     url: {
       type: String,
       trim: true,
-      required: true,
+      default: "",
     },
     mimeType: {
       type: String,
@@ -32,7 +32,9 @@ const attachmentSchema = new mongoose.Schema(
     original_filename: { type: String, trim: true, default: null },
     resource_type: { type: String, trim: true, default: null },
     format: { type: String, trim: true, default: null },
+    delivery_type: { type: String, trim: true, default: "upload" },
     bytes: { type: Number, default: 0 },
+    previewable: { type: Boolean, default: false },
   },
   { _id: false },
 );

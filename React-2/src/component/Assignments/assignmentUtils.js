@@ -198,7 +198,13 @@ export const getUserInitials = (name = "") =>
 
 export const attachmentsToText = (attachments = []) =>
   attachments
-    .map((item) => String(item.secure_url || item.url || "").trim())
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "string") return item.trim();
+      return String(
+        item.originalFileName || item.name || item.secure_url || item.url || "",
+      ).trim();
+    })
     .filter(Boolean)
     .join("\n");
 
@@ -207,15 +213,19 @@ export const textToAttachments = (value = "") =>
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((url) => ({
-      name: url.replace(/^https?:\/\//, "").slice(0, 40),
-      url,
-      secure_url: url,
-      mimeType: "",
-      size: 0,
-      public_id: null,
-      original_filename: null,
-      resource_type: null,
-      format: null,
-      bytes: 0,
-    }));
+    .map((text) => {
+      const isUrl = /^https?:\/\//i.test(text);
+      return {
+        name: !isUrl ? text : text.replace(/^https?:\/\//, "").slice(0, 40),
+        url: isUrl ? text : "",
+        secure_url: isUrl ? text : null,
+        originalFileName: isUrl ? "" : text,
+        mimeType: "",
+        size: 0,
+        public_id: null,
+        original_filename: null,
+        resource_type: null,
+        format: null,
+        bytes: 0,
+      };
+    });

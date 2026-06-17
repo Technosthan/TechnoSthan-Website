@@ -19,10 +19,73 @@ cloudinary.config({
 const uploadFromDataUri = async (dataUri, options = {}) => {
   // options: { folder, resource_type }
   const uploadOptions = Object.assign(
-    { resource_type: "auto", folder: "assignments" },
+    {
+      resource_type: "auto",
+      folder: "assignments",
+      type: "upload",
+    },
     options,
   );
   return cloudinary.uploader.upload(dataUri, uploadOptions);
+};
+
+const resolveCloudinaryFormat = (publicId, format) => {
+  const trimmedFormat = String(format || "").trim();
+  if (trimmedFormat) {
+    return trimmedFormat.replace(/^\./, "");
+  }
+
+  const publicIdText = String(publicId || "").trim();
+  const extensionMatch = publicIdText.match(/\.([a-z0-9]+)$/i);
+  return extensionMatch ? extensionMatch[1].toLowerCase() : undefined;
+};
+
+const generateSignedUrl = ({
+  publicId,
+  resource_type = "auto",
+  type = "upload",
+  expiresInSeconds = 120,
+  download = false,
+  format,
+} = {}) => {
+  if (!publicId) return null;
+
+  const expiresAt =
+    Math.floor(Date.now() / 1000) +
+    Math.max(60, Math.min(300, expiresInSeconds || 120));
+
+  const normalizedFormat = resolveCloudinaryFormat(publicId, format);
+
+  if (
+    download &&
+    cloudinary.utils &&
+    typeof cloudinary.utils.private_download_url === "function"
+  ) {
+    try {
+      return cloudinary.utils.private_download_url(publicId, normalizedFormat, {
+        resource_type,
+        type,
+        expires_at: expiresAt,
+        attachment: true,
+      });
+    } catch (err) {
+      // fall through to signed delivery url
+    }
+  }
+
+  try {
+    return cloudinary.url(publicId, {
+      resource_type,
+      type,
+      sign_url: true,
+      expires_at: expiresAt,
+      secure: true,
+      format: normalizedFormat,
+      flags: download ? "attachment" : undefined,
+    });
+  } catch (err) {
+    return null;
+  }
 };
 
 const deleteAsset = async (publicId, resourceType = "auto") => {
@@ -33,5 +96,6 @@ const deleteAsset = async (publicId, resourceType = "auto") => {
 module.exports = {
   uploadFromDataUri,
   deleteAsset,
+  generateSignedUrl,
   cloudinaryClient: cloudinary,
 };

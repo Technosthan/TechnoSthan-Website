@@ -32,17 +32,21 @@ const normalizeAttachments = (attachments) => {
   const normalized = attachments
     .map((item) => {
       if (typeof item === "string") {
-        const url = String(item).trim();
+        // Treat a string as an original file name or placeholder; no public URL
+        const original = String(item).trim();
         return {
           name: "",
-          url,
-          secure_url: url,
+          url: "",
+          secure_url: null,
           mimeType: "",
           size: 0,
+          fileName: "",
+          originalFileName: original,
           public_id: null,
           original_filename: null,
           resource_type: null,
           format: null,
+          delivery_type: "upload",
           bytes: 0,
         };
       }
@@ -51,11 +55,10 @@ const normalizeAttachments = (attachments) => {
         return null;
       }
 
-      const url = String(item.secure_url || item.url || "").trim();
       return {
         name: String(item.name || "").trim(),
-        url,
-        secure_url: url || null,
+        url: String(item.url || item.secure_url || "").trim(),
+        secure_url: String(item.secure_url || item.url || "").trim() || null,
         mimeType: String(item.mimeType || "").trim(),
         size: Number(item.size || item.bytes || 0),
         fileName: String(item.fileName || item.name || "").trim(),
@@ -73,10 +76,14 @@ const normalizeAttachments = (attachments) => {
           ).trim() || null,
         resource_type: String(item.resource_type || "").trim() || null,
         format: String(item.format || "").trim() || null,
+        delivery_type:
+          String(item.delivery_type || item.type || "").trim() || "upload",
         bytes: Number(item.bytes || item.size || 0),
+        previewable: Boolean(item.previewable),
       };
     })
-    .filter((item) => item && item.url);
+    // keep items that have either a public_id or at least an original filename
+    .filter((item) => item && (item.public_id || item.originalFileName));
 
   return normalized;
 };

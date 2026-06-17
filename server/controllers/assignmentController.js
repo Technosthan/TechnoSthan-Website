@@ -10,7 +10,6 @@ const createStoredAttachment = ({
   fileName,
   originalFileName,
   fileType,
-  url,
   mimeType,
   size,
   uploadedAt,
@@ -20,8 +19,14 @@ const createStoredAttachment = ({
   resource_type,
   format,
   bytes,
+  delivery_type,
 }) => {
-  const normalizedUrl = String(secure_url || url || "").trim();
+  const previewKind = getAttachmentPreviewKind({
+    fileType,
+    mimeType,
+    resource_type,
+    format,
+  });
 
   return {
     name: String(name || fileName || "").trim(),
@@ -30,16 +35,18 @@ const createStoredAttachment = ({
       originalFileName || original_filename || name || "",
     ).trim(),
     fileType: String(fileType || mimeType || format || "").trim(),
-    url: normalizedUrl,
+    url: String(secure_url || "").trim(),
     mimeType: String(mimeType || fileType || "").trim(),
     size: Number(bytes || size || 0),
     uploadedAt: uploadedAt ? new Date(uploadedAt) : new Date(),
     public_id: public_id || null,
-    secure_url: normalizedUrl || null,
+    secure_url: String(secure_url || "").trim() || null,
     original_filename: original_filename || null,
     resource_type: resource_type || null,
     format: format || null,
+    delivery_type: getAttachmentDeliveryType({ delivery_type, secure_url }),
     bytes: bytes || size || 0,
+    previewable: previewKind !== "unsupported",
   };
 };
 
@@ -77,6 +84,73 @@ const REVIEW_STATUS_TO_ASSIGNMENT_STATUS = {
   pending: "submitted",
 };
 const FILE_SIZE_LIMIT = 50 * 1024 * 1024;
+const PREVIEWABLE_IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp", "gif", "svg"];
+const PREVIEWABLE_VIDEO_FORMATS = ["mp4", "mov", "webm"];
+const PREVIEWABLE_AUDIO_FORMATS = ["mp3", "wav", "aac", "m4a"];
+
+const normalizeMimeType = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const normalizeFormat = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\./, "");
+
+const getAttachmentDeliveryType = (attachment = {}) => {
+  const explicitType = String(
+    attachment.delivery_type || attachment.type || "",
+  ).trim();
+  if (explicitType) {
+    return explicitType;
+  }
+
+  const secureUrl = String(attachment.secure_url || "").trim();
+  const match = secureUrl.match(/\/(?:image|video|raw)\/([^/]+)\//i);
+  return match ? match[1] : "upload";
+};
+
+const getAttachmentPreviewKind = (attachment = {}) => {
+  const mimeType = normalizeMimeType(
+    attachment.mimeType || attachment.fileType,
+  );
+  const resourceType = normalizeFormat(attachment.resource_type);
+  const format = normalizeFormat(attachment.format || attachment.fileType);
+
+  if (
+    mimeType.startsWith("image/") ||
+    resourceType === "image" ||
+    PREVIEWABLE_IMAGE_FORMATS.includes(format)
+  ) {
+    return "image";
+  }
+
+  if (mimeType === "application/pdf" || format === "pdf") {
+    return "pdf";
+  }
+
+  if (
+    mimeType.startsWith("video/") ||
+    resourceType === "video" ||
+    PREVIEWABLE_VIDEO_FORMATS.includes(format)
+  ) {
+    return "video";
+  }
+
+  if (
+    mimeType.startsWith("audio/") ||
+    resourceType === "audio" ||
+    PREVIEWABLE_AUDIO_FORMATS.includes(format)
+  ) {
+    return "audio";
+  }
+
+  return "unsupported";
+};
+
+const isPreviewableAttachment = (attachment = {}) =>
+  getAttachmentPreviewKind(attachment) !== "unsupported";
 const buildPagination = (query) => {
   const page = Math.max(Number.parseInt(query.page, 10) || 1, 1);
   const limit = Math.min(
@@ -232,7 +306,20 @@ const canManageAssignment = (assignment, user) => {
     return false;
   }
 
-  return getAssignmentCreatorRole(assignment) === ROLES.HR;
+  if (getAssignmentCreatorRole(assignment) !== ROLES.HR) {
+    return false;
+  }
+
+  const createdById =
+    assignment.createdBy?._id?.toString?.() ||
+    assignment.createdBy?.toString?.() ||
+    "";
+  const assignedById =
+    assignment.assignedBy?._id?.toString?.() ||
+    assignment.assignedBy?.toString?.() ||
+    "";
+
+  return createdById === String(user.id) || assignedById === String(user.id);
 };
 
 const canAccessAssignment = (assignment, user, options = {}) => {
@@ -251,14 +338,57 @@ const canAccessAssignment = (assignment, user, options = {}) => {
     return true;
   }
 
-  if (scope.assignedToRole === "BOTH") {
-    return user.role === ROLES.HR || user.role === ROLES.USER;
-  }
-
-  return scope.assignedToRole === user.role;
+  return false;
 };
 
-const buildAccessibleAssignmentFilter = (
+const getReviewerAssignmentIds = async (userId) => {
+  if (!userId) {
+    return [];
+  }
+
+  const assignmentIds = await Submission.distinct("assignmentId", {
+    reviewerId: userId,
+  });
+  return assignmentIds.map((item) => item.toString());
+};
+
+const isReviewerForAssignment = async (assignmentId, userId) => {
+  if (!assignmentId || !userId) {
+    return false;
+  }
+
+  const reviewerMatch = await Submission.exists({
+    assignmentId,
+    reviewerId: userId,
+  });
+  return Boolean(reviewerMatch);
+};
+
+const ensureAssignmentAccess = async (
+  assignment,
+  user,
+  { managerView = false } = {},
+) => {
+  if (!assignment || !user) {
+    return false;
+  }
+
+  if (user.role === ROLES.ADMIN) {
+    return true;
+  }
+
+  if (managerView && canManageAssignment(assignment, user)) {
+    return true;
+  }
+
+  if (canAccessAssignment(assignment, user)) {
+    return true;
+  }
+
+  return isReviewerForAssignment(assignment._id, user.id);
+};
+
+const buildAccessibleAssignmentFilter = async (
   user,
   { managerView = false } = {},
 ) => {
@@ -266,27 +396,19 @@ const buildAccessibleAssignmentFilter = (
     return {};
   }
 
+  const clauses = [{ assignedUsers: user.id }, { assignedTo: user.id }];
+  const reviewerAssignmentIds = await getReviewerAssignmentIds(user.id);
+
   if (managerView && user.role === ROLES.HR) {
-    return {
-      $or: [
-        { creatorRole: ROLES.HR },
-        { assignedUsers: user.id },
-        { assignedTo: user.id },
-        { assignedToRole: ROLES.HR },
-        { assignedToRole: "BOTH" },
-      ],
-    };
+    clauses.push({ createdBy: user.id });
+    clauses.push({ assignedBy: user.id });
   }
 
-  const roleTargets =
-    user.role === ROLES.HR ? [ROLES.HR, "BOTH"] : [ROLES.USER, "BOTH"];
-  return {
-    $or: [
-      { assignedUsers: user.id },
-      { assignedTo: user.id },
-      { assignedToRole: { $in: roleTargets } },
-    ],
-  };
+  if (reviewerAssignmentIds.length > 0) {
+    clauses.push({ _id: { $in: reviewerAssignmentIds } });
+  }
+
+  return clauses.length > 0 ? { $or: clauses } : { _id: null };
 };
 
 const emitAssignmentEvent = (req, eventName, payload) => {
@@ -296,11 +418,26 @@ const emitAssignmentEvent = (req, eventName, payload) => {
   }
 
   io.to("admins").emit(eventName, payload);
-  io.to("hrs").emit(eventName, payload);
 
   const assignment = payload.assignment || payload.data || payload;
   if (assignment) {
     const scope = normalizeAssignmentScope(assignment);
+    const creatorId =
+      assignment.createdBy?._id?.toString?.() ||
+      assignment.createdBy?.toString?.() ||
+      null;
+    const assignedById =
+      assignment.assignedBy?._id?.toString?.() ||
+      assignment.assignedBy?.toString?.() ||
+      null;
+
+    if (creatorId) {
+      io.to(`user:${creatorId}`).emit(eventName, payload);
+    }
+    if (assignedById) {
+      io.to(`user:${assignedById}`).emit(eventName, payload);
+    }
+
     scope.assignedUsers.forEach((userId) => {
       io.to(`user:${userId}`).emit(eventName, payload);
     });
@@ -378,13 +515,12 @@ const uploadLocalFileToCloudinary = async (urlOrItem) => {
     const mimeType = require("mime-types").lookup(localPath) || undefined;
     const dataUri = `data:${mimeType || "application/octet-stream"};base64,${buffer.toString("base64")}`;
 
-    console.log("Uploading local attachment to Cloudinary:", localPath);
     const result = await cloudinaryService.uploadFromDataUri(dataUri, {
       folder: "assignments",
       resource_type: "auto",
     });
 
-    if (!result || !result.secure_url || !result.public_id) {
+    if (!result || !result.public_id) {
       console.error(
         "Cloudinary upload returned invalid result for:",
         localPath,
@@ -393,22 +529,21 @@ const uploadLocalFileToCloudinary = async (urlOrItem) => {
       return null;
     }
 
-    console.log("Cloudinary upload succeeded:", result.secure_url);
-
     return {
       name: path.basename(localPath),
       fileName: result.public_id,
       originalFileName: result.original_filename || path.basename(localPath),
       fileType: result.format || mimeType || "",
-      url: result.secure_url,
       mimeType: mimeType || "",
+      url: result.secure_url || "",
       size: result.bytes || buffer.length,
       uploadedAt: new Date(),
       public_id: result.public_id,
-      secure_url: result.secure_url,
+      secure_url: result.secure_url || null,
       original_filename: result.original_filename || null,
       resource_type: result.resource_type || null,
       format: result.format || null,
+      delivery_type: getAttachmentDeliveryType(result),
       bytes: result.bytes || buffer.length,
     };
   } catch (err) {
@@ -452,7 +587,8 @@ const normalizeSubmissionDocument = async (submission) => {
   const latestProcessed = result.attachments[0] || {};
   await Submission.findByIdAndUpdate(submission._id, {
     attachments: result.attachments,
-    fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+    // never store or expose Cloudinary URLs
+    fileUrl: "",
     fileName: latestProcessed.name || latestProcessed.fileName || "",
     mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
     size: latestProcessed.size || 0,
@@ -461,11 +597,53 @@ const normalizeSubmissionDocument = async (submission) => {
   return {
     ...submission,
     attachments: result.attachments,
-    fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+    fileUrl: "",
     fileName: latestProcessed.name || latestProcessed.fileName || "",
     mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
     size: latestProcessed.size || 0,
   };
+};
+
+const buildAttachmentResponse = (attachment, previewUrl, ttl) => {
+  const previewKind = getAttachmentPreviewKind(attachment);
+  const deliveryType = getAttachmentDeliveryType(attachment);
+  return {
+    url: previewUrl,
+    previewUrl,
+    expiresIn: ttl,
+    mimeType: attachment?.mimeType || "",
+    resource_type: attachment?.resource_type || "",
+    format: attachment?.format || "",
+    secure_url: attachment?.secure_url || null,
+    delivery_type: deliveryType,
+    public_id: attachment?.public_id || null,
+    originalFileName:
+      attachment?.originalFileName ||
+      attachment?.original_filename ||
+      attachment?.name ||
+      "",
+    previewType: previewKind,
+    previewable: previewKind !== "unsupported",
+  };
+};
+
+const logAttachmentPreviewDebug = (
+  label,
+  attachment,
+  previewUrl,
+  extra = {},
+) => {
+  console.log(label, {
+    ...extra,
+    attachment,
+    public_id: attachment?.public_id || null,
+    previewUrl,
+    mimeType: attachment?.mimeType || null,
+    resourceType: attachment?.resource_type || null,
+    type: attachment?.type || null,
+    delivery_type: getAttachmentDeliveryType(attachment),
+    format: attachment?.format || null,
+  });
 };
 
 const buildAnalytics = async (filter = {}) => {
@@ -928,10 +1106,10 @@ exports.deleteAssignment = async (req, res) => {
 exports.getAssignments = async (req, res) => {
   try {
     const pagination = buildPagination(req.query);
-    const filter = combineFilters(
-      buildAccessibleAssignmentFilter(req.user, { managerView: true }),
-      buildListFilter(req.query),
-    );
+    const accessibleFilter = await buildAccessibleAssignmentFilter(req.user, {
+      managerView: true,
+    });
+    const filter = combineFilters(accessibleFilter, buildListFilter(req.query));
     const sort = buildSort(req.query);
 
     let [assignments, total, analytics] = await Promise.all([
@@ -983,7 +1161,11 @@ exports.getAssignmentById = async (req, res) => {
         .json({ success: false, message: "Assignment not found" });
     }
 
-    if (!canAccessAssignment(assignment, req.user)) {
+    if (
+      !(await ensureAssignmentAccess(assignment, req.user, {
+        managerView: true,
+      }))
+    ) {
       return res.status(403).json({
         success: false,
         message: "You do not have access to this assignment",
@@ -1004,8 +1186,26 @@ exports.getAssignmentById = async (req, res) => {
       }),
     ).lean();
 
+    const visibleSubmissions =
+      req.user.role === ROLES.ADMIN || canManageAssignment(assignment, req.user)
+        ? submissions
+        : submissions.filter((submission) => {
+            const submissionUserId =
+              submission.userId?._id?.toString?.() ||
+              submission.userId?.toString?.() ||
+              "";
+            const reviewerUserId =
+              submission.reviewerId?._id?.toString?.() ||
+              submission.reviewerId?.toString?.() ||
+              "";
+            return (
+              submissionUserId === String(req.user.id) ||
+              reviewerUserId === String(req.user.id)
+            );
+          });
+
     const migratedSubmissions = await Promise.all(
-      submissions.map(async (submission) => {
+      visibleSubmissions.map(async (submission) => {
         const submissionProcess = await processAttachments(
           submission.attachments,
         );
@@ -1016,7 +1216,8 @@ exports.getAssignmentById = async (req, res) => {
         const latestProcessed = submissionProcess.attachments[0] || {};
         await Submission.findByIdAndUpdate(submission._id, {
           attachments: submissionProcess.attachments,
-          fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+          // never store or expose Cloudinary URLs
+          fileUrl: "",
           fileName: latestProcessed.name || latestProcessed.fileName || "",
           mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
           size: latestProcessed.size || 0,
@@ -1025,7 +1226,7 @@ exports.getAssignmentById = async (req, res) => {
         return {
           ...submission,
           attachments: submissionProcess.attachments,
-          fileUrl: latestProcessed.url || latestProcessed.secure_url || "",
+          fileUrl: "",
           fileName: latestProcessed.name || latestProcessed.fileName || "",
           mimeType: latestProcessed.mimeType || latestProcessed.fileType || "",
           size: latestProcessed.size || 0,
@@ -1053,10 +1254,8 @@ exports.getMyAssignments = async (req, res) => {
   try {
     const pagination = buildPagination(req.query);
     const sort = buildSort(req.query);
-    const filter = combineFilters(
-      buildAccessibleAssignmentFilter(req.user),
-      buildListFilter(req.query),
-    );
+    const accessibleFilter = await buildAccessibleAssignmentFilter(req.user);
+    const filter = combineFilters(accessibleFilter, buildListFilter(req.query));
 
     let [assignments, total, analytics] = await Promise.all([
       populateAssignment(
@@ -1127,7 +1326,8 @@ exports.submitAssignment = async (req, res) => {
       userId: req.user.id,
       submissionLink: String(req.body.submissionLink || "").trim(),
       attachments: processedAttachments,
-      fileUrl: latestProcessed?.url || latestProcessed?.secure_url || "",
+      // never store or expose Cloudinary URLs
+      fileUrl: "",
       fileName: latestProcessed?.name || latestProcessed?.fileName || "",
       mimeType: latestProcessed?.mimeType || latestProcessed?.fileType || "",
       size: latestProcessed?.size || 0,
@@ -1354,7 +1554,7 @@ exports.getSubmissions = async (req, res) => {
       match.status = req.query.status;
     }
 
-    const assignmentScope = buildAccessibleAssignmentFilter(req.user, {
+    const assignmentScope = await buildAccessibleAssignmentFilter(req.user, {
       managerView: true,
     });
     const assignmentIds = await Assignment.find(assignmentScope, "_id").lean();
@@ -1488,6 +1688,308 @@ exports.reviewSubmission = async (req, res) => {
   }
 };
 
+exports.getAssignmentAttachments = async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id).lean();
+    if (!assignment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Assignment not found" });
+    }
+
+    if (
+      !(await ensureAssignmentAccess(assignment, req.user, {
+        managerView: true,
+      }))
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
+    }
+
+    const result = await processAttachments(assignment.attachments);
+    if (result.changed) {
+      await Assignment.findByIdAndUpdate(assignment._id, {
+        attachments: result.attachments,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.attachments,
+    });
+  } catch (error) {
+    console.error("Get assignment attachments error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load attachments right now",
+    });
+  }
+};
+
+exports.getAssignmentSubmissions = async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id).lean();
+    if (!assignment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Assignment not found" });
+    }
+
+    if (
+      !(await ensureAssignmentAccess(assignment, req.user, {
+        managerView: true,
+      }))
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
+    }
+
+    const submissions = await populateSubmission(
+      Submission.find({ assignmentId: assignment._id }).sort({
+        submittedAt: -1,
+      }),
+    ).lean();
+
+    const filteredSubmissions =
+      req.user.role === ROLES.ADMIN || canManageAssignment(assignment, req.user)
+        ? submissions
+        : submissions.filter((submission) => {
+            const isOwner =
+              String(submission.userId?._id || submission.userId) ===
+              String(req.user.id);
+            const isReviewer =
+              String(submission.reviewerId?._id || submission.reviewerId) ===
+              String(req.user.id);
+            return isOwner || isReviewer;
+          });
+
+    const normalizedSubmissions = await Promise.all(
+      filteredSubmissions.map((submission) =>
+        normalizeSubmissionDocument(submission),
+      ),
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: normalizedSubmissions,
+    });
+  } catch (error) {
+    console.error("Get assignment submissions error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load submissions right now",
+    });
+  }
+};
+
+// Generate a temporary signed preview URL for an assignment attachment
+exports.previewAssignmentAttachment = async (req, res) => {
+  try {
+    const { id: assignmentId } = req.params;
+    let publicId = req.params?.publicId || req.query?.publicId || "";
+    publicId = decodeURIComponent(String(publicId || ""));
+    const ttl = Math.min(
+      300,
+      Math.max(60, Number.parseInt(req.query.ttl || "120", 10)),
+    );
+
+    console.log("Preview assignment attachment request:", {
+      user: req.user?.id,
+      role: req.user?.role,
+      assignmentId,
+      publicId,
+    });
+
+    const assignment = await Assignment.findById(assignmentId).lean();
+    if (!assignment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Assignment not found" });
+    }
+
+    const attachment = (assignment.attachments || []).find(
+      (a) => String(a.public_id || "") === String(publicId || ""),
+    );
+    if (!attachment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Attachment not found" });
+    }
+
+    if (
+      !(await ensureAssignmentAccess(assignment, req.user, {
+        managerView: true,
+      }))
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
+    }
+
+    console.log("Preview assignment attachment object:", attachment);
+
+    const previewKind = getAttachmentPreviewKind(attachment);
+    const deliveryType = getAttachmentDeliveryType(attachment);
+    const previewUrl =
+      deliveryType === "upload" && attachment.secure_url
+        ? attachment.secure_url
+        : cloudinaryService.generateSignedUrl({
+            publicId: attachment.public_id,
+            resource_type: attachment.resource_type || "auto",
+            type: deliveryType,
+            expiresInSeconds: ttl,
+            download: req.query.download === "1",
+            format: attachment.format || undefined,
+          });
+
+    logAttachmentPreviewDebug(
+      "Assignment preview URL generated",
+      attachment,
+      previewUrl,
+      {
+        assignmentId,
+        previewKind,
+        type: attachment?.type || null,
+        delivery_type: deliveryType,
+      },
+    );
+
+    if (!previewUrl) {
+      return res
+        .status(500)
+        .json({ success: false, message: "Unable to generate preview URL" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: buildAttachmentResponse(attachment, previewUrl, ttl),
+    });
+  } catch (err) {
+    console.error("Preview assignment attachment error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Unable to generate preview URL" });
+  }
+};
+
+exports.previewAssignmentByQuery = async (req, res) => {
+  req.params.publicId = req.query.publicId || req.params.publicId;
+  return exports.previewAssignmentAttachment(req, res);
+};
+
+// Generate a temporary signed preview URL for a submission attachment
+exports.previewSubmissionAttachment = async (req, res) => {
+  try {
+    const { id: assignmentId, submissionId } = req.params;
+    let publicId = req.params?.publicId || req.query?.publicId || "";
+    publicId = decodeURIComponent(String(publicId || ""));
+    const ttl = Math.min(
+      300,
+      Math.max(60, Number.parseInt(req.query.ttl || "120", 10)),
+    );
+
+    const submission = await Submission.findById(submissionId).lean();
+    if (
+      !submission ||
+      String(submission.assignmentId) !== String(assignmentId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Submission not found for this assignment",
+      });
+    }
+
+    const assignment = await Assignment.findById(assignmentId).lean();
+    if (!assignment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Assignment not found" });
+    }
+
+    const attachment = (submission.attachments || []).find(
+      (a) => String(a.public_id || "") === String(publicId || ""),
+    );
+    if (!attachment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Attachment not found" });
+    }
+
+    const isUploader = String(submission.userId || "") === String(req.user.id);
+    const isReviewer =
+      String(submission.reviewerId || "") === String(req.user.id);
+    const hasAssignmentAccess = await ensureAssignmentAccess(
+      assignment,
+      req.user,
+      {
+        managerView: true,
+      },
+    );
+
+    if (!hasAssignmentAccess && !isUploader && !isReviewer) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
+    }
+
+    console.log("Preview submission attachment request:", {
+      user: req.user?.id,
+      role: req.user?.role,
+      assignmentId,
+      submissionId,
+      publicId,
+    });
+    console.log("Preview submission attachment object:", attachment);
+
+    const deliveryType = getAttachmentDeliveryType(attachment);
+    const previewUrl =
+      deliveryType === "upload" && attachment.secure_url
+        ? attachment.secure_url
+        : cloudinaryService.generateSignedUrl({
+            publicId: attachment.public_id,
+            resource_type: attachment.resource_type || "auto",
+            type: deliveryType,
+            expiresInSeconds: ttl,
+            download: req.query.download === "1",
+            format: attachment.format || undefined,
+          });
+
+    logAttachmentPreviewDebug(
+      "Submission preview URL generated",
+      attachment,
+      previewUrl,
+      {
+        assignmentId,
+        submissionId,
+        type: attachment?.type || null,
+        delivery_type: deliveryType,
+      },
+    );
+
+    if (!previewUrl) {
+      return res
+        .status(500)
+        .json({ success: false, message: "Unable to generate preview URL" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: buildAttachmentResponse(attachment, previewUrl, ttl),
+    });
+  } catch (err) {
+    console.error("Preview submission attachment error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Unable to generate preview URL" });
+  }
+};
+
 exports.uploadAssignmentFile = async (req, res) => {
   try {
     const match = String(req.body?.file || "").match(/^data:(.+);base64,(.+)$/);
@@ -1516,6 +2018,7 @@ exports.uploadAssignmentFile = async (req, res) => {
       uploadResult = await cloudinaryService.uploadFromDataUri(dataUri, {
         folder: "assignments",
         resource_type: "auto",
+        type: "upload",
       });
     } catch (err) {
       console.error("Cloudinary upload failed:", err);
@@ -1528,8 +2031,16 @@ exports.uploadAssignmentFile = async (req, res) => {
 
     console.log(
       "Cloudinary upload succeeded for assignment file:",
-      uploadResult.secure_url,
+      uploadResult.public_id,
     );
+    console.log("Cloudinary upload response:", uploadResult);
+    console.log("Cloudinary upload delivery debug:", {
+      public_id: uploadResult.public_id,
+      resource_type: uploadResult.resource_type,
+      type: uploadResult.type || null,
+      delivery_type: getAttachmentDeliveryType(uploadResult),
+      secure_url: uploadResult.secure_url || null,
+    });
 
     const now = new Date();
     const attachment = createStoredAttachment({
@@ -1537,7 +2048,6 @@ exports.uploadAssignmentFile = async (req, res) => {
       fileName: uploadResult.public_id,
       originalFileName: uploadResult.original_filename || fileName,
       fileType: uploadResult.format || mimeType,
-      url: uploadResult.secure_url,
       mimeType: mimeType,
       size: uploadResult.bytes || buffer.length,
       uploadedAt: now,
@@ -1546,8 +2056,11 @@ exports.uploadAssignmentFile = async (req, res) => {
       original_filename: uploadResult.original_filename,
       resource_type: uploadResult.resource_type,
       format: uploadResult.format,
+      delivery_type:
+        uploadResult.type || getAttachmentDeliveryType(uploadResult),
       bytes: uploadResult.bytes,
     });
+    console.log("Stored attachment metadata:", attachment);
 
     try {
       if (req && typeof req.logActivity === "function") {
@@ -1573,6 +2086,89 @@ exports.uploadAssignmentFile = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Unable to upload the file right now",
+    });
+  }
+};
+
+// Generate a signed preview URL for a newly uploaded file (during submission form)
+exports.previewUploadedAttachment = async (req, res) => {
+  try {
+    let publicId = req.params?.publicId || req.query?.publicId || "";
+    publicId = decodeURIComponent(String(publicId || ""));
+    const ttl = Math.min(
+      300,
+      Math.max(60, Number.parseInt(req.query.ttl || "120", 10)),
+    );
+
+    if (!publicId) {
+      return res.status(400).json({
+        success: false,
+        message: "publicId is required",
+      });
+    }
+
+    console.log("Generating preview for uploaded attachment:", { publicId });
+
+    const rawSecureUrl = String(
+      req.query.secure_url || req.query.secureUrl || "",
+    ).trim();
+    let resolvedSecureUrl = rawSecureUrl
+      ? decodeURIComponent(rawSecureUrl)
+      : null;
+
+    if (!resolvedSecureUrl) {
+      try {
+        const resource = await cloudinaryService.cloudinaryClient.api.resource(
+          publicId,
+          {
+            resource_type: "auto",
+          },
+        );
+        resolvedSecureUrl = resource?.secure_url || null;
+      } catch (err) {
+        console.warn(
+          "Unable to resolve Cloudinary resource for preview-upload:",
+          err?.message || err,
+        );
+      }
+    }
+
+    const previewUrl = resolvedSecureUrl;
+
+    console.log("Uploaded attachment preview URL:", previewUrl);
+
+    if (!previewUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "Unable to resolve Cloudinary secure URL for preview",
+      });
+    }
+
+    const responseData = {
+      url: previewUrl,
+      previewUrl,
+      expiresIn: ttl,
+      previewable: true,
+      secure_url: previewUrl,
+    };
+
+    if (resolvedSecureUrl) {
+      responseData.secure_url = resolvedSecureUrl;
+    }
+
+    if (!resolvedSecureUrl) {
+      responseData.previewable = Boolean(previewUrl);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: responseData,
+    });
+  } catch (err) {
+    console.error("Preview uploaded attachment error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to generate preview URL",
     });
   }
 };
