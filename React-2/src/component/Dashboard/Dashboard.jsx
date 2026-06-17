@@ -218,8 +218,7 @@ function Dashboard() {
 
   return (
     <AdminLayout
-      title="Dashboard"
-      subtitle="Your productivity workspace for assignments, submissions, and day-to-day progress."
+      
     >
       <div className="space-y-5">
         <GlassPanel className="overflow-hidden">

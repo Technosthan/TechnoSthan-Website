@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { RotateCcw, Search } from "lucide-react";
 import AdminLayout from "./AdminLayout";
+import "./ActivityLogs.css";
 import api from "../../lib/api";
 import { useToast } from "../Toast/ToastProvider";
 
@@ -50,15 +51,22 @@ const ActivityLogs = () => {
   const [filters, setFilters] = useState(initialFilters);
   const [userSearchInput, setUserSearchInput] = useState("");
   const [actionSearchInput, setActionSearchInput] = useState("");
+  const didMountRef = useRef(false);
 
   const { showToast } = useToast();
 
   const fetchLogs = useCallback(
-    async (p = page, filterParams = {}) => {
+    async ({
+      pageNumber = page,
+      filterParams = {},
+      withLoading = true,
+    } = {}) => {
       try {
-        setLoading(true);
+        if (withLoading) {
+          setLoading(true);
+        }
         const params = {
-          page: p,
+          page: pageNumber,
           limit,
           ...filterParams,
         };
@@ -73,7 +81,9 @@ const ActivityLogs = () => {
           type: "error",
         });
       } finally {
-        setLoading(false);
+        if (withLoading) {
+          setLoading(false);
+        }
       }
     },
     [page, limit, showToast],
@@ -91,19 +101,51 @@ const ActivityLogs = () => {
         ...(filters.module && { module: filters.module }),
         ...(filters.dateRange && { dateRange: filters.dateRange }),
       };
-      fetchLogs(1, filterParams);
+      fetchLogs({ pageNumber: 1, filterParams, withLoading: false });
     }, 300);
     return () => clearTimeout(timer);
-  }, [userSearchInput, actionSearchInput, filters]);
+  }, [userSearchInput, actionSearchInput, filters, fetchLogs]);
 
   useEffect(() => {
-    fetchLogs(page);
-  }, [page]);
+    if (didMountRef.current) {
+      fetchLogs({ pageNumber: page, withLoading: false });
+    } else {
+      fetchLogs({ pageNumber: page, withLoading: true });
+      didMountRef.current = true;
+    }
+  }, [page, fetchLogs]);
 
   const handleFilterChange = (field, value) => {
     setFilters((current) => ({ ...current, [field]: value }));
     setPage(1);
   };
+
+  const filteredLogs = useMemo(() => {
+    const userTerm = userSearchInput.trim().toLowerCase();
+    const actionTerm = actionSearchInput.trim().toLowerCase();
+
+    return logs.filter((log) => {
+      const matchesUser = userTerm
+        ? [log.userName, log.email]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(userTerm))
+        : true;
+
+      const matchesAction = actionTerm
+        ? log.action?.toLowerCase().includes(actionTerm)
+        : true;
+
+      const matchesRole = filters.role
+        ? log.role?.toLowerCase() === filters.role.toLowerCase()
+        : true;
+
+      const matchesModule = filters.module
+        ? log.module?.toLowerCase() === filters.module.toLowerCase()
+        : true;
+
+      return matchesUser && matchesAction && matchesRole && matchesModule;
+    });
+  }, [logs, userSearchInput, actionSearchInput, filters.role, filters.module]);
 
   const handleReset = () => {
     setFilters(initialFilters);
@@ -160,8 +202,8 @@ const ActivityLogs = () => {
           </div>
         ) : (
           <div className="overflow-hidden rounded-[22px] border border-white/10 bg-slate-900/70 shadow-xl shadow-slate-950/30 backdrop-blur">
-            <div className="max-h-[820px] overflow-x-auto overflow-y-auto">
-              <table className="w-full min-w-full table-auto text-left">
+            <div className="max-h-[820px] activity-table-wrapper overflow-x-auto overflow-y-auto">
+              <table className="w-full min-w-full table-auto text-left activity-logs-table">
                 <colgroup>
                   <col className="w-[16%]" />
                   <col className="w-[14%]" />
@@ -287,19 +329,30 @@ const ActivityLogs = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-slate-200">
-                  {logs.map((l) => (
+                  {filteredLogs.map((l) => (
                     <tr key={l._id} className="hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 align-top">
+                      <td data-label="Date" className="px-4 py-3 align-top">
                         {new Date(l.createdAt).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 align-top">
+                      <td data-label="User" className="px-4 py-3 align-top">
                         {l.userName || "-"}
                       </td>
-                      <td className="px-4 py-3 align-top">{l.action}</td>
-                      <td className="px-4 py-3 align-top">{l.role || "-"}</td>
-                      <td className="px-4 py-3 align-top">{l.module}</td>
-                      <td className="px-4 py-3 align-top">{l.email || "-"}</td>
-                      <td className="px-4 py-3 align-top">
+                      <td data-label="Action" className="px-4 py-3 align-top">
+                        {l.action}
+                      </td>
+                      <td data-label="Role" className="px-4 py-3 align-top">
+                        {l.role || "-"}
+                      </td>
+                      <td data-label="Module" className="px-4 py-3 align-top">
+                        {l.module}
+                      </td>
+                      <td data-label="Email" className="px-4 py-3 align-top">
+                        {l.email || "-"}
+                      </td>
+                      <td
+                        data-label="Description"
+                        className="px-4 py-3 align-top"
+                      >
                         {l.description || "-"}
                       </td>
                     </tr>

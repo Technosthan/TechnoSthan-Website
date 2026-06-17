@@ -1,0 +1,50 @@
+/* Activity Logs responsive: convert table to cards on small screens */
+
+.activity-table-wrapper {
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .activity-logs-table,
+  .activity-logs-table thead,
+  .activity-logs-table tbody,
+  .activity-logs-table th,
+  .activity-logs-table td,
+  .activity-logs-table tr {
+    display: block;
+  }
+
+  .activity-logs-table thead {
+    display: none;
+  }
+
+  .activity-logs-table tbody tr {
+    margin: 0 0 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(17, 24, 48, 0.6);
+  }
+
+  .activity-logs-table td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    white-space: normal;
+    word-break: break-word;
+    gap: 12px;
+  }
+
+  .activity-logs-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    color: #9ca3af;
+    margin-right: 8px;
+    flex: 0 0 auto;
+  }
+
+  .activity-table-wrapper {
+    overflow-x: hidden !important;
+    padding: 0 12px;
+  }
+}

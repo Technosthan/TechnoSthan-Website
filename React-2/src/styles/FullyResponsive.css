@@ -45,7 +45,8 @@
 }
 
 /* ========== MOBILE-FIRST BODY DEFAULTS ========== */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -97,7 +98,8 @@ h4 {
   line-height: 1.4;
 }
 
-h5, h6 {
+h5,
+h6 {
   font-size: clamp(0.875rem, 3vw, 1.25rem);
   line-height: 1.5;
 }
@@ -237,8 +239,11 @@ section {
 }
 
 /* ========== TOUCH-FRIENDLY BUTTONS ========== */
-button, a.btn, input[type="button"],
-input[type="submit"], input[type="reset"] {
+button,
+a.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
   min-height: 44px; /* Touch target size */
   min-width: 44px;
   padding: var(--space-sm) var(--space-md);
@@ -246,19 +251,145 @@ input[type="submit"], input[type="reset"] {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  button:hover, a.btn:hover {
+  button:hover,
+  a.btn:hover {
     transform: translateY(-2px);
   }
 }
 
 @media (hover: none) and (pointer: coarse) {
-  button:active, a.btn:active {
+  button:active,
+  a.btn:active {
     opacity: 0.8;
   }
 }
 
 /* ========== RESPONSIVE INPUTS ========== */
-input, textarea, select {
+
+/* ========== ADMIN / MODAL / TABLE RESPONSIVE FIXES ========== */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 1024px) {
+  .fixed.inset-0 > div,
+  .modal-overlay > div,
+  .modal-content,
+  .modal-content > div,
+  .max-w-4xl,
+  .max-w-5xl,
+  [class*="max-w-4xl"],
+  [class*="max-w-5xl"],
+  [class*="max-w-[1100px]"] {
+    max-width: 95vw !important;
+    width: 100% !important;
+    max-height: 90vh !important;
+    margin: 0 auto !important;
+  }
+
+  .max-h-\[80vh\],
+  .max-h-\[72vh\],
+  .max-h-\[92vh\],
+  [class*="max-h-[80vh]"],
+  [class*="max-h-[72vh]"],
+  [class*="max-h-[92vh]"] {
+    max-height: 90vh !important;
+  }
+
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 768px) {
+  .overflow-x-auto > table,
+  .overflow-x-auto table {
+    min-width: auto !important;
+    width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  .overflow-x-auto th,
+  .overflow-x-auto td,
+  .overflow-x-auto tr {
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  .overflow-x-auto th,
+  .overflow-x-auto td {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  [class*="min-w-"] {
+    min-width: auto !important;
+  }
+
+  [class*="max-w-4xl"] {
+    max-width: 95vw !important;
+  }
+
+  [class*="max-h-"] {
+    max-height: 90vh !important;
+  }
+
+  .text-sm {
+    font-size: 0.95rem !important;
+  }
+
+  button,
+  .btn,
+  .btn-icon,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .container,
+  .container-mobile,
+  .container-tablet {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .grid-responsive,
+  .grid-mobile-stack,
+  .flex-responsive {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+
+  .rounded-\[28px\],
+  .rounded-\[36px\] {
+    border-radius: 1rem !important;
+  }
+}
+
+/* Ensure responsive iframes and media inside modals */
+iframe,
+video,
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure all table containers remain scrollable without overflow issues */
+.overflow-x-auto {
+  width: 100%;
+}
+input,
+textarea,
+select {
   width: 100%;
   padding: var(--space-sm) var(--space-md);
   font-size: 16px; /* Prevents zoom on iOS */
@@ -268,7 +399,9 @@ input, textarea, select {
   transition: var(--transition-normal);
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -316,7 +449,8 @@ nav {
   z-index: 1000;
 }
 
-nav > ul, nav > ol {
+nav > ul,
+nav > ol {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
@@ -326,18 +460,21 @@ nav > ul, nav > ol {
 }
 
 @media (max-width: 768px) {
-  nav > ul, nav > ol {
+  nav > ul,
+  nav > ol {
     flex-direction: column;
     gap: 0;
     padding: 0;
   }
 
-  nav > ul li, nav > ol li {
+  nav > ul li,
+  nav > ol li {
     width: 100%;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   }
 
-  nav > ul a, nav > ol a {
+  nav > ul a,
+  nav > ol a {
     display: block;
     padding: var(--space-md);
   }
@@ -533,7 +670,8 @@ nav > ul, nav > ol {
 
 /* ========== PRINT STYLES ========== */
 @media print {
-  .no-print, .mobile-menu-toggle {
+  .no-print,
+  .mobile-menu-toggle {
     display: none !important;
   }
 
