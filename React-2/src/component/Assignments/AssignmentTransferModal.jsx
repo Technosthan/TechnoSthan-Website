@@ -25,28 +25,38 @@ const AssignmentTransferModal = ({
     }
   }, [open, assignment?._id]);
 
-  const filteredAssignees = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+  const availableUsers = assignees;
+
+  const filteredUsers = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
     const currentAssigneeId =
       assignment?.assignedTo?._id ||
       assignment?.assignedTo ||
       assignment?.assignedUsers?.[0]?._id ||
       "";
 
-    return assignees.filter((user) => {
-      if (!user?._id || user._id === currentAssigneeId) {
+    return availableUsers.filter((user) => {
+      if (!user?._id || String(user._id) === String(currentAssigneeId)) {
         return false;
       }
 
-      if (!normalizedSearch) {
+      if (!search) {
         return true;
       }
 
-      return [user.name, user.email, user.role]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      return (
+        user.name?.toLowerCase().includes(search) ||
+        user.email?.toLowerCase().includes(search) ||
+        user.role?.toLowerCase().includes(search)
+      );
     });
-  }, [assignment, assignees, searchTerm]);
+  }, [assignment, availableUsers, searchTerm]);
+
+  useEffect(() => {
+    console.log("Search:", searchTerm);
+    console.log("Available users:", availableUsers.length);
+    console.log("Filtered users:", filteredUsers.length);
+  }, [availableUsers.length, filteredUsers.length, searchTerm]);
 
   return (
     <AnimatePresence>
@@ -129,7 +139,7 @@ const AssignmentTransferModal = ({
                   onChange={(event) => onRecipientChange(event.target.value)}
                 >
                   <option value="">Select user</option>
-                  {filteredAssignees.map((user) => (
+                  {filteredUsers.map((user) => (
                     <option key={user._id} value={user._id}>
                       {user.name} - {user.email} ({user.role})
                     </option>

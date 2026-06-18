@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import {
+  ArrowRightLeft,
   BriefcaseBusiness,
   CheckCheck,
   ClipboardList,
@@ -23,12 +24,12 @@ import {
   getAssignmentById,
   getAssignments,
   reviewSubmission,
+  submitAssignment,
   transferAssignment as transferAssignmentApi,
   updateAssignment,
   updateAssignmentStatus,
 } from "../../lib/assignments";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
-import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 import usePermissions from "../../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../../lib/permissionResolver";
 import {
@@ -59,7 +60,6 @@ const initialFilters = {
 
 const AdminAssignments = () => {
   const { showToast } = useToast();
-  const { refreshAccess } = useWorkspaceAccess();
   const { hasPermission, getPermissionDetails } = usePermissions();
   const [assignments, setAssignments] = useState([]);
   const [assignees, setAssignees] = useState([]);
@@ -104,8 +104,14 @@ const AdminAssignments = () => {
   );
 
   // Permission checks for submission interactions
-  const canUserSubmitWork = hasPermission(PERMISSION_KEYS.SUBMIT_WORK);
-  const canUserUploadFiles = hasPermission(PERMISSION_KEYS.UPLOAD_FILES);
+  const canUserSubmitWork =
+    isAdmin ||
+    currentRole === "HR" ||
+    hasPermission(PERMISSION_KEYS.SUBMIT_WORK);
+  const canUserUploadFiles =
+    isAdmin ||
+    currentRole === "HR" ||
+    hasPermission(PERMISSION_KEYS.UPLOAD_FILES);
 
   // Get detailed permission reasons for UI display
   const submitWorkDetails = getPermissionDetails(PERMISSION_KEYS.SUBMIT_WORK);
@@ -141,9 +147,15 @@ const AdminAssignments = () => {
       return true;
     }
 
-    // HR can transfer assignments they manage
+    // HR can transfer assignments assigned to themselves
     if (currentRole === "HR") {
-      return canManageAssignment(assignment);
+      const assignedTo =
+        assignment.assignedTo?._id ||
+        assignment.assignedTo ||
+        assignment.assignedUsers?.[0]?._id ||
+        null;
+      const currentUserId = getStoredUser()?.id;
+      return String(assignedTo || "") === String(currentUserId || "");
     }
 
     // USER can only transfer assignments assigned to them
@@ -154,13 +166,13 @@ const AdminAssignments = () => {
         assignment.assignedUsers?.[0]?._id ||
         null;
       const currentUserId = getStoredUser()?.id;
-      return assignedTo === currentUserId;
+      return String(assignedTo || "") === String(currentUserId || "");
     }
 
     return false;
   };
 
-  const getTransferableUsers = () => {
+  const getTransferableUsers = useCallback(() => {
     if (isAdmin) {
       // Admin can transfer to anyone
       return assignees;
@@ -175,15 +187,15 @@ const AdminAssignments = () => {
     }
 
     if (currentRole === "USER") {
-      // USER can only transfer to HR
+      // USER can only transfer to USER
       return assignees.filter((user) => {
         const userRole = normalizeRole(user.role);
-        return userRole === "HR";
+        return userRole === "USER";
       });
     }
 
     return [];
-  };
+  }, [assignees, currentRole, isAdmin]);
 
   const filteredTransferableUsers = useMemo(() => {
     const currentAssigneeId =
@@ -206,7 +218,7 @@ const AdminAssignments = () => {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedSearch));
     });
-  }, [assignees, currentRole, isAdmin, transferAssignment, transferSearch]);
+  }, [getTransferableUsers, transferAssignment, transferSearch]);
 
   const fetchAssignments = useCallback(
     async (page = pagination.page) => {
@@ -370,6 +382,34 @@ const AdminAssignments = () => {
     } catch (error) {
       showToast({
         title: "Unable to open assignment",
+        message: error.response?.data?.message || "Please try again.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleSubmission = async (payload) => {
+    if (!selectedAssignment?._id) {
+      showToast({
+        title: "No assignment selected",
+        message: "Please open an assignment before saving a submission.",
+        type: "warning",
+      });
+      return;
+    }
+
+    try {
+      const response = await submitAssignment(selectedAssignment._id, payload);
+      showToast({
+        title: "Submission saved",
+        message: response.message || "Assignment progress has been updated.",
+        type: "success",
+      });
+      fetchAssignments();
+      handleOpenAssignment(selectedAssignment);
+    } catch (error) {
+      showToast({
+        title: "Submission failed",
         message: error.response?.data?.message || "Please try again.",
         type: "error",
       });
@@ -1008,7 +1048,7 @@ const AdminAssignments = () => {
         onStatusChange={handleStatusChange}
         onFeedback={handleFeedback}
         onReviewSubmission={handleReviewSubmission}
-        onSubmitWork={() => {}}
+        onSubmitWork={handleSubmission}
         loading={saving}
         canUploadFiles={canUserUploadFiles}
         canSubmitWork={canUserSubmitWork}

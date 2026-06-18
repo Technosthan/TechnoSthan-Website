@@ -17,6 +17,7 @@ module.exports = (req, res, next) => {
         description: data.description || "",
         entityId: data.entityId || null,
         entityType: data.entityType || null,
+        metadata: data.metadata || {},
         ipAddress: (
           req.headers["x-forwarded-for"] ||
           req.connection.remoteAddress ||

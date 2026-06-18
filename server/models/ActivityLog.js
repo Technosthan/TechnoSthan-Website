@@ -17,6 +17,10 @@ const activityLogSchema = new mongoose.Schema(
     description: { type: String, trim: true, default: "" },
     entityId: { type: String, trim: true, default: null },
     entityType: { type: String, trim: true, default: null },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     ipAddress: { type: String, trim: true, default: null },
     userAgent: { type: String, trim: true, default: null },
   },

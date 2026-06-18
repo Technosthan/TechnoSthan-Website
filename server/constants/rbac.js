@@ -57,7 +57,9 @@ const hasRole = (role, acceptedRoles = []) =>
 
 const getRoleVariants = (role) => {
   const normalized = normalizeRole(role);
-  return [...new Set([normalized, normalized.toLowerCase()])];
+  const lower = normalized.toLowerCase();
+  const title = `${normalized.charAt(0)}${lower.slice(1)}`;
+  return [...new Set([normalized, lower, title])];
 };
 
 module.exports = {

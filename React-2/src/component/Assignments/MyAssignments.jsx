@@ -15,6 +15,7 @@ import {
   updateAssignmentStatus,
 } from "../../lib/assignments";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
+import { getStoredUser, normalizeRole } from "../../utils/auth";
 
 const initialFilters = {
   search: "",
@@ -55,6 +56,26 @@ const MyAssignments = () => {
   const canUploadFiles =
     canAccessFeature("fileUploadsEnabled") &&
     canAccessFeature("usersCanUploadFiles");
+  const currentRole = normalizeRole(getStoredUser()?.role);
+
+  const transferableUsers = useMemo(() => {
+    if (currentRole === "ADMIN") {
+      return assignees;
+    }
+
+    if (currentRole === "HR") {
+      return assignees.filter((user) => {
+        const userRole = normalizeRole(user.role);
+        return userRole === "HR" || userRole === "USER";
+      });
+    }
+
+    if (currentRole === "USER") {
+      return assignees.filter((user) => normalizeRole(user.role) === "USER");
+    }
+
+    return [];
+  }, [assignees, currentRole]);
 
   const fetchAssignments = async (page = pagination.page) => {
     try {
@@ -265,7 +286,7 @@ const MyAssignments = () => {
     if (!transferAssignment || !transferRecipient) {
       showToast({
         title: "Choose a recipient",
-        message: "Please select an HR user to transfer the assignment to.",
+        message: "Please select a user to transfer the assignment to.",
         type: "warning",
       });
       return;
@@ -412,7 +433,7 @@ const MyAssignments = () => {
       <AssignmentTransferModal
         open={transferOpen}
         assignment={transferAssignment}
-        assignees={assignees}
+        assignees={transferableUsers}
         recipient={transferRecipient}
         note={transferNote}
         saving={transferSaving}

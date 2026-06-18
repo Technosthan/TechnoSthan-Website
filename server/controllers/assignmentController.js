@@ -291,11 +291,13 @@ const normalizeAssignmentScope = (assignment) => {
 };
 
 const canManageAssignment = (assignment, user) => {
-  if (user.role === ROLES.ADMIN) {
+  const userRole = normalizeRole(user.role);
+
+  if (userRole === ROLES.ADMIN) {
     return true;
   }
 
-  if (user.role !== ROLES.HR) {
+  if (userRole !== ROLES.HR) {
     return false;
   }
   const assignedById =
@@ -308,12 +310,13 @@ const canManageAssignment = (assignment, user) => {
 const canAccessAssignment = (assignment, user, options = {}) => {
   const { managerView = false } = options;
   const scope = normalizeAssignmentScope(assignment);
+  const userRole = normalizeRole(user.role);
 
-  if (user.role === ROLES.ADMIN) {
+  if (userRole === ROLES.ADMIN) {
     return true;
   }
 
-  if (managerView && user.role === ROLES.HR) {
+  if (managerView && userRole === ROLES.HR) {
     return canManageAssignment(assignment, user);
   }
 
@@ -375,14 +378,16 @@ const buildAccessibleAssignmentFilter = async (
   user,
   { managerView = false } = {},
 ) => {
-  if (user.role === ROLES.ADMIN) {
+  const userRole = normalizeRole(user.role);
+
+  if (userRole === ROLES.ADMIN) {
     return {};
   }
 
   const clauses = [{ assignedUsers: user.id }, { assignedTo: user.id }];
   const reviewerAssignmentIds = await getReviewerAssignmentIds(user.id);
 
-  if (managerView && user.role === ROLES.HR) {
+  if (managerView && userRole === ROLES.HR) {
     clauses.push({ assignedBy: user.id });
   }
 
@@ -773,7 +778,7 @@ exports.getAssignableUsers = async (req, res) => {
       };
     } else if (userRole === ROLES.USER) {
       filter = {
-        role: { $in: getRoleVariants(ROLES.HR) },
+        role: { $in: getRoleVariants(ROLES.USER) },
         isActive: true,
       };
     }
@@ -1025,8 +1030,8 @@ const canTransferToRole = (transferrerRole, recipientRole) => {
   }
 
   if (transferrerRole === ROLES.USER) {
-    // USER can only transfer to HR
-    return recipientRole === ROLES.HR;
+    // USER can only transfer to USER
+    return recipientRole === ROLES.USER;
   }
 
   return false;
@@ -1040,18 +1045,13 @@ const canUserTransferAssignment = (assignment, transferrerUser) => {
     return true;
   }
 
-  if (transferrerRole === ROLES.HR) {
-    // HR can transfer assignments they own/manage
-    return canManageAssignment(assignment, transferrerUser);
-  }
-
-  if (transferrerRole === ROLES.USER) {
-    // USER can only transfer assignments assigned to them
+  if (transferrerRole === ROLES.HR || transferrerRole === ROLES.USER) {
+    // HR and USER can only transfer assignments assigned to themselves
     const assignedTo =
       assignment.assignedTo?._id?.toString?.() ||
       assignment.assignedTo?.toString?.() ||
       null;
-    return assignedTo === transferrerUser.id;
+    return assignedTo === String(transferrerUser.id);
   }
 
   return false;
@@ -1190,12 +1190,19 @@ exports.transferAssignment = async (req, res) => {
 
     try {
       if (req && typeof req.logActivity === "function") {
+        const transferredAt = new Date();
         req.logActivity({
           action: "ASSIGNMENT_TRANSFERRED",
           module: "Assignments",
           description: `Transferred assignment "${assignment.title}" from ${oldAssignee?.name || "unassigned"} to ${newAssignee.name}`,
           entityId: assignment._id?.toString(),
           entityType: "Assignment",
+          metadata: {
+            fromUser: oldAssignee?._id?.toString?.() || null,
+            toUser: newAssignee._id?.toString?.() || null,
+            transferredBy: req.user.id?.toString?.() || req.user.id,
+            timestamp: transferredAt,
+          },
         });
       }
     } catch (err) {
@@ -1502,10 +1509,18 @@ exports.submitAssignment = async (req, res) => {
         .json({ success: false, message: "Assignment not found" });
     }
 
-    if (!canAccessAssignment(assignment, req.user)) {
+    console.log(req.user.role);
+    console.log(req.user.id);
+    console.log(assignment.assignedTo);
+
+    const isOwner =
+      assignment.assignedTo?.toString() === req.user.id?.toString();
+    const isAdmin = normalizeRole(req.user.role) === ROLES.ADMIN;
+
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
-        message: "You can only submit your own assignments",
+        message: "Not authorized",
       });
     }
 
