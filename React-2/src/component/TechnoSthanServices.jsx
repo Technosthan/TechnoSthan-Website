@@ -24,14 +24,16 @@ const services = [
   },
   {
     title: "TECHNOSTHAN AGRITECH",
-    path: "/services/technosthan-agritech",
+    path: "https://agritech.technosthan.com/",
+      external: true,
     desc: "Agri-tech solutions, farm automation, and data-driven agriculture growth services.",
     icon: agritechIcon,
     img: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449"
   },
   {
     title: "TECHNOSTHAN IT SERVICES",
-    path: "/services/technosthan-it-services",
+    path: "https://it.technosthan.com/",
+      external: true,
     desc: "IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
     icon: itIcon,
     img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"

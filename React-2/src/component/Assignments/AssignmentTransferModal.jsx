@@ -18,10 +18,12 @@ const AssignmentTransferModal = ({
   onConfirm,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     if (open) {
       setSearchTerm("");
+      setShowDropdown(false);
     }
   }, [open, assignment?._id]);
 
@@ -52,11 +54,17 @@ const AssignmentTransferModal = ({
     });
   }, [assignment, availableUsers, searchTerm]);
 
+  const handleSuggestionClick = (user) => {
+    onRecipientChange(user._id);
+    setSearchTerm(user.name || "");
+    setShowDropdown(false);
+  };
+
   useEffect(() => {
-    console.log("Search:", searchTerm);
-    console.log("Available users:", availableUsers.length);
-    console.log("Filtered users:", filteredUsers.length);
-  }, [availableUsers.length, filteredUsers.length, searchTerm]);
+    console.log("searchTerm:", searchTerm);
+    console.log("availableUsers:", availableUsers);
+    console.log("filteredUsers:", filteredUsers);
+  }, [availableUsers, filteredUsers, searchTerm]);
 
   return (
     <AnimatePresence>
@@ -67,7 +75,7 @@ const AssignmentTransferModal = ({
           aria-modal="true"
           aria-labelledby="transfer-assignment-title"
         >
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-[32px] border border-white/10 bg-slate-900/95 shadow-2xl shadow-slate-950/40">
+          <div className="relative w-full max-w-2xl overflow-visible rounded-[32px] border border-white/10 bg-slate-900/95 shadow-2xl shadow-slate-950/40">
             <div className="flex flex-col gap-3 border-b border-white/10 bg-slate-950/80 px-6 py-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -115,7 +123,7 @@ const AssignmentTransferModal = ({
                 <label className="mb-2 block text-sm font-medium text-slate-300">
                   Search user
                 </label>
-                <div className="relative">
+                <div className="relative z-50 overflow-visible">
                   <Search
                     className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
                     size={16}
@@ -123,9 +131,49 @@ const AssignmentTransferModal = ({
                   <input
                     className={`${modalInputClassName} pl-11`}
                     value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => setShowDropdown(false), 150);
+                    }}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value);
+                      setShowDropdown(true);
+                    }}
                     placeholder="Search by name, email, or role"
                   />
+                  {showDropdown && searchTerm.trim().length > 0 ? (
+                    <div className="absolute left-0 top-full z-[9999] mt-2 w-full max-h-60 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-slate-950/40">
+                      {filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
+                          <button
+                            key={user._id}
+                            type="button"
+                            className={`flex w-full flex-col items-start gap-1 border-b border-white/5 px-4 py-3 text-left transition last:border-b-0 hover:bg-white/5 ${
+                              String(recipient) === String(user._id)
+                                ? "bg-emerald-500/10"
+                                : ""
+                            }`}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              handleSuggestionClick(user);
+                            }}
+                          >
+                            <span className="text-sm font-medium text-white">
+                              {user.name || "Unnamed user"}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {user.email || "No email"}
+                              {user.role ? ` - ${user.role}` : ""}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-slate-400">
+                          No users found
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

@@ -148,9 +148,9 @@ const AboutPage = () => {
 
       {/* WHY US */}
       <motion.section className="why-us-section" {...fadeIn}>
-        <h2>Why Choose Us</h2>
+        {/* <h2>Why Choose Us</h2> */}
 
-        <div className="check-list">
+        {/* <div className="check-list">
           {[
             "Modern Technology",
             "Scalable Solutions",
@@ -169,7 +169,7 @@ const AboutPage = () => {
               </div>
             </motion.div>
           ))}
-        </div>
+        </div> */}
       </motion.section>
 
     </div>

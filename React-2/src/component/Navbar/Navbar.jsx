@@ -112,13 +112,13 @@ const Navbar = () => {
           Contact
         </Link>
 
-        <Link
+        {/* <Link
           to="/social"
           onClick={handleClick}
           className={isActive("/social") ? "active" : ""}
         >
           Social Post
-        </Link>
+        </Link> */}
 
         <Link
           to={dashboardPath}
