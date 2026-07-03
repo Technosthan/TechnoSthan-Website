@@ -56,6 +56,7 @@ import ConsultingPage from "./pages/ConsultingPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CampaignPopup from "./component/CampaignPopup";
 import CampaignManager from "./component/AdminLayout/CampaignManager";
+import BusinessVerticals from "./component/AdminLayout/BusinessVerticals";
 import TermsConditions from "./pages/TermsConditions";
 import DataDeletion from "./pages/DataDeletion";
 
@@ -247,6 +248,15 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <CampaignManager />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/business-verticals"
+          element={
+            <ProtectedAdminRoute>
+              <BusinessVerticals />
             </ProtectedAdminRoute>
           }
         />

@@ -17,6 +17,7 @@ import { getStoredUser } from "../../utils/auth";
 import { getAssignments, getSubmissionMonitor } from "../../lib/assignments";
 import { useToast } from "../Toast/ToastProvider";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
+import TodaysTasks from "../Dashboard/TodaysTasks";
 import {
   DashboardActionLink,
   EmptyState,
@@ -46,6 +47,7 @@ const HRDashboard = () => {
   const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const canAccessAssignments = canAccessFeature("assignmentsEnabled");
+  const [showBell, setShowBell] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -138,7 +140,39 @@ const HRDashboard = () => {
     [analytics, recentSubmissions.length],
   );
 
-  
+  const quickActions = [
+    {
+      label: "Create Assignment",
+      description: "Launch new work for the team.",
+      icon: BriefcaseBusiness,
+      onClick: () => navigate("/hr/assignments"),
+    },
+    {
+      label: "Review Submissions",
+      description: "Clear the pending review queue.",
+      icon: ClipboardList,
+      onClick: () => navigate("/hr/assignments"),
+    },
+    {
+      label: "Pending Reviews",
+      description: `${analytics?.submissions?.submitted ?? 0} awaiting action.`,
+      icon: CheckCheck,
+      onClick: () => navigate("/hr/assignments"),
+    },
+    {
+      label: "Employee Activity",
+      description: "Check the latest delivery updates.",
+      icon: Layers3,
+      onClick: () => navigate("/hr/assignments"),
+    },
+    {
+      label: "Team Performance",
+      description: "See progress and completion rhythm.",
+      icon: ListTodo,
+      onClick: () => navigate("/hr/assignments"),
+    },
+  ];
+
   const analyticsCards = useMemo(
     () => [
       {
@@ -237,7 +271,8 @@ const HRDashboard = () => {
 
   return (
     <AdminLayout
-
+      title="HR Workspace"
+      subtitle="Manage assignments, reviews, and team delivery from one focused workspace."
     >
       <div className="space-y-5">
         <GlassPanel className="overflow-hidden">
@@ -282,13 +317,38 @@ const HRDashboard = () => {
 
         <GlassPanel>
           <SectionHeading
-            
+            eyebrow="Quick Actions"
+            title="HR shortcuts"
+            className="gap-2"
           />
-          
+          <div className="mt-4 grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {quickActions.map((item) => {
+              const Icon = item.icon;
+              return (
+                <motion.button
+                  key={item.label}
+                  whileHover={{ y: -2 }}
+                  className="rounded-[20px] border border-white/10 bg-slate-950/55 p-3 sm:p-4 text-left text-xs sm:text-sm transition hover:border-white/15 hover:bg-slate-950/70"
+                  onClick={item.onClick}
+                >
+                  <span className="flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-violet-500/15 text-violet-100">
+                    <Icon size={16} />
+                  </span>
+                  <p className="mt-2 sm:mt-3 font-semibold text-white">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 leading-5 text-slate-400">
+                    {item.description}
+                  </p>
+                </motion.button>
+              );
+            })}
+          </div>
         </GlassPanel>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div>
+            <TodaysTasks cardClassName="mb-5" />
             <GlassPanel>
               <SectionHeading
                 eyebrow="Recent Submissions"

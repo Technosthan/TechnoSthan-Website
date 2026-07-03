@@ -45,8 +45,10 @@ const loggingMiddleware = require("./middleware/loggingMiddleware");
 const settingsRoutes = require("./routes/settingsRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const campaignRoutes = require("./routes/campaignRoutes");
+const businessVerticalRoutes = require("./routes/businessVerticalRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const dailyTaskRoutes = require("./routes/dailyTaskRoutes");
+const adminBusinessVerticalRoutes = require("./routes/adminBusinessVerticalRoutes");
 const adminDailyTaskRoutes = require("./routes/adminDailyTaskRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const dailyTaskSchedulerService = require("./services/dailyTaskSchedulerService");
@@ -484,6 +486,12 @@ app.use(
 );
 
 app.use(
+  "/api/admin/business-verticals",
+
+  adminBusinessVerticalRoutes,
+);
+
+app.use(
   "/api/admin",
 
   adminDailyTaskRoutes,
@@ -511,6 +519,12 @@ app.use(
   "/api/campaigns",
 
   campaignRoutes,
+);
+
+app.use(
+  "/api/business-verticals",
+
+  businessVerticalRoutes,
 );
 
 // POSTS ROUTES

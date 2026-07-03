@@ -42,7 +42,7 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
             },
             {
               label: "Daily Tasks",
-              to: "/dashboard/daily-tasks",
+              to: "/daily-tasks",
               icon: CalendarCheck,
             },
           ].filter(Boolean)
@@ -53,11 +53,16 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               to: "/admin/assignments",
               icon: BriefcaseBusiness,
             },
-            
+
             {
               label: "Workspace Services",
               to: "/admin/workspace-services",
               icon: ChartNoAxesCombined,
+            },
+            {
+              label: "Business Verticals",
+              to: "/admin/business-verticals",
+              icon: BriefcaseBusiness,
             },
             {
               label: "Campaign Manager",
