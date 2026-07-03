@@ -225,7 +225,9 @@ const fetchPreviewUrl = async (
       ...(isNewUpload && attachment?.mimeType
         ? { mimeType: attachment.mimeType }
         : {}),
-      ...(isNewUpload && attachment?.format ? { format: attachment.format } : {}),
+      ...(isNewUpload && attachment?.format
+        ? { format: attachment.format }
+        : {}),
     };
     const { data } = await api.get(endpoint, {
       params: Object.keys(requestParams).length ? requestParams : undefined,
@@ -260,6 +262,7 @@ const AssignmentDetails = ({
   const [submissionForm, setSubmissionForm] = useState({
     submissionLink: "",
     linkAttachments: "",
+    content: "",
     note: "",
     status: "submitted",
   });
@@ -279,6 +282,7 @@ const AssignmentDetails = ({
     setSubmissionForm({
       submissionLink: assignment.submissionLink || "",
       linkAttachments: "",
+      content: "",
       note: "",
       status: assignment.status === "submitted" ? "submitted" : "in_progress",
     });
@@ -292,7 +296,11 @@ const AssignmentDetails = ({
 
   useEffect(() => {
     setPreviewSourceIndex(0);
-  }, [previewAttachment?.previewUrl, previewAttachment?.secure_url, previewAttachment?.url]);
+  }, [
+    previewAttachment?.previewUrl,
+    previewAttachment?.secure_url,
+    previewAttachment?.url,
+  ]);
 
   if (!assignment) {
     return null;
@@ -612,6 +620,18 @@ const AssignmentDetails = ({
         />
 
         <textarea
+          className={`${fieldClassName} min-h-[150px] max-h-[600px] resize-y overflow-auto`}
+          placeholder="Write your assignment content, report, notes, article, or text submission here..."
+          value={submissionForm.content}
+          onChange={(event) =>
+            setSubmissionForm((current) => ({
+              ...current,
+              content: event.target.value,
+            }))
+          }
+        />
+
+        <textarea
           className={`${fieldClassName} min-h-[110px]`}
           placeholder="Progress update, blockers, or submission note"
           value={submissionForm.note}
@@ -643,6 +663,7 @@ const AssignmentDetails = ({
               onSubmitWork({
                 submissionLink: submissionForm.submissionLink,
                 attachments: allAttachments,
+                content: submissionForm.content,
                 note: submissionForm.note,
                 status: submissionForm.status,
               })
@@ -753,6 +774,11 @@ const AssignmentDetails = ({
                     {getSubmissionStatusLabel(submission.status)}
                   </span>
                 </div>
+                {submission.content ? (
+                  <p className="mt-3 text-sm leading-6 text-slate-300 whitespace-pre-wrap">
+                    {submission.content}
+                  </p>
+                ) : null}
                 {submission.note ? (
                   <p className="mt-3 text-sm leading-6 text-slate-300">
                     {submission.note}

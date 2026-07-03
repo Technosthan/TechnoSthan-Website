@@ -2,17 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Bell,
   BriefcaseBusiness,
   CircleCheckBig,
   Clock3,
   FolderUp,
   Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getMyAssignments } from "../../lib/assignments";
+import api from "../../lib/api";
 import { getStoredUser } from "../../utils/auth";
+import { useToast } from "../Toast/ToastProvider";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
+import useDashboardNotifications from "../../hooks/useDashboardNotifications";
 import AdminLayout from "../AdminLayout/AdminLayout";
 import {
   EmptyState,
@@ -33,6 +35,7 @@ import {
 } from "./dashboardHelpers";
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [assignments, setAssignments] = useState([]);
   const [assignmentAnalytics, setAssignmentAnalytics] = useState({
     total: 0,
@@ -44,7 +47,19 @@ function Dashboard() {
   const [user, setUser] = useState(getStoredUser());
   const { canAccessFeature } = useWorkspaceAccess();
   const canAccessAssignments = canAccessFeature("assignmentsEnabled");
-
+  const { showToast } = useToast();
+  const {
+    notifications: taskNotifications,
+  } = useDashboardNotifications({
+    enabled: canAccessAssignments,
+    onNewNotification: (notification) => {
+      showToast({
+        title: notification.title,
+        message: notification.message,
+        type: "info",
+      });
+    },
+  });
   useEffect(() => {
     const loadDashboard = async () => {
       try {
@@ -152,26 +167,7 @@ function Dashboard() {
   );
 
   const notifications = useMemo(() => {
-    const items = [];
-    const now = new Date().getTime();
-
-    const overdueAssignment = assignments.find((assignment) => {
-      const deadline = assignment.deadline
-        ? new Date(assignment.deadline).getTime()
-        : null;
-      return deadline && deadline < now && assignment.status !== "completed";
-    });
-
-    if (overdueAssignment) {
-      items.push({
-        id: "overdue",
-        title: "An assignment is overdue",
-        message: `${overdueAssignment.title} needs attention right away.`,
-        time: overdueAssignment.deadline,
-        tone: "rose",
-        icon: <Bell size={16} />,
-      });
-    }
+    const items = [...taskNotifications];
 
     const submittedAssignment = assignments.find(
       (assignment) => assignment.status === "submitted",
@@ -201,7 +197,7 @@ function Dashboard() {
     }
 
     return items;
-  }, [assignments]);
+  }, [assignments, taskNotifications]);
 
   const progressCards = useMemo(
     () =>
@@ -217,9 +213,7 @@ function Dashboard() {
   );
 
   return (
-    <AdminLayout
-      
-    >
+    <AdminLayout>
       <div className="space-y-5">
         <GlassPanel className="overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.12),_transparent_36%)]" />
@@ -408,20 +402,22 @@ function Dashboard() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-          <GlassPanel>
-            <SectionHeading
-              eyebrow="Activity Timeline"
-              title="Recent movement"
-              description="Track submissions, reviews, and completions in sequence."
-            />
-            <div className="mt-4">
-              <Timeline
-                items={activityItems}
-                emptyTitle="No activity yet"
-                emptyMessage="Assignment events will show here as work progresses."
+          <div>
+            <GlassPanel>
+              <SectionHeading
+                eyebrow="Activity Timeline"
+                title="Recent movement"
+                description="Track submissions, reviews, and completions in sequence."
               />
-            </div>
-          </GlassPanel>
+              <div className="mt-4">
+                <Timeline
+                  items={activityItems}
+                  emptyTitle="No activity yet"
+                  emptyMessage="Assignment events will show here as work progresses."
+                />
+              </div>
+            </GlassPanel>
+          </div>
 
           <GlassPanel compact>
             <SectionHeading

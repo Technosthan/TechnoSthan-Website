@@ -14,6 +14,8 @@ import { useNavigate } from "react-router-dom";
 import AdminLayout from "../AdminLayout/AdminLayout";
 import api from "../../lib/api";
 import { getAssignments, getSubmissionMonitor } from "../../lib/assignments";
+import { useToast } from "../Toast/ToastProvider";
+import useDashboardNotifications from "../../hooks/useDashboardNotifications";
 import {
   DashboardActionLink,
   EmptyState,
@@ -35,6 +37,7 @@ import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { canAccessFeature } = useWorkspaceAccess();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,6 +48,15 @@ const AdminDashboard = () => {
   const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [userAnalytics, setUserAnalytics] = useState(null);
   const [assignmentAnalytics, setAssignmentAnalytics] = useState(null);
+  const { notifications: taskNotifications } = useDashboardNotifications({
+    enabled: true,
+    onNewNotification: (notification) =>
+      showToast({
+        title: notification.title,
+        message: notification.message,
+        type: "info",
+      }),
+  });
 
   const fetchData = async () => {
     try {
@@ -244,7 +256,7 @@ const AdminDashboard = () => {
   );
 
   const notifications = useMemo(() => {
-    const items = [];
+    const items = [...taskNotifications];
 
     if ((assignmentAnalytics?.overdue ?? 0) > 0) {
       items.push({
@@ -278,13 +290,15 @@ const AdminDashboard = () => {
     }
 
     return items;
-  }, [assignmentAnalytics, recentAssignments, recentSubmissions]);
+  }, [
+    assignmentAnalytics,
+    recentAssignments,
+    recentSubmissions,
+    taskNotifications,
+  ]);
 
   return (
-    <AdminLayout
-      title="Admin Control Center"
-      subtitle="Operational visibility across users, assignments, submissions, and workspace activity."
-    >
+    <AdminLayout>
       <div className="space-y-5">
         <GlassPanel className="overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.12),_transparent_35%)]" />

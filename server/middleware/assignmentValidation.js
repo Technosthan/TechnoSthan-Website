@@ -265,7 +265,10 @@ exports.validateUpdateAssignment = (req, res, next) => {
 
 exports.validateAssignmentTransfer = (req, res, next) => {
   const assignedTo = String(
-    req.body.assignedTo || req.body.assignedUserId || req.body.targetUserId || "",
+    req.body.assignedTo ||
+      req.body.assignedUserId ||
+      req.body.targetUserId ||
+      "",
   ).trim();
   const note = String(req.body.note || "").trim();
 
@@ -295,6 +298,7 @@ exports.validateAssignmentTransfer = (req, res, next) => {
 
 exports.validateAssignmentSubmission = (req, res, next) => {
   const { submissionLink, status, note } = req.body;
+  const content = String(req.body.content || "").trim();
   const attachments = normalizeAttachments(req.body.attachments);
 
   if (status !== undefined && !["in_progress", "submitted"].includes(status)) {
@@ -304,10 +308,15 @@ exports.validateAssignmentSubmission = (req, res, next) => {
     );
   }
 
-  if (!submissionLink && (!attachments || attachments.length === 0) && !note) {
+  if (
+    !submissionLink &&
+    (!attachments || attachments.length === 0) &&
+    !note &&
+    !content
+  ) {
     return sendValidationError(
       res,
-      "Provide a submission link, uploaded file, attachments, or a submission note",
+      "Provide a submission link, uploaded file, attachments, a submission note, or submission content",
     );
   }
 
@@ -316,6 +325,7 @@ exports.validateAssignmentSubmission = (req, res, next) => {
   }
 
   req.body.attachments = attachments || [];
+  req.body.content = content;
   next();
 };
 

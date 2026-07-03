@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../AdminLayout/AdminLayout";
+import api from "../../lib/api";
+import { getStoredUser } from "../../utils/auth";
 import { getAssignments, getSubmissionMonitor } from "../../lib/assignments";
 import { useToast } from "../Toast/ToastProvider";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
@@ -136,39 +138,7 @@ const HRDashboard = () => {
     [analytics, recentSubmissions.length],
   );
 
-  const quickActions = [
-    {
-      label: "Create Assignment",
-      description: "Launch new work for the team.",
-      icon: BriefcaseBusiness,
-      onClick: () => navigate("/hr/assignments"),
-    },
-    {
-      label: "Review Submissions",
-      description: "Clear the pending review queue.",
-      icon: ClipboardList,
-      onClick: () => navigate("/hr/assignments"),
-    },
-    {
-      label: "Pending Reviews",
-      description: `${analytics?.submissions?.submitted ?? 0} awaiting action.`,
-      icon: CheckCheck,
-      onClick: () => navigate("/hr/assignments"),
-    },
-    {
-      label: "Employee Activity",
-      description: "Check the latest delivery updates.",
-      icon: Layers3,
-      onClick: () => navigate("/hr/assignments"),
-    },
-    {
-      label: "Team Performance",
-      description: "See progress and completion rhythm.",
-      icon: ListTodo,
-      onClick: () => navigate("/hr/assignments"),
-    },
-  ];
-
+  
   const analyticsCards = useMemo(
     () => [
       {
@@ -224,31 +194,29 @@ const HRDashboard = () => {
     [recentAssignments, recentSubmissions],
   );
 
-  const notifications = useMemo(
-    () =>
-      [
-        {
-          id: "pending",
-          title: "Pending submission reviews",
-          message: `${analytics?.submissions?.submitted ?? 0} submissions need an HR decision.`,
-          time: recentSubmissions[0]?.submittedAt || new Date().toISOString(),
-          tone: "amber",
-        },
-        {
-          id: "rejected",
-          title: "Needs revision follow-up",
-          message: `${analytics?.submissions?.rejected ?? 0} items require revision guidance.`,
-          time: recentSubmissions.find((item) => item.status === "rejected")
-            ?.submittedAt,
-          tone: "rose",
-        },
-      ].filter((item) =>
-        item.id === "pending"
-          ? (analytics?.submissions?.submitted ?? 0) > 0
-          : (analytics?.submissions?.rejected ?? 0) > 0,
-      ),
-    [analytics, recentSubmissions],
-  );
+  const notifications = useMemo(() => {
+    return [
+      {
+        id: "pending",
+        title: "Pending submission reviews",
+        message: `${analytics?.submissions?.submitted ?? 0} submissions need an HR decision.`,
+        time: recentSubmissions[0]?.submittedAt || new Date().toISOString(),
+        tone: "amber",
+      },
+      {
+        id: "rejected",
+        title: "Needs revision follow-up",
+        message: `${analytics?.submissions?.rejected ?? 0} items require revision guidance.`,
+        time: recentSubmissions.find((item) => item.status === "rejected")
+          ?.submittedAt,
+        tone: "rose",
+      },
+    ].filter((item) =>
+      item.id === "pending"
+        ? (analytics?.submissions?.submitted ?? 0) > 0
+        : (analytics?.submissions?.rejected ?? 0) > 0,
+    );
+  }, [analytics, recentSubmissions]);
 
   const priorityQueue = useMemo(
     () =>
@@ -269,8 +237,7 @@ const HRDashboard = () => {
 
   return (
     <AdminLayout
-      title="HR Workspace"
-      subtitle="Manage assignments, reviews, and team delivery from one focused workspace."
+
     >
       <div className="space-y-5">
         <GlassPanel className="overflow-hidden">
@@ -315,112 +282,90 @@ const HRDashboard = () => {
 
         <GlassPanel>
           <SectionHeading
-            eyebrow="Quick Actions"
-            title="HR shortcuts"
-            className="gap-2"
+            
           />
-          <div className="mt-4 grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {quickActions.map((item) => {
-              const Icon = item.icon;
-              return (
-                <motion.button
-                  key={item.label}
-                  whileHover={{ y: -2 }}
-                  className="rounded-[20px] border border-white/10 bg-slate-950/55 p-3 sm:p-4 text-left text-xs sm:text-sm transition hover:border-white/15 hover:bg-slate-950/70"
-                  onClick={item.onClick}
-                >
-                  <span className="flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-violet-500/15 text-violet-100">
-                    <Icon size={16} />
-                  </span>
-                  <p className="mt-2 sm:mt-3 font-semibold text-white">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 leading-5 text-slate-400">
-                    {item.description}
-                  </p>
-                </motion.button>
-              );
-            })}
-          </div>
+          
         </GlassPanel>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-          <GlassPanel>
-            <SectionHeading
-              eyebrow="Recent Submissions"
-              title="Review queue"
-              description="See who submitted, what needs review, and where action is urgent."
-              action={
-                <DashboardActionLink
-                  onClick={() => navigate("/hr/assignments")}
-                >
-                  Review all
-                </DashboardActionLink>
-              }
-            />
-
-            <div className="mt-5 space-y-3">
-              {loading ? (
-                <SkeletonList rows={4} />
-              ) : !canAccessAssignments ? (
-                <EmptyState
-                  title="Assignments are disabled"
-                  message="This workspace cannot access assignment workflows right now."
-                />
-              ) : recentSubmissions.length === 0 ? (
-                <EmptyState
-                  title="No submissions yet"
-                  message="Once users submit their work, this queue will show employee, assignment, review status, and review shortcuts."
-                />
-              ) : (
-                recentSubmissions.map((submission) => (
-                  <div
-                    key={submission._id}
-                    className="rounded-[24px] border border-white/10 bg-slate-950/55 px-4 py-4 transition hover:border-white/15 hover:bg-slate-950/70"
+          <div>
+            <GlassPanel>
+              <SectionHeading
+                eyebrow="Recent Submissions"
+                title="Review queue"
+                description="See who submitted, what needs review, and where action is urgent."
+                action={
+                  <DashboardActionLink
+                    onClick={() => navigate("/hr/assignments")}
                   >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-white">
-                            {submission.assignmentId?.title || "Assignment"}
+                    Review all
+                  </DashboardActionLink>
+                }
+              />
+
+              <div className="mt-5 space-y-3">
+                {loading ? (
+                  <SkeletonList rows={4} />
+                ) : !canAccessAssignments ? (
+                  <EmptyState
+                    title="Assignments are disabled"
+                    message="This workspace cannot access assignment workflows right now."
+                  />
+                ) : recentSubmissions.length === 0 ? (
+                  <EmptyState
+                    title="No submissions yet"
+                    message="Once users submit their work, this queue will show employee, assignment, review status, and review shortcuts."
+                  />
+                ) : (
+                  recentSubmissions.map((submission) => (
+                    <div
+                      key={submission._id}
+                      className="rounded-[24px] border border-white/10 bg-slate-950/55 px-4 py-4 transition hover:border-white/15 hover:bg-slate-950/70"
+                    >
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-white">
+                              {submission.assignmentId?.title || "Assignment"}
+                            </p>
+                            <StatusBadge
+                              status={
+                                submission.status === "approved"
+                                  ? "completed"
+                                  : submission.status === "submitted"
+                                    ? "submitted"
+                                    : "rejected"
+                              }
+                            />
+                          </div>
+                          <p className="mt-2 text-sm text-slate-400">
+                            {submission.userId?.name || "Employee"} submitted{" "}
+                            {getRelativeTimeLabel(submission.submittedAt)}
                           </p>
-                          <StatusBadge
-                            status={
-                              submission.status === "approved"
-                                ? "completed"
-                                : submission.status === "submitted"
-                                  ? "submitted"
-                                  : "rejected"
-                            }
-                          />
+                          <p className="mt-1 text-xs text-slate-500">
+                            Review status:{" "}
+                            {submission.status === "approved"
+                              ? "Approved"
+                              : submission.status === "rejected"
+                                ? "Needs Revision"
+                                : "Pending"}
+                          </p>
                         </div>
-                        <p className="mt-2 text-sm text-slate-400">
-                          {submission.userId?.name || "Employee"} submitted{" "}
-                          {getRelativeTimeLabel(submission.submittedAt)}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Review status:{" "}
-                          {submission.status === "approved"
-                            ? "Approved"
-                            : submission.status === "rejected"
-                              ? "Needs Revision"
-                              : "Pending"}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="rounded-full bg-cyan-500/15 px-3 py-1.5 text-xs font-semibold text-cyan-100"
-                          onClick={() => navigate("/hr/assignments")}
-                        >
-                          Quick Review
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="rounded-full bg-cyan-500/15 px-3 py-1.5 text-xs font-semibold text-cyan-100"
+                            onClick={() => navigate("/hr/assignments")}
+                          >
+                            Quick Review
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </GlassPanel>
+                  ))
+                )}
+              </div>
+            </GlassPanel>
+          </div>
 
           <div className="space-y-5">
             <GlassPanel compact>

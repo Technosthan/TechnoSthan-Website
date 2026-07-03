@@ -130,7 +130,7 @@ const AboutPage = () => {
       </section>
 
       {/* MISSION & VISION */}
-      <section className="split-section">
+      {/* <section className="split-section">
         <motion.div className="glass-card mission" {...fadeIn}>
           <h2>Our Mission</h2>
           <p>
@@ -144,7 +144,7 @@ const AboutPage = () => {
             To become a global technology partner, shaping the future of digital innovation.
           </p>
         </motion.div>
-      </section>
+      </section> */}
 
       {/* WHY US */}
       <motion.section className="why-us-section" {...fadeIn}>

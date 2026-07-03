@@ -65,6 +65,7 @@ const submissionSchema = new mongoose.Schema(
     fileName: { type: String, trim: true, default: "" },
     mimeType: { type: String, trim: true, default: "" },
     size: { type: Number, default: 0 },
+    content: { type: String, trim: true, default: "" },
     note: { type: String, trim: true, default: "" },
     feedback: { type: String, trim: true, default: "" },
     reviewerId: {

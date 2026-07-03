@@ -45,6 +45,11 @@ const loggingMiddleware = require("./middleware/loggingMiddleware");
 const settingsRoutes = require("./routes/settingsRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const campaignRoutes = require("./routes/campaignRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const dailyTaskRoutes = require("./routes/dailyTaskRoutes");
+const adminDailyTaskRoutes = require("./routes/adminDailyTaskRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const dailyTaskSchedulerService = require("./services/dailyTaskSchedulerService");
 const { loadWorkspaceSettings } = require("./middleware/workspaceSettings");
 const {
   initializeDefaultPermissions,
@@ -478,6 +483,12 @@ app.use(
   adminRoutes,
 );
 
+app.use(
+  "/api/admin",
+
+  adminDailyTaskRoutes,
+);
+
 // PERMISSION ROUTES
 
 app.use(
@@ -518,6 +529,28 @@ app.use(
   platformRoutes,
 );
 
+// TASK / REMINDER ROUTES
+
+app.use(
+  "/api/tasks",
+
+  taskRoutes,
+);
+
+app.use(
+  "/api/daily-tasks",
+
+  dailyTaskRoutes,
+);
+
+// USER NOTIFICATION ROUTES
+
+app.use(
+  "/api/notifications",
+
+  notificationRoutes,
+);
+
 // ================= HEALTH CHECK =================
 
 app.get(
@@ -550,6 +583,10 @@ io.on(
       socket.join("hrs");
     }
 
+    if (socket.user?.role === ROLES.USER) {
+      socket.join("users");
+    }
+
     socket.on(
       "disconnect",
 
@@ -571,6 +608,7 @@ mongoose
     console.log("✅ MongoDB Connected");
     // Initialize default permissions on startup
     await initializeDefaultPermissions();
+    await dailyTaskSchedulerService.startDailyTaskScheduler(app);
   })
 
   .catch((err) => {

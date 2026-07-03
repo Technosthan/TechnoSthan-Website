@@ -773,7 +773,9 @@ exports.getAssignableUsers = async (req, res) => {
 
     if (userRole === ROLES.HR) {
       filter = {
-        role: { $in: [...getRoleVariants(ROLES.HR), ...getRoleVariants(ROLES.USER)] },
+        role: {
+          $in: [...getRoleVariants(ROLES.HR), ...getRoleVariants(ROLES.USER)],
+        },
         isActive: true,
       };
     } else if (userRole === ROLES.USER) {
@@ -1544,6 +1546,7 @@ exports.submitAssignment = async (req, res) => {
       fileName: latestProcessed?.name || latestProcessed?.fileName || "",
       mimeType: latestProcessed?.mimeType || latestProcessed?.fileType || "",
       size: latestProcessed?.size || 0,
+      content: String(req.body.content || "").trim(),
       note: String(req.body.note || "").trim(),
       status: "submitted",
       revision,

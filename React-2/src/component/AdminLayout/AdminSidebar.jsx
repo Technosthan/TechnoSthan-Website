@@ -1,5 +1,6 @@
 import {
   BriefcaseBusiness,
+  CalendarCheck,
   ChartNoAxesCombined,
   House,
   LogOut,
@@ -25,6 +26,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
             to: "/hr/assignments",
             icon: BriefcaseBusiness,
           },
+          {
+            label: "Daily Tasks",
+            to: "/hr/daily-tasks",
+            icon: CalendarCheck,
+          },
         ].filter(Boolean)
       : role === "USER"
         ? [
@@ -34,6 +40,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               to: "/my-assignments",
               icon: BriefcaseBusiness,
             },
+            {
+              label: "Daily Tasks",
+              to: "/dashboard/daily-tasks",
+              icon: CalendarCheck,
+            },
           ].filter(Boolean)
         : [
             { label: "Overview", to: "/admin", icon: House },
@@ -42,6 +53,7 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               to: "/admin/assignments",
               icon: BriefcaseBusiness,
             },
+            
             {
               label: "Workspace Services",
               to: "/admin/workspace-services",
@@ -57,6 +69,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               label: "Activity Logs",
               to: "/admin/activity-logs",
               icon: Megaphone,
+            },
+            canAccessFeature("assignmentsEnabled") && {
+              label: "Daily Tasks",
+              to: "/admin/daily-tasks",
+              icon: CalendarCheck,
             },
           ].filter(Boolean);
 

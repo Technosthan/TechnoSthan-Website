@@ -3,6 +3,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useLocation,
 } from "react-router-dom";
 
@@ -28,8 +29,10 @@ import AdminAssignments from "./component/Assignments/AdminAssignments";
 import AdminUsers from "./component/AdminLayout/AdminUsers";
 import ActivityLogs from "./component/AdminLayout/ActivityLogs";
 import WorkspaceServices from "./component/AdminLayout/WorkspaceServices";
+import DailyTasksManager from "./component/AdminLayout/DailyTasksManager";
 import MyAssignments from "./component/Assignments/MyAssignments";
 import HRDashboard from "./component/HRDashboard/HRDashboard";
+import UserDailyTasks from "./component/DailyTasks/UserDailyTasks";
 
 import ProtectedRoute from "./component/Protected/ProtectedRoute";
 import ProtectedAdminRoute from "./component/Protected/ProtectedAdminRoute";
@@ -83,7 +86,10 @@ function App() {
     "/login",
     "/register",
     "/dashboard",
+    "/dashboard/daily-tasks",
+    "/daily-tasks",
     "/hr",
+    "/hr/daily-tasks",
     "/my-assignments",
   ];
 
@@ -188,6 +194,26 @@ function App() {
           }
         />
 
+        <Route
+          path="/daily-tasks"
+          element={<Navigate to="/dashboard/daily-tasks" replace />}
+        />
+
+        <Route
+          path="/dashboard/daily-tasks"
+          element={
+            <FeatureRoute
+              featureKey="assignmentsEnabled"
+              blockedTitle="Daily tasks unavailable"
+              blockedMessage="Daily tasks are disabled or not assigned to your account."
+            >
+              <ProtectedRoute>
+                <UserDailyTasks />
+              </ProtectedRoute>
+            </FeatureRoute>
+          }
+        />
+
         {/* ADMIN */}
         <Route
           path="/admin"
@@ -244,6 +270,15 @@ function App() {
         />
 
         <Route
+          path="/admin/daily-tasks"
+          element={
+            <ProtectedAdminRoute>
+              <DailyTasksManager />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
           path="/hr"
           element={
             <FeatureRoute
@@ -268,6 +303,21 @@ function App() {
             >
               <RoleRoute roles={["HR", "ADMIN"]}>
                 <AdminAssignments />
+              </RoleRoute>
+            </FeatureRoute>
+          }
+        />
+
+        <Route
+          path="/hr/daily-tasks"
+          element={
+            <FeatureRoute
+              featureKey="assignmentsEnabled"
+              blockedTitle="Daily tasks unavailable"
+              blockedMessage="Daily tasks are disabled or not assigned to your account."
+            >
+              <RoleRoute roles={["HR", "ADMIN"]}>
+                <UserDailyTasks />
               </RoleRoute>
             </FeatureRoute>
           }

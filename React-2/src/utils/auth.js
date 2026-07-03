@@ -64,3 +64,14 @@ export const getDashboardPath = (role) => {
   }
   return "/dashboard";
 };
+
+export const getDailyTasksPath = (role) => {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === "HR") {
+    return "/hr/daily-tasks";
+  }
+  if (normalizedRole === "USER") {
+    return "/dashboard/daily-tasks";
+  }
+  return "/admin/daily-tasks";
+};

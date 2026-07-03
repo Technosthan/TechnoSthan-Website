@@ -38,8 +38,42 @@ const AssignmentTable = ({
   loading = false,
   emptyMessage = "No assignments found",
 }) => {
-  const rows = Array.isArray(assignments) ? assignments : [];
+ const assignmentRows = Array.isArray(assignments) ? assignments : [];
+
+const assigneeSearchText = (filters.assignedToSearch || "").toLowerCase();
+
+const rows = assigneeSearchText
+  ? assignmentRows.filter((assignment) => {
+      const name = assignment?.assignedTo?.name?.toLowerCase() || "";
+      const email = assignment?.assignedTo?.email?.toLowerCase() || "";
+      const role = assignment?.assignedToRole?.toLowerCase() || "";
+      const label = getAssignmentTargetLabel(assignment)?.toLowerCase() || "";
+
+      return (
+        name.includes(assigneeSearchText) ||
+        email.includes(assigneeSearchText) ||
+        role.includes(assigneeSearchText) ||
+        label.includes(assigneeSearchText)
+      );
+    })
+  : assignmentRows;
   const hasRows = rows.length > 0;
+
+  const assigneeSearchValue =
+    filters.assignedToSearch ||
+    (() => {
+      const selectedAssignee = assignees.find(
+        (user) => user?._id === filters.assignedTo,
+      );
+      return selectedAssignee?.name || "";
+    })();
+
+ const handleAssigneeSearchChange = (event) => {
+  const searchValue = event.target.value;
+
+  onFilterChange("assignedToSearch", searchValue);
+  onFilterChange("assignedTo", "");
+};
 
   return (
     <div className="hidden overflow-hidden rounded-[24px] border border-white/10 bg-slate-900/70 shadow-xl shadow-slate-950/30 backdrop-blur lg:block">
@@ -53,6 +87,7 @@ const AssignmentTable = ({
             <col className="w-[12%]" />
             <col className="w-[13%]" />
           </colgroup>
+
           <thead className="sticky top-0 z-10 bg-slate-950/90 backdrop-blur">
             <tr className="border-y border-white/10 bg-slate-950/75 align-top">
               <th className="px-4 py-3">
@@ -71,6 +106,7 @@ const AssignmentTable = ({
                   />
                 </div>
               </th>
+
               <th className="px-4 py-3">
                 {showAssigneeFilter ? (
                   <div className="relative">
@@ -80,20 +116,8 @@ const AssignmentTable = ({
                     />
                     <input
                       className={`${headerFieldClassName} pl-9`}
-                      value={filters.assignedTo || ""}
-                      onChange={(event) => {
-                        const searchTerm = event.target.value.toLowerCase();
-                        // Find matching assignee
-                        const matchingAssignee = assignees.find(
-                          (user) =>
-                            user.name.toLowerCase().includes(searchTerm) ||
-                            user.email.toLowerCase().includes(searchTerm),
-                        );
-                        onFilterChange(
-                          "assignedTo",
-                          matchingAssignee ? matchingAssignee._id : searchTerm,
-                        );
-                      }}
+                      value={assigneeSearchValue}
+                      onChange={handleAssigneeSearchChange}
                       placeholder="Search assignee"
                     />
                   </div>
@@ -103,6 +127,7 @@ const AssignmentTable = ({
                   </div>
                 )}
               </th>
+
               <th className="px-4 py-3">
                 <select
                   className={headerFieldClassName}
@@ -118,6 +143,7 @@ const AssignmentTable = ({
                   <option value="urgent">Urgent</option>
                 </select>
               </th>
+
               <th className="px-4 py-3">
                 <select
                   className={headerFieldClassName}
@@ -132,9 +158,10 @@ const AssignmentTable = ({
                   <option value="submitted">Submitted</option>
                   <option value="completed">Completed</option>
                   <option value="rejected">Rejected</option>
-                  <option value="rejected">Transfer</option>
+                  <option value="transferred">Transfer</option>
                 </select>
               </th>
+
               <th className="px-4 py-3">
                 <select
                   className={headerFieldClassName}
@@ -147,8 +174,10 @@ const AssignmentTable = ({
                   <option value="overdue">Overdue</option>
                 </select>
               </th>
+
               <th className="px-4 py-3 text-right">
                 <button
+                  type="button"
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/5"
                   onClick={onReset}
                 >
@@ -158,22 +187,17 @@ const AssignmentTable = ({
               </th>
             </tr>
           </thead>
+
           <tbody className="divide-y divide-white/5">
             {loading && !hasRows ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-8 text-center text-slate-400"
-                >
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   Loading assignments...
                 </td>
               </tr>
             ) : !hasRows ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-8 text-center text-slate-400"
-                >
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   {emptyMessage}
                 </td>
               </tr>
@@ -187,9 +211,11 @@ const AssignmentTable = ({
                     <p className="truncate font-semibold text-white">
                       {assignment?.title || "Untitled assignment"}
                     </p>
+
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
                       {assignment?.description || "No description provided."}
                     </p>
+
                     <div className="mt-3">
                       <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-slate-500">
                         <span>Progress</span>
@@ -197,6 +223,7 @@ const AssignmentTable = ({
                           {getAssignmentProgress(assignment)}%
                         </span>
                       </div>
+
                       <div className="h-2 overflow-hidden rounded-full bg-white/8">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500"
@@ -207,6 +234,7 @@ const AssignmentTable = ({
                       </div>
                     </div>
                   </td>
+
                   <td className="px-4 py-4 align-top text-sm text-slate-200">
                     <div className="flex items-center gap-3">
                       {assignment?.assignedTo?.avatar ? (
@@ -223,6 +251,7 @@ const AssignmentTable = ({
                           )}
                         </div>
                       )}
+
                       <div className="min-w-0">
                         <p className="truncate font-medium text-white">
                           {getAssignmentTargetLabel(assignment)}
@@ -235,6 +264,7 @@ const AssignmentTable = ({
                       </div>
                     </div>
                   </td>
+
                   <td className="px-4 py-4 align-top">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getPriorityStyle(
@@ -244,6 +274,7 @@ const AssignmentTable = ({
                       {assignment?.priority || "Medium"}
                     </span>
                   </td>
+
                   <td className="px-4 py-4 align-top">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getStatusStyle(
@@ -253,6 +284,7 @@ const AssignmentTable = ({
                       {(assignment?.status || "pending").replace("_", " ")}
                     </span>
                   </td>
+
                   <td
                     className={`px-4 py-4 align-top text-sm ${
                       isOverdue(assignment) ? "text-rose-300" : "text-slate-200"
@@ -271,9 +303,11 @@ const AssignmentTable = ({
                       </p>
                     </div>
                   </td>
+
                   <td className="px-4 py-4 align-top">
                     <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                       <button
+                        type="button"
                         className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-white/20 hover:bg-white/10"
                         onClick={() => onView(assignment)}
                       >
@@ -282,9 +316,9 @@ const AssignmentTable = ({
 
                       {onTransfer && canTransferAssignment(assignment) && (
                         <button
+                          type="button"
                           className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-500/20 text-emerald-100 transition hover:bg-emerald-500/30"
                           onClick={() => onTransfer(assignment)}
-                          type="button"
                         >
                           <ArrowRightLeft size={15} />
                         </button>
@@ -292,6 +326,7 @@ const AssignmentTable = ({
 
                       {canEditAssignment(assignment) && (
                         <button
+                          type="button"
                           className="flex h-10 w-10 items-center justify-center rounded-full border border-indigo-400/20 bg-indigo-500/20 text-indigo-100 transition hover:bg-indigo-500/30"
                           onClick={() => onEdit(assignment)}
                         >
@@ -301,6 +336,7 @@ const AssignmentTable = ({
 
                       {canDeleteAssignment(assignment) && (
                         <button
+                          type="button"
                           className="flex h-10 w-10 items-center justify-center rounded-full border border-rose-400/20 bg-rose-500/20 text-rose-100 transition hover:bg-rose-500/30"
                           onClick={() => onDelete(assignment)}
                         >
