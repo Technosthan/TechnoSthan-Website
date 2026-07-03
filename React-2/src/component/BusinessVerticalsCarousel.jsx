@@ -51,7 +51,7 @@ const BusinessVerticalsCarousel = () => {
   return (
     <section className="business-verticals-carousel">
       <div className="business-verticals-heading">
-        <span>Our Business Verticals</span>
+        <h1>Our Business Verticals</h1>
         <p>
           Four flagship offerings that power TechnoSthan, plus any custom
           verticals added from the admin panel.
