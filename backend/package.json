@@ -1,0 +1,21 @@
+{
+  "name": "technosthan-innovation-hub-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "prisma:init": "prisma init --datasource-provider postgresql"
+  },
+  "dependencies": {
+    "cors": "^2.8.0",
+    "dotenv": "^16.4.1",
+    "express": "^4.19.2",
+    "nodemailer": "^7.0.1",
+    "prisma": "^5.9.3",
+    "@prisma/client": "^5.9.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

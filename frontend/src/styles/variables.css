@@ -1,0 +1,10 @@
+:root {
+  --bg: #030712;
+  --bg-soft: rgba(7, 19, 36, 0.8);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f8fbff;
+  --muted: #9aa9c2;
+  --cyan: #5ee7ff;
+  --blue: #6b8cff;
+  --purple: #8d5bff;
+}

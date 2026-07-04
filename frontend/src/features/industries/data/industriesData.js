@@ -1,0 +1,16 @@
+export const industriesData = [
+  "Agriculture & AgriTech",
+  "Education & EdTech",
+  "Healthcare",
+  "Manufacturing",
+  "Smart Cities",
+  "Telecommunications",
+  "Security & Surveillance",
+  "Defence Technologies",
+  "Renewable Energy",
+  "Retail & Commerce",
+  "Logistics & Supply Chain",
+  "Government Projects",
+  "Industrial Automation",
+  "Financial Technologies",
+];
