@@ -17,7 +17,8 @@ const services = [
   },
   {
     title: "TECHNOSTHAN INNOVATIONS HUB",
-    path: "/services/technosthan-innovations-hub",
+    path: "https://ih.technosthan.com/",
+      external: true,
     desc: "Product innovation, custom app development, and digital transformation solutions.",
     icon: innovationIcon,
     img: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0"

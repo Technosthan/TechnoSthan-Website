@@ -20,7 +20,8 @@ const ServicesPage = () => {
     },
     {
       title: "TECHNOSTHAN INNOVATIONS HUB",
-      path: "/services/technosthan-innovations-hub",
+      path: "https://ih.technosthan.com/",
+      external: true,
       desc: "Product innovation, custom application development, and digital transformation solutions.",
       icon: innovationIcon,
     },

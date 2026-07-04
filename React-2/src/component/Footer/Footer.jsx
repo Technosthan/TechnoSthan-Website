@@ -33,7 +33,7 @@ const Footer = () => {
           <Link to="/services/technosthan-hospitality">
             TechnoSthan Hospitality
           </Link>
-          <Link to="/services/technosthan-innovations-hub">
+          <Link to="https://ih.technosthan.com/">
             TechnoSthan Innovations Hub
           </Link>
           <a

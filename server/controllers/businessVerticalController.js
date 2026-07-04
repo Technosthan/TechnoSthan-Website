@@ -24,7 +24,7 @@ const DEFAULT_BUSINESS_VERTICALS = [
       "Product innovation, custom application development, and digital transformation solutions.",
     imageKey: "innovation",
     imageUrl: "DEFAULT_INNOVATION",
-    path: "/services/technosthan-innovations-hub",
+    path: "https://ih.technosthan.com/",
     isDefault: true,
     isActive: true,
     sortOrder: 2,

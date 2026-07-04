@@ -29,7 +29,8 @@ const AboutPage = () => {
     },
     {
       title: "TECHNOSTHAN INNOVATIONS HUB",
-      path: "/services/technosthan-innovations-hub",
+      path: "https://ih.technosthan.com/",
+      external: true,
       icon: innovationIcon,
       theme: 1,
       desc: "Product innovation, custom application development, and digital transformation solutions.",
@@ -37,6 +38,7 @@ const AboutPage = () => {
     {
       title: "TECHNOSTHAN AGRITECH",
       path: "https://agritech.technosthan.com",
+      external: true,
       icon: agritechIcon,
       theme: 2,
       desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services.",
@@ -44,6 +46,7 @@ const AboutPage = () => {
     {
       title: "TECHNOSTHAN IT SERVICES",
       path: "https://it.technosthan.com/", // ✅ FINAL CHANGE
+      external: true,
       icon: itIcon,
       theme: 3,
       desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
