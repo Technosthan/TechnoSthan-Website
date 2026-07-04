@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
+    "start": "npm run build:frontend && node src/server.js",
+    "build:frontend": "cd ../frontend && npm install && npm run build",
     "build": "cd ../frontend && npm install && npm run build",
     "prisma:init": "prisma init --datasource-provider postgresql"
   },

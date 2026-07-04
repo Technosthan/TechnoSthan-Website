@@ -9,13 +9,21 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+  },
   server: {
     port: 5173,
+    middlewareMode: false,
     proxy: {
       "/api": {
         target: "http://localhost:5000",
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    port: 5173,
   },
 });

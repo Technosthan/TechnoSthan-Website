@@ -25,32 +25,37 @@ const possiblePaths = [
   path.join(__dirname, "../../frontend/dist"),
   path.join(process.cwd(), "frontend/dist"),
   path.join(process.cwd(), "../frontend/dist"),
+  "/opt/render/project/frontend/dist", // Render's typical path
 ];
 
 let frontendPath = possiblePaths[0]; // default fallback
 for (const p of possiblePaths) {
   if (existsSync(p)) {
     frontendPath = p;
-    console.log(`Serving static files from: ${frontendPath}`);
+    console.log(`✓ Serving static files from: ${frontendPath}`);
     break;
   }
 }
 
-app.use(express.static(frontendPath));
+if (!existsSync(frontendPath)) {
+  console.warn(`⚠ Frontend dist not found. Checked paths:`, possiblePaths);
+}
+
+// Serve static files with high priority
+app.use(express.static(frontendPath, { maxAge: "1d", etag: false }));
 
 // API routes
 app.use("/api", routes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-// Fallback for SPA routing - serve index.html for all non-API routes
-app.get("*", (_req, res) => {
+// SPA fallback - serve index.html for all non-API routes
+// This must come BEFORE error middleware
+app.use((_req, res) => {
   const indexPath = path.join(frontendPath, "index.html");
   if (existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res
-      .status(404)
-      .json({ error: "Frontend not built. Please run: npm run build" });
+    res.status(404).json({ error: "Frontend not built. Run: npm run build" });
   }
 });
 
