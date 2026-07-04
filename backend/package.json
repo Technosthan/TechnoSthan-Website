@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "build": "cd ../frontend && npm install && npm run build",
     "prisma:init": "prisma init --datasource-provider postgresql"
   },
   "dependencies": {
