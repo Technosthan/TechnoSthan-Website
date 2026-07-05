@@ -33,11 +33,11 @@ export const updateForm = (formId, formData) =>
   axiosInstance.put(`/api/admin/forms/${formId}`, formData);
 export const deleteForm = (formId) =>
   axiosInstance.delete(`/api/admin/forms/${formId}`);
-export const getFormSubmissions = (formId) =>
-  axiosInstance.get(`/api/admin/forms/${formId}/submissions`);
+export const getFormSubmissions = (formId, params = {}) =>
+  axiosInstance.get(`/api/admin/forms/${formId}/responses`, { params });
 export const updateSubmissionStatus = (formId, submissionId, status) =>
   axiosInstance.patch(
-    `/api/admin/forms/${formId}/submissions/${submissionId}`,
+    `/api/admin/forms/${formId}/responses/${submissionId}`,
     { status },
   );
 

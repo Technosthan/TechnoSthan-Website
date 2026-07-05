@@ -41,6 +41,7 @@ import {
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { theme, appSettings } = useTheme();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
   const [dashboardData, setDashboardData] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -219,12 +220,14 @@ const DashboardPage = () => {
                 >
                   Edit Profile
                 </button>
-                <button
-                  onClick={() => navigate("/forms")}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 cursor-pointer text-white px-4 py-2 rounded-lg"
-                >
-                  Open Forms
-                </button>
+                {user?.role === "admin" && (
+                  <button
+                    onClick={() => navigate("/admin/dashboard/forms")}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 cursor-pointer text-white px-4 py-2 rounded-lg"
+                  >
+                    Open Forms
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

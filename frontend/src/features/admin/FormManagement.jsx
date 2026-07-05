@@ -1,784 +1,1565 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { toast } from "react-hot-toast";
-import { useTheme } from "../../contexts/ThemeContext";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   Plus,
-  Save,
-  Trash2,
-  Link as LinkIcon,
-  ExternalLink,
-  ShieldCheck,
+  Copy,
   Eye,
+  Pencil,
+  Trash2,
+  Save,
+  Send,
+  ArrowUp,
+  ArrowDown,
+  Copy as Duplicate,
+  Download,
+  ExternalLink,
+  FileText,
+  Settings,
+  MessageSquare,
+  ListPlus,
+  Upload,
 } from "lucide-react";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
-  getAllForms,
-  createForm,
-  updateForm,
-  deleteForm,
-  getFormSubmissions,
-  updateSubmissionStatus,
-} from "./adminApi";
+  buildPublicFormUrl,
+  createAdminForm,
+  deleteAdminForm,
+  deleteAdminFormResponse,
+  exportAdminFormResponses,
+  getAdminFormById,
+  getAdminForms,
+  getAdminFormResponse,
+  getAdminFormResponses,
+  updateAdminForm,
+} from "../forms/formsApi";
 
-const emptyForm = {
+const QUESTION_TYPES = [
+  { value: "shortAnswer", label: "Short Answer" },
+  { value: "paragraph", label: "Paragraph" },
+  { value: "email", label: "Email" },
+  { value: "phone", label: "Phone" },
+  { value: "number", label: "Number" },
+  { value: "date", label: "Date" },
+  { value: "dropdown", label: "Dropdown" },
+  { value: "radio", label: "Radio" },
+  { value: "checkbox", label: "Checkbox" },
+  { value: "fileUpload", label: "File Upload" },
+  { value: "imageUpload", label: "Image Upload" },
+  { value: "rating", label: "Rating" },
+  { value: "address", label: "Address" },
+  { value: "sectionHeading", label: "Section Heading" },
+];
+
+const EMPTY_FORM = {
   title: "",
   description: "",
-  externalLink: "",
-  roleVisibility: ["student"],
-  fields: [
-    {
-      key: "field1",
-      label: "Untitled field",
-      type: "text",
-      required: false,
-      options: [],
-      placeholder: "",
-      helpText: "",
-    },
-  ],
-  publicSlug: "",
-  active: true,
+  slug: "",
+  status: "draft",
+  successMessage: "Thanks for your response.",
+  notificationEmail: "",
+  confirmationEmailEnabled: false,
+  allowFileUpload: false,
+  expiresAt: "",
+  themeColor: "#16a34a",
+  questions: [],
 };
 
-const fieldTypes = [
-  "text",
-  "textarea",
-  "email",
-  "number",
-  "select",
-  "checkbox",
-  "file",
-  "date",
-];
+const createQuestion = () => ({
+  id: crypto.randomUUID(),
+  label: "Untitled question",
+  type: "shortAnswer",
+  placeholder: "",
+  helpText: "",
+  required: false,
+  options: [],
+  optionsText: "",
+  order: 0,
+});
 
-const roleOptions = [
-  { value: "admin", label: "Admin" },
-  { value: "editor", label: "Editor" },
-  { value: "viewer", label: "Viewer" },
-  { value: "student", label: "Student" },
-];
+const slugify = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 
-const FormManagement = ({ isOpen, onClose }) => {
+const formatDateTimeLocal = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const pad = (input) => String(input).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const formatDateTimeDisplay = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date
+    .toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .replace("am", "AM")
+    .replace("pm", "PM");
+};
+
+const parseOptionsText = (value = "") =>
+  String(value)
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const normalizeQuestion = (question, index) => ({
+  id: question._id || question.id || crypto.randomUUID(),
+  label: question.label || "",
+  type: question.type || "shortAnswer",
+  placeholder: question.placeholder || "",
+  helpText: question.helpText || "",
+  required: question.required === true,
+  options: Array.isArray(question.options)
+    ? question.options
+    : typeof question.options === "string"
+      ? parseOptionsText(question.options)
+      : [],
+  optionsText: Array.isArray(question.options)
+    ? question.options.join("\n")
+    : typeof question.options === "string"
+      ? question.options
+      : "",
+  order: typeof question.order === "number" ? question.order : index,
+});
+
+const normalizeForm = (form) => ({
+  ...EMPTY_FORM,
+  ...form,
+  status: form?.status || (form?.active ? "live" : "draft"),
+  slug: form?.slug || form?.publicSlug || "",
+  expiresAt: formatDateTimeLocal(form?.expiresAt),
+  questions: Array.isArray(form?.questions)
+    ? form.questions.map(normalizeQuestion)
+    : [],
+});
+
+const normalizeResponsesPayload = (payload) =>
+  Array.isArray(payload) ? payload : payload?.items || [];
+
+const getResponseText = (response) => {
+  const answers = Array.isArray(response?.answers) ? response.answers : [];
+  return [
+    response?.referenceId,
+    response?.name,
+    response?.email,
+    response?.phone,
+    ...answers.flatMap((answer) => {
+      if (answer.fileName) return [answer.fileName, answer.fileUrl || ""];
+      if (Array.isArray(answer.value)) return answer.value;
+      return [answer.value ?? ""];
+    }),
+  ]
+    .join(" ")
+    .toLowerCase();
+};
+
+const getAnswerText = (answer) => {
+  if (!answer) return "";
+  if (Array.isArray(answer.value)) return answer.value.join(", ");
+  return String(answer.value ?? "");
+};
+
+const getRatingValue = (response) => {
+  if (typeof response?.ratingValue === "number") return response.ratingValue;
+  const answers = Array.isArray(response?.answers) ? response.answers : [];
+  for (const answer of answers) {
+    const questionLabel = String(answer.question?.label || "").toLowerCase();
+    const isRating =
+      answer.question?.type === "rating" || /star|rating/.test(questionLabel);
+    if (!isRating) continue;
+    const value = Number.parseInt(getAnswerText(answer), 10);
+    if (Number.isFinite(value) && value >= 1 && value <= 5) return value;
+  }
+  return null;
+};
+
+const getInterestAnswer = (response) => {
+  if (response?.interestedAnswer) return response.interestedAnswer;
+  if (response?.availableAnswer) return response.availableAnswer;
+  const answers = Array.isArray(response?.answers) ? response.answers : [];
+  const match = answers.find((answer) => {
+    const label = String(answer.question?.label || "").toLowerCase();
+    return /interested|available to join|available|join|seminar/.test(label);
+  });
+  return match ? getAnswerText(match) : "";
+};
+
+const getScoreBucket = (score) => {
+  if (score >= 80) return "hot";
+  if (score >= 50) return "warm";
+  return "cold";
+};
+
+const formatSubmittedAt = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).replace("am", "AM").replace("pm", "PM");
+};
+
+const getFilterRange = (filter) => {
+  const now = new Date();
+  if (filter === "today") {
+    const from = new Date(now);
+    from.setHours(0, 0, 0, 0);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }
+  if (filter === "yesterday") {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 1);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
+  if (filter === "7days") {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 7);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }
+  if (filter === "30days") {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 30);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }
+  return {};
+};
+
+const FormManagement = () => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [forms, setForms] = useState([]);
-  const [selectedForm, setSelectedForm] = useState(null);
-  const [builder, setBuilder] = useState(emptyForm);
-  const [loadingForms, setLoadingForms] = useState(false);
-  const [saveLoading, setSaveLoading] = useState(false);
-  const [submissions, setSubmissions] = useState([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (isOpen) {
-      loadForms();
-      resetBuilder();
-    }
-  }, [isOpen]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("questions");
+  const [selectedFormId, setSelectedFormId] = useState(null);
+  const [draft, setDraft] = useState(EMPTY_FORM);
+  const [responses, setResponses] = useState([]);
+  const [selectedResponse, setSelectedResponse] = useState(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [search, setSearch] = useState("");
+  const [responsesTab, setResponsesTab] = useState("list");
+  const [responseSearch, setResponseSearch] = useState("");
+  const [responseFilter, setResponseFilter] = useState("all");
+  const [responseDateFrom, setResponseDateFrom] = useState("");
+  const [responseDateTo, setResponseDateTo] = useState("");
+  const [analysisLeadFilter, setAnalysisLeadFilter] = useState("all");
+  const [analysisRatingFilter, setAnalysisRatingFilter] = useState("all");
+  const [analysisInterestFilter, setAnalysisInterestFilter] = useState("all");
+  const [analysisAvailabilityFilter, setAnalysisAvailabilityFilter] = useState("all");
+  const [analysisEmailFilter, setAnalysisEmailFilter] = useState("all");
+  const [analysisPhoneFilter, setAnalysisPhoneFilter] = useState("all");
 
   const loadForms = async () => {
+    setLoading(true);
     try {
-      setLoadingForms(true);
-      const response = await getAllForms();
-      setForms(response.data.data || []);
-    } catch (err) {
-      toast.error("Unable to load forms.");
+      const res = await getAdminForms();
+      setForms(res.data?.data || []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load forms");
     } finally {
-      setLoadingForms(false);
+      setLoading(false);
     }
   };
 
-  const resetBuilder = () => {
-    setSelectedForm(null);
-    setBuilder(emptyForm);
-    setSubmissions([]);
-    setError("");
+  useEffect(() => {
+    loadForms();
+  }, []);
+
+  const selectForm = async (form, nextTab = "questions") => {
+    setSelectedFormId(form._id);
+    setActiveTab(nextTab);
+    setResponsesTab("list");
+    setSlugTouched(true);
+    setSelectedResponse(null);
+    try {
+      const [detailRes, responseRes] = await Promise.all([
+        getAdminFormById(form._id),
+        getAdminFormResponses(form._id),
+      ]);
+      setDraft(normalizeForm(detailRes.data?.data || form));
+      setResponses(normalizeResponsesPayload(responseRes.data?.data));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load form");
+    }
   };
 
-  const generatePublicSlug = () => {
-    const base = (builder.title || "form")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    const slug = `${base || "form"}-${Math.random().toString(36).slice(2, 8)}`;
-    setBuilder((prev) => ({ ...prev, publicSlug: slug }));
+  const startNewForm = () => {
+    setSelectedFormId(null);
+    setActiveTab("questions");
+    setResponsesTab("list");
+    setSlugTouched(false);
+    setDraft(EMPTY_FORM);
+    setResponses([]);
+    setSelectedResponse(null);
   };
 
-  const updateField = (index, field, value) => {
-    const updatedFields = [...builder.fields];
-    updatedFields[index] = {
-      ...updatedFields[index],
-      [field]: value,
-    };
-    setBuilder((prev) => ({ ...prev, fields: updatedFields }));
+  const updateDraft = (field, value) => {
+    setDraft((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "title" && !slugTouched) {
+        next.slug = slugify(value);
+      }
+      return next;
+    });
   };
 
-  const addField = () => {
-    setBuilder((prev) => ({
+  const updateQuestion = (index, field, value) => {
+    setDraft((prev) => ({
       ...prev,
-      fields: [
-        ...prev.fields,
-        {
-          key: `field${prev.fields.length + 1}`,
-          label: "New field",
-          type: "text",
-          required: false,
-          options: [],
-          placeholder: "",
-          helpText: "",
-        },
+      questions: prev.questions.map((question, currentIndex) =>
+        currentIndex === index ? { ...question, [field]: value } : question,
+      ),
+    }));
+  };
+
+  const addQuestion = () => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: [
+        ...prev.questions,
+        { ...createQuestion(), order: prev.questions.length },
       ],
     }));
   };
 
-  const removeField = (index) => {
-    if (builder.fields.length <= 1) return;
-    setBuilder((prev) => ({
+  const duplicateQuestion = (index) => {
+    setDraft((prev) => {
+      const source = prev.questions[index];
+      if (!source) return prev;
+      const copy = {
+        ...source,
+        id: crypto.randomUUID(),
+        label: `${source.label} copy`,
+        order: prev.questions.length,
+      };
+      return { ...prev, questions: [...prev.questions, copy] };
+    });
+  };
+
+  const removeQuestion = (index) => {
+    setDraft((prev) => ({
       ...prev,
-      fields: prev.fields.filter((_, idx) => idx !== index),
+      questions: prev.questions.filter((_, currentIndex) => currentIndex !== index),
     }));
   };
 
-  const selectForm = async (form) => {
-    setSelectedForm(form);
-    setBuilder({
-      title: form.title,
-      description: form.description || "",
-      externalLink: form.externalLink || "",
-      roleVisibility: form.roleVisibility || ["student"],
-      fields: form.fields || [],
-      publicSlug: form.publicSlug || "",
-      active: form.active,
-    });
-    setError("");
-    try {
-      const res = await getFormSubmissions(form._id);
-      setSubmissions(res.data.data || []);
-    } catch (err) {
-      toast.error("Unable to load submissions.");
-      setSubmissions([]);
-    }
-  };
-
-  const saveForm = async () => {
-    try {
-      setSaveLoading(true);
-      setError("");
-      if (!builder.title.trim()) {
-        setError("Form title is required.");
-        return;
-      }
-      const payload = {
-        ...builder,
-        fields: builder.fields.map((field) => ({
-          ...field,
-          options: field.options?.filter(Boolean) || [],
-        })),
+  const moveQuestion = (index, direction) => {
+    setDraft((prev) => {
+      const next = [...prev.questions];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return {
+        ...prev,
+        questions: next.map((question, order) => ({ ...question, order })),
       };
-      if (selectedForm) {
-        await updateForm(selectedForm._id, payload);
-        toast.success("Form updated successfully.");
+    });
+  };
+
+  const saveForm = async (nextStatus = draft.status) => {
+    if (!draft.title.trim()) {
+      toast.error("Form title is required");
+      return;
+    }
+
+    const payload = {
+      ...draft,
+      status: nextStatus,
+      slug: slugify(draft.slug || draft.title),
+      expiresAt: draft.expiresAt || null,
+      questions: draft.questions.map((question, order) => ({
+        label: question.label,
+        type: question.type,
+        placeholder: question.placeholder,
+        helpText: question.helpText,
+        required: question.required,
+        options: parseOptionsText(question.optionsText ?? question.options),
+        order,
+      })),
+    };
+
+    setSaving(true);
+    try {
+      const res = selectedFormId
+        ? await updateAdminForm(selectedFormId, payload)
+        : await createAdminForm(payload);
+
+      const saved = res.data?.data;
+      toast.success(selectedFormId ? "Form updated" : "Form created");
+      await loadForms();
+      if (saved?._id) {
+        await selectForm(saved);
       } else {
-        await createForm(payload);
-        toast.success("Form created successfully.");
+        startNewForm();
       }
-      await loadForms();
-      resetBuilder();
-    } catch (err) {
-      setError(err.response?.data?.message || "Unable to save form.");
+      setDraft((prev) => ({
+        ...prev,
+        status: nextStatus,
+      }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to save form");
     } finally {
-      setSaveLoading(false);
+      setSaving(false);
     }
   };
 
-  const removeSelectedForm = async () => {
-    if (!selectedForm) return;
+  const publishForm = async () => {
+    await saveForm("live");
+  };
+
+  const deleteForm = async (formId) => {
     if (!window.confirm("Delete this form permanently?")) return;
-
     try {
-      await deleteForm(selectedForm._id);
-      toast.success("Form deleted.");
+      await deleteAdminForm(formId);
+      toast.success("Form deleted");
+      if (selectedFormId === formId) startNewForm();
       await loadForms();
-      resetBuilder();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete form.");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete form");
     }
   };
 
-  const updateStatus = async (submissionId, status) => {
+  const copyLink = async (slug) => {
+    if (!slug) {
+      toast.error("Save the form first");
+      return;
+    }
+    const url = buildPublicFormUrl(slug);
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copied");
+  };
+
+  const previewLink = () => {
+    if (!draft.slug) return toast.error("Save the form first");
+    window.open(buildPublicFormUrl(draft.slug), "_blank", "noopener,noreferrer");
+  };
+
+  const exportResponses = async (params = {}, filenameSuffix = "responses") => {
+    if (!selectedFormId) return;
+    const res = await exportAdminFormResponses(selectedFormId, params);
+    const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${slugify(draft.slug || draft.title || "form")}-${filenameSuffix}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const openResponse = async (response) => {
+    if (!selectedFormId || !response?._id) return;
     try {
-      await updateSubmissionStatus(selectedForm._id, submissionId, status);
-      toast.success("Submission status updated.");
-      const res = await getFormSubmissions(selectedForm._id);
-      setSubmissions(res.data.data || []);
-    } catch (err) {
-      toast.error("Unable to update status.");
+      const res = await getAdminFormResponse(selectedFormId, response._id);
+      setSelectedResponse(res.data?.data || response);
+    } catch (error) {
+      setSelectedResponse(response);
     }
   };
 
-  const visibleFields = useMemo(() => builder.fields || [], [builder.fields]);
+  const deleteResponse = async (responseId) => {
+    if (!selectedFormId) return;
+    if (!window.confirm("Delete this response?")) return;
+    try {
+      await deleteAdminFormResponse(selectedFormId, responseId);
+      toast.success("Response deleted");
+      const res = await getAdminFormResponses(selectedFormId);
+      setResponses(normalizeResponsesPayload(res.data?.data));
+      if (selectedResponse?._id === responseId) setSelectedResponse(null);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete response");
+    }
+  };
 
-  if (!isOpen) return null;
+  const filteredForms = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return forms;
+    return forms.filter((form) =>
+      [form.title, form.slug, form.status]
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [forms, search]);
+
+  const responseTable = useMemo(() => {
+    const term = responseSearch.trim().toLowerCase();
+    const fromTime = responseDateFrom ? new Date(responseDateFrom).getTime() : null;
+    const toTime = responseDateTo ? new Date(responseDateTo).getTime() : null;
+
+    return responses
+      .filter((response) => {
+        const submittedTime = new Date(
+          response.submittedAt || response.createdAt,
+        ).getTime();
+        if (responseFilter === "today") {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (submittedTime < today.getTime()) return false;
+        }
+        if (responseFilter === "yesterday") {
+          const start = new Date();
+          start.setHours(0, 0, 0, 0);
+          start.setDate(start.getDate() - 1);
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          if (submittedTime < start.getTime() || submittedTime >= end.getTime()) return false;
+        }
+        if (responseFilter === "7days") {
+          const start = new Date();
+          start.setDate(start.getDate() - 7);
+          if (submittedTime < start.getTime()) return false;
+        }
+        if (responseFilter === "30days") {
+          const start = new Date();
+          start.setDate(start.getDate() - 30);
+          if (submittedTime < start.getTime()) return false;
+        }
+        if (fromTime && submittedTime < fromTime) return false;
+        if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1) return false;
+        if (!term) return true;
+        return getResponseText(response).includes(term);
+      })
+      .map((response) => {
+      const answers = Array.isArray(response.answers) ? response.answers : [];
+      const email =
+        response.email ||
+        answers.find((item) => item.question?.type === "email")?.value ||
+        "";
+      const phone =
+        response.phone ||
+        answers.find((item) => item.question?.type === "phone")?.value ||
+        "";
+      const name =
+        response.name ||
+        answers.find((item) => item.question?.type === "shortAnswer")?.value ||
+        answers.find((item) => /name/i.test(item.question?.label || ""))?.value ||
+        "";
+      return {
+        ...response,
+        name,
+        email,
+        phone,
+      };
+      });
+  }, [responseDateFrom, responseDateTo, responseFilter, responseSearch, responses]);
+
+  const analysisRows = useMemo(() => {
+    return responseTable.filter((response) => {
+      const score = Number(response.score || 0);
+      const leadCategory = response.leadCategory || getScoreBucket(score);
+      const ratingValue = getRatingValue(response);
+      const interestAnswer = getInterestAnswer(response);
+      const hasYes = /^(yes|y|true|interested|available|available to join)$/i.test(
+        String(interestAnswer || "").trim(),
+      );
+      const availableYes = Boolean(response.availableYes);
+      const hasEmail = Boolean(response.email);
+      const hasPhone = Boolean(response.phone);
+
+      if (analysisLeadFilter !== "all" && leadCategory !== analysisLeadFilter) {
+        return false;
+      }
+
+      if (
+        analysisRatingFilter !== "all" &&
+        Number(analysisRatingFilter) !== ratingValue
+      ) {
+        return false;
+      }
+
+      if (analysisInterestFilter === "yes" && !hasYes) return false;
+      if (analysisInterestFilter === "no" && hasYes) return false;
+      if (analysisAvailabilityFilter === "yes" && !availableYes) return false;
+      if (analysisAvailabilityFilter === "no" && availableYes) return false;
+      if (analysisEmailFilter === "yes" && !hasEmail) return false;
+      if (analysisEmailFilter === "no" && hasEmail) return false;
+      if (analysisPhoneFilter === "yes" && !hasPhone) return false;
+      if (analysisPhoneFilter === "no" && hasPhone) return false;
+
+      return true;
+    });
+  }, [
+    analysisEmailFilter,
+    analysisInterestFilter,
+    analysisAvailabilityFilter,
+    analysisLeadFilter,
+    analysisPhoneFilter,
+    analysisRatingFilter,
+    responseTable,
+  ]);
+
+  const analysisStats = useMemo(() => {
+    return analysisRows.reduce(
+      (acc, response) => {
+        const score = Number(response.score || 0);
+        const rating = getRatingValue(response);
+        const leadCategory = response.leadCategory || getScoreBucket(score);
+        if (leadCategory === "hot") acc.hot += 1;
+        if (leadCategory === "warm") acc.warm += 1;
+        if (leadCategory === "cold") acc.cold += 1;
+        if (rating) acc.ratings[rating] += 1;
+        if (response.interestedYes) acc.interestedYes += 1;
+        if (response.availableYes) acc.availableYes += 1;
+        if (response.email) acc.hasEmail += 1;
+        if (response.phone) acc.hasPhone += 1;
+        return acc;
+      },
+      {
+        hot: 0,
+        warm: 0,
+        cold: 0,
+        interestedYes: 0,
+        availableYes: 0,
+        hasEmail: 0,
+        hasPhone: 0,
+        ratings: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      },
+    );
+  }, [analysisRows]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4"
-    >
-      <div className="mx-auto flex max-w-350 flex-col gap-6 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-950">
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-3xl bg-green-500 p-3 text-white shadow-lg">
-                <ShieldCheck size={20} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold">Form Builder</h2>
-                <p className={theme.textSecondary}>
-                  Create custom forms, manage role visibility and review
-                  submissions.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={resetBuilder}
-              className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold"
-            >
-              New Form
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
-            >
-              Close
-            </button>
-          </div>
+    <div className={`p-6 ${theme.text} space-y-6`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-4xl font-black">Forms Builder</h1>
+          <p className={theme.textSecondary}>
+            Clean Google Forms-style builder for public links and response tracking.
+          </p>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-          <div
-            className={`${theme.card} border ${theme.border} rounded-3xl p-5`}
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={startNewForm}
+            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold"
           >
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-semibold">Forms</h3>
-                <p className={`text-sm ${theme.textSecondary}`}>
-                  Manage saved forms and review selected form responses.
-                </p>
-              </div>
-              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                {forms.length}
-              </span>
-            </div>
+            New Form
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/dashboard")}
+            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
 
+      <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+        <aside className={`${theme.card} rounded-3xl border ${theme.border} p-4 space-y-4`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">All Forms</h2>
+              <p className={`text-sm ${theme.textSecondary}`}>Title, slug, status, responses.</p>
+            </div>
+            <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-300">
+              {forms.length}
+            </span>
+          </div>
+
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+            placeholder="Search forms..."
+          />
+
+          {loading ? (
             <div className="space-y-3">
-              {loadingForms ? (
-                <div className="rounded-3xl border border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-slate-800">
-                  Loading forms...
-                </div>
-              ) : forms.length === 0 ? (
-                <div className="rounded-3xl border border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-slate-800">
-                  No forms yet. Create one to get started.
-                </div>
-              ) : (
-                forms.map((form) => (
+              <div className="h-24 animate-pulse rounded-3xl bg-white/10" />
+              <div className="h-24 animate-pulse rounded-3xl bg-white/10" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredForms.map((form) => (
+                <div
+                  key={form._id}
+                  className={`rounded-3xl border p-4 transition ${
+                    selectedFormId === form._id
+                      ? "border-green-500 bg-green-500/10"
+                      : `border-white/10 bg-white/5`
+                  }`}
+                >
                   <button
-                    key={form._id}
                     type="button"
                     onClick={() => selectForm(form)}
-                    className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
-                      selectedForm?._id === form._id
-                        ? "border-green-500 bg-green-50"
-                        : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
-                    }`}
+                    className="w-full text-left"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="font-semibold">{form.title}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {form.roleVisibility.join(", ")}
-                        </div>
+                        <div className="text-xs text-slate-400">/{form.slug}</div>
                       </div>
-                      <ExternalLink size={16} />
+                      <span className={`text-xs font-semibold ${form.status === "live" ? "text-green-300" : "text-amber-300"}`}>
+                        {form.status === "live" ? "Live" : "Draft"}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                      <span>{form.responseCount || 0} responses</span>
+                      <span>{formatDateTimeDisplay(form.createdAt)}</span>
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      Updated {formatDateTimeDisplay(form.updatedAt)}
                     </div>
                   </button>
-                ))
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selectForm(form)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs"
+                    >
+                      <Pencil size={14} /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectForm(form, "responses")}
+                      className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs"
+                    >
+                      <Eye size={14} /> Responses
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyLink(form.slug)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs"
+                    >
+                      <Copy size={14} /> Copy Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteForm(form._id)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {!filteredForms.length && (
+                <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-400">
+                  No forms found.
+                </div>
               )}
+            </div>
+          )}
+        </aside>
+
+        <section className={`${theme.card} rounded-3xl border ${theme.border} p-6 space-y-6`}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-black">{draft.title || "Untitled form"}</h2>
+              <p className={`text-sm ${theme.textSecondary}`}>
+                Public link: {draft.slug ? buildPublicFormUrl(draft.slug) : "Save to generate link"}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={previewLink}
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+              >
+                <ExternalLink size={16} /> Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => copyLink(draft.slug)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+              >
+                <Copy size={16} /> Copy Link
+              </button>
+              <button
+                type="button"
+                onClick={() => saveForm("draft")}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold disabled:opacity-50"
+              >
+                <Save size={16} /> Save
+              </button>
+              <button
+                type="button"
+                onClick={publishForm}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                <Send size={16} /> Publish
+              </button>
             </div>
           </div>
 
-          <div
-            className={`${theme.card} border ${theme.border} rounded-3xl p-6`}
-          >
-            <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-6">
-                <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/80">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-semibold">Form details</h3>
-                      <p className={`text-sm ${theme.textSecondary}`}>
-                        Add title, roles and fields for the form.
-                      </p>
-                    </div>
-                    <div className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                      {selectedForm ? "Editing" : "New"}
-                    </div>
-                  </div>
+          <div className="flex flex-wrap gap-2 border-b border-white/10 pb-2">
+            {[
+              { id: "questions", label: "Questions", icon: ListPlus },
+              { id: "settings", label: "Settings", icon: Settings },
+              { id: "responses", label: "Responses", icon: MessageSquare },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold ${
+                    active ? "bg-green-600 text-white" : "bg-white/5 text-slate-300"
+                  }`}
+                >
+                  <Icon size={16} /> {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium">Title</label>
-                      <input
-                        value={builder.title}
-                        onChange={(e) =>
-                          setBuilder((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className={`${theme.input} mt-2 w-full rounded-3xl border ${theme.border} px-4 py-3`}
-                        placeholder="Form title"
-                      />
-                    </div>
+          {activeTab === "questions" && (
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Form Title</label>
+                  <input
+                    value={draft.title}
+                    onChange={(e) => updateDraft("title", e.target.value)}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                    placeholder="Internship Application"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Slug / Public Route</label>
+                  <input
+                    value={draft.slug}
+                    onChange={(e) => {
+                      setSlugTouched(true);
+                      updateDraft("slug", slugify(e.target.value));
+                    }}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                    placeholder="internship-application"
+                  />
+                  <p className="mt-2 text-xs text-slate-400">Public URL: /forms/{draft.slug || "slug"}</p>
+                </div>
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium">
-                        Description
-                      </label>
-                      <textarea
-                        value={builder.description}
-                        onChange={(e) =>
-                          setBuilder((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        rows={3}
-                        className={`${theme.input} mt-2 w-full rounded-3xl border ${theme.border} px-4 py-3 resize-none`}
-                        placeholder="Optional description"
-                      />
-                    </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold">Description</label>
+                <textarea
+                  value={draft.description}
+                  onChange={(e) => updateDraft("description", e.target.value)}
+                  rows={3}
+                  className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                  placeholder="Describe the form..."
+                />
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium">
-                        External form link
-                      </label>
-                      <input
-                        value={builder.externalLink}
-                        onChange={(e) =>
-                          setBuilder((prev) => ({
-                            ...prev,
-                            externalLink: e.target.value,
-                          }))
-                        }
-                        className={`${theme.input} mt-2 w-full rounded-3xl border ${theme.border} px-4 py-3`}
-                        placeholder="https://google.com/forms/..."
-                      />
-                    </div>
+              <div className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div>
+                  <div className="font-semibold">Questions</div>
+                  <div className="text-sm text-slate-400">Add unlimited questions.</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={addQuestion}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white"
+                >
+                  <Plus size={16} /> Add Question
+                </button>
+              </div>
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div>
-                        <label className="block text-sm font-medium">
-                          Status
+              <div className="space-y-4">
+                {draft.questions.map((question, index) => {
+                  const type = question.type;
+                  const isChoice = ["dropdown", "radio", "checkbox"].includes(type);
+                  return (
+                    <div key={question.id} className="rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold">Question {index + 1}</div>
+                          <div className="text-xs text-slate-400">Drag-free reorder with arrows</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => moveQuestion(index, -1)} className="rounded-xl border border-white/10 p-2">
+                            <ArrowUp size={14} />
+                          </button>
+                          <button type="button" onClick={() => moveQuestion(index, 1)} className="rounded-xl border border-white/10 p-2">
+                            <ArrowDown size={14} />
+                          </button>
+                          <button type="button" onClick={() => duplicateQuestion(index)} className="rounded-xl border border-white/10 p-2">
+                            <Duplicate size={14} />
+                          </button>
+                          <button type="button" onClick={() => removeQuestion(index)} className="rounded-xl border border-red-500/30 p-2 text-red-300">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">Question Label</label>
+                          <input
+                            value={question.label}
+                            onChange={(e) => updateQuestion(index, "label", e.target.value)}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            placeholder="Enter question text"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">Question Type</label>
+                          <select
+                            value={question.type}
+                            onChange={(e) => updateQuestion(index, "type", e.target.value)}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          >
+                            {QUESTION_TYPES.map((item) => (
+                              <option key={item.value} value={item.value}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">Placeholder</label>
+                          <input
+                            value={question.placeholder}
+                            onChange={(e) => updateQuestion(index, "placeholder", e.target.value)}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">Help Text</label>
+                          <input
+                            value={question.helpText}
+                            onChange={(e) => updateQuestion(index, "helpText", e.target.value)}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-4">
+                        <label className="inline-flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={question.required}
+                            onChange={(e) => updateQuestion(index, "required", e.target.checked)}
+                          />
+                          Required
                         </label>
-                        <select
-                          value={builder.active ? "live" : "disabled"}
-                          onChange={(e) =>
-                            setBuilder((prev) => ({
-                              ...prev,
-                              active: e.target.value === "live",
-                            }))
-                          }
-                          className={`${theme.input} mt-2 w-full rounded-3xl border ${theme.border} px-4 py-3`}
-                        >
-                          <option value="live">Live</option>
-                          <option value="disabled">Disabled</option>
-                        </select>
+                        <span className="text-xs text-slate-400">Type: {question.type}</span>
                       </div>
 
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-sm font-medium">
-                            Public slug
-                          </label>
-                          <button
-                            type="button"
-                            onClick={generatePublicSlug}
-                            className="text-sm text-green-600 hover:underline"
-                          >
-                            Generate
-                          </button>
+                      {isChoice && (
+                        <div className="mt-4">
+                          <label className="mb-2 block text-sm font-semibold">Options</label>
+                          <textarea
+                            value={question.optionsText ?? ""}
+                            onChange={(e) =>
+                              updateQuestion(
+                                index,
+                                "optionsText",
+                                e.target.value,
+                              )
+                            }
+                            rows={4}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                            placeholder="One option per line"
+                          />
                         </div>
-                        <input
-                          value={builder.publicSlug}
-                          onChange={(e) =>
-                            setBuilder((prev) => ({
-                              ...prev,
-                              publicSlug: e.target.value,
-                            }))
-                          }
-                          className={`${theme.input} mt-2 w-full rounded-3xl border ${theme.border} px-4 py-3`}
-                          placeholder="Auto-generated when saved"
-                        />
-                      </div>
+                      )}
                     </div>
+                  );
+                })}
 
-                    <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                      <div className="text-sm font-semibold">
-                        Visible to roles
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {roleOptions.map((role) => (
-                          <label
-                            key={role.value}
-                            className="inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={builder.roleVisibility.includes(
-                                role.value,
-                              )}
-                              onChange={(e) => {
-                                setBuilder((prev) => {
-                                  const next = prev.roleVisibility.includes(
-                                    role.value,
-                                  )
-                                    ? prev.roleVisibility.filter(
-                                        (item) => item !== role.value,
-                                      )
-                                    : [...prev.roleVisibility, role.value];
-                                  return {
-                                    ...prev,
-                                    roleVisibility: next.length
-                                      ? next
-                                      : [role.value],
-                                  };
-                                });
-                              }}
-                              className="h-4 w-4 rounded border-slate-300 text-green-600"
-                            />
-                            {role.label}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4 rounded-3xl border border-slate-200 p-5 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">Form fields</h3>
-                      <p className={`text-sm ${theme.textSecondary}`}>
-                        Add fields and define their input type.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={addField}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      <Plus size={16} /> Add field
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {visibleFields.map((field, index) => (
-                      <div
-                        key={field.key}
-                        className="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <div className="text-sm font-semibold">
-                              {field.label}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {field.type} field
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeField(index)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
-                          >
-                            <Trash2 size={14} /> Remove
-                          </button>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Label
-                            </label>
-                            <input
-                              value={field.label}
-                              onChange={(e) =>
-                                updateField(index, "label", e.target.value)
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3`}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Key
-                            </label>
-                            <input
-                              value={field.key}
-                              onChange={(e) =>
-                                updateField(index, "key", e.target.value)
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3`}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Type
-                            </label>
-                            <select
-                              value={field.type}
-                              onChange={(e) =>
-                                updateField(index, "type", e.target.value)
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3`}
-                            >
-                              {fieldTypes.map((type) => (
-                                <option key={type} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Required
-                            </label>
-                            <select
-                              value={field.required ? "yes" : "no"}
-                              onChange={(e) =>
-                                updateField(
-                                  index,
-                                  "required",
-                                  e.target.value === "yes",
-                                )
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3`}
-                            >
-                              <option value="yes">Yes</option>
-                              <option value="no">No</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Placeholder
-                            </label>
-                            <input
-                              value={field.placeholder}
-                              onChange={(e) =>
-                                updateField(
-                                  index,
-                                  "placeholder",
-                                  e.target.value,
-                                )
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3`}
-                            />
-                          </div>
-                        </div>
-
-                        {field.type === "select" && (
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Select options
-                            </label>
-                            <textarea
-                              value={field.options.join("\n")}
-                              onChange={(e) =>
-                                updateField(
-                                  index,
-                                  "options",
-                                  e.target.value
-                                    .split("\n")
-                                    .map((item) => item.trim()),
-                                )
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3 resize-none`}
-                              rows={3}
-                              placeholder="One option per line"
-                            />
-                          </div>
-                        )}
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div>
-                            <label className="block text-sm font-medium">
-                              Help text
-                            </label>
-                            <input
-                              value={field.helpText}
-                              onChange={(e) =>
-                                updateField(index, "helpText", e.target.value)
-                              }
-                              className={`${theme.input} mt-2 w-full rounded-2xl border ${theme.border} px-3 py-3`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="rounded-3xl bg-red-50 p-4 text-sm text-red-700">
-                    {error}
+                {!draft.questions.length && (
+                  <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-400">
+                    Add your first question to start building.
                   </div>
                 )}
               </div>
+            </div>
+          )}
 
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-slate-200 p-5 dark:border-slate-800">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Submission queue</h3>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
-                      {submissions.length} records
-                    </span>
-                  </div>
-
-                  {selectedForm && submissions.length > 0 ? (
-                    <div className="space-y-3">
-                      {submissions.map((submission) => (
-                        <div
-                          key={submission._id}
-                          className="rounded-3xl border border-slate-200 p-4 dark:border-slate-800"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="font-semibold">
-                                {submission.userName || "Anonymous"}
-                              </div>
-                              <div className="text-sm text-slate-500 dark:text-slate-400">
-                                {submission.userEmail ||
-                                  submission.role ||
-                                  "No contact"}
-                              </div>
-                            </div>
-                            <div className="text-sm rounded-2xl bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                              {submission.status}
-                            </div>
-                          </div>
-
-                          <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                            {Object.entries(submission.values || {}).map(
-                              ([key, value]) => (
-                                <div
-                                  key={key}
-                                  className="grid grid-cols-[140px_1fr] gap-3"
-                                >
-                                  <span className="font-medium text-slate-700 dark:text-slate-200">
-                                    {key}
-                                  </span>
-                                  <span>{String(value)}</span>
-                                </div>
-                              ),
-                            )}
-                          </div>
-
-                          <div className="mt-4 flex items-center gap-2">
-                            {[
-                              "pending",
-                              "reviewed",
-                              "approved",
-                              "rejected",
-                            ].map((statusOption) => (
-                              <button
-                                key={statusOption}
-                                type="button"
-                                onClick={() =>
-                                  updateStatus(submission._id, statusOption)
-                                }
-                                className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
-                              >
-                                {statusOption}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-3xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-slate-800">
-                      Select a form to review submissions.
-                    </div>
-                  )}
+          {activeTab === "settings" && (
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Status</label>
+                  <select
+                    value={draft.status}
+                    onChange={(e) => updateDraft("status", e.target.value)}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="live">Live</option>
+                  </select>
                 </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Theme Color</label>
+                  <input
+                    value={draft.themeColor}
+                    onChange={(e) => updateDraft("themeColor", e.target.value)}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                    placeholder="#16a34a"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Expiry Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={draft.expiresAt}
+                    onChange={(e) => updateDraft("expiresAt", e.target.value)}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                  />
+                  <p className="mt-2 text-xs text-slate-400">
+                    Leave empty if the form should never expire.
+                  </p>
+                </div>
+              </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/80">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold">Live sharing</h3>
-                      <p className={`text-sm ${theme.textSecondary}`}>
-                        Share the public form link with any selected role.
-                      </p>
-                    </div>
-                    <ExternalLink size={20} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Success Message</label>
+                  <textarea
+                    value={draft.successMessage}
+                    onChange={(e) => updateDraft("successMessage", e.target.value)}
+                    rows={3}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Admin Notification Email</label>
+                    <input
+                      value={draft.notificationEmail}
+                      onChange={(e) => updateDraft("notificationEmail", e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="admin@example.com"
+                    />
                   </div>
-                  {builder.publicSlug ? (
-                    <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-300">
-                      <div className="font-medium">Public URL</div>
-                      <a
-                        href={`${window.location.origin}/forms/${builder.publicSlug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 block truncate text-green-700 hover:text-green-900 dark:text-green-300"
-                      >
-                        {`${window.location.origin}/forms/${builder.publicSlug}`}
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-400">
-                      Generate the form once saved to get a public link.
-                    </div>
-                  )}
+                  <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={draft.confirmationEmailEnabled}
+                      onChange={(e) => updateDraft("confirmationEmailEnabled", e.target.checked)}
+                    />
+                    Send confirmation email to submitter
+                  </label>
+                  <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={draft.allowFileUpload}
+                      onChange={(e) => updateDraft("allowFileUpload", e.target.checked)}
+                    />
+                    Allow file/image uploads
+                  </label>
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === "responses" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold">Responses</h3>
+                  <p className={`text-sm ${theme.textSecondary}`}>{responseTable.length} submissions</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportResponses(
+                        {
+                          search: responseSearch,
+                          ...getFilterRange(responseFilter),
+                          from: responseDateFrom || getFilterRange(responseFilter).from,
+                          to: responseDateTo || getFilterRange(responseFilter).to,
+                        },
+                        "filtered",
+                      )
+                    }
+                    className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    <Download size={16} /> Export CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResponsesTab((prev) => (prev === "list" ? "analysis" : "list"))}
+                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    {responsesTab === "list" ? "Interest Analysis" : "Response List"}
+                  </button>
+                </div>
+              </div>
+
+              {responsesTab === "analysis" ? (
+                <div className="space-y-5">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      { label: "Hot Leads", value: "hot", count: analysisStats.hot },
+                      { label: "Warm Leads", value: "warm", count: analysisStats.warm },
+                      { label: "Cold Leads", value: "cold", count: analysisStats.cold },
+                      { label: "5 Star", value: "5", count: analysisStats.ratings[5] },
+                      { label: "Interested Yes", value: "interested", count: analysisStats.interestedYes },
+                      { label: "Available to Join", value: "available", count: analysisStats.availableYes },
+                      { label: "Has Phone", value: "phone", count: analysisStats.hasPhone },
+                      { label: "Has Email", value: "email", count: analysisStats.hasEmail },
+                    ].map((card) => {
+                      const active =
+                        (card.value === "hot" && analysisLeadFilter === "hot") ||
+                        (card.value === "warm" && analysisLeadFilter === "warm") ||
+                        (card.value === "cold" && analysisLeadFilter === "cold") ||
+                        (card.value === "5" && analysisRatingFilter === "5") ||
+                        (card.value === "interested" && analysisInterestFilter === "yes") ||
+                        (card.value === "available" && analysisAvailabilityFilter === "yes") ||
+                        (card.value === "phone" && analysisPhoneFilter === "yes") ||
+                        (card.value === "email" && analysisEmailFilter === "yes");
+
+                      return (
+                        <button
+                          key={card.label}
+                          type="button"
+                          onClick={() => {
+                            if (card.value === "hot" || card.value === "warm" || card.value === "cold") {
+                              setAnalysisLeadFilter(card.value);
+                              setAnalysisRatingFilter("all");
+                              setAnalysisInterestFilter("all");
+                              setAnalysisEmailFilter("all");
+                              setAnalysisPhoneFilter("all");
+                            } else if (card.value === "5") {
+                              setAnalysisLeadFilter("all");
+                              setAnalysisRatingFilter("5");
+                            } else if (card.value === "interested") {
+                              setAnalysisInterestFilter("yes");
+                            } else if (card.value === "available") {
+                              setAnalysisAvailabilityFilter("yes");
+                            } else if (card.value === "phone") {
+                              setAnalysisPhoneFilter("yes");
+                            } else if (card.value === "email") {
+                              setAnalysisEmailFilter("yes");
+                            }
+                          }}
+                          className={`rounded-3xl border p-4 text-left transition ${
+                            active
+                              ? "border-green-500 bg-green-500/10"
+                              : "border-white/10 bg-white/5 hover:border-green-500/40"
+                          }`}
+                        >
+                          <div className="text-xs uppercase tracking-[0.18em] text-slate-400">{card.label}</div>
+                          <div className="mt-2 text-3xl font-black">{card.count}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-3">
+                    <select
+                      value={analysisRatingFilter}
+                      onChange={(e) => setAnalysisRatingFilter(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    >
+                      <option value="all">All Ratings</option>
+                      <option value="5">5 Star</option>
+                      <option value="4">4 Star</option>
+                      <option value="3">3 Star</option>
+                      <option value="2">2 Star</option>
+                      <option value="1">1 Star</option>
+                    </select>
+                    <select
+                      value={analysisInterestFilter}
+                      onChange={(e) => setAnalysisInterestFilter(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    >
+                      <option value="all">All Interest</option>
+                      <option value="yes">Interested Yes</option>
+                      <option value="no">Interested No</option>
+                    </select>
+                    <select
+                      value={analysisAvailabilityFilter}
+                      onChange={(e) => setAnalysisAvailabilityFilter(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    >
+                      <option value="all">Availability Any</option>
+                      <option value="yes">Available Yes</option>
+                      <option value="no">Available No</option>
+                    </select>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                      <select
+                        value={analysisEmailFilter}
+                        onChange={(e) => setAnalysisEmailFilter(e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                      >
+                        <option value="all">Email Any</option>
+                        <option value="yes">Email Available</option>
+                        <option value="no">No Email</option>
+                      </select>
+                      <select
+                        value={analysisPhoneFilter}
+                        onChange={(e) => setAnalysisPhoneFilter(e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                      >
+                        <option value="all">Phone Any</option>
+                        <option value="yes">Phone Available</option>
+                        <option value="no">No Phone</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))]">
+                    <input
+                      value={responseSearch}
+                      onChange={(e) => setResponseSearch(e.target.value)}
+                      placeholder="Search name, email, phone, reference, answers..."
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    />
+                    <select
+                      value={responseFilter}
+                      onChange={(e) => setResponseFilter(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    >
+                      <option value="all">All time</option>
+                      <option value="today">Today</option>
+                      <option value="7days">Last 7 days</option>
+                      <option value="30days">Last 30 days</option>
+                    </select>
+                    <input
+                      type="date"
+                      value={responseDateFrom}
+                      onChange={(e) => setResponseDateFrom(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    />
+                    <input
+                      type="date"
+                      value={responseDateTo}
+                      onChange={(e) => setResponseDateTo(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResponseSearch("");
+                        setResponseFilter("all");
+                        setResponseDateFrom("");
+                        setResponseDateTo("");
+                        setAnalysisLeadFilter("all");
+                        setAnalysisRatingFilter("all");
+                        setAnalysisInterestFilter("all");
+                        setAnalysisAvailabilityFilter("all");
+                        setAnalysisEmailFilter("all");
+                        setAnalysisPhoneFilter("all");
+                      }}
+                      className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold lg:col-span-5"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportResponses(
+                        {
+                          score: "hot",
+                          search: responseSearch,
+                          ...getFilterRange(responseFilter),
+                          from: responseDateFrom || getFilterRange(responseFilter).from,
+                          to: responseDateTo || getFilterRange(responseFilter).to,
+                        },
+                        "hot-leads",
+                      )
+                    }
+                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    Export Hot Leads
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportResponses(
+                        {
+                          rating: 5,
+                          search: responseSearch,
+                          ...getFilterRange(responseFilter),
+                          from: responseDateFrom || getFilterRange(responseFilter).from,
+                          to: responseDateTo || getFilterRange(responseFilter).to,
+                        },
+                        "5-star",
+                      )
+                    }
+                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    Export 5 Star
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportResponses(
+                        {
+                          search: responseSearch,
+                          ...getFilterRange(responseFilter),
+                          from: responseDateFrom || getFilterRange(responseFilter).from,
+                          to: responseDateTo || getFilterRange(responseFilter).to,
+                        },
+                        "filtered",
+                      )
+                    }
+                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    Export Filtered
+                  </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-3xl border border-white/10">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="bg-white/5 text-slate-300">
+                        <tr>
+                          <th className="px-4 py-3">Score</th>
+                          <th className="px-4 py-3">Name</th>
+                          <th className="px-4 py-3">Email</th>
+                          <th className="px-4 py-3">Phone</th>
+                          <th className="px-4 py-3">Rating</th>
+                          <th className="px-4 py-3">Interest Answer</th>
+                          <th className="px-4 py-3">Submitted At</th>
+                          <th className="px-4 py-3">View Details</th>
+                          <th className="px-4 py-3">Export</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysisRows.map((response) => (
+                          <tr key={response._id} className="border-t border-white/10">
+                            <td className="px-4 py-3">
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                (response.leadCategory || getScoreBucket(Number(response.score || 0))) === "hot"
+                                  ? "bg-red-500/20 text-red-300"
+                                  : (response.leadCategory || getScoreBucket(Number(response.score || 0))) === "warm"
+                                    ? "bg-amber-500/20 text-amber-300"
+                                    : "bg-slate-500/20 text-slate-300"
+                              }`}>
+                                {Number(response.score || 0)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">{response.name || "-"}</td>
+                            <td className="px-4 py-3">{response.email || "-"}</td>
+                            <td className="px-4 py-3">{response.phone || "-"}</td>
+                            <td className="px-4 py-3">{getRatingValue(response) || "-"}</td>
+                            <td className="px-4 py-3">{getInterestAnswer(response) || "-"}</td>
+                            <td className="px-4 py-3">{formatSubmittedAt(response.submittedAt || response.createdAt)}</td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => openResponse(response)}
+                                className="rounded-xl border border-white/10 px-3 py-2 text-xs"
+                              >
+                                View Details
+                              </button>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  exportResponses(
+                                    {
+                                      search: responseSearch,
+                                      from: responseDateFrom,
+                                      to: responseDateTo,
+                                      rating: getRatingValue(response) || undefined,
+                                      score: response.leadCategory || getScoreBucket(Number(response.score || 0)),
+                                    },
+                                    `lead-${slugify(response.name || response.referenceId || "response")}`,
+                                  )
+                                }
+                                className="rounded-xl border border-white/10 px-3 py-2 text-xs"
+                              >
+                                Export
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {!analysisRows.length && (
+                          <tr>
+                            <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                              No interest analysis matches found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))]">
+                    <input
+                      value={responseSearch}
+                      onChange={(e) => setResponseSearch(e.target.value)}
+                      placeholder="Search name, email, phone, reference, answers..."
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    />
+                    <select
+                      value={responseFilter}
+                      onChange={(e) => setResponseFilter(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    >
+                      <option value="all">All time</option>
+                      <option value="today">Today</option>
+                      <option value="yesterday">Yesterday</option>
+                      <option value="7days">Last 7 days</option>
+                      <option value="30days">Last 30 days</option>
+                    </select>
+                    <input
+                      type="date"
+                      value={responseDateFrom}
+                      onChange={(e) => setResponseDateFrom(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    />
+                    <input
+                      type="date"
+                      value={responseDateTo}
+                      onChange={(e) => setResponseDateTo(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResponseSearch("");
+                        setResponseFilter("all");
+                        setResponseDateFrom("");
+                        setResponseDateTo("");
+                      }}
+                      className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold lg:col-span-5"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-3xl border border-white/10">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="bg-white/5 text-slate-300">
+                        <tr>
+                          <th className="px-4 py-3">Name</th>
+                          <th className="px-4 py-3">Email</th>
+                          <th className="px-4 py-3">Phone</th>
+                          <th className="px-4 py-3">Submitted At</th>
+                          <th className="px-4 py-3">View</th>
+                          <th className="px-4 py-3">Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {responseTable.map((response) => (
+                          <tr key={response._id} className="border-t border-white/10">
+                            <td className="px-4 py-3">{response.name || "-"}</td>
+                            <td className="px-4 py-3">{response.email || "-"}</td>
+                            <td className="px-4 py-3">{response.phone || "-"}</td>
+                            <td className="px-4 py-3">{formatSubmittedAt(response.submittedAt || response.createdAt)}</td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => openResponse(response)}
+                                className="rounded-xl border border-white/10 px-3 py-2 text-xs"
+                              >
+                                View
+                              </button>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => deleteResponse(response._id)}
+                                className="rounded-xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {!responseTable.length && (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                              No responses yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {selectedResponse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className={`${theme.card} max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">Response Details</h3>
+                <p className={`text-sm ${theme.textSecondary}`}>{selectedResponse.referenceId}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedResponse(null)}
+                className="rounded-2xl border border-white/10 px-4 py-2 text-sm"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteResponse(selectedResponse._id)}
+                className="rounded-2xl border border-red-500/30 px-4 py-2 text-sm text-red-300"
+              >
+                Delete
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(selectedResponse.answers || []).map((answer) => (
+                <div key={answer._id || answer.questionId} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-sm font-semibold">{answer.question?.label || "Question"}</div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {answer.fileUrl ? (
+                      <a href={answer.fileUrl} target="_blank" rel="noreferrer" className="text-green-300 underline">
+                        {answer.fileName || answer.fileUrl}
+                      </a>
+                    ) : Array.isArray(answer.value) ? (
+                      answer.value.join(", ")
+                    ) : (
+                      String(answer.value ?? "-")
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-          {selectedForm && (
-            <button
-              type="button"
-              onClick={removeSelectedForm}
-              className="rounded-2xl border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
-            >
-              Delete Form
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={saveForm}
-            disabled={saveLoading}
-            className="rounded-2xl bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Save size={16} /> {saveLoading ? "Saving..." : "Save Form"}
-            </span>
-          </button>
-        </div>
-      </div>
-    </motion.div>
+      )}
+    </div>
   );
 };
 

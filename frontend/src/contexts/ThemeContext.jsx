@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getPublicSettings } from "../shared/lib/settingsApi";
 import i18n from "../i18n/i18n.js";
+import { useSettings } from "./SettingsContext.jsx";
 
 const LANGUAGE_CODE_MAP = {
   en: "en",
@@ -15,13 +15,6 @@ const normalizeLanguageCode = (lang) => {
   if (!lang) return null;
   return LANGUAGE_CODE_MAP[String(lang).trim().toLowerCase()] || null;
 };
-
-const getStoredUserLanguage = () =>
-  normalizeLanguageCode(localStorage.getItem("language"));
-const getStoredAdminLanguage = () =>
-  normalizeLanguageCode(localStorage.getItem("adminLanguage"));
-const resolveFinalLanguage = () =>
-  getStoredUserLanguage() || getStoredAdminLanguage() || "en";
 
 /* =====================================================
    🎨 ADVANCED THEMES
@@ -218,138 +211,27 @@ export const useTheme = () => {
    PROVIDER
 ===================================================== */
 export const ThemeProvider = ({ children }) => {
+  const { settings } = useSettings();
   const [currentTheme, setCurrentTheme] = useState(() => {
     return localStorage.getItem("theme") || "green-yellow";
   });
+  const [language, setLanguage] = useState(() =>
+    normalizeLanguageCode(i18n.language) || "en",
+  );
 
-  const [appSettings, setAppSettings] = useState({
-    appName: "Technosthan AgriTech",
-    logoUrl: "/hero.png",
-  });
-
-  const [language, setLanguage] = useState(resolveFinalLanguage);
-
-  /* =========================================
-     LOAD SETTINGS
-  ========================================= */
   useEffect(() => {
-    let mounted = true;
+    document.title = settings.appName || "Technosthan AgriTech";
+  }, [settings.appName]);
 
-    const loadSettings = async () => {
-      try {
-        const response = await getPublicSettings();
-
-        const settings = response.data?.data || {};
-
-        if (!mounted) return;
-
-        setAppSettings({
-          appName: settings.appName || "Technosthan AgriTech",
-
-          logoUrl: settings.logoUrl || "/hero.png",
-        });
-
-        document.title = settings.appName || "Technosthan AgriTech";
-        const storedUserLanguage = getStoredUserLanguage();
-        const adminLanguageCode = normalizeLanguageCode(settings.language);
-        const finalLanguage = storedUserLanguage || adminLanguageCode || "en";
-
-        if (adminLanguageCode) {
-          try {
-            localStorage.setItem("adminLanguage", adminLanguageCode);
-          } catch (e) {}
-        }
-
-        setLanguage(finalLanguage);
-        i18n
-          .changeLanguage(finalLanguage)
-          .then(() => {
-            console.log("[i18n] loaded settings", {
-              adminLanguage: settings.language,
-              adminLanguageCode,
-              userLanguage: storedUserLanguage,
-              finalLanguage,
-            });
-            console.log("[i18n] current language", i18n.language);
-          })
-          .catch((error) => {
-            console.error("[i18n] failed to change language on startup", error);
-          });
-      } catch (error) {
-        console.log("Theme settings load failed");
-      }
-    };
-
-    loadSettings();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Listen for external language updates (admin save)
   useEffect(() => {
-    const applyLanguage = (langCode, source) => {
-      const normalized = normalizeLanguageCode(langCode);
-      if (!normalized) return;
-
-      const storedUserLanguage = getStoredUserLanguage();
-      if (source === "adminUpdate" && storedUserLanguage) {
-        console.log(
-          "[i18n] user override active, skipping admin update",
-          storedUserLanguage,
-        );
-        return;
-      }
-
+    const handleLanguageChanged = (nextLanguage) => {
+      const normalized = normalizeLanguageCode(nextLanguage) || "en";
       setLanguage(normalized);
-      i18n
-        .changeLanguage(normalized)
-        .then(() => {
-          console.log(
-            `[i18n] applied ${source} language`,
-            normalized,
-            "current",
-            i18n.language,
-          );
-        })
-        .catch((error) => {
-          console.error(`[i18n] failed to apply ${source} language`, error);
-        });
     };
 
-    const handleAdminLanguageUpdated = (event) => {
-      const adminLanguageCode = normalizeLanguageCode(event?.detail);
-      if (!adminLanguageCode) return;
-
-      try {
-        localStorage.setItem("adminLanguage", adminLanguageCode);
-      } catch (e) {}
-
-      applyLanguage(adminLanguageCode, "adminUpdate");
-    };
-
-    const handleStorage = (event) => {
-      if (event.key === "adminLanguage") {
-        if (!getStoredUserLanguage()) {
-          applyLanguage(event.newValue, "storage-admin");
-        }
-      } else if (event.key === "language") {
-        const storedUserLanguage = getStoredUserLanguage();
-        if (storedUserLanguage) {
-          applyLanguage(storedUserLanguage, "storage-user");
-        } else {
-          applyLanguage(getStoredAdminLanguage() || "en", "storage-fallback");
-        }
-      }
-    };
-
-    window.addEventListener("languageUpdated", handleAdminLanguageUpdated);
-    window.addEventListener("storage", handleStorage);
-
+    i18n.on("languageChanged", handleLanguageChanged);
     return () => {
-      window.removeEventListener("languageUpdated", handleAdminLanguageUpdated);
-      window.removeEventListener("storage", handleStorage);
+      i18n.off("languageChanged", handleLanguageChanged);
     };
   }, []);
 
@@ -381,7 +263,9 @@ export const ThemeProvider = ({ children }) => {
     i18n
       .changeLanguage(normalized)
       .then(() => {
-        console.log("[i18n] user selected language", normalized);
+        if (import.meta.env.DEV) {
+          console.log("[i18n] user selected language", normalized);
+        }
       })
       .catch((error) => {
         console.error("[i18n] failed to apply user selected language", error);
@@ -402,7 +286,7 @@ export const ThemeProvider = ({ children }) => {
         changeTheme,
         language,
         changeLanguage,
-        appSettings,
+        appSettings: settings,
       }}
     >
       <div

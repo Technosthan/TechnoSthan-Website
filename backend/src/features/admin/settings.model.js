@@ -12,6 +12,56 @@ const settingsSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    brandWebsiteUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    contactEmail: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    contactPhone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    contactAddress: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    facebookUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    instagramUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    linkedinUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    youtubeUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    whatsappUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    footerText: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     language: {
       type: String,
       enum: ["english", "hindi", "rajasthani"],

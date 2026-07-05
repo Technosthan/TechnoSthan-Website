@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import passport from "passport";
 import session from "express-session";
+import path from "path";
 
 // ✅ routes import
 import authRoutes from "./features/auth/auth.route.js";
@@ -60,11 +61,18 @@ app.use(
 
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Cache-Control",
+      "Pragma",
+    ],
   }),
 );
 
 app.use(express.json());
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // General rate limiting
 app.use(generalRateLimit);

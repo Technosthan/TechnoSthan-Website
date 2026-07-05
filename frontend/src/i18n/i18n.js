@@ -19,9 +19,7 @@ const normalizeLanguageCode = (lang) => {
 };
 
 const initialLanguage =
-  normalizeLanguageCode(localStorage.getItem("language")) ||
-  normalizeLanguageCode(localStorage.getItem("adminLanguage")) ||
-  "en";
+  normalizeLanguageCode(localStorage.getItem("language")) || "en";
 
 i18n.use(initReactI18next).init({
   resources: {

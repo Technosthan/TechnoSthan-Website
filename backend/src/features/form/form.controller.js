@@ -1,8 +1,21 @@
-import * as formService from "./form.service.js";
+import {
+  createForm as createFormService,
+  getAdminForms as getAdminFormsService,
+  getFormById as getFormByIdService,
+  updateForm as updateFormService,
+  deleteForm as deleteFormService,
+  getFormResponses as getFormResponsesService,
+  getFormResponseAnalysis as getFormResponseAnalysisService,
+  getFormResponseById as getFormResponseByIdService,
+  deleteFormResponse as deleteFormResponseService,
+  exportFormResponses as exportFormResponsesService,
+  getFormBySlug as getFormBySlugService,
+  submitForm as submitFormService,
+} from "./form.service.js";
 
 export const createForm = async (req, res) => {
   try {
-    const form = await formService.createForm(req.body, req.user._id);
+    const form = await createFormService(req.body, req.user._id);
     res.status(201).json({ success: true, data: form });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -11,8 +24,20 @@ export const createForm = async (req, res) => {
 
 export const getAdminForms = async (req, res) => {
   try {
-    const forms = await formService.getAdminForms();
+    const forms = await getAdminFormsService();
     res.json({ success: true, data: forms });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAdminFormById = async (req, res) => {
+  try {
+    const form = await getFormByIdService(req.params.formId);
+    if (!form) {
+      return res.status(404).json({ success: false, message: "Form not found" });
+    }
+    res.json({ success: true, data: form });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -20,7 +45,7 @@ export const getAdminForms = async (req, res) => {
 
 export const updateForm = async (req, res) => {
   try {
-    const form = await formService.updateForm(req.params.formId, req.body);
+    const form = await updateFormService(req.params.formId, req.body);
     res.json({ success: true, data: form });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -29,7 +54,7 @@ export const updateForm = async (req, res) => {
 
 export const deleteForm = async (req, res) => {
   try {
-    await formService.deleteForm(req.params.formId);
+    await deleteFormService(req.params.formId);
     res.json({ success: true, message: "Form deleted successfully" });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -38,43 +63,70 @@ export const deleteForm = async (req, res) => {
 
 export const getFormSubmissions = async (req, res) => {
   try {
-    const submissions = await formService.getFormSubmissions(req.params.formId);
+    const submissions = await getFormResponsesService(req.params.formId, req.query);
     res.json({ success: true, data: submissions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const updateSubmissionStatus = async (req, res) => {
+export const getFormResponseAnalysis = async (req, res) => {
   try {
-    const submission = await formService.updateSubmissionStatus(
-      req.params.formId,
-      req.params.submissionId,
-      req.body.status,
-    );
-    res.json({ success: true, data: submission });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-export const getPublicForms = async (req, res) => {
-  try {
-    const role = req.user?.role;
-    const forms = await formService.getPublicForms(role);
-    res.json({ success: true, data: forms });
+    const analysis = await getFormResponseAnalysisService(req.params.formId, req.query);
+    res.json({ success: true, data: analysis });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const getFormBySlug = async (req, res) => {
+export const getFormSubmissionById = async (req, res) => {
   try {
-    const form = await formService.getFormBySlug(req.params.slug);
-    if (!form) {
+    const submission = await getFormResponseByIdService(
+      req.params.formId,
+      req.params.responseId,
+    );
+    if (!submission) {
       return res
         .status(404)
-        .json({ success: false, message: "Form not found" });
+        .json({ success: false, message: "Response not found" });
+    }
+    res.json({ success: true, data: submission });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteFormSubmission = async (req, res) => {
+  try {
+    await deleteFormResponseService(req.params.formId, req.params.responseId);
+    res.json({ success: true, message: "Response deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const exportFormSubmissions = async (req, res) => {
+  try {
+    const csv = await exportFormResponsesService(req.params.formId, req.query);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=form-${req.params.formId}-responses.csv`,
+    );
+    res.send(csv);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const getPublicFormBySlug = async (req, res) => {
+  try {
+    const form = await getFormBySlugService(req.params.slug);
+    if (!form) {
+      return res.status(404).json({
+        success: false,
+        message: "Form not found or not live",
+      });
     }
     res.json({ success: true, data: form });
   } catch (error) {
@@ -82,15 +134,43 @@ export const getFormBySlug = async (req, res) => {
   }
 };
 
-export const submitForm = async (req, res) => {
+export const submitPublicForm = async (req, res) => {
   try {
-    const submission = await formService.submitForm(
-      req.params.formId,
-      req.body.values,
-      req.user,
-    );
-    res.status(201).json({ success: true, data: submission });
+    const adminBaseUrl =
+      process.env.ADMIN_DASHBOARD_URL ||
+      process.env.FRONTEND_URL ||
+      process.env.VITE_PUBLIC_URL ||
+      req.headers.origin ||
+      `${req.protocol}://${req.get("host")}`;
+    const publicBaseUrl =
+      process.env.FRONTEND_URL ||
+      process.env.VITE_PUBLIC_URL ||
+      req.headers.origin ||
+      `${req.protocol}://${req.get("host")}`;
+    const submission = await submitFormService({
+      slug: req.params.slug,
+      body: req.body,
+      files: req.files || [],
+      ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+      userAgent: req.headers["user-agent"] || "",
+      adminUrl: `${adminBaseUrl}/admin/dashboard/forms`,
+      publicBaseUrl,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Form submitted successfully",
+      data: submission,
+    });
   } catch (error) {
+    if (error.code === "FORM_EXPIRED") {
+      return res.status(410).json({
+        success: false,
+        code: "FORM_EXPIRED",
+        message: error.message,
+      });
+    }
+
     res.status(400).json({ success: false, message: error.message });
   }
 };

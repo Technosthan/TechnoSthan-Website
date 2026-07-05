@@ -25,7 +25,7 @@ import {
   FileText,
 } from "lucide-react";
 
-import FormManagement from "./FormManagement";
+
 import {
   getAllContent,
   createContent,
@@ -45,7 +45,7 @@ const ContentManagement = () => {
   const [error, setError] = useState("");
 
   const [showForm, setShowForm] = useState(false);
-  const [showFormBuilder, setShowFormBuilder] = useState(false);
+  
   const [editingContent, setEditingContent] = useState(null);
 
   const [searchContent, setSearchContent] = useState("");
@@ -457,15 +457,7 @@ const ContentManagement = () => {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => setShowFormBuilder(true)}
-            className={`${theme.button} px-6 py-3 rounded-2xl flex items-center font-semibold shadow-xl`}
-          >
-            <LinkIcon className="h-5 w-5 mr-2" />
-            Create Form
-          </motion.button>
+          
 
           <motion.button
             whileHover={{ scale: 1.04 }}
@@ -1163,10 +1155,7 @@ const ContentManagement = () => {
           </div>
         )}
       </div>
-      <FormManagement
-        isOpen={showFormBuilder}
-        onClose={() => setShowFormBuilder(false)}
-      />
+      
     </div>
   );
 };

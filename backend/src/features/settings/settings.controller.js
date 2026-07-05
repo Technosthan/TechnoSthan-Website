@@ -1,11 +1,41 @@
 import Settings from "../admin/settings.model.js";
 
+const publicCacheHeaders = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
+const languageCodeMap = {
+  english: "en",
+  hindi: "hi",
+  rajasthani: "rj",
+  en: "en",
+  hi: "hi",
+  rj: "rj",
+};
+
+const normalizeLanguageCode = (language) => {
+  if (!language) return "en";
+  return languageCodeMap[String(language).trim().toLowerCase()] || "en";
+};
+
 export const getPublicSettings = async (req, res) => {
   try {
     const defaultSettings = {
       appName: "Technosthan AgriTech",
       language: "english",
       logoUrl: "",
+      brandWebsiteUrl: "",
+      contactEmail: "",
+      contactPhone: "",
+      contactAddress: "",
+      facebookUrl: "",
+      instagramUrl: "",
+      linkedinUrl: "",
+      youtubeUrl: "",
+      whatsappUrl: "",
+      footerText: "",
       featureFlags: {
         aiChat: true,
         quiz: true,
@@ -81,8 +111,10 @@ export const getPublicSettings = async (req, res) => {
         settings.publicRoutes != null
           ? settings.publicRoutes
           : defaultSettings.publicRoutes,
+      websiteLanguage: normalizeLanguageCode(settings.language),
     };
 
+    res.set(publicCacheHeaders);
     res.json({ success: true, data: settings });
   } catch (error) {
     console.error("Get public settings error:", error);
@@ -128,6 +160,7 @@ export const getAccessControlSettings = async (req, res) => {
         ? settings.hideLoginButton
         : publicWebsiteEnabled;
 
+    res.set(publicCacheHeaders);
     res.json({
       success: true,
       data: {

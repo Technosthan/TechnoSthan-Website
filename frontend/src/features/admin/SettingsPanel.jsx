@@ -18,25 +18,22 @@ import { getSettings, updateSettings } from "./adminApi";
 import AuthSettingsSection from "./AuthSettingsSection";
 import EmailOtpProviderSettings from "./EmailOtpProviderSettings";
 import PhoneOtpProviderSettings from "./PhoneOtpProviderSettings";
-
-const LANGUAGE_CODE_MAP = {
-  en: "en",
-  hi: "hi",
-  rj: "rj",
-  english: "en",
-  hindi: "hi",
-  rajasthani: "rj",
-};
-
-const normalizeLanguageCode = (language) => {
-  if (!language) return null;
-  return LANGUAGE_CODE_MAP[String(language).trim().toLowerCase()] || null;
-};
+import { useSettings } from "../../contexts/SettingsContext";
 
 const defaultSettings = {
   appName: "Technosthan AgriTech",
 
   logoUrl: "",
+  brandWebsiteUrl: "",
+  contactEmail: "",
+  contactPhone: "",
+  contactAddress: "",
+  facebookUrl: "",
+  instagramUrl: "",
+  linkedinUrl: "",
+  youtubeUrl: "",
+  whatsappUrl: "",
+  footerText: "",
 
   language: "english",
 
@@ -81,6 +78,7 @@ const defaultSettings = {
 
 const SettingsPanel = () => {
   const { theme } = useTheme();
+  const { updateSettings: updateGlobalSettings } = useSettings();
 
   const [settings, setSettings] = useState(null);
 
@@ -165,37 +163,16 @@ const SettingsPanel = () => {
         publicRoutes: settingsToSave.publicRoutes || [],
       };
 
-      console.log("Saving settings payload:", payload);
+      if (import.meta.env.DEV) {
+        console.log("Saving settings payload:", payload);
+      }
 
       const response = await updateSettings(payload);
 
       setSettings(response.data.data);
+      updateGlobalSettings(response.data.data);
 
       toast.success(response.data?.message || "Settings saved successfully");
-
-      // If language changed, notify app
-      try {
-        const code =
-          normalizeLanguageCode(response.data.data?.language) || "en";
-        try {
-          localStorage.setItem("adminLanguage", code);
-        } catch (e) {}
-        window.dispatchEvent(
-          new CustomEvent("languageUpdated", { detail: code }),
-        );
-      } catch (e) {}
-
-      const eventDetail = {
-        publicWebsiteEnabled: response.data.data?.publicWebsiteEnabled,
-        publicAccessEnabled: response.data.data?.publicAccessEnabled,
-        publicRoutes: response.data.data?.publicRoutes || [],
-      };
-
-      window.dispatchEvent(
-        new CustomEvent("publicAccessUpdated", {
-          detail: eventDetail,
-        }),
-      );
     } catch (err) {
       const message = err.response?.data?.message || "Failed to save settings";
 
@@ -509,6 +486,129 @@ const SettingsPanel = () => {
                     onChange={(e) => updateSetting("logoUrl", e.target.value)}
                     className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
                     placeholder="https://example.com/logo.png"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Website URL
+                  </label>
+                  <input
+                    type="url"
+                    value={currentSettings.brandWebsiteUrl || ""}
+                    onChange={(e) => updateSetting("brandWebsiteUrl", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="https://technosthan.com"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    value={currentSettings.contactEmail || ""}
+                    onChange={(e) => updateSetting("contactEmail", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="support@technosthan.com"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={currentSettings.contactPhone || ""}
+                    onChange={(e) => updateSetting("contactPhone", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Contact Address
+                  </label>
+                  <input
+                    type="text"
+                    value={currentSettings.contactAddress || ""}
+                    onChange={(e) => updateSetting("contactAddress", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="Jaipur, Rajasthan"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Facebook URL
+                  </label>
+                  <input
+                    type="url"
+                    value={currentSettings.facebookUrl || ""}
+                    onChange={(e) => updateSetting("facebookUrl", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="https://facebook.com/technosthan"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Instagram URL
+                  </label>
+                  <input
+                    type="url"
+                    value={currentSettings.instagramUrl || ""}
+                    onChange={(e) => updateSetting("instagramUrl", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="https://instagram.com/technosthan"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    LinkedIn URL
+                  </label>
+                  <input
+                    type="url"
+                    value={currentSettings.linkedinUrl || ""}
+                    onChange={(e) => updateSetting("linkedinUrl", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="https://linkedin.com/company/technosthan"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    YouTube URL
+                  </label>
+                  <input
+                    type="url"
+                    value={currentSettings.youtubeUrl || ""}
+                    onChange={(e) => updateSetting("youtubeUrl", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="https://youtube.com/@technosthan"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    WhatsApp URL
+                  </label>
+                  <input
+                    type="url"
+                    value={currentSettings.whatsappUrl || ""}
+                    onChange={(e) => updateSetting("whatsappUrl", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500`}
+                    placeholder="https://wa.me/919876543210"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={`block text-sm font-semibold ${theme.text} mb-2`}>
+                    Footer Text
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={currentSettings.footerText || ""}
+                    onChange={(e) => updateSetting("footerText", e.target.value)}
+                    className={`${theme.input} w-full px-4 py-4 rounded-2xl border ${theme.border} text-white outline-none focus:ring-2 focus:ring-cyan-500 resize-none`}
+                    placeholder="© 2026 Technosthan AgriTech. All rights reserved."
                   />
                 </div>
               </div>

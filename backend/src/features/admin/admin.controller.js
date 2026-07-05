@@ -709,6 +709,16 @@ export const getSettings = async (req, res) => {
       appName: "Technosthan AgriTech",
       language: "english",
       logoUrl: "",
+      brandWebsiteUrl: "",
+      contactEmail: "",
+      contactPhone: "",
+      contactAddress: "",
+      facebookUrl: "",
+      instagramUrl: "",
+      linkedinUrl: "",
+      youtubeUrl: "",
+      whatsappUrl: "",
+      footerText: "",
       aiSettings: {
         systemPrompt: "",
         temperature: 0.7,
@@ -1227,6 +1237,26 @@ export const updateSettings = async (req, res) => {
         success: false,
         message: "appName must be a string",
       });
+    }
+    for (const field of [
+      "logoUrl",
+      "brandWebsiteUrl",
+      "contactEmail",
+      "contactPhone",
+      "contactAddress",
+      "facebookUrl",
+      "instagramUrl",
+      "linkedinUrl",
+      "youtubeUrl",
+      "whatsappUrl",
+      "footerText",
+    ]) {
+      if (updateData[field] != null && typeof updateData[field] !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: `${field} must be a string`,
+        });
+      }
     }
     // Validate language if provided
     if (

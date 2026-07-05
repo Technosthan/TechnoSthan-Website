@@ -15,7 +15,7 @@ const publicCorsOptions = {
   origin: true, // Allow any origin for public settings
   credentials: false, // No credentials needed for public data
   methods: ["GET"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma"],
 };
 
 router.get("/public", cors(publicCorsOptions), getPublicSettings);

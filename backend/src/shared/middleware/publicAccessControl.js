@@ -2,7 +2,13 @@ import Settings from "../../features/admin/settings.model.js";
 
 const publicAccessControl = async (req, res, next) => {
   try {
-    const publicApiPaths = ["/api/auth", "/api/settings/public", "/api/health"];
+    const publicApiPaths = [
+      "/api/auth",
+      "/api/settings/public",
+      "/api/health",
+      "/api/forms",
+      "/uploads",
+    ];
 
     if (publicApiPaths.some((prefix) => req.path.startsWith(prefix))) {
       return next();

@@ -32,6 +32,8 @@ const ProtectedRoute = ({ children }) => {
     "/verify-phone",
     "/login/telegram",
     "/login/whatsapp",
+    "/forms/:slug",
+    "/f/:slug",
   ];
 
   const routeIsPublic =

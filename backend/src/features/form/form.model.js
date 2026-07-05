@@ -1,49 +1,5 @@
 import mongoose from "mongoose";
 
-const formFieldSchema = new mongoose.Schema(
-  {
-    label: {
-      type: String,
-      required: true,
-    },
-    key: {
-      type: String,
-      required: true,
-    },
-    type: {
-      type: String,
-      enum: [
-        "text",
-        "textarea",
-        "email",
-        "number",
-        "select",
-        "checkbox",
-        "file",
-        "date",
-      ],
-      default: "text",
-    },
-    required: {
-      type: Boolean,
-      default: false,
-    },
-    options: {
-      type: [String],
-      default: [],
-    },
-    placeholder: {
-      type: String,
-      default: "",
-    },
-    helpText: {
-      type: String,
-      default: "",
-    },
-  },
-  { _id: false },
-);
-
 const formSchema = new mongoose.Schema(
   {
     title: {
@@ -56,37 +12,60 @@ const formSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    externalLink: {
+    slug: {
       type: String,
-      default: null,
-      trim: true,
-    },
-    fields: {
-      type: [formFieldSchema],
-      default: [],
-    },
-    roleVisibility: {
-      type: [String],
-      enum: ["admin", "editor", "viewer", "student"],
-      default: ["student"],
-    },
-    publicSlug: {
-      type: String,
+      required: true,
       unique: true,
-      sparse: true,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["draft", "live"],
+      default: "draft",
+    },
+    successMessage: {
+      type: String,
+      default: "Thanks for your response.",
       trim: true,
     },
-    active: {
-      type: Boolean,
-      default: true,
+    notificationEmail: {
+      type: String,
+      default: "",
+      trim: true,
     },
-    creatorId: {
+    confirmationEmailEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    allowFileUpload: {
+      type: Boolean,
+      default: false,
+    },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
+    themeColor: {
+      type: String,
+      default: "#16a34a",
+      trim: true,
+    },
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
   },
   { timestamps: true },
 );
+
+formSchema.virtual("active").get(function active() {
+  return this.status === "live";
+});
+
+formSchema.set("toJSON", { virtuals: true });
+formSchema.set("toObject", { virtuals: true });
 
 const Form = mongoose.model("Form", formSchema);
 

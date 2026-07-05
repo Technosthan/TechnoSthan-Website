@@ -13,6 +13,7 @@ import {
   Shield,
   TrendingUp,
   Activity,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -60,6 +61,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       path: "ai-control",
       description: "AI Settings & Prompts",
       color: "from-purple-500 to-pink-600",
+    },
+    {
+      id: "forms",
+      label: "Forms Builder",
+      icon: FileText,
+      path: "forms",
+      description: "Google Forms-style builder",
+      color: "from-green-500 to-emerald-600",
     },
     {
       id: "settings",

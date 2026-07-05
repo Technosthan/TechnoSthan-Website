@@ -27,8 +27,10 @@ import AnnouncementManager from "./features/admin/AnnouncementManager";
 import GlobalSearch from "./features/admin/GlobalSearch";
 import MonitoringPage from "./features/admin/MonitoringPage";
 import AdminProfilePage from "./features/admin/AdminProfilePage";
-import FormsPage from "./features/forms/FormsPage";
+import FormManagement from "./features/admin/FormManagement";
+import PublicFormPage from "./features/forms/PublicFormPage";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
+import { SettingsProvider } from "./contexts/SettingsContext.jsx";
 import { AccessControlProvider } from "./contexts/AccessControlContext.jsx";
 import RouteGuard from "./shared/components/RouteGuard";
 import FloatingThemeSelector from "./components/FloatingThemeSelector";
@@ -37,77 +39,74 @@ import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
-    <ThemeProvider>
-      <AccessControlProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<RouteGuard />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/landing" element={<LandingPage />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route path="/verify-phone" element={<VerifyPhonePage />} />
-              <Route path="/login/telegram" element={<TelegramLoginPage />} />
-              <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                }
-              />
+    <SettingsProvider>
+      <ThemeProvider>
+        <AccessControlProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route element={<RouteGuard />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/landing" element={<LandingPage />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/verify-phone" element={<VerifyPhonePage />} />
+                <Route path="/login/telegram" element={<TelegramLoginPage />} />
+                <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route path="/AgriTech Wiki" element={<ContentPage />} />
-              <Route path="/quiz/:contentId" element={<QuizPage />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
+                <Route path="/AgriTech Wiki" element={<ContentPage />} />
+                <Route path="/quiz/:contentId" element={<QuizPage />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/forms/:slug" element={<PublicFormPage />} />
+                <Route path="/f/:slug" element={<PublicFormPage />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
 
-            <Route
-              path="/admin/dashboard"
-              element={
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              }
-            >
-              <Route index element={<AdminDashboardHome />} />
-              <Route path="content" element={<ContentManagement />} />
-              <Route path="quiz" element={<QuizManagement />} />
-              <Route path="users" element={<UserManagement />} />
-              <Route path="ai-control" element={<AIControlPanel />} />
-              <Route path="settings/*" element={<SettingsPanel />} />
-              <Route path="profile" element={<AdminProfilePage />} />
-              <Route path="announcements" element={<AnnouncementManager />} />
-              <Route path="search" element={<GlobalSearch />} />
-              <Route path="monitoring" element={<MonitoringPage />} />
-            </Route>
-            <Route
-              path="/forms"
-              element={
-                <ProtectedRoute>
-                  <FormsPage />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </AccessControlProvider>
-      <Toaster position="top-right" />
-      <FloatingThemeSelector />
-    </ThemeProvider>
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                }
+              >
+                <Route index element={<AdminDashboardHome />} />
+                <Route path="content" element={<ContentManagement />} />
+                <Route path="quiz" element={<QuizManagement />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route path="forms" element={<FormManagement />} />
+                <Route path="ai-control" element={<AIControlPanel />} />
+                <Route path="settings/*" element={<SettingsPanel />} />
+                <Route path="profile" element={<AdminProfilePage />} />
+                <Route path="announcements" element={<AnnouncementManager />} />
+                <Route path="search" element={<GlobalSearch />} />
+                <Route path="monitoring" element={<MonitoringPage />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AccessControlProvider>
+        <Toaster position="top-right" />
+        <FloatingThemeSelector />
+      </ThemeProvider>
+    </SettingsProvider>
   );
 }
 

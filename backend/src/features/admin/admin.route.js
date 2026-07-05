@@ -54,10 +54,14 @@ import {
 import {
   createForm,
   getAdminForms,
+  getAdminFormById,
   updateForm,
   deleteForm,
   getFormSubmissions,
-  updateSubmissionStatus,
+  getFormResponseAnalysis,
+  getFormSubmissionById,
+  deleteFormSubmission,
+  exportFormSubmissions,
 } from "../form/form.controller.js";
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
@@ -154,15 +158,16 @@ router.delete("/announcements/:announcementId", deleteAnnouncement);
 // Global search
 router.get("/search", globalSearch);
 
-// Admin form management
+// Form management
 router.get("/forms", getAdminForms);
 router.post("/forms", createForm);
+router.get("/forms/:formId", getAdminFormById);
 router.put("/forms/:formId", updateForm);
 router.delete("/forms/:formId", deleteForm);
-router.get("/forms/:formId/submissions", getFormSubmissions);
-router.patch(
-  "/forms/:formId/submissions/:submissionId",
-  updateSubmissionStatus,
-);
+router.get("/forms/:formId/responses", getFormSubmissions);
+router.get("/forms/:formId/responses/analysis", getFormResponseAnalysis);
+router.get("/forms/:formId/responses/:responseId", getFormSubmissionById);
+router.delete("/forms/:formId/responses/:responseId", deleteFormSubmission);
+router.get("/forms/:formId/export", exportFormSubmissions);
 
 export default router;

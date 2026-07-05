@@ -1,6 +1,5 @@
-import { useEffect, useRef } from "react";
-import { useLocation, Navigate, Outlet } from "react-router-dom";
-import { toast } from "react-hot-toast";
+import { useEffect } from "react";
+import { useLocation, Outlet } from "react-router-dom";
 import { useAccessControl } from "../../contexts/AccessControlContext";
 import { normalizeRoutePattern } from "./routeUtils";
 
@@ -25,7 +24,6 @@ const RouteGuard = () => {
     useAccessControl();
   const token = localStorage.getItem("token");
   const pathname = decodeURIComponent(location.pathname);
-  const hasToasted = useRef(false);
 
   const alwaysPublicRoutes = [
     "/login",
@@ -35,6 +33,8 @@ const RouteGuard = () => {
     "/verify-phone",
     "/login/telegram",
     "/login/whatsapp",
+    "/forms/:slug",
+    "/f/:slug",
   ];
 
   const routeIsPublic =
@@ -45,7 +45,7 @@ const RouteGuard = () => {
 
   // Log state for debugging
   useEffect(() => {
-    if (!loading) {
+    if (!loading && import.meta.env.DEV) {
       console.log("[RouteGuard]", {
         pathname,
         routeIsPublic,
@@ -70,8 +70,12 @@ const RouteGuard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="text-center">
-          <p className="text-lg font-medium">Loading access control...</p>
+        <div className="w-full max-w-5xl space-y-6">
+          <div className="h-16 rounded-2xl bg-white/10 animate-pulse" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-64 rounded-3xl bg-white/10 animate-pulse" />
+            <div className="h-64 rounded-3xl bg-white/10 animate-pulse" />
+          </div>
         </div>
       </div>
     );

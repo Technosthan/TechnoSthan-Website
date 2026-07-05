@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, Shield, Bell, Menu, X } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
-import { Globe, Palette } from "lucide-react";
-import { useAccessControl } from "../contexts/AccessControlContext";
+import { Globe } from "lucide-react";
+import { useSettings } from "../contexts/SettingsContext";
 import { getUnreadCount } from "../shared/lib/announcementsApi";
 
 const LanguageSelector = ({
@@ -78,9 +78,10 @@ const LanguageSelector = ({
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { theme, appSettings } = useTheme();
-  const { language: currentLanguage, changeLanguage } = useTheme();
+  const { theme, appSettings, language: currentLanguage, changeLanguage } =
+    useTheme();
   const { t } = useTranslation();
+  const { settings, loading } = useSettings();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user") || "null"),
   );
@@ -88,14 +89,9 @@ const Navbar = () => {
   const isAdmin = user?.role === "admin";
   const [unread, setUnread] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const {
-    publicAccessEnabled,
-    publicWebsiteEnabled,
-    loading: accessLoading,
-  } = useAccessControl();
-  const publicEnabled =
-    publicWebsiteEnabled != null ? publicWebsiteEnabled : publicAccessEnabled;
-  const hideLoginButton = !accessLoading && publicEnabled;
+  const isPublicAccessEnabled =
+    settings?.publicAccessEnabled === true &&
+    settings?.publicWebsiteEnabled === true;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -164,6 +160,21 @@ const Navbar = () => {
     };
   }, [token]);
 
+  if (loading) {
+    return (
+      <nav
+        className={`sticky top-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 backdrop-blur-md ${theme.navbar} shadow-sm`}
+      >
+        <div className="h-12 w-44 rounded-xl bg-white/10 animate-pulse" />
+        <div className="hidden md:flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-white/10 animate-pulse" />
+          <div className="h-10 w-24 rounded-xl bg-white/10 animate-pulse" />
+          <div className="h-10 w-24 rounded-xl bg-white/10 animate-pulse" />
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <motion.nav
       initial={{ y: -80, opacity: 0 }}
@@ -223,12 +234,9 @@ const Navbar = () => {
             theme={theme}
           />
         </div>
-        {hideLoginButton && (
-          <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-2">
-            {t("common.publicAccessEnabled")}
-          </span>
-        )}
-        {token ? (
+        {loading ? (
+          <span className="inline-flex h-8 w-24 animate-pulse rounded-full bg-white/10" />
+        ) : token ? (
           <>
             {isAdmin && (
               <Link
@@ -268,7 +276,11 @@ const Navbar = () => {
             </motion.button>
           </>
         ) : (
-          !hideLoginButton && (
+          isPublicAccessEnabled ? (
+            <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-2">
+              {t("common.publicAccessEnabled")}
+            </span>
+          ) : (
             <Link
               to="/login"
               className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
@@ -380,7 +392,9 @@ const Navbar = () => {
 
               {/* Mobile Logout/Login */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-                {token ? (
+                {loading ? (
+                  <span className="inline-flex h-11 w-full animate-pulse rounded-xl bg-white/10" />
+                ) : token ? (
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -391,7 +405,11 @@ const Navbar = () => {
                     {t("common.logout")}
                   </motion.button>
                 ) : (
-                  !hideLoginButton && (
+                  isPublicAccessEnabled ? (
+                    <span className="inline-flex w-full items-center justify-center rounded-xl bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-3">
+                      {t("common.publicAccessEnabled")}
+                    </span>
+                  ) : (
                     <Link
                       to="/login"
                       className={`${theme.buttonSecondary} w-full hover:scale-105 transition transform px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2`}
