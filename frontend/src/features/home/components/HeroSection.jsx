@@ -22,12 +22,28 @@ const HeroSection = ({ hero }) => {
 
   return (
     <section className="hero">
-      {hero?.backgroundVideoUrl ? (
-        <video className="hero-video" autoPlay muted loop playsInline preload="auto">
-          <source src={hero.backgroundVideoUrl} type="video/mp4" />
+      {hero?.backgroundVideoUrl || hero?.backgroundVideo ? (
+        <video
+          key={hero?.backgroundVideoUrl || hero?.backgroundVideo || "default-hero-video"}
+          className="hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+        >
+          <source src={hero.backgroundVideoUrl || hero.backgroundVideo} type="video/mp4" />
         </video>
       ) : (
-        <video className="hero-video" autoPlay muted loop playsInline preload="auto">
+        <video
+          key="default-hero-video"
+          className="hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+        >
           <source src={heroVideo} type="video/mp4" />
         </video>
       )}
@@ -72,8 +88,6 @@ const HeroSection = ({ hero }) => {
             ))}
           </div>
         </motion.div>
-
-        
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BadgeCheck,
@@ -10,19 +11,87 @@ import {
   Users,
 } from "lucide-react";
 import { ROUTES } from "../../../shared/constants/routes";
+import { useAuth } from "../../../shared/hooks/useAuth";
+import { apiClient } from "../../../shared/services/apiClient";
 
 const formatPrice = (value) => {
   if (value === null || value === undefined || value === "") {
     return null;
   }
 
-  return `₹${Number(value).toLocaleString("en-IN")}`;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value));
 };
 
 const ProgramCard = ({ program }) => {
-  const slug = program.slug || program.title?.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  const [enrolling, setEnrolling] = useState(false);
+
   const fee = formatPrice(program.discountFees || program.fees);
   const originalFee = program.discountFees ? formatPrice(program.fees) : null;
+
+  useEffect(() => {
+    if (window.Razorpay || document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
+      return undefined;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
+  const handleEnroll = async () => {
+    const detailsPath = `${ROUTES.PROGRAM_DETAIL_BASE}/${program.slug}`;
+
+    if (!isAuthenticated) {
+      navigate(`/login?redirect=${encodeURIComponent(detailsPath)}`);
+      return;
+    }
+
+    try {
+      setEnrolling(true);
+      const response = await apiClient.post(`/enrollments/${program.id}`, {});
+
+      if (window.Razorpay && response.order) {
+        const checkout = new window.Razorpay({
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: response.order.amount,
+          currency: response.order.currency,
+          name: "TechnoSthan Innovation Hub",
+          description: program.title,
+          order_id: response.order.id,
+          handler: async (paymentResponse) => {
+            await apiClient.post("/payments/verify", {
+              orderId: response.order.id,
+              paymentId: paymentResponse.razorpay_payment_id,
+              signature: paymentResponse.razorpay_signature,
+            });
+            navigate("/payment-success", {
+              state: { programTitle: program.title, amount: response.order.amount / 100 },
+            });
+          },
+          prefill: {
+            name: user?.name,
+            email: user?.email,
+            contact: user?.phone || "",
+          },
+          theme: { color: "#5ee7ff" },
+        });
+        checkout.open();
+      } else {
+        navigate(detailsPath);
+      }
+    } catch (_error) {
+      navigate(detailsPath);
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   return (
     <motion.article
@@ -76,9 +145,23 @@ const ProgramCard = ({ program }) => {
           {program.internshipSupport ? "Internship support" : "No internship support"}
         </span>
       </div>
-      <Link to={`${ROUTES.PROGRAM_DETAIL_BASE}/${slug}`} className="btn btn-secondary">
-        Enroll Now <ArrowRight size={16} />
-      </Link>
+      <div className="program-card-actions">
+        <Link
+          to={program.slug ? `${ROUTES.PROGRAM_DETAIL_BASE}/${program.slug}` : "#"}
+          className="btn btn-secondary"
+          aria-disabled={!program.slug}
+        >
+          View Details <ArrowRight size={16} />
+        </Link>
+        <button
+          type="button"
+          onClick={handleEnroll}
+          className="btn btn-primary"
+          disabled={enrolling || !program.id}
+        >
+          {enrolling ? "Enrolling..." : "Enroll Now"}
+        </button>
+      </div>
     </motion.article>
   );
 };

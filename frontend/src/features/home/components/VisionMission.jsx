@@ -3,13 +3,11 @@ import SectionHeader from "../../../shared/components/SectionHeader";
 import FeatureCard from "../../../shared/components/FeatureCard";
 import {
   BrainCircuit,
-  BriefcaseBusiness,
   Rocket,
   ShieldCheck,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { programsData } from "../../skill-programs/data/programsData";
 import { rdServicesData } from "../../rd-services/data/rdServicesData";
 
 const offers = [

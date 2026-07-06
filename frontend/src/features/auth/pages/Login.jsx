@@ -7,6 +7,7 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const redirectTarget = new URLSearchParams(location.search).get("redirect");
   const [form, setForm] = useState({
     emailOrPhone: "",
     password: "",
@@ -27,6 +28,7 @@ const Login = () => {
     try {
       const session = await login(form);
       const redirectTo =
+        redirectTarget ||
         location.state?.from ||
         (session.user?.role === "ADMIN" ? "/admin" : "/dashboard");
       navigate(redirectTo, { replace: true });

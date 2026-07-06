@@ -2,43 +2,55 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   BadgeCheck,
-  BookOpen,
   Clock3,
   Layers3,
   PlayCircle,
-  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
 import { apiClient } from "../../../shared/services/apiClient";
 import { useAuth } from "../../../shared/hooks/useAuth";
-import { ROUTES } from "../../../shared/constants/routes";
+import { safeDecodeURIComponent } from "../../../shared/utils/media";
 
-const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
 
 const ProgramDetails = () => {
   const { slug } = useParams();
+  const decodedSlug = safeDecodeURIComponent(slug || "").trim();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+  const isNotFound = error === "Program not found";
 
   useEffect(() => {
     const loadProgram = async () => {
       try {
-        const response = await apiClient.get(`/programs/${slug}`);
+        const response = await apiClient.get(`/programs/${decodedSlug}`);
         setProgram(response.program);
+        setError("");
       } catch (err) {
-        setError(err.message || "Program not found");
+        setError(err.status === 404 ? "Program not found" : err.message || "Unable to load program");
+        setProgram(null);
       } finally {
         setLoading(false);
       }
     };
 
-    loadProgram();
-  }, [slug]);
+    if (decodedSlug) {
+      loadProgram();
+    } else {
+      setError("Program not found");
+      setLoading(false);
+    }
+  }, [decodedSlug]);
 
   useEffect(() => {
     if (window.Razorpay) {
@@ -57,11 +69,15 @@ const ProgramDetails = () => {
 
   const modules = useMemo(() => program?.curriculumModules || [], [program]);
   const projects = useMemo(() => program?.projects || [], [program]);
-  const faqs = useMemo(() => program?.faqs || [], [program]);
+  const faqs = useMemo(() => (Array.isArray(program?.faqs) ? program.faqs : []), [program]);
+  const learnings = useMemo(
+    () => (Array.isArray(program?.whatYouWillLearn) ? program.whatYouWillLearn : []),
+    [program],
+  );
 
   const handleEnroll = async () => {
     if (!isAuthenticated) {
-      navigate(ROUTES.LOGIN, { state: { from: `/programs/${slug}` } });
+      navigate(`/login?redirect=${encodeURIComponent(`/programs/${decodedSlug}`)}`);
       return;
     }
 
@@ -95,14 +111,7 @@ const ProgramDetails = () => {
         });
         checkout.open();
       } else {
-        await apiClient.post("/payments/verify", {
-          orderId: response.order.id,
-          paymentId: response.order.id,
-          signature: "mock-signature",
-        });
-        navigate("/payment-success", {
-          state: { programTitle: program.title, amount: response.order.amount / 100 },
-        });
+        setError("Payment checkout is temporarily unavailable. Please try again.");
       }
     } catch (err) {
       setError(err.message || "Unable to start enrollment");
@@ -112,7 +121,11 @@ const ProgramDetails = () => {
   };
 
   if (loading) {
-    return <section className="section"><div className="container">Loading...</div></section>;
+    return (
+      <section className="section">
+        <div className="container">Loading...</div>
+      </section>
+    );
   }
 
   if (error || !program) {
@@ -120,7 +133,7 @@ const ProgramDetails = () => {
       <section className="section">
         <div className="container">
           <div className="card glass">
-            <h1>Program not found</h1>
+            <h1>{isNotFound ? "Program not found" : "Unable to load program"}</h1>
             <p className="muted-copy">{error}</p>
           </div>
         </div>
@@ -137,10 +150,18 @@ const ProgramDetails = () => {
             <h1>{program.title}</h1>
             <p className="muted-copy">{program.overview}</p>
             <div className="program-meta">
-              <span className="meta-pill"><Clock3 size={12} /> {program.duration}</span>
-              <span className="meta-pill"><Sparkles size={12} /> {program.level}</span>
-              <span className="meta-pill"><Layers3 size={12} /> {program.mode}</span>
-              <span className="meta-pill"><Users size={12} /> {program.projectsCount || projects.length} Projects</span>
+              <span className="meta-pill">
+                <Clock3 size={12} /> {program.duration}
+              </span>
+              <span className="meta-pill">
+                <Sparkles size={12} /> {program.level}
+              </span>
+              <span className="meta-pill">
+                <Layers3 size={12} /> {program.mode}
+              </span>
+              <span className="meta-pill">
+                <Users size={12} /> {program.projectsCount || projects.length} Projects
+              </span>
             </div>
             <div className="program-price-box">
               <strong>{formatCurrency(program.discountFees || program.fees)}</strong>
@@ -151,8 +172,17 @@ const ProgramDetails = () => {
               {actionLoading ? "Starting..." : "Enroll Now"}
             </button>
           </div>
-          {program.heroImageUrl || program.thumbnailUrl ? (
-            <img className="program-hero-image" src={program.heroImageUrl || program.thumbnailUrl} alt={program.title} />
+
+          {program.heroVideoUrl ? (
+            <video className="program-hero-image" autoPlay muted loop playsInline>
+              <source src={program.heroVideoUrl} />
+            </video>
+          ) : program.heroImageUrl || program.thumbnailUrl ? (
+            <img
+              className="program-hero-image"
+              src={program.heroImageUrl || program.thumbnailUrl}
+              alt={program.title}
+            />
           ) : null}
         </div>
 
@@ -160,8 +190,10 @@ const ProgramDetails = () => {
           <article className="card glass">
             <h2>What you will learn</h2>
             <ul className="detail-list">
-              {(program.whatYouWillLearn || []).map((item) => (
-                <li key={item}><BadgeCheck size={14} /> {item}</li>
+              {learnings.map((item) => (
+                <li key={item}>
+                  <BadgeCheck size={14} /> {item}
+                </li>
               ))}
             </ul>
           </article>
@@ -176,7 +208,8 @@ const ProgramDetails = () => {
                   <ul className="detail-list">
                     {(module.lessons || []).map((lesson) => (
                       <li key={lesson.id}>
-                        <BadgeCheck size={14} /> {lesson.title} {lesson.duration ? `• ${lesson.duration}` : ""}
+                        <BadgeCheck size={14} /> {lesson.title}
+                        {lesson.duration ? ` • ${lesson.duration}` : ""}
                       </li>
                     ))}
                   </ul>
@@ -200,10 +233,16 @@ const ProgramDetails = () => {
 
           <article className="card glass">
             <h2>Support</h2>
-            <p className="muted-copy">{program.placementSupport || "Placement and internship support available."}</p>
+            <p className="muted-copy">
+              {program.placementSupport || "Placement and internship support available."}
+            </p>
             <div className="program-meta">
-              <span className="meta-pill">{program.certificateIncluded ? "Certificate included" : "Certificate not included"}</span>
-              <span className="meta-pill">{program.internshipSupport ? "Internship support" : "No internship support"}</span>
+              <span className="meta-pill">
+                {program.certificateIncluded ? "Certificate included" : "Certificate not included"}
+              </span>
+              <span className="meta-pill">
+                {program.internshipSupport ? "Internship support" : "No internship support"}
+              </span>
             </div>
           </article>
 
@@ -217,7 +256,7 @@ const ProgramDetails = () => {
           <article className="card glass">
             <h2>FAQs</h2>
             <div className="module-stack">
-              {(faqs || []).map((faq, index) => (
+              {faqs.map((faq, index) => (
                 <div key={faq.question || index} className="module-card">
                   <h3>{faq.question}</h3>
                   <p>{faq.answer}</p>

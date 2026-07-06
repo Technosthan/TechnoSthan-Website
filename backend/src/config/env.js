@@ -13,4 +13,5 @@ export const env = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
   FRONTEND_URL: process.env.FRONTEND_URL,
+  BACKEND_PUBLIC_URL: process.env.BACKEND_PUBLIC_URL,
 };

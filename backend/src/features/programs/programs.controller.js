@@ -16,7 +16,15 @@ export const getHeroController = asyncHandler(async (_req, res) => {
     orderBy: { updatedAt: "desc" },
   });
 
-  return sendSuccess(res, 200, { hero });
+  return sendSuccess(res, 200, {
+    hero: hero
+      ? {
+          ...hero,
+          backgroundVideo: hero.backgroundVideoUrl,
+          backgroundImage: hero.backgroundImageUrl,
+        }
+      : null,
+  });
 });
 
 export const getProgramsController = asyncHandler(async (_req, res) => {
@@ -26,7 +34,13 @@ export const getProgramsController = asyncHandler(async (_req, res) => {
 
 export const getProgramController = asyncHandler(async (req, res) => {
   const { slug } = req.params;
-  const program = await getProgramBySlug(slug);
+  let decodedSlug = String(slug || "").trim();
+  try {
+    decodedSlug = decodeURIComponent(decodedSlug);
+  } catch (_error) {
+    // keep the raw slug if decoding fails
+  }
+  const program = await getProgramBySlug(decodedSlug);
 
   if (!program) {
     return res.status(404).json({ message: "Program not found" });

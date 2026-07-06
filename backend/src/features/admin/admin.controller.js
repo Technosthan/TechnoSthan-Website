@@ -2,6 +2,48 @@ import { prisma } from "../../config/db.js";
 import { asyncHandler } from "../../shared/utils/asyncHandler.js";
 import { sendSuccess } from "../../shared/utils/apiResponse.js";
 import { getProgramById } from "../programs/programs.service.js";
+import { normalizeMediaUrl } from "../../shared/utils/media.js";
+
+const prepareHeroData = (body = {}) => ({
+  title: body.title || "",
+  subtitle: body.subtitle || "",
+  badgeText: body.badgeText || null,
+  primaryCtaText: body.primaryCtaText || "Explore Programs",
+  secondaryCtaText: body.secondaryCtaText || "Enroll Now",
+  backgroundVideoUrl:
+    normalizeMediaUrl(body.backgroundVideoUrl || body.backgroundVideo, "video") || null,
+  backgroundImageUrl:
+    normalizeMediaUrl(body.backgroundImageUrl || body.backgroundImage, "image") || null,
+  isActive: body.isActive ?? true,
+});
+
+const saveHeroRecord = async (data, heroId = null) => {
+  if (heroId) {
+    const existingById = await prisma.heroContent.findUnique({ where: { id: heroId } });
+    if (existingById) {
+      return prisma.heroContent.update({ where: { id: heroId }, data });
+    }
+  }
+
+  const latestActiveHero = await prisma.heroContent.findFirst({
+    where: { isActive: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (latestActiveHero) {
+    return prisma.heroContent.update({
+      where: { id: latestActiveHero.id },
+      data,
+    });
+  }
+
+  return prisma.heroContent.create({
+    data: {
+      ...data,
+      isActive: true,
+    },
+  });
+};
 
 export const getDashboardStatsController = asyncHandler(async (_req, res) => {
   const [users, programs, enrollments, payments, enquiries, workshops] =
@@ -20,16 +62,13 @@ export const getDashboardStatsController = asyncHandler(async (_req, res) => {
 });
 
 export const createHeroController = asyncHandler(async (req, res) => {
-  const hero = await prisma.heroContent.create({ data: req.body });
+  const hero = await saveHeroRecord(prepareHeroData(req.body));
   return sendSuccess(res, 201, { hero }, "Hero content created");
 });
 
 export const updateHeroController = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const hero = await prisma.heroContent.update({
-    where: { id },
-    data: req.body,
-  });
+  const hero = await saveHeroRecord(prepareHeroData(req.body), id);
   return sendSuccess(res, 200, { hero }, "Hero content updated");
 });
 
@@ -191,12 +230,19 @@ export const deleteTestimonialController = asyncHandler(async (req, res) => {
 
 export const getSettingsController = asyncHandler(async (_req, res) => {
   const hero = await prisma.heroContent.findFirst({
+    where: { isActive: true },
     orderBy: { updatedAt: "desc" },
   });
 
   return sendSuccess(res, 200, {
     settings: {
-      hero,
+      hero: hero
+        ? {
+            ...hero,
+            backgroundVideo: hero.backgroundVideoUrl,
+            backgroundImage: hero.backgroundImageUrl,
+          }
+        : null,
     },
   });
 });

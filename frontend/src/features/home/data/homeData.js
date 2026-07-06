@@ -103,35 +103,6 @@ export const projectShowcase = [
   },
 ];
 
-export const workshopHighlights = [
-  {
-    title: "AI Tools Workshop",
-    date: "12 Aug 2026",
-    mode: "Hybrid",
-    seats: "12 Seats Left",
-    badge: "Upcoming",
-    description:
-      "Learn practical AI workflows and build your first workflow demo.",
-  },
-  {
-    title: "IoT & Robotics Sprint",
-    date: "24 Aug 2026",
-    mode: "Offline",
-    seats: "8 Seats Left",
-    badge: "Popular",
-    description:
-      "Hands-on prototyping with sensors, motors, and control logic.",
-  },
-  {
-    title: "Web Development Bootcamp",
-    date: "05 Sep 2026",
-    mode: "Live Online",
-    seats: "18 Seats Left",
-    badge: "Fast Track",
-    description: "Build a polished portfolio project under expert mentorship.",
-  },
-];
-
 export const innovationLabs = [
   {
     title: "AI Lab",
@@ -145,26 +116,22 @@ export const innovationLabs = [
   },
   {
     title: "IoT Lab",
-    description:
-      "Create smart systems with sensors, edge devices, and cloud flows.",
+    description: "Create smart systems with sensors, edge devices, and cloud flows.",
     icon: Microscope,
   },
   {
     title: "Robotics Lab",
-    description:
-      "Explore automation, motion control, and intelligent machines.",
+    description: "Explore automation, motion control, and intelligent machines.",
     icon: Workflow,
   },
   {
     title: "PCB Lab",
-    description:
-      "Design and test custom hardware solutions in a practical setup.",
+    description: "Design and test custom hardware solutions in a practical setup.",
     icon: Sparkles,
   },
   {
     title: "Innovation Studio",
-    description:
-      "Turn ideas into prototypes, pitches, and launch-ready concepts.",
+    description: "Turn ideas into prototypes, pitches, and launch-ready concepts.",
     icon: Rocket,
   },
 ];
@@ -177,8 +144,7 @@ export const outcomeCards = [
   },
   {
     title: "Internship Experience",
-    description:
-      "Build confidence through practical internships and mentorship.",
+    description: "Build confidence through practical internships and mentorship.",
     icon: BriefcaseBusiness,
   },
   {

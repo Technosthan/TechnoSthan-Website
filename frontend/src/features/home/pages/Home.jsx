@@ -3,14 +3,12 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
-  BriefcaseBusiness,
   CalendarDays,
 } from "lucide-react";
 import HeroSection from "../components/HeroSection";
 import SectionHeader from "../../../shared/components/SectionHeader";
 import ProgramCard from "../../skill-programs/components/ProgramCard";
 import { apiClient } from "../../../shared/services/apiClient";
-import { programsData as fallbackPrograms } from "../../skill-programs/data/programsData";
 import {
   homeStats,
   innovationLabs,
@@ -18,13 +16,12 @@ import {
   outcomeCards,
   projectShowcase,
   trustedPartners,
-  workshopHighlights,
 } from "../data/homeData";
 
 const Home = () => {
   const [hero, setHero] = useState(null);
-  const [programs, setPrograms] = useState(fallbackPrograms);
-  const [workshops, setWorkshops] = useState(workshopHighlights);
+  const [programs, setPrograms] = useState([]);
+  const [workshops, setWorkshops] = useState([]);
 
   useEffect(() => {
     const load = async () => {
@@ -40,15 +37,16 @@ const Home = () => {
           setHero(heroResponse.value.hero);
         }
 
-        if (programsResponse.status === "fulfilled" && programsResponse.value.programs?.length) {
-          setPrograms(programsResponse.value.programs);
+        if (programsResponse.status === "fulfilled") {
+          setPrograms(programsResponse.value.programs || []);
         }
 
-        if (workshopsResponse.status === "fulfilled" && workshopsResponse.value.workshops?.length) {
-          setWorkshops(workshopsResponse.value.workshops);
+        if (workshopsResponse.status === "fulfilled") {
+          setWorkshops(workshopsResponse.value.workshops || []);
         }
       } catch (_error) {
-        // Keep static fallbacks in place when the API is unavailable.
+        setPrograms([]);
+        setWorkshops([]);
       }
     };
 
@@ -95,11 +93,15 @@ const Home = () => {
             title="Premium programs built for ambitious learners"
             description="Each route blends practical labs, portfolio work, and real outcomes."
           />
-          <div className="grid cards-grid-3">
-            {programs.slice(0, 6).map((program) => (
-              <ProgramCard key={program.id || program.title} program={program} />
-            ))}
-          </div>
+          {programs.length ? (
+            <div className="grid cards-grid-3">
+              {programs.slice(0, 6).map((program) => (
+                <ProgramCard key={program.id || program.title} program={program} />
+              ))}
+            </div>
+          ) : (
+            <div className="card glass empty-state">No programs available.</div>
+          )}
         </div>
       </section>
 
@@ -165,35 +167,39 @@ const Home = () => {
             title="Fast-paced sessions with expert-led mentorship"
             description="Join practical workshops designed for rapid certification and portfolio growth."
           />
-          <div className="grid cards-grid-3">
-            {workshops.map((item) => (
-              <motion.article
-                key={item.title}
-                whileHover={{ y: -6, scale: 1.01 }}
-                className="card glass workshop-card"
-              >
-                <div className="workshop-top">
-                  <span className="program-badge">{item.badge || "Workshop"}</span>
-                  <span className="meta-pill">
-                    {item.date ? new Date(item.date).toLocaleDateString("en-IN") : "Upcoming"}
-                  </span>
-                </div>
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
-                <div className="workshop-meta-row">
-                  <span>
-                    <CalendarDays size={14} /> {item.mode}
-                  </span>
-                  <span>
-                    <BookOpen size={14} /> {item.seatsLeft ?? item.seats ?? "Seats available"}
-                  </span>
-                </div>
-                <a href="/contact" className="btn btn-secondary">
-                  Enroll Now <ArrowRight size={16} />
-                </a>
-              </motion.article>
-            ))}
-          </div>
+          {workshops.length ? (
+            <div className="grid cards-grid-3">
+              {workshops.map((item) => (
+                <motion.article
+                  key={item.title}
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  className="card glass workshop-card"
+                >
+                  <div className="workshop-top">
+                    <span className="program-badge">{item.badge || "Workshop"}</span>
+                    <span className="meta-pill">
+                      {item.date ? new Date(item.date).toLocaleDateString("en-IN") : "Upcoming"}
+                    </span>
+                  </div>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                  <div className="workshop-meta-row">
+                    <span>
+                      <CalendarDays size={14} /> {item.mode}
+                    </span>
+                    <span>
+                      <BookOpen size={14} /> {item.seatsLeft ?? item.seats ?? "Seats available"}
+                    </span>
+                  </div>
+                  <a href="/contact" className="btn btn-secondary">
+                    Enroll Now <ArrowRight size={16} />
+                  </a>
+                </motion.article>
+              ))}
+            </div>
+          ) : (
+            <div className="card glass empty-state">No workshops available.</div>
+          )}
         </div>
       </section>
 

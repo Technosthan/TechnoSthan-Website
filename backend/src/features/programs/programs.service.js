@@ -1,16 +1,44 @@
 import { prisma } from "../../config/db.js";
 import { slugify } from "../../shared/utils/slug.js";
+import { normalizeMediaUrl } from "../../shared/utils/media.js";
 
 const toDecimal = (value) => (value === null || value === undefined || value === "" ? null : Number(value));
 
-const buildProgramData = (payload, existingSlug = null) => ({
-  title: payload.title,
-  slug: payload.slug || existingSlug || slugify(payload.title),
+const buildUniqueProgramSlug = async (title, preferredSlug = "", excludeId = null) => {
+  const baseSource = String(preferredSlug || title || "").trim();
+  const baseSlug = slugify(baseSource) || "program";
+  let candidate = baseSlug;
+  let suffix = 2;
+
+  while (
+    await prisma.program.findFirst({
+      where: {
+        slug: candidate,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+      select: { id: true },
+    })
+  ) {
+    candidate = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+};
+
+const buildProgramData = async (payload, options = {}) => {
+  const excludeId = options.excludeId || null;
+  const title = String(payload.title || "").trim();
+  const slug = await buildUniqueProgramSlug(title, payload.slug || "", excludeId);
+
+  return {
+    title,
+    slug,
   shortDescription: payload.shortDescription,
   overview: payload.overview,
-  thumbnailUrl: payload.thumbnailUrl || null,
-  heroImageUrl: payload.heroImageUrl || null,
-  heroVideoUrl: payload.heroVideoUrl || null,
+  thumbnailUrl: normalizeMediaUrl(payload.thumbnailUrl, "image") || null,
+  heroImageUrl: normalizeMediaUrl(payload.heroImageUrl, "image") || null,
+  heroVideoUrl: normalizeMediaUrl(payload.heroVideoUrl, "video") || null,
   duration: payload.duration,
   level: payload.level,
   mode: payload.mode || "ONLINE",
@@ -28,9 +56,10 @@ const buildProgramData = (payload, existingSlug = null) => ({
   mentorName: payload.mentorName || null,
   mentorRole: payload.mentorRole || null,
   mentorBio: payload.mentorBio || null,
-  mentorAvatarUrl: payload.mentorAvatarUrl || null,
+  mentorAvatarUrl: normalizeMediaUrl(payload.mentorAvatarUrl, "image") || null,
   faqs: payload.faqs || null,
-});
+  };
+};
 
 const includeProgramGraph = {
   curriculumModules: {
@@ -69,13 +98,14 @@ export const getProgramById = async (id) => {
 };
 
 export const createProgram = async (payload) => {
-  const data = buildProgramData(payload);
+  const data = await buildProgramData(payload);
   return prisma.program.create({ data });
 };
 
 export const updateProgram = async (id, payload) => {
-  const existingProgram = await prisma.program.findUnique({ where: { id } });
-  const data = buildProgramData(payload, existingProgram?.slug || null);
+  const data = await buildProgramData(payload, {
+    excludeId: id,
+  });
   return prisma.program.update({ where: { id }, data });
 };
 

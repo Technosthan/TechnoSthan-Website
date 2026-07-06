@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
 import { apiClient } from "../../../shared/services/apiClient";
 import { ROUTES } from "../../../shared/constants/routes";
+import MediaPicker from "../../../shared/components/MediaPicker";
 
 const emptyModule = () => ({ title: "", description: "", order: 0, lessons: [] });
 const emptyLesson = () => ({ title: "", duration: "", order: 0, isPreview: false });
@@ -215,9 +216,27 @@ const ProgramForm = ({ mode = "create" }) => {
         <label className="field"><span>Slug</span><input className="input" value={form.slug} onChange={(e) => updateField("slug", e.target.value)} /></label>
         <label className="field"><span>Short description</span><textarea className="textarea" value={form.shortDescription} onChange={(e) => updateField("shortDescription", e.target.value)} /></label>
         <label className="field"><span>Overview</span><textarea className="textarea" value={form.overview} onChange={(e) => updateField("overview", e.target.value)} /></label>
-        <label className="field"><span>Thumbnail URL</span><input className="input" value={form.thumbnailUrl} onChange={(e) => updateField("thumbnailUrl", e.target.value)} /></label>
-        <label className="field"><span>Hero image URL</span><input className="input" value={form.heroImageUrl} onChange={(e) => updateField("heroImageUrl", e.target.value)} /></label>
-        <label className="field"><span>Hero video URL</span><input className="input" value={form.heroVideoUrl} onChange={(e) => updateField("heroVideoUrl", e.target.value)} /></label>
+        <MediaPicker
+          type="image"
+          label="Thumbnail"
+          value={form.thumbnailUrl}
+          onChange={(value) => updateField("thumbnailUrl", value)}
+          onRemove={() => updateField("thumbnailUrl", "")}
+        />
+        <MediaPicker
+          type="image"
+          label="Hero image"
+          value={form.heroImageUrl}
+          onChange={(value) => updateField("heroImageUrl", value)}
+          onRemove={() => updateField("heroImageUrl", "")}
+        />
+        <MediaPicker
+          type="video"
+          label="Hero video"
+          value={form.heroVideoUrl}
+          onChange={(value) => updateField("heroVideoUrl", value)}
+          onRemove={() => updateField("heroVideoUrl", "")}
+        />
         <label className="field"><span>Duration</span><input className="input" value={form.duration} onChange={(e) => updateField("duration", e.target.value)} /></label>
         <label className="field"><span>Level</span><input className="input" value={form.level} onChange={(e) => updateField("level", e.target.value)} /></label>
         <label className="field"><span>Mode</span>
@@ -246,7 +265,13 @@ const ProgramForm = ({ mode = "create" }) => {
       <label className="field"><span>Mentor name</span><input className="input" value={form.mentorName} onChange={(e) => updateField("mentorName", e.target.value)} /></label>
       <label className="field"><span>Mentor role</span><input className="input" value={form.mentorRole} onChange={(e) => updateField("mentorRole", e.target.value)} /></label>
       <label className="field"><span>Mentor bio</span><textarea className="textarea" value={form.mentorBio} onChange={(e) => updateField("mentorBio", e.target.value)} /></label>
-      <label className="field"><span>Mentor avatar URL</span><input className="input" value={form.mentorAvatarUrl} onChange={(e) => updateField("mentorAvatarUrl", e.target.value)} /></label>
+      <MediaPicker
+        type="image"
+        label="Mentor avatar"
+        value={form.mentorAvatarUrl}
+        onChange={(value) => updateField("mentorAvatarUrl", value)}
+        onRemove={() => updateField("mentorAvatarUrl", "")}
+      />
       <label className="field"><span>FAQs, one per line as question :: answer</span><textarea className="textarea" value={form.faqs} onChange={(e) => updateField("faqs", e.target.value)} /></label>
 
       <div className="builder-section">

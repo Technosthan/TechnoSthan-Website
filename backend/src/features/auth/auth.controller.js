@@ -32,7 +32,6 @@ const sendAuthSession = (res, statusCode, session, message) => {
 
 export const registerController = asyncHandler(async (req, res) => {
   const { name, email, phone, password, category, avatar } = req.body;
-  console.log("Register body:", req.body);
   const session = await registerUser({
     name,
     email,
@@ -42,7 +41,6 @@ export const registerController = asyncHandler(async (req, res) => {
     avatar,
   });
 
-  console.log("Created user:", session.user.id);
   return sendAuthSession(res, 201, session, "Account created");
 });
 

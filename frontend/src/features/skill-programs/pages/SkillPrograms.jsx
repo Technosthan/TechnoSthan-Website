@@ -3,20 +3,17 @@ import { BookOpen, Sparkles } from "lucide-react";
 import SectionHeader from "../../../shared/components/SectionHeader";
 import ProgramCard from "../components/ProgramCard";
 import { apiClient } from "../../../shared/services/apiClient";
-import { programsData as fallbackPrograms } from "../data/programsData";
 
 const SkillPrograms = () => {
-  const [programs, setPrograms] = useState(fallbackPrograms);
+  const [programs, setPrograms] = useState([]);
 
   useEffect(() => {
     const loadPrograms = async () => {
       try {
         const response = await apiClient.get("/programs");
-        if (response.programs?.length) {
-          setPrograms(response.programs);
-        }
+        setPrograms(response.programs || []);
       } catch (_error) {
-        // fallback remains in place
+        setPrograms([]);
       }
     };
 
@@ -55,11 +52,15 @@ const SkillPrograms = () => {
             </span>
           </div>
         </div>
-        <div className="grid cards-grid-3">
-          {programs.map((program) => (
-            <ProgramCard key={program.id || program.title} program={program} />
-          ))}
-        </div>
+        {programs.length ? (
+          <div className="grid cards-grid-3">
+            {programs.map((program) => (
+              <ProgramCard key={program.id || program.title} program={program} />
+            ))}
+          </div>
+        ) : (
+          <div className="card glass empty-state">No programs available.</div>
+        )}
       </div>
     </section>
   );

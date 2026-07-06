@@ -44,6 +44,7 @@ if (!existsSync(frontendPath)) {
 
 // Serve static files with high priority
 app.use(express.static(frontendPath, { maxAge: "1d", etag: false }));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), { maxAge: "7d" }));
 
 // API routes
 app.use("/api/auth", authRoutes);

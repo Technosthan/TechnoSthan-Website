@@ -38,10 +38,11 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      { path: ROUTES.HOME, element: <Home /> },
+      { index: true, element: <Home /> },
       { path: ROUTES.ABOUT, element: <About /> },
       { path: ROUTES.RD_SERVICES, element: <RDServices /> },
       { path: ROUTES.SKILL_PROGRAMS, element: <SkillPrograms /> },
+      { path: ROUTES.SKILL_PROGRAMS + "/:slug", element: <ProgramDetails /> },
       { path: ROUTES.STARTUP_SUPPORT, element: <StartupSupport /> },
       { path: ROUTES.INDUSTRIES, element: <Industries /> },
       { path: ROUTES.CONTACT, element: <Contact /> },
