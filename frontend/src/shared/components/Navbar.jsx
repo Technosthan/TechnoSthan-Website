@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { ChevronDown, LogOut, Menu, UserCircle2, X } from "lucide-react";
 import { ROUTES } from "../constants/routes";
+import { useAuth } from "../hooks/useAuth";
 import logo from "@/assets/technosthan-logo.png";
 
 const navItems = [
@@ -14,6 +15,38 @@ const navItems = [
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const dropdownItems = useMemo(() => {
+    if (!user) {
+      return [];
+    }
+
+    if (user.role === "ADMIN") {
+      return [
+        { label: "Dashboard", path: ROUTES.ADMIN },
+        { label: "My Programs", path: ROUTES.ADMIN_PROGRAMS },
+        { label: "Profile", path: ROUTES.ADMIN_SETTINGS },
+        { label: "Payments", path: ROUTES.ADMIN_PAYMENTS },
+      ];
+    }
+
+    return [
+      { label: "Dashboard", path: ROUTES.DASHBOARD },
+      { label: "My Programs", path: ROUTES.DASHBOARD_PROGRAMS },
+      { label: "Profile", path: ROUTES.DASHBOARD_PROFILE },
+      { label: "Payments", path: ROUTES.DASHBOARD_PAYMENTS },
+    ];
+  }, [user]);
+
+  const handleLogout = async () => {
+    await logout();
+    setProfileOpen(false);
+    setOpen(false);
+    navigate("/");
+  };
 
   return (
     <header className="nav-shell glass">
@@ -36,20 +69,65 @@ const Navbar = () => {
               {item.label}
             </NavLink>
           ))}
-          <a href={ROUTES.CONTACT} className="btn btn-primary nav-cta">
-            Apply Now
-          </a>
+
+          {isAuthenticated ? (
+            <div className="profile-menu-wrap">
+              <button
+                type="button"
+                className="btn btn-secondary profile-trigger"
+                onClick={() => setProfileOpen((prev) => !prev)}
+              >
+                <span className="profile-avatar">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.name || "Profile"} />
+                  ) : (
+                    <UserCircle2 size={18} />
+                  )}
+                </span>
+                <span>{user?.name || "Profile"}</span>
+                <ChevronDown size={16} />
+              </button>
+
+              {profileOpen ? (
+                <div className="profile-dropdown glass">
+                  {dropdownItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className="profile-link"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  <button
+                    type="button"
+                    className="profile-link profile-logout"
+                    onClick={handleLogout}
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <Link to={ROUTES.LOGIN} className="btn btn-primary nav-cta">
+              Login
+            </Link>
+          )}
         </nav>
 
         <button
           className="btn btn-secondary mobile-nav-toggle"
           onClick={() => setOpen((prev) => !prev)}
+          type="button"
         >
           {open ? <X size={18} /> : <Menu size={18} />}
         </button>
       </div>
 
-      {open && (
+      {open ? (
         <div className="container mobile-drawer">
           <div className="glass mobile-menu-card">
             {navItems.map((item) => (
@@ -62,16 +140,35 @@ const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
-            <a
-              href={ROUTES.CONTACT}
-              className="btn btn-primary"
-              onClick={() => setOpen(false)}
-            >
-              Apply Now
-            </a>
+
+            {isAuthenticated ? (
+              <>
+                {dropdownItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="btn btn-secondary"
+                    onClick={() => setOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <button className="btn btn-primary" type="button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to={ROUTES.LOGIN}
+                className="btn btn-primary"
+                onClick={() => setOpen(false)}
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
-      )}
+      ) : null}
     </header>
   );
 };

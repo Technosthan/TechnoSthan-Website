@@ -8,6 +8,7 @@ import { corsOptions } from "./config/cors.js";
 import { env } from "./config/env.js";
 import routes from "./routes/index.js";
 import errorMiddleware from "./shared/middleware/error.middleware.js";
+import authRoutes from "./features/auth/auth.routes.js";
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ if (!existsSync(frontendPath)) {
 app.use(express.static(frontendPath, { maxAge: "1d", etag: false }));
 
 // API routes
+app.use("/api/auth", authRoutes);
 app.use("/api", routes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 

@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, PlayCircle } from "lucide-react";
 import heroVideo from "@/assets/hero-bg.mp4";
-import heroImage from "@/assets/hero-right.png";
 
 const stats = [
   { value: "1000+", label: "Learners" },
@@ -10,19 +9,28 @@ const stats = [
   { value: "30+", label: "Mentors" },
 ];
 
-const HeroSection = () => {
+const HeroSection = ({ hero }) => {
+  const title = hero?.title || "Learn Skills.\nBuild Products.\nGet Job Ready.";
+  const subtitle =
+    hero?.subtitle ||
+    "Practical training, internships, workshops, live projects, and innovation support for students and professionals.";
+  const badgeText =
+    hero?.badgeText ||
+    "Practical Training • Internships • Live Projects • Placement Support";
+  const primaryCtaText = hero?.primaryCtaText || "Explore Programs";
+  const secondaryCtaText = hero?.secondaryCtaText || "Enroll Now";
+
   return (
     <section className="hero">
-      <video
-        className="hero-video"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-      >
-        <source src={heroVideo} type="video/mp4" />
-      </video>
+      {hero?.backgroundVideoUrl ? (
+        <video className="hero-video" autoPlay muted loop playsInline preload="auto">
+          <source src={hero.backgroundVideoUrl} type="video/mp4" />
+        </video>
+      ) : (
+        <video className="hero-video" autoPlay muted loop playsInline preload="auto">
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+      )}
       <div className="hero-overlay" />
       <div className="hero-radial" />
 
@@ -31,29 +39,27 @@ const HeroSection = () => {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="hero-copy-block"
+          className="hero-copy-block hero-center"
         >
-          <p className="badge">
-            Practical Training • Internships • Live Projects • Placement Support
-          </p>
+          <p className="badge">{badgeText}</p>
           <h1>
-            Learn Skills.
-            <br />
-            Build Products.
-            <br />
-            <span className="gradient-text">Get Job Ready.</span>
+            {String(title)
+              .split("\n")
+              .map((line) => (
+                <span key={line}>
+                  {line}
+                  <br />
+                </span>
+              ))}
           </h1>
-          <p className="hero-copy">
-            Practical training, internships, workshops, live projects, and
-            innovation support for students and professionals.
-          </p>
+          <p className="hero-copy">{subtitle}</p>
 
           <div className="hero-actions">
             <a href="/skill-programs" className="btn btn-primary">
-              Explore Programs <ArrowRight size={18} />
+              {primaryCtaText} <ArrowRight size={18} />
             </a>
-            <a href="/contact" className="btn btn-secondary">
-              <PlayCircle size={18} /> Apply Now
+            <a href="/skill-programs" className="btn btn-secondary">
+              <PlayCircle size={18} /> {secondaryCtaText}
             </a>
           </div>
 

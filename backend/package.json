@@ -7,7 +7,10 @@
     "start": "npm run build:frontend && node src/server.js",
     "build:frontend": "cd ../frontend && npm install --include=dev && npm run build",
     "build": "cd ../frontend && npm install --include=dev && npm run build",
-    "prisma:init": "prisma init --datasource-provider postgresql"
+    "prisma:init": "prisma init --datasource-provider postgresql",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^5.9.3",
@@ -15,7 +18,10 @@
     "dotenv": "^16.4.1",
     "express": "^4.19.2",
     "joi": "^17.13.0",
+    "bcryptjs": "^2.4.3",
     "nodemailer": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "razorpay": "^2.9.5",
     "prisma": "^5.9.3"
   },
   "devDependencies": {

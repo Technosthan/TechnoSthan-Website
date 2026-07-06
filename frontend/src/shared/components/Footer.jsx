@@ -12,7 +12,7 @@ const Footer = () => {
             R&D, technical training, workshops, internships, and innovation
             support for students and founders.
           </p>
-          <p className="footer-note">Learn • Innovate • Build • Transform.</p>
+          <p className="footer-note">Learn. Innovate. Build. Transform.</p>
         </div>
 
         <div className="footer-card">
@@ -62,7 +62,11 @@ const Footer = () => {
             </li>
             <li>
               <Globe size={16} />
-              <a href="https://www.technosthan.com" target="_blank" rel="noopener noreferrer">
+              <a
+                href="https://www.technosthan.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 www.technosthan.com
               </a>
             </li>

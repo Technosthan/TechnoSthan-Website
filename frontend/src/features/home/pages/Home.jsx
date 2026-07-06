@@ -1,19 +1,16 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
   BriefcaseBusiness,
   CalendarDays,
-  Cpu,
-  GraduationCap,
-  Rocket,
-  Sparkles,
-  Trophy,
 } from "lucide-react";
 import HeroSection from "../components/HeroSection";
 import SectionHeader from "../../../shared/components/SectionHeader";
 import ProgramCard from "../../skill-programs/components/ProgramCard";
-import { programsData } from "../../skill-programs/data/programsData";
+import { apiClient } from "../../../shared/services/apiClient";
+import { programsData as fallbackPrograms } from "../../skill-programs/data/programsData";
 import {
   homeStats,
   innovationLabs,
@@ -25,9 +22,42 @@ import {
 } from "../data/homeData";
 
 const Home = () => {
+  const [hero, setHero] = useState(null);
+  const [programs, setPrograms] = useState(fallbackPrograms);
+  const [workshops, setWorkshops] = useState(workshopHighlights);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [heroResponse, programsResponse, workshopsResponse] =
+          await Promise.allSettled([
+            apiClient.get("/hero"),
+            apiClient.get("/programs"),
+            apiClient.get("/workshops"),
+          ]);
+
+        if (heroResponse.status === "fulfilled") {
+          setHero(heroResponse.value.hero);
+        }
+
+        if (programsResponse.status === "fulfilled" && programsResponse.value.programs?.length) {
+          setPrograms(programsResponse.value.programs);
+        }
+
+        if (workshopsResponse.status === "fulfilled" && workshopsResponse.value.workshops?.length) {
+          setWorkshops(workshopsResponse.value.workshops);
+        }
+      } catch (_error) {
+        // Keep static fallbacks in place when the API is unavailable.
+      }
+    };
+
+    load();
+  }, []);
+
   return (
     <>
-      <HeroSection />
+      <HeroSection hero={hero} />
 
       <section className="section">
         <div className="container">
@@ -66,8 +96,8 @@ const Home = () => {
             description="Each route blends practical labs, portfolio work, and real outcomes."
           />
           <div className="grid cards-grid-3">
-            {programsData.slice(0, 6).map((program) => (
-              <ProgramCard key={program.title} program={program} />
+            {programs.slice(0, 6).map((program) => (
+              <ProgramCard key={program.id || program.title} program={program} />
             ))}
           </div>
         </div>
@@ -136,15 +166,17 @@ const Home = () => {
             description="Join practical workshops designed for rapid certification and portfolio growth."
           />
           <div className="grid cards-grid-3">
-            {workshopHighlights.map((item) => (
+            {workshops.map((item) => (
               <motion.article
                 key={item.title}
                 whileHover={{ y: -6, scale: 1.01 }}
                 className="card glass workshop-card"
               >
                 <div className="workshop-top">
-                  <span className="program-badge">{item.badge}</span>
-                  <span className="meta-pill">{item.date}</span>
+                  <span className="program-badge">{item.badge || "Workshop"}</span>
+                  <span className="meta-pill">
+                    {item.date ? new Date(item.date).toLocaleDateString("en-IN") : "Upcoming"}
+                  </span>
                 </div>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
@@ -153,11 +185,11 @@ const Home = () => {
                     <CalendarDays size={14} /> {item.mode}
                   </span>
                   <span>
-                    <BookOpen size={14} /> {item.seats}
+                    <BookOpen size={14} /> {item.seatsLeft ?? item.seats ?? "Seats available"}
                   </span>
                 </div>
                 <a href="/contact" className="btn btn-secondary">
-                  Register Now <ArrowRight size={16} />
+                  Enroll Now <ArrowRight size={16} />
                 </a>
               </motion.article>
             ))}
@@ -225,16 +257,14 @@ const Home = () => {
           >
             <div>
               <p className="badge">Ready to begin?</p>
-              <h3>
-                Build your future with practical innovation and real projects.
-              </h3>
+              <h3>Build your future with practical innovation and real projects.</h3>
               <p>
                 Join TechnoSthan Innovation Hub for training, internships,
                 startup support, and portfolio-ready growth.
               </p>
             </div>
-            <a href="/contact" className="btn btn-primary">
-              Apply Now <ArrowRight size={16} />
+            <a href="/skill-programs" className="btn btn-primary">
+              Enroll Now <ArrowRight size={16} />
             </a>
           </motion.div>
         </div>

@@ -298,7 +298,7 @@ const VisionMission = () => {
               </p>
             </div>
             <a href="/contact" className="btn btn-primary">
-              Apply Now
+              Enroll Now
             </a>
           </div>
         </div>
