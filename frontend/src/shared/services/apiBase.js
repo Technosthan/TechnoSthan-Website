@@ -10,11 +10,9 @@ const resolveProductionApiBase = () => {
     return "/api";
   }
 
-  if (hostname.endsWith("technosthan.com")) {
-    return "https://uber-backend-gxxt.onrender.com/api";
-  }
-
-  return "/api";
+  return window.location.origin === "https://ih.technosthan.com"
+    ? "https://technosthan-website-2.onrender.com/api"
+    : "/api";
 };
 
 const configuredApiBase =

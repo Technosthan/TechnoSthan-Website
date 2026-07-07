@@ -13,6 +13,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: FRONTEND_URL
+        value: https://ih.technosthan.com
+      - key: BACKEND_PUBLIC_URL
+        value: https://technosthan-website-2.onrender.com
+      - key: VITE_API_URL
+        value: https://technosthan-website-2.onrender.com/api
       - key: DATABASE_URL
         fromDatabase:
           name: technosthan-db
