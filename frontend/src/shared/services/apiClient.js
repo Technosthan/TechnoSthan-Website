@@ -1,7 +1,19 @@
 const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
+const AUTH_FREE_PATHS = ["/auth/login", "/auth/register", "/auth/logout"];
+
+const shouldAttachAuth = (url, options = {}) => {
+  if (options.skipAuth) {
+    return false;
+  }
+
+  return !AUTH_FREE_PATHS.some((path) => url.endsWith(path));
+};
+
 const request = async (url, options = {}) => {
-  const token = localStorage.getItem("technosthan_access_token");
+  const token = shouldAttachAuth(url, options)
+    ? localStorage.getItem("technosthan_access_token")
+    : null;
   const response = await fetch(`${API_BASE}${url}`, {
     headers: {
       "Content-Type": "application/json",

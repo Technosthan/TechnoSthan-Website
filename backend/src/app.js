@@ -18,6 +18,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // Serve static files from frontend dist folder
