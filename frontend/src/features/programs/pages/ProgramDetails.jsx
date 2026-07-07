@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { apiClient } from "../../../shared/services/apiClient";
 import { useAuth } from "../../../shared/hooks/useAuth";
-import { safeDecodeURIComponent } from "../../../shared/utils/media";
+import { getMediaUrl, safeDecodeURIComponent } from "../../../shared/utils/media";
+import { getProgramDetailsPath } from "../../../shared/utils/links";
+import NotFoundState from "../../../shared/components/NotFoundState";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -20,20 +22,22 @@ const formatCurrency = (value) =>
   }).format(Number(value || 0));
 
 const ProgramDetails = () => {
-  const { slug } = useParams();
-  const decodedSlug = safeDecodeURIComponent(slug || "").trim();
+  const { identifier, slug } = useParams();
+  const decodedIdentifier = safeDecodeURIComponent(identifier || slug || "").trim();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const isNotFound = error === "Program not found";
 
   useEffect(() => {
     const loadProgram = async () => {
       try {
-        const response = await apiClient.get(`/programs/${decodedSlug}`);
+        const response = await apiClient.get(`/programs/${encodeURIComponent(decodedIdentifier)}`);
         setProgram(response.program);
         setError("");
       } catch (err) {
@@ -44,13 +48,18 @@ const ProgramDetails = () => {
       }
     };
 
-    if (decodedSlug) {
+    if (decodedIdentifier) {
       loadProgram();
     } else {
       setError("Program not found");
       setLoading(false);
     }
-  }, [decodedSlug]);
+  }, [decodedIdentifier]);
+
+  useEffect(() => {
+    setVideoFailed(false);
+    setImageFailed(false);
+  }, [program?.id]);
 
   useEffect(() => {
     if (window.Razorpay) {
@@ -74,10 +83,14 @@ const ProgramDetails = () => {
     () => (Array.isArray(program?.whatYouWillLearn) ? program.whatYouWillLearn : []),
     [program],
   );
+  const heroVideoUrl = getMediaUrl(program?.heroVideoUrl, "video");
+  const heroImageUrl = getMediaUrl(program?.heroImageUrl || program?.thumbnailUrl, "image");
+  const showHeroVideo = Boolean(program?.heroVideoUrl) && !videoFailed;
+  const showHeroImage = Boolean(program?.heroImageUrl || program?.thumbnailUrl) && !imageFailed;
 
   const handleEnroll = async () => {
     if (!isAuthenticated) {
-      navigate(`/login?redirect=${encodeURIComponent(`/programs/${decodedSlug}`)}`);
+      navigate(`/login?redirect=${encodeURIComponent(getProgramDetailsPath({ slug: decodedIdentifier }))}`);
       return;
     }
 
@@ -129,11 +142,28 @@ const ProgramDetails = () => {
   }
 
   if (error || !program) {
+    if (isNotFound) {
+      return (
+        <section className="section">
+          <div className="container">
+            <NotFoundState
+              title="Program not found"
+              description="The program you opened no longer exists, was unpublished, or the link is invalid."
+              primaryLabel="Browse programs"
+              primaryTo="/programs"
+              secondaryLabel="Back to home"
+              secondaryTo="/"
+            />
+          </div>
+        </section>
+      );
+    }
+
     return (
       <section className="section">
         <div className="container">
           <div className="card glass">
-            <h1>{isNotFound ? "Program not found" : "Unable to load program"}</h1>
+            <h1>Unable to load program</h1>
             <p className="muted-copy">{error}</p>
           </div>
         </div>
@@ -173,17 +203,31 @@ const ProgramDetails = () => {
             </button>
           </div>
 
-          {program.heroVideoUrl ? (
-            <video className="program-hero-image" autoPlay muted loop playsInline>
-              <source src={program.heroVideoUrl} />
+          {showHeroVideo ? (
+            <video
+              className="program-hero-image"
+              controls
+              muted
+              playsInline
+              onError={() => setVideoFailed(true)}
+            >
+              <source src={heroVideoUrl} />
             </video>
-          ) : program.heroImageUrl || program.thumbnailUrl ? (
+          ) : showHeroImage ? (
             <img
               className="program-hero-image"
-              src={program.heroImageUrl || program.thumbnailUrl}
+              src={heroImageUrl}
               alt={program.title}
+              onError={() => setImageFailed(true)}
             />
-          ) : null}
+          ) : (
+            <div className="program-hero-image program-hero-placeholder">
+              <div>
+                <Sparkles size={24} />
+                <p className="muted-copy">No media available</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="program-details-grid">

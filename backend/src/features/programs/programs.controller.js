@@ -4,7 +4,7 @@ import { prisma } from "../../config/db.js";
 import {
   createProgram,
   deleteProgram,
-  getProgramBySlug,
+  getProgramBySlugOrId,
   listPrograms,
   seedProgramGraph,
   updateProgram,
@@ -22,6 +22,8 @@ export const getHeroController = asyncHandler(async (_req, res) => {
           ...hero,
           backgroundVideo: hero.backgroundVideoUrl,
           backgroundImage: hero.backgroundImageUrl,
+          primaryCtaLink: hero.primaryCtaLink || "/programs",
+          secondaryCtaLink: hero.secondaryCtaLink || "/contact",
         }
       : null,
   });
@@ -33,14 +35,14 @@ export const getProgramsController = asyncHandler(async (_req, res) => {
 });
 
 export const getProgramController = asyncHandler(async (req, res) => {
-  const { slug } = req.params;
-  let decodedSlug = String(slug || "").trim();
+  const { identifier } = req.params;
+  let decodedIdentifier = String(identifier || "").trim();
   try {
-    decodedSlug = decodeURIComponent(decodedSlug);
+    decodedIdentifier = decodeURIComponent(decodedIdentifier);
   } catch (_error) {
-    // keep the raw slug if decoding fails
+    // keep the raw identifier if decoding fails
   }
-  const program = await getProgramBySlug(decodedSlug);
+  const program = await getProgramBySlugOrId(decodedIdentifier);
 
   if (!program) {
     return res.status(404).json({ message: "Program not found" });

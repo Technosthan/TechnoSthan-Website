@@ -10,9 +10,10 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { ROUTES } from "../../../shared/constants/routes";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import { apiClient } from "../../../shared/services/apiClient";
+import { getProgramDetailsPath } from "../../../shared/utils/links";
+import { getMediaUrl } from "../../../shared/utils/media";
 
 const formatPrice = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -30,9 +31,13 @@ const ProgramCard = ({ program }) => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [enrolling, setEnrolling] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState(false);
 
   const fee = formatPrice(program.discountFees || program.fees);
   const originalFee = program.discountFees ? formatPrice(program.fees) : null;
+  const detailsPath = getProgramDetailsPath(program);
+  const canOpenDetails = detailsPath !== "/programs";
+  const thumbnailUrl = getMediaUrl(program.thumbnailUrl);
 
   useEffect(() => {
     if (window.Razorpay || document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
@@ -46,7 +51,9 @@ const ProgramCard = ({ program }) => {
   }, []);
 
   const handleEnroll = async () => {
-    const detailsPath = `${ROUTES.PROGRAM_DETAIL_BASE}/${program.slug}`;
+    if (!canOpenDetails) {
+      return;
+    }
 
     if (!isAuthenticated) {
       navigate(`/login?redirect=${encodeURIComponent(detailsPath)}`);
@@ -99,11 +106,12 @@ const ProgramCard = ({ program }) => {
       className="card glass program-card"
     >
       <div className="program-thumb-wrap">
-        {program.thumbnailUrl || program.heroImageUrl ? (
+        {thumbnailUrl && !thumbnailError ? (
           <img
-            src={program.thumbnailUrl || program.heroImageUrl}
+            src={thumbnailUrl}
             alt={program.title}
             className="program-thumb"
+            onError={() => setThumbnailError(true)}
           />
         ) : (
           <div className="program-thumb program-thumb-placeholder">
@@ -147,9 +155,9 @@ const ProgramCard = ({ program }) => {
       </div>
       <div className="program-card-actions">
         <Link
-          to={program.slug ? `${ROUTES.PROGRAM_DETAIL_BASE}/${program.slug}` : "#"}
+          to={canOpenDetails ? detailsPath : "#"}
           className="btn btn-secondary"
-          aria-disabled={!program.slug}
+          aria-disabled={!canOpenDetails}
         >
           View Details <ArrowRight size={16} />
         </Link>

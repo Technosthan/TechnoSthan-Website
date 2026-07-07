@@ -12,10 +12,12 @@ import Register from "../features/auth/pages/Register";
 import ForgotPassword from "../features/auth/pages/ForgotPassword";
 import ProgramDetails from "../features/programs/pages/ProgramDetails";
 import PaymentSuccess from "../features/payments/pages/PaymentSuccess";
+import Workshops from "../features/workshops/pages/Workshops";
 import AdminLayout from "../features/admin/layouts/AdminLayout";
 import StudentLayout from "../features/student/layouts/StudentLayout";
 import AdminDashboard from "../features/admin/pages/AdminDashboard";
 import AdminHero from "../features/admin/pages/AdminHero";
+import AdminCampaigns from "../features/admin/pages/AdminCampaigns";
 import AdminPrograms from "../features/admin/pages/AdminPrograms";
 import AdminProgramNew from "../features/admin/pages/AdminProgramNew";
 import AdminProgramEdit from "../features/admin/pages/AdminProgramEdit";
@@ -42,14 +44,16 @@ const router = createBrowserRouter([
       { path: ROUTES.ABOUT, element: <About /> },
       { path: ROUTES.RD_SERVICES, element: <RDServices /> },
       { path: ROUTES.SKILL_PROGRAMS, element: <SkillPrograms /> },
-      { path: ROUTES.SKILL_PROGRAMS + "/:slug", element: <ProgramDetails /> },
+      { path: "/programs", element: <SkillPrograms /> },
+      { path: ROUTES.WORKSHOPS, element: <Workshops /> },
+      { path: ROUTES.SKILL_PROGRAMS + "/:identifier", element: <ProgramDetails /> },
       { path: ROUTES.STARTUP_SUPPORT, element: <StartupSupport /> },
       { path: ROUTES.INDUSTRIES, element: <Industries /> },
       { path: ROUTES.CONTACT, element: <Contact /> },
       { path: ROUTES.LOGIN, element: <Login /> },
       { path: ROUTES.REGISTER, element: <Register /> },
       { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPassword /> },
-      { path: ROUTES.PROGRAM_DETAIL_BASE + "/:slug", element: <ProgramDetails /> },
+      { path: ROUTES.PROGRAM_DETAIL_BASE + "/:identifier", element: <ProgramDetails /> },
       { path: "/payment-success", element: <PaymentSuccess /> },
       {
         path: ROUTES.DASHBOARD,
@@ -80,6 +84,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <AdminDashboard /> },
           { path: "hero", element: <AdminHero /> },
+          { path: "campaigns", element: <AdminCampaigns /> },
           { path: "programs", element: <AdminPrograms /> },
           { path: "programs/new", element: <AdminProgramNew /> },
           { path: "programs/:id/edit", element: <AdminProgramEdit /> },

@@ -7,6 +7,16 @@ const DRIVE_ID_PATTERNS = [
   /\/file\/d\/([a-zA-Z0-9_-]{10,})/i,
 ];
 
+const BACKEND_PUBLIC_BASE = String(process.env.BACKEND_PUBLIC_URL || process.env.PUBLIC_URL || "").replace(
+  /\/$/,
+  "",
+);
+const isInternalUploadHost = (hostname = "") =>
+  hostname === "localhost" ||
+  hostname === "127.0.0.1" ||
+  hostname.endsWith(".onrender.com") ||
+  hostname.endsWith(".technosthan.com");
+
 export const extractGoogleFileId = (url = "") => {
   for (const pattern of DRIVE_ID_PATTERNS) {
     const match = String(url).match(pattern);
@@ -31,6 +41,25 @@ export const normalizeMediaUrl = (url, type = "image") => {
     }
 
     return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  if (value.startsWith("/uploads/")) {
+    return value;
+  }
+
+  if (value.startsWith("uploads/")) {
+    return `/${value}`;
+  }
+
+  if (value.startsWith("http")) {
+    try {
+      const parsed = new URL(value);
+      if (parsed.pathname.startsWith("/uploads/") && isInternalUploadHost(parsed.hostname)) {
+        return parsed.pathname;
+      }
+    } catch (_error) {
+      return value;
+    }
   }
 
   return value;

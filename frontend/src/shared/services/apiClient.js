@@ -1,13 +1,26 @@
 import { buildApiUrl } from "./apiBase";
 
-const AUTH_FREE_PATHS = ["/auth/login", "/auth/register", "/auth/logout"];
+const AUTH_FREE_RULES = [
+  { path: "/auth/login", methods: ["POST"] },
+  { path: "/auth/register", methods: ["POST"] },
+  { path: "/auth/logout", methods: ["POST"] },
+  { path: "/hero", methods: ["GET"] },
+  { path: "/programs", methods: ["GET"] },
+  { path: "/workshops", methods: ["GET"] },
+  { path: "/enquiries", methods: ["POST"] },
+  { path: "/campaigns/active", methods: ["GET"] },
+];
 
 const shouldAttachAuth = (url, options = {}) => {
   if (options.skipAuth) {
     return false;
   }
 
-  return !AUTH_FREE_PATHS.some((path) => url.endsWith(path));
+  const method = String(options.method || "GET").toUpperCase();
+  return !AUTH_FREE_RULES.some(({ path, methods }) => {
+    const isPathMatch = url === path || url.startsWith(`${path}/`);
+    return isPathMatch && methods.includes(method);
+  });
 };
 
 const request = async (url, options = {}) => {
@@ -17,6 +30,7 @@ const request = async (url, options = {}) => {
   const { headers: customHeaders, skipAuth, ...fetchOptions } = options;
   const response = await fetch(buildApiUrl(url), {
     ...fetchOptions,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

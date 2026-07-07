@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../../shared/services/apiClient";
-import MediaPicker from "../../../shared/components/MediaPicker";
+import MediaUploader from "../../../shared/components/MediaUploader";
 
 const emptyTestimonial = {
   studentName: "",
@@ -55,7 +55,7 @@ const AdminTestimonials = () => {
             <span>Course name</span>
             <input className="input" name="courseName" value={form.courseName} onChange={handleChange} />
           </label>
-          <MediaPicker
+          <MediaUploader
             type="image"
             label="Image"
             value={form.imageUrl}

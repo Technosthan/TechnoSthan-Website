@@ -97,6 +97,20 @@ export const getProgramById = async (id) => {
   });
 };
 
+export const getProgramBySlugOrId = async (identifier) => {
+  const normalizedIdentifier = String(identifier || "").trim();
+  if (!normalizedIdentifier) {
+    return null;
+  }
+
+  const programBySlug = await getProgramBySlug(normalizedIdentifier);
+  if (programBySlug) {
+    return programBySlug;
+  }
+
+  return getProgramById(normalizedIdentifier);
+};
+
 export const createProgram = async (payload) => {
   const data = await buildProgramData(payload);
   return prisma.program.create({ data });

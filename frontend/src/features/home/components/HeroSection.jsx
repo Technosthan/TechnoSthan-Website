@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
 import { ArrowRight, PlayCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroVideo from "@/assets/hero-bg.mp4";
+import { isExternalLink, normalizeAppLink } from "../../../shared/utils/links";
+import { getMediaUrl } from "../../../shared/utils/media";
 
 const stats = [
   { value: "1000+", label: "Learners" },
@@ -19,6 +22,8 @@ const HeroSection = ({ hero }) => {
     "Practical Training • Internships • Live Projects • Placement Support";
   const primaryCtaText = hero?.primaryCtaText || "Explore Programs";
   const secondaryCtaText = hero?.secondaryCtaText || "Enroll Now";
+  const primaryCtaLink = normalizeAppLink(hero?.primaryCtaLink, "/programs");
+  const secondaryCtaLink = normalizeAppLink(hero?.secondaryCtaLink, "/contact");
 
   return (
     <section className="hero">
@@ -32,7 +37,7 @@ const HeroSection = ({ hero }) => {
           playsInline
           preload="auto"
         >
-          <source src={hero.backgroundVideoUrl || hero.backgroundVideo} type="video/mp4" />
+          <source src={getMediaUrl(hero.backgroundVideoUrl || hero.backgroundVideo, "video")} type="video/mp4" />
         </video>
       ) : (
         <video
@@ -71,12 +76,24 @@ const HeroSection = ({ hero }) => {
           <p className="hero-copy">{subtitle}</p>
 
           <div className="hero-actions">
-            <a href="/skill-programs" className="btn btn-primary">
-              {primaryCtaText} <ArrowRight size={18} />
-            </a>
-            <a href="/skill-programs" className="btn btn-secondary">
-              <PlayCircle size={18} /> {secondaryCtaText}
-            </a>
+            {isExternalLink(primaryCtaLink) ? (
+              <a href={primaryCtaLink} className="btn btn-primary">
+                {primaryCtaText} <ArrowRight size={18} />
+              </a>
+            ) : (
+              <Link to={primaryCtaLink} className="btn btn-primary">
+                {primaryCtaText} <ArrowRight size={18} />
+              </Link>
+            )}
+            {isExternalLink(secondaryCtaLink) ? (
+              <a href={secondaryCtaLink} className="btn btn-secondary">
+                <PlayCircle size={18} /> {secondaryCtaText}
+              </a>
+            ) : (
+              <Link to={secondaryCtaLink} className="btn btn-secondary">
+                <PlayCircle size={18} /> {secondaryCtaText}
+              </Link>
+            )}
           </div>
 
           <div className="hero-stats">

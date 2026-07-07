@@ -20,6 +20,7 @@ const AdminDashboard = () => {
     { label: "Payments", value: stats?.payments ?? "..." },
     { label: "Enquiries", value: stats?.enquiries ?? "..." },
     { label: "Workshops", value: stats?.workshops ?? "..." },
+    { label: "Campaigns", value: stats?.campaigns ?? "..." },
   ];
 
   return (

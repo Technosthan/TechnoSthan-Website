@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../../shared/services/apiClient";
-import MediaPicker from "../../../shared/components/MediaPicker";
-import { normalizeMediaUrl } from "../../../shared/utils/media";
+import MediaUploader from "../../../shared/components/MediaUploader";
+import { normalizeStoredMediaUrl } from "../../../shared/utils/media";
 
 const emptyHero = {
   title: "",
   subtitle: "",
   badgeText: "",
   primaryCtaText: "Explore Programs",
+  primaryCtaLink: "/programs",
   secondaryCtaText: "Enroll Now",
+  secondaryCtaLink: "/contact",
   backgroundVideoUrl: "",
   backgroundImageUrl: "",
   isActive: true,
@@ -27,8 +29,16 @@ const AdminHero = () => {
         setHero({
           ...emptyHero,
           ...response.hero,
-          backgroundVideoUrl: response.hero.backgroundVideoUrl || response.hero.backgroundVideo || "",
-          backgroundImageUrl: response.hero.backgroundImageUrl || response.hero.backgroundImage || "",
+          backgroundVideoUrl: normalizeStoredMediaUrl(
+            response.hero.backgroundVideoUrl || response.hero.backgroundVideo || "",
+            "video",
+          ),
+          backgroundImageUrl: normalizeStoredMediaUrl(
+            response.hero.backgroundImageUrl || response.hero.backgroundImage || "",
+            "image",
+          ),
+          primaryCtaLink: response.hero.primaryCtaLink || "/programs",
+          secondaryCtaLink: response.hero.secondaryCtaLink || "/contact",
         });
         setHeroId(response.hero.id);
       }
@@ -54,8 +64,8 @@ const AdminHero = () => {
     try {
       const payload = {
         ...hero,
-        backgroundVideoUrl: normalizeMediaUrl(hero.backgroundVideoUrl, "video"),
-        backgroundImageUrl: normalizeMediaUrl(hero.backgroundImageUrl, "image"),
+        backgroundVideoUrl: normalizeStoredMediaUrl(hero.backgroundVideoUrl, "video"),
+        backgroundImageUrl: normalizeStoredMediaUrl(hero.backgroundImageUrl, "image"),
       };
 
       if (heroId) {
@@ -93,16 +103,26 @@ const AdminHero = () => {
           <span>Badge text</span>
           <input className="input" name="badgeText" value={hero.badgeText || ""} onChange={handleChange} />
         </label>
-        <label className="field">
-          <span>Primary CTA</span>
-          <input className="input" name="primaryCtaText" value={hero.primaryCtaText || ""} onChange={handleChange} />
-        </label>
-        <label className="field">
-          <span>Secondary CTA</span>
-          <input className="input" name="secondaryCtaText" value={hero.secondaryCtaText || ""} onChange={handleChange} />
-        </label>
+        <div className="cards-grid-2">
+          <label className="field">
+            <span>Primary CTA Text</span>
+            <input className="input" name="primaryCtaText" value={hero.primaryCtaText || ""} onChange={handleChange} />
+          </label>
+          <label className="field">
+            <span>Primary CTA Link</span>
+            <input className="input" name="primaryCtaLink" value={hero.primaryCtaLink || ""} onChange={handleChange} />
+          </label>
+          <label className="field">
+            <span>Secondary CTA Text</span>
+            <input className="input" name="secondaryCtaText" value={hero.secondaryCtaText || ""} onChange={handleChange} />
+          </label>
+          <label className="field">
+            <span>Secondary CTA Link</span>
+            <input className="input" name="secondaryCtaLink" value={hero.secondaryCtaLink || ""} onChange={handleChange} />
+          </label>
+        </div>
 
-        <MediaPicker
+        <MediaUploader
           type="video"
           label="Background video"
           value={hero.backgroundVideoUrl || ""}
@@ -111,7 +131,7 @@ const AdminHero = () => {
           helperText="Upload a video or paste a Google Drive / direct video URL."
         />
 
-        <MediaPicker
+        <MediaUploader
           type="image"
           label="Background image"
           value={hero.backgroundImageUrl || ""}

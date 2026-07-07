@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../../shared/services/apiClient";
 import { Link } from "react-router-dom";
+import { getProgramDetailsPath } from "../../../shared/utils/links";
 
 const MyPrograms = () => {
   const [enrollments, setEnrollments] = useState([]);
@@ -18,7 +19,7 @@ const MyPrograms = () => {
             <p className="badge">{enrollment.status}</p>
             <h3>{enrollment.program?.title}</h3>
             <p className="muted-copy">{enrollment.program?.shortDescription}</p>
-            <Link to={`/programs/${enrollment.program?.slug}`} className="btn btn-secondary">View program</Link>
+            <Link to={getProgramDetailsPath(enrollment.program || {})} className="btn btn-secondary">View program</Link>
           </article>
         ))}
       </div>

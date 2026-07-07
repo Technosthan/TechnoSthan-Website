@@ -1,6 +1,14 @@
 import { prisma } from "../../config/db.js";
 import { asyncHandler } from "../../shared/utils/asyncHandler.js";
 import { sendSuccess } from "../../shared/utils/apiResponse.js";
+import {
+  activateCampaign,
+  createCampaign,
+  deactivateCampaign,
+  deleteCampaign,
+  listCampaigns,
+  updateCampaign,
+} from "../campaigns/campaign.service.js";
 import { getProgramById } from "../programs/programs.service.js";
 import { normalizeMediaUrl } from "../../shared/utils/media.js";
 
@@ -9,7 +17,9 @@ const prepareHeroData = (body = {}) => ({
   subtitle: body.subtitle || "",
   badgeText: body.badgeText || null,
   primaryCtaText: body.primaryCtaText || "Explore Programs",
+  primaryCtaLink: body.primaryCtaLink || "/programs",
   secondaryCtaText: body.secondaryCtaText || "Enroll Now",
+  secondaryCtaLink: body.secondaryCtaLink || "/contact",
   backgroundVideoUrl:
     normalizeMediaUrl(body.backgroundVideoUrl || body.backgroundVideo, "video") || null,
   backgroundImageUrl:
@@ -46,7 +56,7 @@ const saveHeroRecord = async (data, heroId = null) => {
 };
 
 export const getDashboardStatsController = asyncHandler(async (_req, res) => {
-  const [users, programs, enrollments, payments, enquiries, workshops] =
+  const [users, programs, enrollments, payments, enquiries, workshops, campaigns] =
     await Promise.all([
       prisma.user.count(),
       prisma.program.count(),
@@ -54,10 +64,11 @@ export const getDashboardStatsController = asyncHandler(async (_req, res) => {
       prisma.payment.count(),
       prisma.enquiry.count(),
       prisma.workshop.count(),
+      prisma.campaign?.count ? prisma.campaign.count().catch(() => 0) : Promise.resolve(0),
     ]);
 
   return sendSuccess(res, 200, {
-    stats: { users, programs, enrollments, payments, enquiries, workshops },
+    stats: { users, programs, enrollments, payments, enquiries, workshops, campaigns },
   });
 });
 
@@ -109,6 +120,48 @@ export const getAdminStudentsController = asyncHandler(async (_req, res) => {
   });
 
   return sendSuccess(res, 200, { students });
+});
+
+export const getAdminWorkshopsController = asyncHandler(async (_req, res) => {
+  const workshops = await prisma.workshop.findMany({
+    orderBy: [{ isActive: "desc" }, { date: "asc" }, { updatedAt: "desc" }],
+  });
+
+  return sendSuccess(res, 200, { workshops });
+});
+
+export const getAdminCampaignsController = asyncHandler(async (_req, res) => {
+  const campaigns = await listCampaigns();
+  return sendSuccess(res, 200, { campaigns });
+});
+
+export const createCampaignController = asyncHandler(async (req, res) => {
+  const campaign = await createCampaign(req.body);
+  return sendSuccess(res, 201, { campaign }, "Campaign created");
+});
+
+export const updateCampaignController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const campaign = await updateCampaign(id, req.body);
+  return sendSuccess(res, 200, { campaign }, "Campaign updated");
+});
+
+export const activateCampaignController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const campaign = await activateCampaign(id);
+  return sendSuccess(res, 200, { campaign }, "Campaign activated");
+});
+
+export const deactivateCampaignController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const campaign = await deactivateCampaign(id);
+  return sendSuccess(res, 200, { campaign }, "Campaign deactivated");
+});
+
+export const deleteCampaignController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const campaign = await deleteCampaign(id);
+  return sendSuccess(res, 200, { campaign }, "Campaign deleted");
 });
 
 export const getAdminEnquiriesController = asyncHandler(async (_req, res) => {
@@ -238,10 +291,12 @@ export const getSettingsController = asyncHandler(async (_req, res) => {
     settings: {
       hero: hero
         ? {
-            ...hero,
-            backgroundVideo: hero.backgroundVideoUrl,
-            backgroundImage: hero.backgroundImageUrl,
-          }
+          ...hero,
+          backgroundVideo: hero.backgroundVideoUrl,
+          backgroundImage: hero.backgroundImageUrl,
+          primaryCtaLink: hero.primaryCtaLink || "/programs",
+          secondaryCtaLink: hero.secondaryCtaLink || "/contact",
+        }
         : null,
     },
   });

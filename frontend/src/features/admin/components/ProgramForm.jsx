@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
 import { apiClient } from "../../../shared/services/apiClient";
 import { ROUTES } from "../../../shared/constants/routes";
-import MediaPicker from "../../../shared/components/MediaPicker";
+import MediaUploader from "../../../shared/components/MediaUploader";
+import { normalizeStoredMediaUrl } from "../../../shared/utils/media";
 
 const emptyModule = () => ({ title: "", description: "", order: 0, lessons: [] });
 const emptyLesson = () => ({ title: "", duration: "", order: 0, isPreview: false });
@@ -51,6 +52,10 @@ const ProgramForm = ({ mode = "create" }) => {
       setForm((prev) => ({
         ...prev,
         ...program,
+        thumbnailUrl: normalizeStoredMediaUrl(program.thumbnailUrl, "image"),
+        heroImageUrl: normalizeStoredMediaUrl(program.heroImageUrl, "image"),
+        heroVideoUrl: normalizeStoredMediaUrl(program.heroVideoUrl, "video"),
+        mentorAvatarUrl: normalizeStoredMediaUrl(program.mentorAvatarUrl, "image"),
         fees: program.fees ? String(program.fees) : "",
         discountFees: program.discountFees ? String(program.discountFees) : "",
         whatYouWillLearn: Array.isArray(program.whatYouWillLearn)
@@ -171,6 +176,10 @@ const ProgramForm = ({ mode = "create" }) => {
     event.preventDefault();
     const payload = {
       ...form,
+      thumbnailUrl: normalizeStoredMediaUrl(form.thumbnailUrl, "image"),
+      heroImageUrl: normalizeStoredMediaUrl(form.heroImageUrl, "image"),
+      heroVideoUrl: normalizeStoredMediaUrl(form.heroVideoUrl, "video"),
+      mentorAvatarUrl: normalizeStoredMediaUrl(form.mentorAvatarUrl, "image"),
       whatYouWillLearn: form.whatYouWillLearn
         ? form.whatYouWillLearn.split("\n").filter(Boolean)
         : [],
@@ -216,21 +225,21 @@ const ProgramForm = ({ mode = "create" }) => {
         <label className="field"><span>Slug</span><input className="input" value={form.slug} onChange={(e) => updateField("slug", e.target.value)} /></label>
         <label className="field"><span>Short description</span><textarea className="textarea" value={form.shortDescription} onChange={(e) => updateField("shortDescription", e.target.value)} /></label>
         <label className="field"><span>Overview</span><textarea className="textarea" value={form.overview} onChange={(e) => updateField("overview", e.target.value)} /></label>
-        <MediaPicker
+        <MediaUploader
           type="image"
           label="Thumbnail"
           value={form.thumbnailUrl}
           onChange={(value) => updateField("thumbnailUrl", value)}
           onRemove={() => updateField("thumbnailUrl", "")}
         />
-        <MediaPicker
+        <MediaUploader
           type="image"
           label="Hero image"
           value={form.heroImageUrl}
           onChange={(value) => updateField("heroImageUrl", value)}
           onRemove={() => updateField("heroImageUrl", "")}
         />
-        <MediaPicker
+        <MediaUploader
           type="video"
           label="Hero video"
           value={form.heroVideoUrl}
@@ -265,7 +274,7 @@ const ProgramForm = ({ mode = "create" }) => {
       <label className="field"><span>Mentor name</span><input className="input" value={form.mentorName} onChange={(e) => updateField("mentorName", e.target.value)} /></label>
       <label className="field"><span>Mentor role</span><input className="input" value={form.mentorRole} onChange={(e) => updateField("mentorRole", e.target.value)} /></label>
       <label className="field"><span>Mentor bio</span><textarea className="textarea" value={form.mentorBio} onChange={(e) => updateField("mentorBio", e.target.value)} /></label>
-      <MediaPicker
+      <MediaUploader
         type="image"
         label="Mentor avatar"
         value={form.mentorAvatarUrl}

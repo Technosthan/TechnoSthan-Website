@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { apiClient } from "../../../shared/services/apiClient";
 import { ROUTES } from "../../../shared/constants/routes";
+import { getProgramDetailsPath } from "../../../shared/utils/links";
+import { useAuth } from "../../../shared/hooks/useAuth";
+import { confirmAdminDelete } from "../../../shared/utils/confirm";
 
 const AdminPrograms = () => {
   const [programs, setPrograms] = useState([]);
+  const navigate = useNavigate();
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const loadPrograms = async () => {
     const response = await apiClient.get("/programs");
@@ -17,8 +22,27 @@ const AdminPrograms = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    await apiClient.delete(`/programs/${id}`);
-    loadPrograms();
+    if (!isAuthenticated || !isAdmin) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    const confirmed = confirmAdminDelete("this program");
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/programs/${id}`);
+      loadPrograms();
+    } catch (error) {
+      if (error.status === 401) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      throw error;
+    }
   };
 
   return (
@@ -45,7 +69,7 @@ const AdminPrograms = () => {
                   <td>{program.slug}</td>
                   <td>{program.isActive ? "Active" : "Inactive"}</td>
                   <td className="table-actions">
-                    <Link to={`/programs/${program.slug}`} className="btn btn-secondary">View</Link>
+                    <Link to={getProgramDetailsPath(program)} className="btn btn-secondary">View</Link>
                     <Link to={`/admin/programs/${program.id}/edit`} className="btn btn-secondary">Edit</Link>
                     <button className="btn btn-secondary" onClick={() => handleDelete(program.id)}>Delete</button>
                   </td>

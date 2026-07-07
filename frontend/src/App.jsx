@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import CampaignPopup from "./features/campaigns/components/CampaignPopup";
 
 function App() {
   return (
@@ -9,6 +10,7 @@ function App() {
       <main>
         <Outlet />
       </main>
+      <CampaignPopup />
       <Footer />
     </div>
   );

@@ -60,7 +60,9 @@ model HeroContent {
   subtitle           String
   badgeText          String?
   primaryCtaText     String   @default("Explore Programs")
+  primaryCtaLink     String   @default("/programs")
   secondaryCtaText   String   @default("Enroll Now")
+  secondaryCtaLink   String   @default("/contact")
   backgroundVideoUrl String?
   backgroundImageUrl String?
   isActive           Boolean  @default(true)
@@ -207,6 +209,48 @@ model Workshop {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum CampaignMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum CampaignDisplayPages {
+  ALL
+  HOME
+  PROGRAMS
+  CONTACT
+}
+
+enum CampaignFrequency {
+  SESSION
+  DAY
+  VISIT
+}
+
+enum CampaignPopupSize {
+  SMALL
+  MEDIUM
+  LARGE
+  FULLSCREEN
+}
+
+model Campaign {
+  id           String               @id @default(cuid())
+  title        String
+  mediaUrl     String
+  mediaType    CampaignMediaType    @default(IMAGE)
+  ctaLink      String?
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean              @default(true)
+  displayPages  CampaignDisplayPages @default(ALL)
+  frequency    CampaignFrequency    @default(SESSION)
+  popupSize    CampaignPopupSize    @default(MEDIUM)
+  priority     Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 }
 
 model Enquiry {

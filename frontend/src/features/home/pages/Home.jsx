@@ -191,14 +191,14 @@ const Home = () => {
                       <BookOpen size={14} /> {item.seatsLeft ?? item.seats ?? "Seats available"}
                     </span>
                   </div>
-                  <a href="/contact" className="btn btn-secondary">
+                  <a href="/workshops" className="btn btn-secondary">
                     Enroll Now <ArrowRight size={16} />
                   </a>
                 </motion.article>
               ))}
-            </div>
-          ) : (
-            <div className="card glass empty-state">No workshops available.</div>
+          </div>
+        ) : (
+            <div className="card glass empty-state">No workshops available right now.</div>
           )}
         </div>
       </section>

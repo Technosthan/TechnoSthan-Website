@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.get("/hero", getHeroController);
 router.get("/", getProgramsController);
-router.get("/:slug", getProgramController);
+router.get("/:identifier", getProgramController);
 
 router.post("/", authenticate, requireRole("ADMIN"), createProgramController);
 router.put("/:id", authenticate, requireRole("ADMIN"), updateProgramController);
