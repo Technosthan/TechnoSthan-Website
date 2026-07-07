@@ -5,17 +5,66 @@ import { useToast } from "../Toast/ToastProvider";
 import AdminLayout from "./AdminLayout";
 import "./CampaignManager.css";
 
+const parseDateTimeValue = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const normalizeRedirectUrl = (value) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const parsedUrl = new URL(trimmed);
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("Redirect URL must use http or https");
+  }
+
+  return parsedUrl.toString();
+};
+
+const getCampaignState = (campaign, now) => {
+  const startAt = campaign.startAt ? new Date(campaign.startAt).getTime() : null;
+  const expiresAt = campaign.expiresAt ? new Date(campaign.expiresAt).getTime() : null;
+  const nowMs = now.getTime();
+  const isExpired = Number.isFinite(expiresAt) && expiresAt <= nowMs;
+  const isLive =
+    Boolean(campaign.isActive) &&
+    (startAt === null || !Number.isFinite(startAt) || startAt <= nowMs) &&
+    !isExpired;
+
+  return {
+    isExpired,
+    isLive,
+    label: isExpired ? "Expired" : isLive ? "Active" : "Inactive",
+    className: isExpired
+      ? "status-pill--expired"
+      : isLive
+        ? "status-pill--active"
+        : "status-pill--inactive",
+  };
+};
+
 const CampaignManager = () => {
   const { showToast } = useToast();
   const [campaigns, setCampaigns] = useState([]);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [startAt, setStartAt] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [redirectUrl, setRedirectUrl] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeCampaignId, setActiveCampaignId] = useState(null);
   const [replaceCampaign, setReplaceCampaign] = useState(null);
   const [error, setError] = useState(null);
+  const [now, setNow] = useState(() => new Date());
 
   const loadCampaigns = async () => {
     try {
@@ -37,10 +86,22 @@ const CampaignManager = () => {
     setFile(null);
     setPreview(null);
     setReplaceCampaign(null);
+    setStartAt("");
+    setExpiresAt("");
+    setRedirectUrl("");
+    setError(null);
   };
 
   useEffect(() => {
     loadCampaigns();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -79,9 +140,60 @@ const CampaignManager = () => {
     setFile(selected);
   };
 
+  const validateCampaignTiming = () => {
+    const parsedStartAt = parseDateTimeValue(startAt);
+    const parsedExpiresAt = parseDateTimeValue(expiresAt);
+
+    if (startAt && !parsedStartAt) {
+      return "Please enter a valid start date and time.";
+    }
+
+    if (expiresAt && !parsedExpiresAt) {
+      return "Please enter a valid expiry date and time.";
+    }
+
+    if (parsedStartAt && parsedExpiresAt && parsedExpiresAt <= parsedStartAt) {
+      return "Expiry date and time must be later than the start date and time.";
+    }
+
+    if (redirectUrl.trim()) {
+      try {
+        normalizeRedirectUrl(redirectUrl);
+      } catch (err) {
+        return err.message || "Please enter a valid redirect URL.";
+      }
+    }
+
+    return null;
+  };
+
+  const appendCampaignFields = (formData) => {
+    if (startAt) {
+      formData.append("startAt", new Date(startAt).toISOString());
+    }
+
+    if (expiresAt) {
+      formData.append("expiresAt", new Date(expiresAt).toISOString());
+    }
+
+    const normalizedUrl = redirectUrl.trim()
+      ? normalizeRedirectUrl(redirectUrl)
+      : "";
+
+    if (normalizedUrl) {
+      formData.append("redirectUrl", normalizedUrl);
+    }
+  };
+
   const uploadCampaign = async () => {
     if (!file) {
       setError("Please select a campaign media file.");
+      return;
+    }
+
+    const validationError = validateCampaignTiming();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -91,6 +203,7 @@ const CampaignManager = () => {
       const formData = new FormData();
       formData.append("media", file);
       formData.append("isActive", "true");
+      appendCampaignFields(formData);
 
       const { data } = await api.post("/api/campaigns", formData);
 
@@ -183,12 +296,19 @@ const CampaignManager = () => {
       return;
     }
 
+    const validationError = validateCampaignTiming();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
       const formData = new FormData();
       formData.append("media", file);
       formData.append("isActive", replaceCampaign.isActive ? "true" : "false");
+      appendCampaignFields(formData);
 
       const createResponse = await api.post("/api/campaigns", formData);
 
@@ -254,6 +374,49 @@ const CampaignManager = () => {
               <p className="field-help">
                 Supported formats: JPG, PNG, WEBP, MP4, WEBM. Max 25 MB.
               </p>
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-start-at">
+                Start Date & Time
+              </label>
+              <input
+                id="campaign-start-at"
+                type="datetime-local"
+                value={startAt}
+                onChange={(event) => setStartAt(event.target.value)}
+                className="select-control"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-expires-at">
+                Expiry Date & Time
+              </label>
+              <input
+                id="campaign-expires-at"
+                type="datetime-local"
+                value={expiresAt}
+                onChange={(event) => setExpiresAt(event.target.value)}
+                className="select-control"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-redirect-url">
+                Redirect URL
+              </label>
+              <input
+                id="campaign-redirect-url"
+                type="url"
+                value={redirectUrl}
+                onChange={(event) => setRedirectUrl(event.target.value)}
+                className="select-control"
+                placeholder="https://example.com"
+                disabled={saving}
+              />
             </div>
 
             {preview && (
@@ -367,9 +530,12 @@ const CampaignManager = () => {
             ) : (
               <div className="campaign-grid">
                 {(activeOnly
-                  ? campaigns.filter((campaign) => campaign.isActive)
+                  ? campaigns.filter((campaign) => getCampaignState(campaign, now).isLive)
                   : campaigns
-                ).map((campaign) => (
+                ).map((campaign) => {
+                  const campaignState = getCampaignState(campaign, now);
+
+                  return (
                   <div key={campaign._id} className="campaign-card">
                     <div className="campaign-card__preview">
                       {campaign.mediaType === "video" ? (
@@ -390,9 +556,9 @@ const CampaignManager = () => {
                     <div className="campaign-card__body">
                       <div className="campaign-card__meta">
                         <span
-                          className={`status-pill ${campaign.isActive ? "status-pill--active" : "status-pill--inactive"}`}
+                          className={`status-pill ${campaignState.className}`}
                         >
-                          {campaign.isActive ? "Active" : "Inactive"}
+                          {campaignState.label}
                         </span>
                         <span className="campaign-type">
                           {campaign.mediaType === "video" ? "Video" : "Image"}
@@ -432,7 +598,8 @@ const CampaignManager = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>

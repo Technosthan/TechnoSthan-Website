@@ -15,6 +15,18 @@ const CampaignSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    startAt: {
+      type: Date,
+      default: null,
+    },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
+    redirectUrl: {
+      type: String,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: false,

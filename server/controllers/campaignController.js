@@ -1,6 +1,49 @@
 const cloudinary = require("cloudinary").v2;
 const Campaign = require("../models/Campaign");
 
+const parseOptionalDateTime = (value, fieldName) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    const error = new Error(`Invalid ${fieldName}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return parsedDate;
+};
+
+const normalizeRedirectUrl = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const trimmedUrl = String(value).trim();
+  if (!trimmedUrl) {
+    return null;
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(trimmedUrl);
+  } catch (err) {
+    const error = new Error("Invalid redirect URL");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    const error = new Error("Redirect URL must use http or https");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return parsedUrl.toString();
+};
+
 const ensureCloudinaryConfigured = () => {
   if (
     !process.env.CLOUDINARY_CLOUD_NAME ||
@@ -21,10 +64,47 @@ cloudinary.config({
 
 const getActiveCampaign = async (req, res) => {
   try {
-    const campaign = await Campaign.findOne({ isActive: true })
+    const now = new Date();
+
+    const campaign = await Campaign.findOne({
+      isActive: true,
+      $and: [
+        {
+          $or: [
+            { startAt: null },
+            { startAt: { $exists: false } },
+            { startAt: { $lte: now } },
+          ],
+        },
+        {
+          $or: [
+            { expiresAt: null },
+            { expiresAt: { $exists: false } },
+            { expiresAt: { $gt: now } },
+          ],
+        },
+      ],
+    })
       .sort({ createdAt: -1 })
       .lean();
-    return res.status(200).json({ success: true, data: campaign || null });
+
+    if (campaign) {
+      return res.status(200).json({ success: true, data: campaign });
+    }
+
+    const scheduledCampaign = await Campaign.findOne({
+      isActive: true,
+      startAt: { $gt: now },
+      $or: [
+        { expiresAt: null },
+        { expiresAt: { $exists: false } },
+        { expiresAt: { $gt: now } },
+      ],
+    })
+      .sort({ startAt: 1, createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({ success: true, data: scheduledCampaign || null });
   } catch (err) {
     console.error("Get active campaign error:", err);
     return res
@@ -47,14 +127,29 @@ const getCampaigns = async (req, res) => {
 
 const createCampaign = async (req, res) => {
   try {
-    ensureCloudinaryConfigured();
-
     const file = req.file;
     if (!file) {
       return res
         .status(400)
         .json({ success: false, message: "Campaign media is required" });
     }
+
+    const startAt = parseOptionalDateTime(req.body.startAt, "start date and time");
+    const expiresAt = parseOptionalDateTime(
+      req.body.expiresAt,
+      "expiry date and time",
+    );
+
+    if (startAt && expiresAt && expiresAt <= startAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Expiry date and time must be later than the start date and time",
+      });
+    }
+
+    const redirectUrl = normalizeRedirectUrl(req.body.redirectUrl);
+
+    ensureCloudinaryConfigured();
 
     const mimeType = String(file.mimetype || "").toLowerCase();
     const isImage = mimeType.startsWith("image/");
@@ -99,6 +194,9 @@ const createCampaign = async (req, res) => {
       mediaType,
       mediaUrl: result.secure_url,
       publicId: result.public_id,
+      startAt,
+      expiresAt,
+      redirectUrl,
       isActive,
     });
 
@@ -119,7 +217,8 @@ const createCampaign = async (req, res) => {
     return res.status(201).json({ success: true, data: campaign });
   } catch (err) {
     console.error("Create campaign error:", err);
-    return res.status(500).json({
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
       success: false,
       message: err.message || "Unable to create campaign",
     });

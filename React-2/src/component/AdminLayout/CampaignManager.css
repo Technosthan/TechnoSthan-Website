@@ -309,6 +309,11 @@
   color: #cbd5e1;
 }
 
+.status-pill--expired {
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
+}
+
 .campaign-type,
 .campaign-timestamp {
   color: #94a3b8;
