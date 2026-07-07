@@ -1,14 +1,14 @@
-const API_BASE = "/api";
+import { buildApiUrl } from "../shared/services/apiBase";
 
 export const api = {
   async getEnquiries() {
-    const response = await fetch(`${API_BASE}/enquiries`);
+    const response = await fetch(buildApiUrl("/enquiries"));
     if (!response.ok) throw new Error("Failed to fetch enquiries");
     return response.json();
   },
 
   async createEnquiry(payload) {
-    const response = await fetch(`${API_BASE}/enquiries`, {
+    const response = await fetch(buildApiUrl("/enquiries"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -20,7 +20,7 @@ export const api = {
   },
 
   async updateEnquiryStatus(id, status) {
-    const response = await fetch(`${API_BASE}/enquiries/${id}/status`, {
+    const response = await fetch(buildApiUrl(`/enquiries/${id}/status`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -32,7 +32,7 @@ export const api = {
   },
 
   async deleteEnquiry(id) {
-    const response = await fetch(`${API_BASE}/enquiries/${id}`, {
+    const response = await fetch(buildApiUrl(`/enquiries/${id}`), {
       method: "DELETE",
     });
     const data = await response.json();

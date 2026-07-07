@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CloudUpload, Image as ImageIcon, PlayCircle, RefreshCw, Trash2 } from "lucide-react";
 import { normalizeMediaUrl } from "../utils/media";
+import { buildApiUrl } from "../services/apiBase";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
-
-const getUploadEndpoint = (type) => `${API_BASE}/uploads/${type === "video" ? "videos" : "images"}`;
+const getUploadEndpoint = (type) => buildApiUrl(`/uploads/${type === "video" ? "videos" : "images"}`);
 
 const MediaPicker = ({
   type = "image",

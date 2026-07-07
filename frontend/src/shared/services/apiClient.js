@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+import { buildApiUrl } from "./apiBase";
 
 const AUTH_FREE_PATHS = ["/auth/login", "/auth/register", "/auth/logout"];
 
@@ -14,13 +14,14 @@ const request = async (url, options = {}) => {
   const token = shouldAttachAuth(url, options)
     ? localStorage.getItem("technosthan_access_token")
     : null;
-  const response = await fetch(`${API_BASE}${url}`, {
+  const { headers: customHeaders, skipAuth, ...fetchOptions } = options;
+  const response = await fetch(buildApiUrl(url), {
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
+      ...(customHeaders || {}),
     },
-    ...options,
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
