@@ -7,7 +7,6 @@ import enrollmentRoutes from "../features/enrollments/enrollments.routes.js";
 import paymentRoutes from "../features/payments/payments.routes.js";
 import studentRoutes from "../features/student/student.routes.js";
 import adminRoutes from "../features/admin/admin.routes.js";
-import uploadRoutes from "../features/uploads/upload.routes.js";
 
 const router = express.Router();
 
@@ -19,6 +18,5 @@ router.use("/payments", paymentRoutes);
 router.use("/student", studentRoutes);
 router.use("/admin", adminRoutes);
 router.use("/enquiries", enquiryRoutes);
-router.use("/uploads", uploadRoutes);
 
 export default router;
