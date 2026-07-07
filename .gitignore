@@ -73,6 +73,8 @@ prisma/dev.db-journal
 # ==========================
 uploads/
 public/uploads/
+!backend/src/features/uploads/
+!backend/src/features/uploads/**
 
 # ==========================
 # Generated Assets
