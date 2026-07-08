@@ -8,11 +8,6 @@ const DRIVE_ID_PATTERNS = [
 ];
 
 const trimTrailingSlash = (value) => String(value || "").replace(/\/$/, "");
-const isInternalUploadHost = (hostname = "") =>
-  hostname === "localhost" ||
-  hostname === "127.0.0.1" ||
-  hostname.endsWith(".onrender.com") ||
-  hostname.endsWith(".technosthan.com");
 
 const resolveRuntimeApiBase = () => {
   if (typeof window === "undefined") {
@@ -32,8 +27,10 @@ const resolveRuntimeApiBase = () => {
 };
 
 const configuredApiBase = trimTrailingSlash(import.meta.env.VITE_API_URL || "");
+const configuredBackendBase = trimTrailingSlash(import.meta.env.VITE_BACKEND_PUBLIC_URL || "");
 const API_BASE = configuredApiBase || resolveRuntimeApiBase();
-const BACKEND_PUBLIC_BASE = trimTrailingSlash(API_BASE).replace(/\/api\/?$/, "");
+const BACKEND_PUBLIC_BASE =
+  configuredBackendBase || trimTrailingSlash(API_BASE).replace(/\/api\/?$/, "");
 
 export const extractGoogleFileId = (url = "") => {
   for (const pattern of DRIVE_ID_PATTERNS) {
@@ -74,14 +71,7 @@ export const normalizeStoredMediaUrl = (url, type = "image") => {
   }
 
   if (value.startsWith("http")) {
-    try {
-      const parsed = new URL(value);
-      if (parsed.pathname.startsWith("/uploads/") && isInternalUploadHost(parsed.hostname)) {
-        return parsed.pathname;
-      }
-    } catch (_error) {
-      return value;
-    }
+    return value;
   }
 
   return value;
@@ -94,20 +84,13 @@ export const getMediaUrl = (url, type = "image") => {
   }
 
   if (value.startsWith("http")) {
-    try {
-      const parsed = new URL(value);
-      if (parsed.pathname.startsWith("/uploads/") && isInternalUploadHost(parsed.hostname)) {
-        const base = BACKEND_PUBLIC_BASE || API_BASE.replace(/\/api\/?$/, "");
-        return base ? `${base.replace(/\/$/, "")}${parsed.pathname}` : value;
-      }
-    } catch (_error) {
-      return value;
-    }
-
     return value;
   }
 
-  const base = BACKEND_PUBLIC_BASE || trimTrailingSlash(API_BASE).replace(/\/api\/?$/, "");
+  const base =
+    BACKEND_PUBLIC_BASE ||
+    (typeof window !== "undefined" ? trimTrailingSlash(window.location.origin) : "") ||
+    trimTrailingSlash(API_BASE).replace(/\/api\/?$/, "");
 
   if (value.startsWith("/uploads/") && base) {
     return `${base.replace(/\/$/, "")}${value}`;

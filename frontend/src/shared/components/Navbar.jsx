@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, Menu, UserCircle2, X } from "lucide-react";
 import { ROUTES } from "../constants/routes";
 import { useAuth } from "../hooks/useAuth";
+import { getMediaUrl } from "../utils/media";
 import logo from "@/assets/technosthan-logo.png";
 
 const navItems = [
@@ -79,7 +80,7 @@ const Navbar = () => {
               >
                 <span className="profile-avatar">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name || "Profile"} />
+                    <img src={getMediaUrl(user.avatar, "image")} alt={user.name || "Profile"} />
                   ) : (
                     <UserCircle2 size={18} />
                   )}

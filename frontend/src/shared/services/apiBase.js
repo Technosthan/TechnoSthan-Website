@@ -1,5 +1,7 @@
 const trimTrailingSlash = (value) => String(value || "").replace(/\/$/, "");
 
+const configuredBackendBase = trimTrailingSlash(import.meta.env.VITE_BACKEND_PUBLIC_URL || "");
+
 const resolveRuntimeApiBase = () => {
   if (typeof window === "undefined") {
     return "";
@@ -19,7 +21,11 @@ const resolveRuntimeApiBase = () => {
 
 const configuredApiBase = trimTrailingSlash(import.meta.env.VITE_API_URL || "");
 
-export const API_BASE = configuredApiBase || resolveRuntimeApiBase() || "http://localhost:5000/api";
+export const API_BASE =
+  configuredApiBase ||
+  (configuredBackendBase ? `${configuredBackendBase}/api` : "") ||
+  resolveRuntimeApiBase() ||
+  "http://localhost:5000/api";
 
 export const buildApiUrl = (path) => {
   if (/^https?:\/\//i.test(path)) {

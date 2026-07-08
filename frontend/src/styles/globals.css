@@ -1013,6 +1013,25 @@ td {
     linear-gradient(145deg, rgba(10, 18, 34, 0.96), rgba(19, 28, 47, 0.96));
   color: var(--cyan);
 }
+.program-mentor-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+.program-mentor-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 1rem;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: rgba(94, 231, 255, 0.12);
+}
+.program-mentor-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan);
+}
 .program-price-box {
   display: flex;
   align-items: baseline;

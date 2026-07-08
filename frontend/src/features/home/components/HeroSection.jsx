@@ -19,15 +19,22 @@ const HeroSection = ({ hero }) => {
     "Practical training, internships, workshops, live projects, and innovation support for students and professionals.";
   const badgeText =
     hero?.badgeText ||
-    "Practical Training • Internships • Live Projects • Placement Support";
+    "Practical Training - Internships - Live Projects - Placement Support";
   const primaryCtaText = hero?.primaryCtaText || "Explore Programs";
   const secondaryCtaText = hero?.secondaryCtaText || "Enroll Now";
   const primaryCtaLink = normalizeAppLink(hero?.primaryCtaLink, "/programs");
   const secondaryCtaLink = normalizeAppLink(hero?.secondaryCtaLink, "/contact");
+  const backgroundVideoUrl = getMediaUrl(hero?.backgroundVideoUrl || hero?.backgroundVideo, "video");
+  const backgroundImageUrl = getMediaUrl(hero?.backgroundImageUrl || hero?.backgroundImage, "image");
+  const hasBackgroundVideo = Boolean(backgroundVideoUrl);
+  const hasBackgroundImage = Boolean(backgroundImageUrl);
 
   return (
     <section className="hero">
-      {hero?.backgroundVideoUrl || hero?.backgroundVideo ? (
+      {hasBackgroundImage ? (
+        <img className="hero-video" src={backgroundImageUrl} alt="" aria-hidden="true" />
+      ) : null}
+      {hasBackgroundVideo ? (
         <video
           key={hero?.backgroundVideoUrl || hero?.backgroundVideo || "default-hero-video"}
           className="hero-video"
@@ -36,10 +43,11 @@ const HeroSection = ({ hero }) => {
           loop
           playsInline
           preload="auto"
+          poster={hasBackgroundImage ? backgroundImageUrl : undefined}
         >
-          <source src={getMediaUrl(hero.backgroundVideoUrl || hero.backgroundVideo, "video")} type="video/mp4" />
+          <source src={backgroundVideoUrl} type="video/mp4" />
         </video>
-      ) : (
+      ) : !hasBackgroundImage ? (
         <video
           key="default-hero-video"
           className="hero-video"
@@ -51,7 +59,7 @@ const HeroSection = ({ hero }) => {
         >
           <source src={heroVideo} type="video/mp4" />
         </video>
-      )}
+      ) : null}
       <div className="hero-overlay" />
       <div className="hero-radial" />
 

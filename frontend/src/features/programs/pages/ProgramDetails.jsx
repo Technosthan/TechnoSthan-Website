@@ -32,6 +32,7 @@ const ProgramDetails = () => {
   const [error, setError] = useState("");
   const [videoFailed, setVideoFailed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [mentorAvatarFailed, setMentorAvatarFailed] = useState(false);
   const isNotFound = error === "Program not found";
 
   useEffect(() => {
@@ -59,6 +60,7 @@ const ProgramDetails = () => {
   useEffect(() => {
     setVideoFailed(false);
     setImageFailed(false);
+    setMentorAvatarFailed(false);
   }, [program?.id]);
 
   useEffect(() => {
@@ -85,8 +87,10 @@ const ProgramDetails = () => {
   );
   const heroVideoUrl = getMediaUrl(program?.heroVideoUrl, "video");
   const heroImageUrl = getMediaUrl(program?.heroImageUrl || program?.thumbnailUrl, "image");
+  const mentorAvatarUrl = getMediaUrl(program?.mentorAvatarUrl, "image");
   const showHeroVideo = Boolean(program?.heroVideoUrl) && !videoFailed;
   const showHeroImage = Boolean(program?.heroImageUrl || program?.thumbnailUrl) && !imageFailed;
+  const showMentorAvatar = Boolean(program?.mentorAvatarUrl) && !mentorAvatarFailed;
 
   const handleEnroll = async () => {
     if (!isAuthenticated) {
@@ -253,7 +257,7 @@ const ProgramDetails = () => {
                     {(module.lessons || []).map((lesson) => (
                       <li key={lesson.id}>
                         <BadgeCheck size={14} /> {lesson.title}
-                        {lesson.duration ? ` • ${lesson.duration}` : ""}
+                        {lesson.duration ? ` - ${lesson.duration}` : ""}
                       </li>
                     ))}
                   </ul>
@@ -292,9 +296,25 @@ const ProgramDetails = () => {
 
           <article className="card glass">
             <h2>Mentor</h2>
-            <p className="muted-copy">{program.mentorName}</p>
-            <p className="muted-copy">{program.mentorRole}</p>
-            <p className="muted-copy">{program.mentorBio}</p>
+            <div className="program-mentor-card">
+              {showMentorAvatar ? (
+                <img
+                  className="program-mentor-avatar"
+                  src={mentorAvatarUrl}
+                  alt={program.mentorName || "Mentor"}
+                  onError={() => setMentorAvatarFailed(true)}
+                />
+              ) : (
+                <div className="program-mentor-avatar program-mentor-avatar-placeholder">
+                  <Users size={20} />
+                </div>
+              )}
+              <div>
+                <p className="muted-copy">{program.mentorName}</p>
+                <p className="muted-copy">{program.mentorRole}</p>
+                <p className="muted-copy">{program.mentorBio}</p>
+              </div>
+            </div>
           </article>
 
           <article className="card glass">
