@@ -8,7 +8,7 @@ import logo from "@/assets/technosthan-logo.png";
 
 const navItems = [
   { label: "Home", path: ROUTES.HOME },
-  { label: "Programs", path: ROUTES.SKILL_PROGRAMS },
+  { label: "Programs", path: ROUTES.PROGRAMS },
   { label: "R&D", path: ROUTES.RD_SERVICES },
   { label: "Startup Support", path: ROUTES.STARTUP_SUPPORT },
   { label: "Contact", path: ROUTES.CONTACT },
@@ -28,7 +28,7 @@ const Navbar = () => {
     if (user.role === "ADMIN") {
       return [
         { label: "Dashboard", path: ROUTES.ADMIN },
-        { label: "My Programs", path: ROUTES.ADMIN_PROGRAMS },
+        { label: "Programs", path: ROUTES.ADMIN_PROGRAMS },
         { label: "Profile", path: ROUTES.ADMIN_SETTINGS },
         { label: "Payments", path: ROUTES.ADMIN_PAYMENTS },
       ];
@@ -37,6 +37,7 @@ const Navbar = () => {
     return [
       { label: "Dashboard", path: ROUTES.DASHBOARD },
       { label: "My Programs", path: ROUTES.DASHBOARD_PROGRAMS },
+      { label: "My Workshops", path: "/dashboard/my-workshops" },
       { label: "Profile", path: ROUTES.DASHBOARD_PROFILE },
       { label: "Payments", path: ROUTES.DASHBOARD_PAYMENTS },
     ];

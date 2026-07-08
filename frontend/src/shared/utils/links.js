@@ -7,11 +7,20 @@ export const normalizeAppLink = (value, fallback = "/") => {
 };
 
 export const getProgramRouteIdentifier = (program = {}) => {
-  const rawIdentifier = String(program.slug || program.id || "").trim();
-  return rawIdentifier ? encodeURIComponent(rawIdentifier) : "";
+  const specialisationSlug = String(program?.specialisation?.slug || program.specialisationSlug || "").trim();
+  const programSlug = String(program.slug || program.id || "").trim();
+  if (specialisationSlug && programSlug) {
+    return `${encodeURIComponent(specialisationSlug)}/${encodeURIComponent(programSlug)}`;
+  }
+  return "";
 };
 
 export const getProgramDetailsPath = (program = {}) => {
   const identifier = getProgramRouteIdentifier(program);
   return identifier ? `/programs/${identifier}` : "/programs";
+};
+
+export const getSpecialisationProgramsPath = (specialisationSlug = "") => {
+  const slug = String(specialisationSlug || "").trim();
+  return slug ? `/programs/${encodeURIComponent(slug)}` : "/programs";
 };

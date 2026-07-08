@@ -4,6 +4,7 @@ import { prisma } from "../../config/db.js";
 import {
   createProgram,
   deleteProgram,
+  getProgramBySpecialisationAndSlug,
   getProgramBySlugOrId,
   listPrograms,
   seedProgramGraph,
@@ -29,14 +30,48 @@ export const getHeroController = asyncHandler(async (_req, res) => {
   });
 });
 
-export const getProgramsController = asyncHandler(async (_req, res) => {
-  const programs = await listPrograms();
+export const getProgramsController = asyncHandler(async (req, res) => {
+  const programs = await listPrograms({
+    includeInactive: req.query.includeInactive === "true",
+    specialisationSlug: req.query.specialisationSlug,
+    specialisationId: req.query.specialisationId,
+    programType: req.query.type || req.query.programType,
+    certificationLevel: req.query.certificationLevel,
+    mode: req.query.mode,
+    level: req.query.level,
+    duration: req.query.duration,
+    search: req.query.search,
+    feesMin: req.query.feesMin,
+    feesMax: req.query.feesMax,
+  });
   return sendSuccess(res, 200, { programs });
 });
 
+export const getHomeProgramsController = asyncHandler(async (_req, res) => {
+  const programs = await listPrograms({ showOnHome: true });
+  return sendSuccess(res, 200, { programs });
+});
+
+export const getSpecialisationProgramsController = asyncHandler(async (req, res) => {
+  const { specialisationSlug } = req.params;
+  const programs = await listPrograms({ specialisationSlug });
+  return sendSuccess(res, 200, { programs });
+});
+
+export const getSpecialisationProgramController = asyncHandler(async (req, res) => {
+  const { specialisationSlug, programSlug } = req.params;
+  const program = await getProgramBySpecialisationAndSlug(specialisationSlug, programSlug);
+
+  if (!program) {
+    return res.status(404).json({ message: "Program not found" });
+  }
+
+  return sendSuccess(res, 200, { program });
+});
+
 export const getProgramController = asyncHandler(async (req, res) => {
-  const { identifier } = req.params;
-  let decodedIdentifier = String(identifier || "").trim();
+  const { slug } = req.params;
+  let decodedIdentifier = String(slug || "").trim();
   try {
     decodedIdentifier = decodeURIComponent(decodedIdentifier);
   } catch (_error) {

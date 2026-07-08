@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../../shared/services/apiClient";
-import { Link } from "react-router-dom";
-import { getProgramDetailsPath } from "../../../shared/utils/links";
 
-const MyPrograms = () => {
+const MyEnrollments = () => {
   const [enrollments, setEnrollments] = useState([]);
 
   useEffect(() => {
@@ -12,17 +10,20 @@ const MyPrograms = () => {
 
   return (
     <div className="dashboard-page">
-      <div className="page-header"><h1>My Programs</h1></div>
+      <div className="page-header">
+        <div>
+          <p className="badge">Student portal</p>
+          <h1>My Enrollments</h1>
+        </div>
+      </div>
+
       <div className="grid cards-grid-2">
         {enrollments.map((enrollment) => (
-          <article key={enrollment.id} className="card glass">
+          <article key={enrollment.id} className="card glass student-card">
             <p className="badge">{enrollment.status}</p>
-            {enrollment.program?.specialisation?.name ? (
-              <p className="meta-pill">{enrollment.program.specialisation.name}</p>
-            ) : null}
             <h3>{enrollment.program?.title}</h3>
             <p className="muted-copy">{enrollment.program?.shortDescription}</p>
-            <Link to={getProgramDetailsPath(enrollment.program || {})} className="btn btn-secondary">View program</Link>
+            <p className="muted-copy">Payment status: {enrollment.paymentStatus}</p>
           </article>
         ))}
       </div>
@@ -30,4 +31,4 @@ const MyPrograms = () => {
   );
 };
 
-export default MyPrograms;
+export default MyEnrollments;

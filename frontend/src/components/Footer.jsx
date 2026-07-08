@@ -17,7 +17,7 @@ const Footer = () => {
         <div>
           <h3 className="gradient-text">TechnoSthan Innovation Hub</h3>
           <p style={{ color: "#9aa9c2", lineHeight: 1.8, maxWidth: "470px" }}>
-            Learn • Innovate • Build • Transform. Together, We Build the Future.
+            Learn, innovate, build, and transform together.
           </p>
           <p style={{ color: "#9aa9c2", marginTop: "0.9rem" }}>
             A Research, Innovation & Technical Skill Development vertical of
@@ -42,15 +42,7 @@ const Footer = () => {
                 color: "#9aa9c2",
               }}
             >
-              {[
-                "/",
-                "/about",
-                "/rd-services",
-                "/skill-programs",
-                "/startup-support",
-                "/industries",
-                "/contact",
-              ].map((path) => (
+              {["/", "/about", "/rd-services", "/programs", "/startup-support", "/industries", "/contact"].map((path) => (
                 <Link key={path} to={path === "/" ? "/" : path}>
                   {path === "/"
                     ? "Home"

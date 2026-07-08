@@ -15,6 +15,58 @@ const readStorage = (key, fallback) => {
   }
 };
 
+const defaultGroups = [
+  { label: "Dashboard", items: [{ label: "Overview", path: "/admin" }] },
+  {
+    label: "Website UI Update",
+    items: [
+      { label: "Hero", path: "/admin/hero" },
+      { label: "Campaigns", path: "/admin/campaigns" },
+      { label: "Workshops", path: "/admin/workshops" },
+      { label: "Testimonials", path: "/admin/testimonials" },
+    ],
+  },
+  {
+    label: "Academic Management",
+    items: [
+      { label: "Programs", path: "/admin/programs" },
+      { label: "Workshops", path: "/admin/workshops" },
+      { label: "Enquiries", path: "/admin/enquiries" },
+    ],
+  },
+  {
+    label: "Student Management",
+    items: [
+      { label: "Students", path: "/admin/students" },
+      { label: "Enrollments", path: "/admin" },
+      { label: "Enquiries", path: "/admin/enquiries" },
+    ],
+  },
+  {
+    label: "Marketing & Campaigns",
+    items: [
+      { label: "Campaign Manager", path: "/admin/campaigns" },
+      { label: "Announcements", path: "/admin/settings" },
+      { label: "Leads", path: "/admin/enquiries" },
+    ],
+  },
+  {
+    label: "Payments & Reports",
+    items: [
+      { label: "Payments", path: "/admin/payments" },
+      { label: "Reports", path: "/admin" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { label: "Profile", path: "/dashboard/profile" },
+      { label: "Website Settings", path: "/admin/settings" },
+      { label: "Auth Settings", path: "/admin/settings" },
+    ],
+  },
+];
+
 const DashboardLayout = ({ title, navGroups, children, onLogout }) => {
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(() => readStorage(COLLAPSED_KEY, false));
@@ -29,61 +81,7 @@ const DashboardLayout = ({ title, navGroups, children, onLogout }) => {
     localStorage.setItem(GROUPS_KEY, JSON.stringify(openGroups));
   }, [openGroups]);
 
-  const groups = useMemo(
-    () =>
-      navGroups || [
-        { label: "Dashboard", items: [{ label: "Overview", path: "/admin" }] },
-        {
-          label: "Website UI Update",
-          items: [
-            { label: "Hero", path: "/admin/hero" },
-            { label: "Campaigns", path: "/admin/campaigns" },
-            { label: "Workshops", path: "/admin/workshops" },
-            { label: "Testimonials", path: "/admin/testimonials" },
-          ],
-        },
-        {
-          label: "Academic Management",
-          items: [
-            { label: "Programs", path: "/admin/programs" },
-            { label: "Workshops", path: "/admin/workshops" },
-            { label: "Enquiries", path: "/admin/enquiries" },
-          ],
-        },
-        {
-          label: "Student Management",
-          items: [
-            { label: "Students", path: "/admin/students" },
-            { label: "Enrollments", path: "/admin" },
-            { label: "Enquiries", path: "/admin/enquiries" },
-          ],
-        },
-        {
-          label: "Marketing & Campaigns",
-          items: [
-            { label: "Campaign Manager", path: "/admin/campaigns" },
-            { label: "Announcements", path: "/admin/settings" },
-            { label: "Leads", path: "/admin/enquiries" },
-          ],
-        },
-        {
-          label: "Payments & Reports",
-          items: [
-            { label: "Payments", path: "/admin/payments" },
-            { label: "Reports", path: "/admin" },
-          ],
-        },
-        {
-          label: "Settings",
-          items: [
-            { label: "Profile", path: "/dashboard/profile" },
-            { label: "Website Settings", path: "/admin/settings" },
-            { label: "Auth Settings", path: "/admin/settings" },
-          ],
-        },
-      ],
-    [navGroups],
-  );
+  const groups = useMemo(() => navGroups || defaultGroups, [navGroups]);
 
   const toggleGroup = (label) => {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -98,7 +96,8 @@ const DashboardLayout = ({ title, navGroups, children, onLogout }) => {
             <h2>{title}</h2>
             {!collapsed ? (
               <p className="muted-copy">
-                {user?.name || "TechnoSthan user"} {user?.email ? `• ${user.email}` : ""}
+                {user?.name || "TechnoSthan user"}
+                {user?.email ? ` • ${user.email}` : ""}
               </p>
             ) : null}
           </div>
@@ -117,11 +116,7 @@ const DashboardLayout = ({ title, navGroups, children, onLogout }) => {
             const isOpen = Boolean(openGroups[group.label] ?? true);
             return (
               <div key={group.label} className="dashboard-group">
-                <button
-                  type="button"
-                  className="dashboard-group-toggle"
-                  onClick={() => toggleGroup(group.label)}
-                >
+                <button type="button" className="dashboard-group-toggle" onClick={() => toggleGroup(group.label)}>
                   <span>{!collapsed ? group.label : group.label.slice(0, 1)}</span>
                   {!collapsed ? <ChevronDown size={16} className={isOpen ? "rotate-180" : ""} /> : null}
                 </button>
@@ -146,7 +141,7 @@ const DashboardLayout = ({ title, navGroups, children, onLogout }) => {
           })}
         </nav>
 
-        <button className="btn btn-secondary dashboard-logout" onClick={onLogout}>
+        <button type="button" className="btn btn-secondary dashboard-logout" onClick={onLogout}>
           <LogOut size={16} />
           <span className="dashboard-logout-text">{!collapsed ? "Logout" : null}</span>
         </button>

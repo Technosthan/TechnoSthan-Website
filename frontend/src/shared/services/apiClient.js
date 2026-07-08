@@ -5,6 +5,7 @@ const AUTH_FREE_RULES = [
   { path: "/auth/register", methods: ["POST"] },
   { path: "/auth/logout", methods: ["POST"] },
   { path: "/hero", methods: ["GET"] },
+  { path: "/specialisations", methods: ["GET"] },
   { path: "/programs", methods: ["GET"] },
   { path: "/workshops", methods: ["GET"] },
   { path: "/enquiries", methods: ["POST"] },

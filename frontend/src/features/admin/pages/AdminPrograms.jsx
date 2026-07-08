@@ -57,6 +57,9 @@ const AdminPrograms = () => {
             <thead>
               <tr>
                 <th>Title</th>
+                <th>Specialisation</th>
+                <th>Type</th>
+                <th>Home</th>
                 <th>Slug</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -66,6 +69,9 @@ const AdminPrograms = () => {
               {programs.map((program) => (
                 <tr key={program.id}>
                   <td>{program.title}</td>
+                  <td>{program.specialisation?.name || "Unassigned"}</td>
+                  <td>{program.programType || "-"}</td>
+                  <td>{program.showOnHome ? "Yes" : "No"}</td>
                   <td>{program.slug}</td>
                   <td>{program.isActive ? "Active" : "Inactive"}</td>
                   <td className="table-actions">

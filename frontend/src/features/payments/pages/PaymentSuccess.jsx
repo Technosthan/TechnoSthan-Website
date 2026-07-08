@@ -20,7 +20,7 @@ const PaymentSuccess = () => {
             <Link to={ROUTES.DASHBOARD} className="btn btn-primary">
               Go to Dashboard
             </Link>
-            <Link to={ROUTES.SKILL_PROGRAMS} className="btn btn-secondary">
+            <Link to={ROUTES.PROGRAMS} className="btn btn-secondary">
               Browse More Programs
             </Link>
           </div>

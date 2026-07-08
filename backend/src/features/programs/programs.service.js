@@ -3,15 +3,26 @@ import { slugify } from "../../shared/utils/slug.js";
 import { normalizeMediaUrl } from "../../shared/utils/media.js";
 
 const toDecimal = (value) => (value === null || value === undefined || value === "" ? null : Number(value));
+const toBoolean = (value, fallback = false) => (value === undefined ? fallback : Boolean(value));
+const toNullableString = (value) => {
+  const normalized = String(value ?? "").trim();
+  return normalized ? normalized : null;
+};
+const toEnumLike = (value) =>
+  String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 
-const buildUniqueProgramSlug = async (title, preferredSlug = "", excludeId = null) => {
+const buildUniqueSlug = async (modelName, title, preferredSlug = "", excludeId = null) => {
   const baseSource = String(preferredSlug || title || "").trim();
-  const baseSlug = slugify(baseSource) || "program";
+  const baseSlug = slugify(baseSource) || modelName;
   let candidate = baseSlug;
   let suffix = 2;
 
   while (
-    await prisma.program.findFirst({
+    await prisma[modelName].findFirst({
       where: {
         slug: candidate,
         ...(excludeId ? { NOT: { id: excludeId } } : {}),
@@ -29,39 +40,44 @@ const buildUniqueProgramSlug = async (title, preferredSlug = "", excludeId = nul
 const buildProgramData = async (payload, options = {}) => {
   const excludeId = options.excludeId || null;
   const title = String(payload.title || "").trim();
-  const slug = await buildUniqueProgramSlug(title, payload.slug || "", excludeId);
+  const slug = await buildUniqueSlug("program", title, payload.slug || "", excludeId);
 
   return {
     title,
     slug,
-  shortDescription: payload.shortDescription,
-  overview: payload.overview,
-  thumbnailUrl: normalizeMediaUrl(payload.thumbnailUrl, "image") || null,
-  heroImageUrl: normalizeMediaUrl(payload.heroImageUrl, "image") || null,
-  heroVideoUrl: normalizeMediaUrl(payload.heroVideoUrl, "video") || null,
-  duration: payload.duration,
-  level: payload.level,
-  mode: payload.mode || "ONLINE",
-  fees: toDecimal(payload.fees) ?? 0,
-  discountFees: toDecimal(payload.discountFees),
-  category: payload.category || null,
-  isFeatured: Boolean(payload.isFeatured),
-  isActive: payload.isActive ?? true,
-  certificateIncluded: payload.certificateIncluded ?? true,
-  internshipSupport: payload.internshipSupport ?? false,
-  placementSupport: payload.placementSupport || null,
-  projectsCount: Number(payload.projectsCount || 0),
-  whatYouWillLearn: payload.whatYouWillLearn || null,
-  toolsCovered: payload.toolsCovered || null,
-  mentorName: payload.mentorName || null,
-  mentorRole: payload.mentorRole || null,
-  mentorBio: payload.mentorBio || null,
-  mentorAvatarUrl: normalizeMediaUrl(payload.mentorAvatarUrl, "image") || null,
-  faqs: payload.faqs || null,
+    specialisationId: toNullableString(payload.specialisationId),
+    programType: toNullableString(toEnumLike(payload.programType)),
+    certificationLevel: toNullableString(toEnumLike(payload.certificationLevel)),
+    shortDescription: String(payload.shortDescription || "").trim(),
+    overview: String(payload.overview || "").trim(),
+    thumbnailUrl: normalizeMediaUrl(payload.thumbnailUrl, "image") || null,
+    heroImageUrl: normalizeMediaUrl(payload.heroImageUrl, "image") || null,
+    heroVideoUrl: normalizeMediaUrl(payload.heroVideoUrl, "video") || null,
+    duration: String(payload.duration || "").trim(),
+    level: String(payload.level || "").trim(),
+    mode: toEnumLike(payload.mode) || "ONLINE",
+    fees: toDecimal(payload.fees) ?? 0,
+    discountFees: toDecimal(payload.discountFees),
+    category: toNullableString(payload.category),
+    showOnHome: toBoolean(payload.showOnHome, false),
+    isFeatured: toBoolean(payload.isFeatured, false),
+    isActive: toBoolean(payload.isActive, true),
+    certificateIncluded: toBoolean(payload.certificateIncluded, true),
+    internshipSupport: toBoolean(payload.internshipSupport, false),
+    placementSupport: toNullableString(payload.placementSupport),
+    projectsCount: Number(payload.projectsCount || 0),
+    whatYouWillLearn: payload.whatYouWillLearn || null,
+    toolsCovered: payload.toolsCovered || null,
+    mentorName: toNullableString(payload.mentorName),
+    mentorRole: toNullableString(payload.mentorRole),
+    mentorBio: toNullableString(payload.mentorBio),
+    mentorAvatarUrl: normalizeMediaUrl(payload.mentorAvatarUrl, "image") || null,
+    faqs: payload.faqs || null,
   };
 };
 
 const includeProgramGraph = {
+  specialisation: true,
   curriculumModules: {
     orderBy: { order: "asc" },
     include: {
@@ -75,9 +91,76 @@ const includeProgramGraph = {
   payments: true,
 };
 
-export const listPrograms = async ({ includeInactive = false } = {}) => {
+const buildProgramWhere = (filters = {}) => {
+  const where = {};
+
+  if (!filters.includeInactive) {
+    where.isActive = true;
+  }
+
+  if (filters.showOnHome) {
+    where.showOnHome = true;
+  }
+
+  if (filters.specialisationId) {
+    where.specialisationId = filters.specialisationId;
+  }
+
+  if (filters.specialisationSlug) {
+    where.specialisation = {
+      slug: filters.specialisationSlug,
+      isActive: true,
+    };
+  }
+
+  if (filters.programType) {
+    where.programType = toEnumLike(filters.programType);
+  }
+
+  if (filters.certificationLevel) {
+    where.certificationLevel = toEnumLike(filters.certificationLevel);
+  }
+
+  if (filters.mode) {
+    where.mode = toEnumLike(filters.mode);
+  }
+
+  if (filters.level) {
+    where.level = filters.level;
+  }
+
+  if (filters.duration) {
+    where.duration = { contains: filters.duration, mode: "insensitive" };
+  }
+
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: "insensitive" } },
+      { shortDescription: { contains: filters.search, mode: "insensitive" } },
+      { overview: { contains: filters.search, mode: "insensitive" } },
+      { category: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+
+  const hasFeesMin = filters.feesMin !== undefined && filters.feesMin !== "";
+  const hasFeesMax = filters.feesMax !== undefined && filters.feesMax !== "";
+
+  if (hasFeesMin || hasFeesMax) {
+    where.fees = {};
+    if (hasFeesMin) {
+      where.fees.gte = Number(filters.feesMin);
+    }
+    if (hasFeesMax) {
+      where.fees.lte = Number(filters.feesMax);
+    }
+  }
+
+  return where;
+};
+
+export const listPrograms = async (filters = {}) => {
   return prisma.program.findMany({
-    where: includeInactive ? {} : { isActive: true },
+    where: buildProgramWhere(filters),
     orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     include: includeProgramGraph,
   });
@@ -109,6 +192,25 @@ export const getProgramBySlugOrId = async (identifier) => {
   }
 
   return getProgramById(normalizedIdentifier);
+};
+
+export const getProgramBySpecialisationAndSlug = async (specialisationSlug, programSlug) => {
+  const normalizedSpecialisationSlug = String(specialisationSlug || "").trim();
+  const normalizedProgramSlug = String(programSlug || "").trim();
+
+  if (!normalizedSpecialisationSlug || !normalizedProgramSlug) {
+    return null;
+  }
+
+  return prisma.program.findFirst({
+    where: {
+      slug: normalizedProgramSlug,
+      specialisation: {
+        slug: normalizedSpecialisationSlug,
+      },
+    },
+    include: includeProgramGraph,
+  });
 };
 
 export const createProgram = async (payload) => {

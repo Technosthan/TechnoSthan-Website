@@ -5,6 +5,40 @@ import { apiClient } from "../../../shared/services/apiClient";
 import { ROUTES } from "../../../shared/constants/routes";
 import MediaUploader from "../../../shared/components/MediaUploader";
 import { normalizeStoredMediaUrl } from "../../../shared/utils/media";
+import { mergeDefaultSpecialisations } from "../../../shared/data/defaultSpecialisations";
+
+const PROGRAM_TYPES = [
+  ["", "Select program type"],
+  ["FOUNDATION_PROGRAM", "Foundation Program"],
+  ["CAREER_ACCELERATOR", "Career Accelerator"],
+  ["SKILL_DEVELOPMENT_PROGRAM", "Skill Development Program"],
+  ["PROFESSIONAL_CERTIFICATION", "Professional Certification"],
+  ["INDUSTRY_READINESS_PROGRAM", "Industry Readiness Program"],
+  ["APPRENTICESHIP_PROGRAM", "Apprenticeship Program"],
+  ["BOOTCAMP", "Bootcamp"],
+  ["WORKSHOP", "Workshop"],
+  ["MASTERCLASS", "Masterclass"],
+  ["INNOVATION_CHALLENGE", "Innovation Challenge"],
+  ["RESEARCH_FELLOWSHIP", "Research Fellowship"],
+  ["FDP", "Faculty Development Program (FDP)"],
+  ["TTT", "Train the Trainer (TTT)"],
+  ["CORPORATE_LEARNING_PROGRAM", "Corporate Learning Program"],
+  ["INTERNSHIP_PROGRAM", "Internship Program"],
+  ["CAPSTONE_PROJECT", "Capstone Project"],
+];
+
+const CERTIFICATION_LEVELS = [
+  ["", "Select certification level"],
+  ["EXPLORER", "Explorer"],
+  ["FOUNDATION", "Foundation"],
+  ["PRACTITIONER", "Practitioner"],
+  ["PROFESSIONAL", "Professional"],
+  ["SPECIALIST", "Specialist"],
+  ["EXPERT", "Expert"],
+  ["MASTER", "Master"],
+  ["FELLOW", "Fellow"],
+  ["MENTOR", "Mentor"],
+];
 
 const emptyModule = () => ({ title: "", description: "", order: 0, lessons: [] });
 const emptyLesson = () => ({ title: "", duration: "", order: 0, isPreview: false });
@@ -12,9 +46,13 @@ const emptyLesson = () => ({ title: "", duration: "", order: 0, isPreview: false
 const ProgramForm = ({ mode = "create" }) => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [specialisations, setSpecialisations] = useState([]);
   const [form, setForm] = useState({
     title: "",
     slug: "",
+    specialisationId: "",
+    programType: "",
+    certificationLevel: "",
     shortDescription: "",
     overview: "",
     thumbnailUrl: "",
@@ -26,12 +64,13 @@ const ProgramForm = ({ mode = "create" }) => {
     fees: "",
     discountFees: "",
     category: "",
+    projectsCount: 0,
+    showOnHome: false,
     isFeatured: false,
     isActive: true,
     certificateIncluded: true,
     internshipSupport: false,
     placementSupport: "",
-    projectsCount: 0,
     whatYouWillLearn: "",
     toolsCovered: "",
     mentorName: "",
@@ -44,6 +83,29 @@ const ProgramForm = ({ mode = "create" }) => {
   });
 
   useEffect(() => {
+    const loadSpecialisations = async () => {
+      try {
+        const response = await apiClient.get("/admin/specialisations");
+        const nextSpecialisations = mergeDefaultSpecialisations(response.specialisations || []);
+        setSpecialisations(nextSpecialisations);
+        setForm((prev) => ({
+          ...prev,
+          specialisationId: prev.specialisationId || nextSpecialisations[0]?.id || "",
+        }));
+      } catch (_error) {
+        const nextSpecialisations = mergeDefaultSpecialisations([]);
+        setSpecialisations(nextSpecialisations);
+        setForm((prev) => ({
+          ...prev,
+          specialisationId: prev.specialisationId || nextSpecialisations[0]?.id || "",
+        }));
+      }
+    };
+
+    loadSpecialisations();
+  }, []);
+
+  useEffect(() => {
     const loadProgram = async () => {
       if (!id) return;
       const response = await apiClient.get(`/admin/programs/${id}`);
@@ -52,6 +114,9 @@ const ProgramForm = ({ mode = "create" }) => {
       setForm((prev) => ({
         ...prev,
         ...program,
+        specialisationId: program.specialisationId || program.specialisation?.id || "",
+        programType: program.programType || "",
+        certificationLevel: program.certificationLevel || "",
         thumbnailUrl: normalizeStoredMediaUrl(program.thumbnailUrl, "image"),
         heroImageUrl: normalizeStoredMediaUrl(program.heroImageUrl, "image"),
         heroVideoUrl: normalizeStoredMediaUrl(program.heroVideoUrl, "video"),
@@ -176,6 +241,9 @@ const ProgramForm = ({ mode = "create" }) => {
     event.preventDefault();
     const payload = {
       ...form,
+      specialisationId: form.specialisationId || null,
+      programType: form.programType || null,
+      certificationLevel: form.certificationLevel || null,
       thumbnailUrl: normalizeStoredMediaUrl(form.thumbnailUrl, "image"),
       heroImageUrl: normalizeStoredMediaUrl(form.heroImageUrl, "image"),
       heroVideoUrl: normalizeStoredMediaUrl(form.heroVideoUrl, "video"),
@@ -207,6 +275,7 @@ const ProgramForm = ({ mode = "create" }) => {
       fees: Number(form.fees || 0),
       discountFees: form.discountFees ? Number(form.discountFees) : null,
       projectsCount: Number(form.projectsCount || 0),
+      showOnHome: Boolean(form.showOnHome),
     };
 
     if (mode === "edit" && id) {
@@ -221,10 +290,52 @@ const ProgramForm = ({ mode = "create" }) => {
   return (
     <form className="card glass form-grid" onSubmit={handleSubmit}>
       <div className="cards-grid-2">
-        <label className="field"><span>Title</span><input className="input" value={form.title} onChange={(e) => updateField("title", e.target.value)} /></label>
-        <label className="field"><span>Slug</span><input className="input" value={form.slug} onChange={(e) => updateField("slug", e.target.value)} /></label>
-        <label className="field"><span>Short description</span><textarea className="textarea" value={form.shortDescription} onChange={(e) => updateField("shortDescription", e.target.value)} /></label>
-        <label className="field"><span>Overview</span><textarea className="textarea" value={form.overview} onChange={(e) => updateField("overview", e.target.value)} /></label>
+        <label className="field">
+          <span>Specialisation</span>
+          <select className="select" value={form.specialisationId} onChange={(e) => updateField("specialisationId", e.target.value)}>
+            {specialisations.map((specialisation) => (
+              <option key={specialisation.id} value={specialisation.id}>
+                {specialisation.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Program Type</span>
+          <select className="select" value={form.programType} onChange={(e) => updateField("programType", e.target.value)}>
+            {PROGRAM_TYPES.map(([value, label]) => (
+              <option key={value || label} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Certification Level</span>
+          <select className="select" value={form.certificationLevel} onChange={(e) => updateField("certificationLevel", e.target.value)}>
+            {CERTIFICATION_LEVELS.map(([value, label]) => (
+              <option key={value || label} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Title</span>
+          <input className="input" value={form.title} onChange={(e) => updateField("title", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Slug</span>
+          <input className="input" value={form.slug} onChange={(e) => updateField("slug", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Short description</span>
+          <textarea className="textarea" value={form.shortDescription} onChange={(e) => updateField("shortDescription", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Overview</span>
+          <textarea className="textarea" value={form.overview} onChange={(e) => updateField("overview", e.target.value)} />
+        </label>
         <MediaUploader
           type="image"
           label="Thumbnail"
@@ -246,22 +357,42 @@ const ProgramForm = ({ mode = "create" }) => {
           onChange={(value) => updateField("heroVideoUrl", value)}
           onRemove={() => updateField("heroVideoUrl", "")}
         />
-        <label className="field"><span>Duration</span><input className="input" value={form.duration} onChange={(e) => updateField("duration", e.target.value)} /></label>
-        <label className="field"><span>Level</span><input className="input" value={form.level} onChange={(e) => updateField("level", e.target.value)} /></label>
-        <label className="field"><span>Mode</span>
+        <label className="field">
+          <span>Duration</span>
+          <input className="input" value={form.duration} onChange={(e) => updateField("duration", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Level</span>
+          <input className="input" value={form.level} onChange={(e) => updateField("level", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Mode</span>
           <select className="select" value={form.mode} onChange={(e) => updateField("mode", e.target.value)}>
             <option value="ONLINE">Online</option>
             <option value="OFFLINE">Offline</option>
             <option value="HYBRID">Hybrid</option>
           </select>
         </label>
-        <label className="field"><span>Fees</span><input className="input" value={form.fees} onChange={(e) => updateField("fees", e.target.value)} /></label>
-        <label className="field"><span>Discount fees</span><input className="input" value={form.discountFees} onChange={(e) => updateField("discountFees", e.target.value)} /></label>
-        <label className="field"><span>Category</span><input className="input" value={form.category} onChange={(e) => updateField("category", e.target.value)} /></label>
-        <label className="field"><span>Projects count</span><input className="input" type="number" value={form.projectsCount} onChange={(e) => updateField("projectsCount", e.target.value)} /></label>
+        <label className="field">
+          <span>Fees</span>
+          <input className="input" value={form.fees} onChange={(e) => updateField("fees", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Discount fees</span>
+          <input className="input" value={form.discountFees} onChange={(e) => updateField("discountFees", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Category</span>
+          <input className="input" value={form.category} onChange={(e) => updateField("category", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Projects count</span>
+          <input className="input" type="number" value={form.projectsCount} onChange={(e) => updateField("projectsCount", e.target.value)} />
+        </label>
       </div>
 
       <div className="form-toggle-row">
+        <label className="checkbox-row"><input type="checkbox" checked={form.showOnHome} onChange={(e) => updateField("showOnHome", e.target.checked)} /> Show on Home Page</label>
         <label className="checkbox-row"><input type="checkbox" checked={form.isFeatured} onChange={(e) => updateField("isFeatured", e.target.checked)} /> Featured</label>
         <label className="checkbox-row"><input type="checkbox" checked={form.isActive} onChange={(e) => updateField("isActive", e.target.checked)} /> Active</label>
         <label className="checkbox-row"><input type="checkbox" checked={form.certificateIncluded} onChange={(e) => updateField("certificateIncluded", e.target.checked)} /> Certificate included</label>

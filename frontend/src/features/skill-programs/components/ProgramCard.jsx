@@ -121,6 +121,7 @@ const ProgramCard = ({ program }) => {
       </div>
       <div className="program-top">
         <span className="program-badge">{program.category || program.level}</span>
+        {program.specialisation?.name ? <span className="meta-pill">{program.specialisation.name}</span> : null}
         {program.isFeatured ? <span className="meta-pill">Featured</span> : null}
       </div>
       <h3>{program.title}</h3>

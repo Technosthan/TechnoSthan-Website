@@ -50,8 +50,10 @@ const buildMentorFallbackAvatar = (name = "") => {
 };
 
 const ProgramDetails = () => {
-  const { identifier, slug } = useParams();
-  const decodedIdentifier = safeDecodeURIComponent(identifier || slug || "").trim();
+  const { specialisationSlug, programSlug, slug, identifier } = useParams();
+  const decodedSpecialisationSlug = safeDecodeURIComponent(specialisationSlug || "").trim();
+  const decodedProgramSlug = safeDecodeURIComponent(programSlug || "").trim();
+  const decodedSlug = safeDecodeURIComponent(slug || identifier || "").trim();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [program, setProgram] = useState(null);
@@ -66,7 +68,10 @@ const ProgramDetails = () => {
   useEffect(() => {
     const loadProgram = async () => {
       try {
-        const response = await apiClient.get(`/programs/${encodeURIComponent(decodedIdentifier)}`);
+        const endpoint = decodedSpecialisationSlug && decodedProgramSlug
+          ? `/programs/${encodeURIComponent(decodedSpecialisationSlug)}/${encodeURIComponent(decodedProgramSlug)}`
+          : `/programs/${encodeURIComponent(decodedSlug)}`;
+        const response = await apiClient.get(endpoint);
         setProgram(response.program);
         setError("");
       } catch (err) {
@@ -77,13 +82,13 @@ const ProgramDetails = () => {
       }
     };
 
-    if (decodedIdentifier) {
+    if (decodedSlug || (decodedSpecialisationSlug && decodedProgramSlug)) {
       loadProgram();
     } else {
       setError("Program not found");
       setLoading(false);
     }
-  }, [decodedIdentifier]);
+  }, [decodedProgramSlug, decodedSlug, decodedSpecialisationSlug]);
 
   useEffect(() => {
     setVideoFailed(false);
@@ -123,7 +128,15 @@ const ProgramDetails = () => {
 
   const handleEnroll = async () => {
     if (!isAuthenticated) {
-      navigate(`/login?redirect=${encodeURIComponent(getProgramDetailsPath({ slug: decodedIdentifier }))}`);
+      navigate(
+        `/login?redirect=${encodeURIComponent(
+          getProgramDetailsPath(
+            decodedSpecialisationSlug && decodedProgramSlug
+              ? { specialisationSlug: decodedSpecialisationSlug, slug: decodedProgramSlug }
+              : { slug: decodedSlug },
+          ),
+        )}`,
+      );
       return;
     }
 
@@ -209,10 +222,16 @@ const ProgramDetails = () => {
       <div className="container program-details-shell">
         <div className="program-details-hero card glass">
           <div>
-            <p className="badge">{program.category || program.level}</p>
+            <p className="badge">{program.specialisation?.name || program.category || program.level}</p>
             <h1>{program.title}</h1>
             <p className="muted-copy">{program.overview}</p>
             <div className="program-meta">
+              {program.programType ? (
+                <span className="meta-pill">{program.programType.replaceAll("_", " ")}</span>
+              ) : null}
+              {program.certificationLevel ? (
+                <span className="meta-pill">{program.certificationLevel}</span>
+              ) : null}
               <span className="meta-pill">
                 <Clock3 size={12} /> {program.duration}
               </span>

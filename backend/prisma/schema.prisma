@@ -32,6 +32,37 @@ enum ProgramMode {
   HYBRID
 }
 
+enum ProgramType {
+  FOUNDATION_PROGRAM
+  CAREER_ACCELERATOR
+  SKILL_DEVELOPMENT_PROGRAM
+  PROFESSIONAL_CERTIFICATION
+  INDUSTRY_READINESS_PROGRAM
+  APPRENTICESHIP_PROGRAM
+  BOOTCAMP
+  WORKSHOP
+  MASTERCLASS
+  INNOVATION_CHALLENGE
+  RESEARCH_FELLOWSHIP
+  FDP
+  TTT
+  CORPORATE_LEARNING_PROGRAM
+  INTERNSHIP_PROGRAM
+  CAPSTONE_PROJECT
+}
+
+enum CertificationLevel {
+  EXPLORER
+  FOUNDATION
+  PRACTITIONER
+  PROFESSIONAL
+  SPECIALIST
+  EXPERT
+  MASTER
+  FELLOW
+  MENTOR
+}
+
 enum WorkshopMode {
   ONLINE
   OFFLINE
@@ -70,10 +101,29 @@ model HeroContent {
   updatedAt          DateTime @updatedAt
 }
 
+model Specialisation {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  shortDescription String?
+  description      String?
+  iconUrl          String?
+  bannerImageUrl   String?
+  isActive         Boolean   @default(true)
+  sortOrder        Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  programs Program[]
+}
+
 model Program {
-  id                   String            @id @default(cuid())
+  id                   String              @id @default(cuid())
   title                String
-  slug                 String            @unique
+  slug                 String              @unique
+  specialisationId     String?
+  programType          ProgramType?
+  certificationLevel   CertificationLevel?
   shortDescription     String
   overview             String
   thumbnailUrl         String?
@@ -81,16 +131,17 @@ model Program {
   heroVideoUrl         String?
   duration             String
   level                String
-  mode                 ProgramMode       @default(ONLINE)
-  fees                 Decimal           @db.Decimal(10, 2)
-  discountFees         Decimal?          @db.Decimal(10, 2)
+  mode                 ProgramMode         @default(ONLINE)
+  fees                 Decimal             @db.Decimal(10, 2)
+  discountFees         Decimal?            @db.Decimal(10, 2)
   category             String?
-  isFeatured           Boolean           @default(false)
-  isActive             Boolean           @default(true)
-  certificateIncluded  Boolean           @default(true)
-  internshipSupport    Boolean           @default(false)
+  showOnHome           Boolean             @default(false)
+  isFeatured           Boolean             @default(false)
+  isActive             Boolean             @default(true)
+  certificateIncluded  Boolean             @default(true)
+  internshipSupport    Boolean             @default(false)
   placementSupport     String?
-  projectsCount        Int               @default(0)
+  projectsCount        Int                 @default(0)
   whatYouWillLearn     Json?
   toolsCovered         Json?
   mentorName           String?
@@ -98,13 +149,20 @@ model Program {
   mentorBio            String?
   mentorAvatarUrl      String?
   faqs                 Json?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  specialisation       Specialisation?     @relation(fields: [specialisationId], references: [id], onDelete: SetNull)
 
   curriculumModules CurriculumModule[]
   projects          Project[]
   enrollments       Enrollment[]
   payments          Payment[]
+
+  @@index([specialisationId])
+  @@index([programType])
+  @@index([certificationLevel])
+  @@index([showOnHome])
 }
 
 model CurriculumModule {

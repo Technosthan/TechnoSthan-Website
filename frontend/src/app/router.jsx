@@ -3,7 +3,8 @@ import App from "./App";
 import Home from "../features/home/pages/Home";
 import About from "../features/about/pages/About";
 import RDServices from "../features/rd-services/pages/RDServices";
-import SkillPrograms from "../features/skill-programs/pages/SkillPrograms";
+import ProgramsLandingPage from "../features/programs/pages/ProgramsLandingPage";
+import SpecialisationProgramsPage from "../features/programs/pages/SpecialisationProgramsPage";
 import StartupSupport from "../features/startup-support/pages/StartupSupport";
 import Industries from "../features/industries/pages/Industries";
 import Contact from "../features/contact/pages/Contact";
@@ -29,9 +30,13 @@ import AdminTestimonials from "../features/admin/pages/AdminTestimonials";
 import AdminSettings from "../features/admin/pages/AdminSettings";
 import StudentDashboard from "../features/student/pages/StudentDashboard";
 import MyPrograms from "../features/student/pages/MyPrograms";
+import MyEnrollments from "../features/student/pages/MyEnrollments";
+import MyWorkshops from "../features/student/pages/MyWorkshops";
+import AssignmentsProjects from "../features/student/pages/AssignmentsProjects";
 import StudentPayments from "../features/student/pages/Payments";
 import Profile from "../features/student/pages/Profile";
 import Certificates from "../features/student/pages/Certificates";
+import Support from "../features/student/pages/Support";
 import { ROUTES } from "../shared/constants/routes";
 import { AdminRoute, ProtectedRoute, StudentRoute } from "../shared/components/ProtectedRoute";
 
@@ -43,17 +48,17 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: ROUTES.ABOUT, element: <About /> },
       { path: ROUTES.RD_SERVICES, element: <RDServices /> },
-      { path: ROUTES.SKILL_PROGRAMS, element: <SkillPrograms /> },
-      { path: "/programs", element: <SkillPrograms /> },
+      { path: ROUTES.PROGRAMS, element: <ProgramsLandingPage /> },
+      { path: ROUTES.SKILL_PROGRAMS, element: <ProgramsLandingPage /> },
+      { path: ROUTES.PROGRAMS_SPECIALISATION, element: <SpecialisationProgramsPage /> },
       { path: ROUTES.WORKSHOPS, element: <Workshops /> },
-      { path: ROUTES.SKILL_PROGRAMS + "/:identifier", element: <ProgramDetails /> },
+      { path: "/programs/:specialisationSlug/:programSlug", element: <ProgramDetails /> },
       { path: ROUTES.STARTUP_SUPPORT, element: <StartupSupport /> },
       { path: ROUTES.INDUSTRIES, element: <Industries /> },
       { path: ROUTES.CONTACT, element: <Contact /> },
       { path: ROUTES.LOGIN, element: <Login /> },
       { path: ROUTES.REGISTER, element: <Register /> },
       { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPassword /> },
-      { path: ROUTES.PROGRAM_DETAIL_BASE + "/:identifier", element: <ProgramDetails /> },
       { path: "/payment-success", element: <PaymentSuccess /> },
       {
         path: ROUTES.DASHBOARD,
@@ -67,9 +72,13 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <StudentDashboard /> },
           { path: "my-programs", element: <MyPrograms /> },
+          { path: "my-workshops", element: <MyWorkshops /> },
+          { path: "my-enrollments", element: <MyEnrollments /> },
           { path: "payments", element: <StudentPayments /> },
+          { path: "assignments", element: <AssignmentsProjects /> },
           { path: "profile", element: <Profile /> },
           { path: "certificates", element: <Certificates /> },
+          { path: "support", element: <Support /> },
         ],
       },
       {

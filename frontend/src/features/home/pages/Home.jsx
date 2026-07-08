@@ -10,12 +10,10 @@ import SectionHeader from "../../../shared/components/SectionHeader";
 import ProgramCard from "../../skill-programs/components/ProgramCard";
 import { apiClient } from "../../../shared/services/apiClient";
 import {
-  homeStats,
   innovationLabs,
   learningJourney,
   outcomeCards,
   projectShowcase,
-  trustedPartners,
 } from "../data/homeData";
 
 const Home = () => {
@@ -29,7 +27,7 @@ const Home = () => {
         const [heroResponse, programsResponse, workshopsResponse] =
           await Promise.allSettled([
             apiClient.get("/hero"),
-            apiClient.get("/programs"),
+            apiClient.get("/programs/home"),
             apiClient.get("/workshops"),
           ]);
 
@@ -56,35 +54,6 @@ const Home = () => {
   return (
     <>
       <HeroSection hero={hero} />
-
-      <section className="section">
-        <div className="container">
-          <div className="brand-strip glass">
-            <p className="section-eyebrow">Trusted by learners from</p>
-            <div className="brand-row">
-              {trustedPartners.map((partner) => (
-                <span key={partner} className="brand-pill">
-                  {partner}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="stats-grid">
-            {homeStats.map((item) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="card glass stat-card"
-              >
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section className="section">
         <div className="container">
@@ -269,7 +238,7 @@ const Home = () => {
                 startup support, and portfolio-ready growth.
               </p>
             </div>
-            <a href="/skill-programs" className="btn btn-primary">
+            <a href="/programs" className="btn btn-primary">
               Enroll Now <ArrowRight size={16} />
             </a>
           </motion.div>

@@ -8,11 +8,13 @@ import paymentRoutes from "../features/payments/payments.routes.js";
 import studentRoutes from "../features/student/student.routes.js";
 import adminRoutes from "../features/admin/admin.routes.js";
 import campaignRoutes from "../features/campaigns/campaign.routes.js";
+import specialisationRoutes from "../features/specialisations/specialisations.routes.js";
 
 const router = express.Router();
 
 router.use("/hero", heroRoutes);
 router.use("/programs", programRoutes);
+router.use("/specialisations", specialisationRoutes);
 router.use("/workshops", workshopRoutes);
 router.use("/enrollments", enrollmentRoutes);
 router.use("/payments", paymentRoutes);

@@ -16,21 +16,6 @@ import {
   Workflow,
 } from "lucide-react";
 
-export const homeStats = [
-  { value: "1000+", label: "Learners" },
-  { value: "150+", label: "Projects" },
-  { value: "50+", label: "Workshops" },
-  { value: "30+", label: "Mentors" },
-];
-
-export const trustedPartners = [
-  "Google Developers",
-  "Coursera",
-  "Scaler",
-  "Masai",
-  "NVIDIA",
-];
-
 export const learningJourney = [
   {
     title: "Counselling",
@@ -68,37 +53,37 @@ export const projectShowcase = [
   {
     title: "Hospital Management System",
     tag: "ERP",
-    meta: "Full stack • Admin + workflow automation",
+    meta: "Full stack - Admin + workflow automation",
     icon: Building2,
   },
   {
     title: "AI Attendance System",
     tag: "AI",
-    meta: "Computer vision • Face recognition",
+    meta: "Computer vision - Face recognition",
     icon: BrainCircuit,
   },
   {
     title: "Smart Agriculture IoT",
     tag: "Embedded",
-    meta: "Sensors • Cloud monitoring",
+    meta: "Sensors - Cloud monitoring",
     icon: Microscope,
   },
   {
     title: "ERP Dashboard",
     tag: "Analytics",
-    meta: "Dashboards • KPI reporting",
+    meta: "Dashboards - KPI reporting",
     icon: Landmark,
   },
   {
     title: "E-Commerce Platform",
     tag: "Web",
-    meta: "Shopping flow • Payments",
+    meta: "Shopping flow - Payments",
     icon: Rocket,
   },
   {
     title: "Drone Mapping",
     tag: "Computer Vision",
-    meta: "Geospatial tech • Visualization",
+    meta: "Geospatial tech - Visualization",
     icon: Cpu,
   },
 ];

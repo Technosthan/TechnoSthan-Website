@@ -6,10 +6,10 @@ import { isExternalLink, normalizeAppLink } from "../../../shared/utils/links";
 import { getMediaUrl } from "../../../shared/utils/media";
 
 const stats = [
-  { value: "1000+", label: "Learners" },
-  { value: "150+", label: "Projects" },
-  { value: "50+", label: "Workshops" },
-  { value: "30+", label: "Mentors" },
+  { value: "Project-led", label: "Learning paths" },
+  { value: "Mentor-backed", label: "Guidance" },
+  { value: "Industry-ready", label: "Outcomes" },
+  { value: "Portfolio-first", label: "Builds" },
 ];
 
 const HeroSection = ({ hero }) => {

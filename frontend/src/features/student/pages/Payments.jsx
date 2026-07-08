@@ -10,13 +10,19 @@ const Payments = () => {
 
   return (
     <div className="dashboard-page">
-      <div className="page-header"><h1>Payment history</h1></div>
+      <div className="page-header">
+        <div>
+          <p className="badge">Student portal</p>
+          <h1>Payment history</h1>
+        </div>
+      </div>
+
       <div className="grid cards-grid-2">
         {payments.map((payment) => (
-          <article key={payment.id} className="card glass">
+          <article key={payment.id} className="card glass student-card">
             <p className="badge">{payment.status}</p>
             <h3>{payment.program?.title}</h3>
-            <p className="muted-copy">₹{Number(payment.amount).toLocaleString("en-IN")}</p>
+            <p className="muted-copy">Rs. {Number(payment.amount).toLocaleString("en-IN")}</p>
           </article>
         ))}
       </div>

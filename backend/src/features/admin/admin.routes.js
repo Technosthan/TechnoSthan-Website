@@ -29,6 +29,12 @@ import {
   updateTestimonialController,
 } from "./admin.controller.js";
 import { authenticate, requireRole } from "../../shared/middleware/auth.middleware.js";
+import {
+  createSpecialisationController,
+  deleteSpecialisationController,
+  getAdminSpecialisationsController,
+  updateSpecialisationController,
+} from "../specialisations/specialisations.controller.js";
 
 const router = express.Router();
 
@@ -36,6 +42,10 @@ router.use(authenticate, requireRole("ADMIN"));
 
 router.get("/dashboard-stats", getDashboardStatsController);
 router.get("/programs/:id", getAdminProgramController);
+router.get("/specialisations", getAdminSpecialisationsController);
+router.post("/specialisations", createSpecialisationController);
+router.put("/specialisations/:id", updateSpecialisationController);
+router.delete("/specialisations/:id", deleteSpecialisationController);
 router.get("/campaigns", getAdminCampaignsController);
 router.post("/campaigns", createCampaignController);
 router.put("/campaigns/:id", updateCampaignController);
