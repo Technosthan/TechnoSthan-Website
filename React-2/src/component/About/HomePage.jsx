@@ -1,65 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import BusinessVerticalsCarousel from "../BusinessVerticalsCarousel";
+import DynamicPageSections from "../DynamicPageSections";
+import { useLocation } from "react-router-dom";
 
 import "./AboutPage.css";
 
-import agritechIcon from "../../assets/agri.png";
-import innovationIcon from "../../assets/innovation.png";
-import itIcon from "../../assets/it.png";
-import hospitalityIcon from "../../assets/hospitality.png";
-
-const AboutPage = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+const Homepage = () => {
+  const location = useLocation();
   const fadeIn = {
     initial: { opacity: 0, y: 30 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true },
     transition: { duration: 0.6 },
   };
-
-  const services = [
-    {
-      title: "TECHNOSTHAN HOSPITALITY",
-      path: "/services/technosthan-hospitality",
-      icon: hospitalityIcon,
-      theme: 0,
-      desc: "Advanced hospitality platforms, booking systems, and management tools for hotels and resorts.",
-    },
-    {
-      title: "TECHNOSTHAN INNOVATIONS HUB",
-      path: "https://ih.technosthan.com/",
-      external: true,
-      icon: innovationIcon,
-      theme: 1,
-      desc: "Product innovation, custom application development, and digital transformation solutions.",
-    },
-    {
-      title: "TECHNOSTHAN AGRITECH",
-      path: "https://agritech.technosthan.com",
-      external: true,
-      icon: agritechIcon,
-      theme: 2,
-      desc: "Smart agri-tech solutions, farm automation, and data-driven agricultural growth services.",
-    },
-    {
-      title: "TECHNOSTHAN IT SERVICES",
-      path: "https://it.technosthan.com/", // ✅ FINAL CHANGE
-      external: true,
-      icon: itIcon,
-      theme: 3,
-      desc: "Comprehensive IT support, cloud engineering, cybersecurity, and enterprise-grade infrastructure services.",
-    },
-  ];
-
-  /* Auto-slide (optional) */
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % services.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [services.length]);
 
   return (
     <div className="about-container">
@@ -92,6 +46,8 @@ const AboutPage = () => {
         </p>
       </motion.section>
 
+      <DynamicPageSections route={location.pathname} position="whoWeAre" />
+
       {/* SERVICES */}
       <section className="services-grid-wrapper">
         <BusinessVerticalsCarousel />
@@ -115,6 +71,10 @@ const AboutPage = () => {
       </section> */}
 
       {/* WHY US */}
+      <DynamicPageSections route={location.pathname} position="custom" />
+      <DynamicPageSections route={location.pathname} position="top" />
+      <DynamicPageSections route={location.pathname} position="bottom" />
+
       <motion.section className="why-us-section" {...fadeIn}>
         {/* <h2>Why Choose Us</h2> */}
 
@@ -143,4 +103,4 @@ const AboutPage = () => {
   );
 };
 
-export default AboutPage;
+export default Homepage;

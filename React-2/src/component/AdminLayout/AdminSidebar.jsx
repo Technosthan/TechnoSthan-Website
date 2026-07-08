@@ -5,6 +5,7 @@ import {
   House,
   LogOut,
   Megaphone,
+  PanelsTopLeft,
   X,
   Users,
 } from "lucide-react";
@@ -68,6 +69,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               label: "Campaign Manager",
               to: "/admin/campaigns",
               icon: Megaphone,
+            },
+            {
+              label: "Page Content Manager",
+              to: "/admin/page-content",
+              icon: PanelsTopLeft,
             },
             { label: "Users", to: "/admin/users", icon: Users },
             {

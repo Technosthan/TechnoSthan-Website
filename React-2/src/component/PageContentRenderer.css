@@ -1,0 +1,121 @@
+.dynamic-section {
+  padding: 100px 0;
+}
+
+.dynamic-section__card {
+  position: relative;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  border-radius: 28px;
+  padding: 48px;
+  box-shadow: 0 32px 90px rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.94);
+  color: #f8fafc;
+}
+
+.dynamic-section__card--original {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.dynamic-section__media {
+  margin-bottom: 32px;
+}
+
+.dynamic-section__media-media {
+  width: 100%;
+  border-radius: 20px;
+  max-height: 420px;
+  object-fit: cover;
+}
+
+.dynamic-section__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.85rem, 4.4vw, 3.75rem);
+  font-weight: 800;
+  line-height: 1.02;
+  margin: 0 0 20px 0;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.dynamic-section__subtitle {
+  margin: 0 0 30px 0;
+  color: #e2e8f0;
+  font-size: clamp(1.5rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+  max-width: 900px;
+  line-height: 1.5;
+}
+
+.dynamic-section__body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.9;
+  color: #cbd5e1;
+  font-size: clamp(1.125rem, 1.4vw, 1.25rem);
+  max-width: 950px;
+}
+
+.dynamic-section__body p {
+  margin: 0 0 1.35em;
+}
+
+.dynamic-section__body p:last-child {
+  margin-bottom: 0;
+}
+
+.dynamic-section__body.preserve-format {
+  white-space: pre-wrap;
+}
+
+.dynamic-section__cta {
+  margin-top: 26px;
+}
+
+.dynamic-section__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.95rem 1.4rem;
+  background: linear-gradient(135deg, #6366f1, #38bdf8);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 1024px) {
+  .dynamic-section__card {
+    padding: 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dynamic-section {
+    padding: 72px 0;
+  }
+
+  .dynamic-section__card {
+    padding: 26px;
+    border-radius: 22px;
+  }
+
+  .dynamic-section__title {
+    font-size: clamp(2.2rem, 8vw, 2.8rem);
+  }
+
+  .dynamic-section__media-media {
+    max-height: 260px;
+  }
+
+  .dynamic-section__subtitle {
+    max-width: 100%;
+    font-size: 1.45rem;
+  }
+}

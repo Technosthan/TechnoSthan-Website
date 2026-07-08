@@ -16,7 +16,7 @@ import SocialSidebar from "./component/SocialSidebar/SocialSidebar";
 import ScrollToTop from "./component/ScrollToTop";
 
 /* EXISTING PAGES */
-import AboutPage from "./component/About/AboutPage";
+import Homepage from "./component/About/HomePage";
 import Contact from "./component/Contact/Contact";
 import Solution from "./component/Solution/Solution";
 
@@ -46,7 +46,7 @@ import HRSocial from "./component/HRSocial/HRSocial";
 import ExplorePage from "./Tab/ExplorePage";
 
 /* NEW PAGES */
-import HomePage from "./pages/HomePage";
+import AboutPage from "./pages/AboutPage1";
 import ServicesPage from "./pages/ServicesPage";
 
 import EngineeringPage from "./pages/EngineeringPage";
@@ -56,7 +56,9 @@ import ConsultingPage from "./pages/ConsultingPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CampaignPopup from "./component/CampaignPopup";
 import CampaignManager from "./component/AdminLayout/CampaignManager";
+import PageContentManager from "./component/AdminLayout/PageContentManager";
 import BusinessVerticals from "./component/AdminLayout/BusinessVerticals";
+import DynamicPageSections from "./component/DynamicPageSections";
 import TermsConditions from "./pages/TermsConditions";
 import DataDeletion from "./pages/DataDeletion";
 
@@ -107,10 +109,10 @@ function App() {
 
       <Routes>
         {/* HOME */}
-        <Route path="/" element={<AboutPage />} />
+        <Route path="/" element={<Homepage />} />
 
         {/* ABOUT */}
-        <Route path="/about" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
 
         {/* SERVICES MAIN */}
         <Route path="/services" element={<ServicesPage />} />
@@ -156,7 +158,6 @@ function App() {
         />
 
         {/* OTHER */}
-        <Route path="/contact" element={<Contact />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsConditions />} />
@@ -248,6 +249,15 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <CampaignManager />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/page-content"
+          element={
+            <ProtectedAdminRoute>
+              <PageContentManager />
             </ProtectedAdminRoute>
           }
         />
@@ -350,6 +360,7 @@ function App() {
         <Route path="/explore" element={<ExplorePage />} />
       </Routes>
 
+      {!hideLayout && <DynamicPageSections route={location.pathname} position="footer" />}
       {!hideLayout && <Footer />}
     </>
   );

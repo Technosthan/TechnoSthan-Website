@@ -48,6 +48,7 @@ const campaignRoutes = require("./routes/campaignRoutes");
 const businessVerticalRoutes = require("./routes/businessVerticalRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const dailyTaskRoutes = require("./routes/dailyTaskRoutes");
+const pageContentRoutes = require("./routes/pageContentRoutes");
 const adminBusinessVerticalRoutes = require("./routes/adminBusinessVerticalRoutes");
 const adminDailyTaskRoutes = require("./routes/adminDailyTaskRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
@@ -563,6 +564,14 @@ app.use(
   "/api/notifications",
 
   notificationRoutes,
+);
+
+// PAGE CONTENT ROUTES
+
+app.use(
+  "/api",
+
+  pageContentRoutes,
 );
 
 // ================= HEALTH CHECK =================

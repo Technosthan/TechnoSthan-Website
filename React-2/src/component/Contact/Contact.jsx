@@ -1,11 +1,13 @@
 import React, { useState } from "react";
+import DynamicPageSections from "../DynamicPageSections";
+import { useLocation } from "react-router-dom";
 import "./Contact.css";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const Contact = () => {
-
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ✅ state
   const [formData, setFormData] = useState({
@@ -14,14 +16,14 @@ const Contact = () => {
     phone: "",
     website: "",
     location: "",
-    message: ""
+    message: "",
   });
 
   //handle change
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -41,9 +43,8 @@ const Contact = () => {
         phone: "",
         website: "",
         location: "",
-        message: ""
+        message: "",
       });
-
     } catch (error) {
       console.error(error);
       alert("Something went wrong ❌");
@@ -52,54 +53,54 @@ const Contact = () => {
 
   return (
     <section className="contact">
-
       <div className="contact-header">
         <h1>Get In Touch</h1>
-        <p>We’d love to hear from you. Fill out the form and our team will contact you soon.</p>
+        <p>
+          We’d love to hear from you. Fill out the form and our team will
+          contact you soon.
+        </p>
       </div>
 
       <div className="contact-wrapper">
-
         {/* FORM */}
         <form className="contact-form" onSubmit={handleSubmit}>
-
           <div className="input-group">
             <label htmlFor="contact-name">Name</label>
-            <input 
+            <input
               id="contact-name"
-              type="text" 
+              type="text"
               name="name"
               autoComplete="name"
               value={formData.name}
               onChange={handleChange}
-              required 
+              required
             />
           </div>
 
           <div className="input-row">
             <div className="input-group">
               <label htmlFor="contact-email">Email</label>
-              <input 
+              <input
                 id="contact-email"
-                type="email" 
+                type="email"
                 name="email"
                 autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
-                required 
+                required
               />
             </div>
 
             <div className="input-group">
               <label htmlFor="contact-phone">Phone</label>
-              <input 
+              <input
                 id="contact-phone"
-                type="tel" 
+                type="tel"
                 name="phone"
                 autoComplete="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                required 
+                required
               />
             </div>
           </div>
@@ -107,9 +108,9 @@ const Contact = () => {
           <div className="input-row">
             <div className="input-group">
               <label htmlFor="contact-website">Website</label>
-              <input 
+              <input
                 id="contact-website"
-                type="url" 
+                type="url"
                 name="website"
                 autoComplete="url"
                 value={formData.website}
@@ -119,21 +120,21 @@ const Contact = () => {
 
             <div className="input-group">
               <label htmlFor="contact-location">Location</label>
-              <input 
+              <input
                 id="contact-location"
-                type="text" 
+                type="text"
                 name="location"
                 autoComplete="street-address"
                 value={formData.location}
                 onChange={handleChange}
-                required 
+                required
               />
             </div>
           </div>
 
           <div className="input-group">
             <label htmlFor="contact-message">Message</label>
-            <textarea 
+            <textarea
               id="contact-message"
               name="message"
               value={formData.message}
@@ -145,12 +146,10 @@ const Contact = () => {
           <button type="submit" className="submit-btn">
             Submit Request
           </button>
-
         </form>
 
         {/* RIGHT PANEL */}
         <div className="contact-info">
-
           <h3>Our Location</h3>
           <p>
             New Sanganer Road, Jaipur <br />
@@ -160,55 +159,48 @@ const Contact = () => {
           <h3>Quick Contact</h3>
           <p>
             Email:{" "}
-            <a href="mailto:info@technosthan.com">
-              info@technosthan.com
+            <a href="mailto:info@technosthan.com">info@technosthan.com</a>
+          </p>
+          {/*phone */}
 
-            </a>
-            </p>
-            {/*phone */}
-            
           <p>
-            phone:{" "}
-            <a href="tel:+919477288288">
-              +91 9477-288-288
-
-            </a>
-           </p>
+            phone: <a href="tel:+919477288288">+91 9477-288-288</a>
+          </p>
 
           <h3>Opening Hours</h3>
           <p>Monday - Saturday</p>
           <p>10:00 AM - 07:00 PM</p>
 
           {/* BUTTON */}
-          <button 
+          <button
             type="button"
             className="cta-btn"
             onClick={() => navigate("/solution")}
           >
             Find Your Solution →
           </button>
-
         </div>
-
       </div>
+      <DynamicPageSections route={location.pathname} position="top" />
+      <DynamicPageSections route={location.pathname} position="bottom" />
+
       {/* OUR LOCATION MAP */}
-<div className="location-section">
-  <h2>Our Location</h2>
+      <div className="location-section">
+        <h2>Our Location</h2>
 
-  <div className="map-container">
-    <iframe
-      title="Technosthan Location"
-      src="https://maps.google.com/maps?q=Jaipur,Rajasthan,India&t=&z=12&ie=UTF8&iwloc=&output=embed"
-      width="100%"
-      height="600"
-      style={{ border: 0 }}
-      allowFullScreen=""
-      loading="lazy"
-      referrerPolicy="no-referrer-when-downgrade"
-    />
-  </div>
-</div>
-
+        <div className="map-container">
+          <iframe
+            title="Technosthan Location"
+            src="https://maps.google.com/maps?q=Jaipur,Rajasthan,India&t=&z=12&ie=UTF8&iwloc=&output=embed"
+            width="100%"
+            height="600"
+            style={{ border: 0 }}
+            allowFullScreen=""
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+      </div>
     </section>
   );
 };
