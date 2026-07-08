@@ -10,12 +10,27 @@ const parseDate = (value) => {
 const normalizeEnum = (value, fallback) =>
   String(value || fallback || "").trim().toUpperCase();
 
+const normalizePage = (value = "") => {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw || raw === "all") return "ALL";
+  if (raw === "/" || raw === "home") return "HOME";
+  if (raw.includes("program")) return "PROGRAMS";
+  if (raw.includes("contact")) return "CONTACT";
+  return "ALL";
+};
+
+const isCampaignVisibleForPage = (campaign, page) => {
+  const scope = String(campaign.displayPages || "ALL").toUpperCase();
+  if (scope === "ALL") return true;
+  return scope === normalizePage(page);
+};
+
 const prepareCampaignData = (body = {}) => {
   const startDate = parseDate(body.startDate);
   const endDate = parseDate(body.endDate);
 
   const title = String(body.title || "").trim();
-  const mediaType = normalizeEnum(body.mediaType, "IMAGE");
+  const mediaType = normalizeEnum(body.mediaType, "");
   const mediaUrl = normalizeMediaUrl(body.mediaUrl || body.media || "", mediaType === "VIDEO" ? "video" : "image");
 
   if (!title) {
@@ -65,7 +80,7 @@ const campaignOrder = [
 
 export const getActiveCampaign = async () => {
   const now = new Date();
-  return prisma.campaign.findFirst({
+  const candidates = await prisma.campaign.findMany({
     where: {
       isActive: true,
       AND: [
@@ -75,6 +90,25 @@ export const getActiveCampaign = async () => {
     },
     orderBy: campaignOrder,
   });
+
+  return candidates.find((campaign) => isCampaignVisibleForPage(campaign, "ALL")) || null;
+};
+
+export const getActiveCampaignForPage = async (page = "") => {
+  const now = new Date();
+  const candidates = await prisma.campaign.findMany({
+    where: {
+      isActive: true,
+      AND: [
+        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+      ],
+    },
+    orderBy: campaignOrder,
+  });
+
+  const normalizedPage = normalizePage(page);
+  return candidates.find((campaign) => isCampaignVisibleForPage(campaign, normalizedPage)) || null;
 };
 
 export const listCampaigns = async () => {

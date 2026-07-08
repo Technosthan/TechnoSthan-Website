@@ -7,10 +7,9 @@ import { existsSync } from "fs";
 import { corsOptions } from "./config/cors.js";
 import { env } from "./config/env.js";
 import routes from "./routes/index.js";
+import uploadRoutes from "./routes/upload.routes.js";
 import errorMiddleware from "./shared/middleware/error.middleware.js";
 import authRoutes from "./features/auth/auth.routes.js";
-import uploadRoutes from "./features/uploads/upload.routes.js";
-import campaignRoutes from "./features/campaigns/campaign.routes.js";
 
 dotenv.config();
 
@@ -52,7 +51,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), { maxAge
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/uploads", uploadRoutes);
-app.use("/api/campaigns", campaignRoutes);
 app.use("/api", routes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 

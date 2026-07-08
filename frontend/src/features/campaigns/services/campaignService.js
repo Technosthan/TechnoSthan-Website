@@ -1,7 +1,7 @@
 import { apiClient } from "../../../shared/services/apiClient";
 
 export const campaignService = {
-  getActive: () => apiClient.get("/campaigns/active"),
+  getActive: (page = "") => apiClient.get(`/campaigns/active${page ? `?page=${encodeURIComponent(page)}` : ""}`),
   getAll: () => apiClient.get("/admin/campaigns"),
   create: (payload) => apiClient.post("/admin/campaigns", payload),
   update: (id, payload) => apiClient.put(`/admin/campaigns/${id}`, payload),

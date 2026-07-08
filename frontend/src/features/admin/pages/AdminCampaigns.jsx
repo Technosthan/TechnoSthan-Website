@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Pencil, Power, PowerOff, Trash2 } from "lucide-react";
 import MediaUploader from "../../../shared/components/MediaUploader";
 import { campaignService } from "../../campaigns/services/campaignService";
 import { getMediaUrl, normalizeStoredMediaUrl } from "../../../shared/utils/media";
@@ -18,15 +19,33 @@ const emptyCampaign = {
   priority: 0,
 };
 
+const formatDate = (value) => (value ? new Date(value).toLocaleDateString("en-IN") : "No date");
+
+const getStatus = (campaign) => {
+  if (!campaign.isActive) return "Inactive";
+  const now = new Date();
+  const startDate = campaign.startDate ? new Date(campaign.startDate) : null;
+  const endDate = campaign.endDate ? new Date(campaign.endDate) : null;
+  if (startDate && startDate > now) return "Scheduled";
+  if (endDate && endDate < now) return "Expired";
+  return "Active";
+};
+
 const AdminCampaigns = () => {
   const [form, setForm] = useState(emptyCampaign);
   const [campaigns, setCampaigns] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
-    const response = await campaignService.getAll();
-    setCampaigns(response.campaigns || []);
+    setLoading(true);
+    try {
+      const response = await campaignService.getAll();
+      setCampaigns(response.campaigns || []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -43,9 +62,16 @@ const AdminCampaigns = () => {
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
+  const resetForm = () => {
+    setForm(emptyCampaign);
+    setSelectedId(null);
+    setMessage("");
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
+
     const payload = {
       ...form,
       mediaUrl: normalizeStoredMediaUrl(form.mediaUrl, form.mediaType === "VIDEO" ? "video" : "image"),
@@ -61,8 +87,7 @@ const AdminCampaigns = () => {
         setMessage("Campaign created.");
       }
 
-      setForm(emptyCampaign);
-      setSelectedId(null);
+      resetForm();
       await load();
     } catch (error) {
       setMessage(error.message || "Unable to save campaign.");
@@ -104,15 +129,24 @@ const AdminCampaigns = () => {
   return (
     <div className="dashboard-page">
       <div className="page-header">
-        <h1>Campaign Manager</h1>
+        <div>
+          <h1>Campaign Manager</h1>
+          <p className="muted-copy">Create, schedule, and manage public campaigns without leaving the dashboard.</p>
+        </div>
+        {selectedId ? <span className="badge">Editing</span> : <span className="badge">Create Campaign</span>}
       </div>
 
       <div className="admin-two-col">
-        <form className="card glass form-grid" onSubmit={handleSubmit}>
+        <form className="card glass form-grid campaign-form-card" onSubmit={handleSubmit}>
+          <div className="section-heading">
+            <h2>{selectedId ? "Edit Campaign" : "Create Campaign"}</h2>
+            <p>Use Cloudinary media, page targeting, and schedule controls for every campaign.</p>
+          </div>
+
           <div className="cards-grid-2">
             <label className="field">
               <span>Campaign title</span>
-              <input className="input" name="title" value={form.title} onChange={handleChange} />
+              <input className="input" name="title" value={form.title} onChange={handleChange} required />
             </label>
             <label className="field">
               <span>CTA link</span>
@@ -179,48 +213,85 @@ const AdminCampaigns = () => {
             <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} />
             Active
           </label>
+
           {message ? <p className="form-success">{message}</p> : null}
+
           <div className="table-actions">
-            <button className="btn btn-primary" type="submit">{selectedId ? "Update campaign" : "Create campaign"}</button>
-            <button className="btn btn-secondary" type="button" onClick={() => { setForm(emptyCampaign); setSelectedId(null); }}>
+            <button className="btn btn-primary" type="submit">
+              {selectedId ? "Update campaign" : "Create campaign"}
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={resetForm}>
               Reset
             </button>
           </div>
         </form>
 
-        <div className="builder-stack">
-          {campaigns.map((campaign) => (
-            <article key={campaign.id} className="card glass campaign-card">
-              {campaign.mediaUrl ? (
-                campaign.mediaType === "VIDEO" ? (
-                  <video className="campaign-media" controls muted playsInline>
-                    <source src={getMediaUrl(campaign.mediaUrl, "video")} />
-                  </video>
-                ) : (
-                  <img className="campaign-media" src={getMediaUrl(campaign.mediaUrl, "image")} alt={campaign.title} />
-                )
-              ) : null}
-              <p className="badge">{campaign.isActive ? "Active" : "Inactive"}</p>
-              <h3>{campaign.title}</h3>
-              <p className="muted-copy">{campaign.displayPages}</p>
-              <p className="muted-copy">
-                {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString("en-IN") : "No start"} - {campaign.endDate ? new Date(campaign.endDate).toLocaleDateString("en-IN") : "No end"}
-              </p>
-              <div className="table-actions">
-                <button className="btn btn-secondary" type="button" onClick={() => toggleActive(campaign)}>
-                  {campaign.isActive ? "Deactivate" : "Activate"}
-                </button>
-                <button className="btn btn-secondary" type="button" onClick={() => editCampaign(campaign)}>
-                  Edit
-                </button>
-                <button className="btn btn-secondary" type="button" onClick={() => remove(campaign)}>
-                  Delete
-                </button>
-              </div>
-            </article>
-          ))}
+        <section className="card glass campaign-library">
+          <div className="section-heading">
+            <h2>Campaign Library</h2>
+            <p>{loading ? "Loading campaigns..." : `${campaigns.length} campaigns available`}</p>
+          </div>
+
+          <div className="campaign-library-grid">
+            {campaigns.map((campaign) => {
+              const status = getStatus(campaign);
+              const isVideo = String(campaign.mediaType || "").toUpperCase() === "VIDEO";
+              return (
+                <article key={campaign.id} className="campaign-card">
+                  <div className="campaign-card-media">
+                    {campaign.mediaUrl ? (
+                      isVideo ? (
+                        <video className="campaign-card-media-el" controls muted playsInline>
+                          <source src={getMediaUrl(campaign.mediaUrl, "video")} />
+                        </video>
+                      ) : (
+                        <img
+                          className="campaign-card-media-el"
+                          src={getMediaUrl(campaign.mediaUrl, "image")}
+                          alt={campaign.title}
+                        />
+                      )
+                    ) : (
+                      <div className="campaign-card-empty">No media</div>
+                    )}
+                  </div>
+
+                  <div className="campaign-card-head">
+                    <div>
+                      <h3>{campaign.title}</h3>
+                      <p className="muted-copy">{campaign.ctaLink || "No CTA link"}</p>
+                    </div>
+                    <span className={`status-pill status-${status.toLowerCase()}`}>{status}</span>
+                  </div>
+
+                  <div className="campaign-card-meta">
+                    <span className="meta-pill">{campaign.mediaType}</span>
+                    <span className="meta-pill">{campaign.displayPages}</span>
+                    <span className="meta-pill">{formatDate(campaign.startDate)} - {formatDate(campaign.endDate)}</span>
+                    <span className="meta-pill">Priority {campaign.priority ?? 0}</span>
+                  </div>
+
+                  <div className="table-actions campaign-card-actions">
+                    <button className="btn btn-secondary btn-sm" type="button" onClick={() => editCampaign(campaign)}>
+                      <Pencil size={14} />
+                      Edit
+                    </button>
+                    <button className="btn btn-secondary btn-sm" type="button" onClick={() => toggleActive(campaign)}>
+                      {campaign.isActive ? <PowerOff size={14} /> : <Power size={14} />}
+                      {campaign.isActive ? "Deactivate" : "Activate"}
+                    </button>
+                    <button className="btn btn-secondary btn-sm" type="button" onClick={() => remove(campaign)}>
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
           {selectedCampaign ? <p className="muted-copy">Editing: {selectedCampaign.title}</p> : null}
-        </div>
+        </section>
       </div>
     </div>
   );

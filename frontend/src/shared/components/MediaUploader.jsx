@@ -20,7 +20,7 @@ const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "svg"]);
 const VIDEO_MIME_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov"]);
 
-const getUploadEndpoint = (type) => buildApiUrl(`/uploads/${type === "video" ? "videos" : "images"}`);
+const getUploadEndpoint = () => buildApiUrl("/uploads");
 
 const formatDuration = (seconds = 0) => {
   const totalSeconds = Number.isFinite(seconds) ? Math.max(0, Math.round(seconds)) : 0;
@@ -43,7 +43,7 @@ const isSupportedFile = (file, type) => {
 const uploadFileWithProgress = ({ file, type, token, onProgress }) =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", getUploadEndpoint(type));
+    xhr.open("POST", getUploadEndpoint());
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     }
@@ -73,6 +73,7 @@ const uploadFileWithProgress = ({ file, type, token, onProgress }) =>
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("mediaType", type.toUpperCase());
     xhr.send(formData);
   });
 
