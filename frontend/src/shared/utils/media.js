@@ -8,6 +8,11 @@ const DRIVE_ID_PATTERNS = [
 ];
 
 const trimTrailingSlash = (value) => String(value || "").replace(/\/$/, "");
+const ensureApiBase = (value) => {
+  const trimmed = trimTrailingSlash(value);
+  if (!trimmed) return "";
+  return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;
+};
 
 const resolveRuntimeApiBase = () => {
   if (typeof window === "undefined") {
@@ -16,7 +21,7 @@ const resolveRuntimeApiBase = () => {
 
   const { hostname } = window.location;
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return "http://localhost:5000/api";
+    return "/api";
   }
 
   if (hostname === "ih.technosthan.com") {
@@ -26,8 +31,10 @@ const resolveRuntimeApiBase = () => {
   return "";
 };
 
-const configuredApiBase = trimTrailingSlash(import.meta.env.VITE_API_URL || "");
-const configuredBackendBase = trimTrailingSlash(import.meta.env.VITE_BACKEND_PUBLIC_URL || "");
+const configuredApiBase = ensureApiBase(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "");
+const configuredBackendBase = trimTrailingSlash(
+  import.meta.env.VITE_BACKEND_PUBLIC_URL || import.meta.env.VITE_API_BASE_URL || "",
+);
 const API_BASE = configuredApiBase || resolveRuntimeApiBase();
 const BACKEND_PUBLIC_BASE =
   configuredBackendBase || trimTrailingSlash(API_BASE).replace(/\/api\/?$/, "");

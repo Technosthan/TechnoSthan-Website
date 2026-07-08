@@ -1,6 +1,14 @@
 const trimTrailingSlash = (value) => String(value || "").replace(/\/$/, "");
 
-const configuredBackendBase = trimTrailingSlash(import.meta.env.VITE_BACKEND_PUBLIC_URL || "");
+const ensureApiBase = (value) => {
+  const trimmed = trimTrailingSlash(value);
+  if (!trimmed) return "";
+  return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;
+};
+
+const configuredBackendOrigin = trimTrailingSlash(
+  import.meta.env.VITE_BACKEND_PUBLIC_URL || import.meta.env.VITE_API_BASE_URL || "",
+);
 
 const resolveRuntimeApiBase = () => {
   if (typeof window === "undefined") {
@@ -9,7 +17,7 @@ const resolveRuntimeApiBase = () => {
 
   const hostname = window.location.hostname;
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return "http://localhost:5000/api";
+    return "/api";
   }
 
   if (hostname === "ih.technosthan.com") {
@@ -19,11 +27,11 @@ const resolveRuntimeApiBase = () => {
   return "";
 };
 
-const configuredApiBase = trimTrailingSlash(import.meta.env.VITE_API_URL || "");
+const configuredApiBase = ensureApiBase(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "");
 
 export const API_BASE =
   configuredApiBase ||
-  (configuredBackendBase ? `${configuredBackendBase}/api` : "") ||
+  (configuredBackendOrigin ? `${configuredBackendOrigin}/api` : "") ||
   resolveRuntimeApiBase() ||
   "http://localhost:5000/api";
 

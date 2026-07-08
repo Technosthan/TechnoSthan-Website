@@ -21,6 +21,34 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
+const buildMentorFallbackAvatar = (name = "") => {
+  const initials = String(name || "M")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || "")
+    .join("")
+    .toUpperCase() || "M";
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#10253f"/>
+          <stop offset="100%" stop-color="#0a1324"/>
+        </linearGradient>
+      </defs>
+      <rect width="160" height="160" rx="28" fill="url(#g)"/>
+      <circle cx="80" cy="64" r="30" fill="#5ee7ff" fill-opacity="0.18"/>
+      <circle cx="80" cy="58" r="18" fill="#5ee7ff"/>
+      <path d="M42 128c8-22 27-32 38-32s30 10 38 32" fill="#5ee7ff" fill-opacity="0.22"/>
+      <text x="80" y="148" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" font-weight="700" fill="#f5f7ff">${initials}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
 const ProgramDetails = () => {
   const { identifier, slug } = useParams();
   const decodedIdentifier = safeDecodeURIComponent(identifier || slug || "").trim();
@@ -88,6 +116,7 @@ const ProgramDetails = () => {
   const heroVideoUrl = getMediaUrl(program?.heroVideoUrl, "video");
   const heroImageUrl = getMediaUrl(program?.heroImageUrl || program?.thumbnailUrl, "image");
   const mentorAvatarUrl = getMediaUrl(program?.mentorAvatarUrl, "image");
+  const mentorAvatarFallback = buildMentorFallbackAvatar(program?.mentorName);
   const showHeroVideo = Boolean(program?.heroVideoUrl) && !videoFailed;
   const showHeroImage = Boolean(program?.heroImageUrl || program?.thumbnailUrl) && !imageFailed;
   const showMentorAvatar = Boolean(program?.mentorAvatarUrl) && !mentorAvatarFailed;
@@ -297,18 +326,18 @@ const ProgramDetails = () => {
           <article className="card glass">
             <h2>Mentor</h2>
             <div className="program-mentor-card">
-              {showMentorAvatar ? (
-                <img
-                  className="program-mentor-avatar"
-                  src={mentorAvatarUrl}
-                  alt={program.mentorName || "Mentor"}
-                  onError={() => setMentorAvatarFailed(true)}
-                />
-              ) : (
-                <div className="program-mentor-avatar program-mentor-avatar-placeholder">
-                  <Users size={20} />
-                </div>
-              )}
+              <img
+                className="program-mentor-avatar"
+                src={showMentorAvatar ? mentorAvatarUrl : mentorAvatarFallback}
+                alt={program.mentorName || "Mentor"}
+                onError={(event) => {
+                  if (event.currentTarget.src !== mentorAvatarFallback) {
+                    event.currentTarget.src = mentorAvatarFallback;
+                  } else {
+                    setMentorAvatarFailed(true);
+                  }
+                }}
+              />
               <div>
                 <p className="muted-copy">{program.mentorName}</p>
                 <p className="muted-copy">{program.mentorRole}</p>

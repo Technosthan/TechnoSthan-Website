@@ -28,7 +28,7 @@ const upload = multer({
   },
 });
 
-const uploadStream = (buffer, options = {}) =>
+const uploadStream = (cloudinary, buffer, options = {}) =>
   new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
       if (error) {
@@ -63,13 +63,16 @@ export const uploadMediaController = asyncHandler(async (req, res) => {
 
   const cloudinary = await getCloudinary();
   if (!cloudinary) {
-    return res.status(500).json({ message: "Cloudinary is not configured" });
+    return res.status(500).json({
+      message:
+        "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET, or CLOUDINARY_URL.",
+    });
   }
 
   const mediaType = detectMediaType(req.file, req.body.mediaType || req.body.type || "");
   const folder = `technosthan/innovationhub/${mediaType === "VIDEO" ? "videos" : "images"}`;
   const resourceType = mediaType === "VIDEO" ? "video" : "image";
-  const result = await uploadStream(req.file.buffer, {
+  const result = await uploadStream(cloudinary, req.file.buffer, {
     folder,
     resource_type: resourceType,
     use_filename: true,

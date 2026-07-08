@@ -12,7 +12,7 @@ const normalizeEnum = (value, fallback) =>
 
 const normalizePage = (value = "") => {
   const raw = String(value || "").trim().toLowerCase();
-  if (!raw || raw === "all") return "ALL";
+  if (!raw || /\ball\b/.test(raw)) return "ALL";
   if (raw === "/" || raw === "home") return "HOME";
   if (raw.includes("program")) return "PROGRAMS";
   if (raw.includes("contact")) return "CONTACT";
@@ -20,7 +20,7 @@ const normalizePage = (value = "") => {
 };
 
 const isCampaignVisibleForPage = (campaign, page) => {
-  const scope = String(campaign.displayPages || "ALL").toUpperCase();
+  const scope = normalizePage(campaign.displayPages);
   if (scope === "ALL") return true;
   return scope === normalizePage(page);
 };
@@ -79,15 +79,8 @@ const campaignOrder = [
 ];
 
 export const getActiveCampaign = async () => {
-  const now = new Date();
   const candidates = await prisma.campaign.findMany({
-    where: {
-      isActive: true,
-      AND: [
-        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
-        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
-      ],
-    },
+    where: { isActive: true },
     orderBy: campaignOrder,
   });
 
@@ -95,20 +88,23 @@ export const getActiveCampaign = async () => {
 };
 
 export const getActiveCampaignForPage = async (page = "") => {
-  const now = new Date();
   const candidates = await prisma.campaign.findMany({
-    where: {
-      isActive: true,
-      AND: [
-        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
-        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
-      ],
-    },
+    where: { isActive: true },
     orderBy: campaignOrder,
   });
 
   const normalizedPage = normalizePage(page);
   return candidates.find((campaign) => isCampaignVisibleForPage(campaign, normalizedPage)) || null;
+};
+
+export const getActiveCampaignsForPage = async (page = "") => {
+  const candidates = await prisma.campaign.findMany({
+    where: { isActive: true },
+    orderBy: campaignOrder,
+  });
+
+  const normalizedPage = normalizePage(page);
+  return candidates.filter((campaign) => isCampaignVisibleForPage(campaign, normalizedPage));
 };
 
 export const listCampaigns = async () => {

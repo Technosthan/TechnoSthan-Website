@@ -27,10 +27,10 @@ const request = async (url, options = {}) => {
   const token = shouldAttachAuth(url, options)
     ? localStorage.getItem("technosthan_access_token")
     : null;
-  const { headers: customHeaders, skipAuth, ...fetchOptions } = options;
+  const { headers: customHeaders, skipAuth, credentials, ...fetchOptions } = options;
   const response = await fetch(buildApiUrl(url), {
     ...fetchOptions,
-    credentials: "include",
+    credentials: credentials || "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -48,7 +48,7 @@ const request = async (url, options = {}) => {
 };
 
 export const apiClient = {
-  get: (url) => request(url),
+  get: (url, options) => request(url, options),
   post: (url, body) =>
     request(url, { method: "POST", body: JSON.stringify(body) }),
   put: (url, body) =>
