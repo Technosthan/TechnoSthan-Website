@@ -114,6 +114,16 @@ const normalizeQuestion = (question, index) => {
   const type = QUESTION_TYPES.has(question.type)
     ? question.type
     : "shortAnswer";
+  const validation =
+    type === "number"
+      ? {
+          minValue: parseOptionalNumber(question.validation?.minValue),
+          maxValue: parseOptionalNumber(question.validation?.maxValue),
+          minDigits: parseOptionalInteger(question.validation?.minDigits),
+          maxDigits: parseOptionalInteger(question.validation?.maxDigits),
+          errorMessage: String(question.validation?.errorMessage || "").trim(),
+        }
+      : undefined;
   return {
     label: String(question.label || "").trim() || "Untitled question",
     type,
@@ -123,6 +133,7 @@ const normalizeQuestion = (question, index) => {
     options: Array.isArray(question.options)
       ? question.options.map((item) => String(item).trim()).filter(Boolean)
       : [],
+    ...(validation ? { validation } : {}),
     order: typeof question.order === "number" ? question.order : index,
   };
 };
@@ -158,6 +169,7 @@ const normalizeFormPayload = async (
     successMessage:
       String(payload.successMessage || "").trim() ||
       "Thanks for your response.",
+    bannerImageUrl: String(payload.bannerImageUrl || "").trim(),
     notificationEmail: String(payload.notificationEmail || "").trim(),
     confirmationEmailEnabled: payload.confirmationEmailEnabled === true,
     allowFileUpload: payload.allowFileUpload === true,
@@ -165,6 +177,18 @@ const normalizeFormPayload = async (
       parseDateValue(payload.expiresAt || payload.expiryDate || payload.expiresOn),
     themeColor: String(payload.themeColor || "").trim() || DEFAULT_THEME_COLOR,
   };
+};
+
+const parseOptionalNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseOptionalInteger = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) ? parsed : null;
 };
 
 const getBrandingSettings = async (form = {}) => {
@@ -572,6 +596,94 @@ const parseAnswersPayload = (body = {}) => {
   return {};
 };
 
+const normalizeEmailValue = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const normalizePhoneValue = (value = "") => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return digits.slice(-10);
+  }
+  return digits;
+};
+
+const extractSubmissionContact = (questions = [], answersPayload = {}) => {
+  let email = "";
+  let phone = "";
+
+  for (const question of questions) {
+    const questionKey = String(question._id);
+    const slugKey = slugify(question.label);
+    const submittedValue =
+      answersPayload[questionKey] ??
+      answersPayload[slugKey] ??
+      answersPayload[question.label] ??
+      null;
+    const value = Array.isArray(submittedValue)
+      ? submittedValue.join(", ")
+      : String(submittedValue || "");
+    const emailRegex = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+    const phoneRegex = /(?:\+91[\s-]?)?[6-9]\d{9}/;
+    const questionLabel = String(question.label || "").toLowerCase();
+    const questionType = question.type;
+
+    if (!email && (questionType === "email" || /email/.test(questionLabel))) {
+      email = value || "";
+    }
+    if (!email && emailRegex.test(value)) {
+      email = value.match(emailRegex)?.[0] || "";
+    }
+    if (!phone && (questionType === "phone" || /phone|mobile|contact/.test(questionLabel))) {
+      phone = value || "";
+    }
+    if (!phone && phoneRegex.test(value.replace(/\s+/g, ""))) {
+      phone = value.match(phoneRegex)?.[0] || "";
+    }
+  }
+
+  return {
+    email: normalizeEmailValue(email),
+    phone: normalizePhoneValue(phone),
+  };
+};
+
+const findDuplicateFormResponse = async (formId, contact = {}) => {
+  const orConditions = [];
+  if (contact.email) {
+    orConditions.push({ email: contact.email });
+  }
+  if (contact.phone) {
+    orConditions.push({ phone: contact.phone });
+  }
+
+  if (!orConditions.length) {
+    return null;
+  }
+
+  return await FormResponse.findOne({
+    formId,
+    $or: orConditions,
+  }).lean();
+};
+
+const findLegacyDuplicateFormResponse = async (formId, contact = {}) => {
+  if (!contact.email && !contact.phone) {
+    return null;
+  }
+
+  const responses = await collectResponses(formId);
+  return (
+    responses.find((response) => {
+      const responseEmail = normalizeEmailValue(response.email);
+      const responsePhone = normalizePhoneValue(response.phone);
+      return (
+        (contact.email && responseEmail === contact.email) ||
+        (contact.phone && responsePhone === contact.phone)
+      );
+    }) || null
+  );
+};
+
 const getFileUrl = (file, baseUrl = "") => {
   const apiUrl =
     baseUrl ||
@@ -600,6 +712,63 @@ const validateQuestionValue = (question, value, fileList = []) => {
   }
 
   const stringValue = Array.isArray(value) ? value.join(", ") : String(value || "");
+
+  if (question.type === "number") {
+    const validation = question.validation || {};
+    const errorMessage =
+      String(validation.errorMessage || "").trim() ||
+      `Question "${question.label}" must be a valid number`;
+    const normalizedValue = stringValue.trim();
+    if (!/^-?\d+$/.test(normalizedValue)) {
+      const error = new Error(errorMessage);
+      error.code = "NUMBER_VALIDATION";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const digitCount = normalizedValue.replace(/^-/, "").length;
+    const numericValue = Number(normalizedValue);
+
+    if (
+      Number.isFinite(validation.minValue) &&
+      numericValue < Number(validation.minValue)
+    ) {
+      const error = new Error(errorMessage);
+      error.code = "NUMBER_VALIDATION";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (
+      Number.isFinite(validation.maxValue) &&
+      numericValue > Number(validation.maxValue)
+    ) {
+      const error = new Error(errorMessage);
+      error.code = "NUMBER_VALIDATION";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (
+      Number.isInteger(validation.minDigits) &&
+      digitCount < validation.minDigits
+    ) {
+      const error = new Error(errorMessage);
+      error.code = "NUMBER_VALIDATION";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (
+      Number.isInteger(validation.maxDigits) &&
+      digitCount > validation.maxDigits
+    ) {
+      const error = new Error(errorMessage);
+      error.code = "NUMBER_VALIDATION";
+      error.statusCode = 400;
+      throw error;
+    }
+  }
 
   if (question.type === "email" && stringValue) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -810,6 +979,7 @@ export const updateForm = async (formId, payload) => {
   existing.slug = formPayload.slug;
   existing.status = formPayload.status;
   existing.successMessage = formPayload.successMessage;
+  existing.bannerImageUrl = formPayload.bannerImageUrl;
   existing.notificationEmail = formPayload.notificationEmail;
   existing.confirmationEmailEnabled = formPayload.confirmationEmailEnabled;
   existing.allowFileUpload = formPayload.allowFileUpload;
@@ -1017,6 +1187,7 @@ export const submitForm = async ({
     .lean();
   const answersPayload = parseAnswersPayload(body);
   const fileEntriesByKey = getFileEntriesByQuestion(files);
+  const contact = extractSubmissionContact(questions, answersPayload);
 
   if (!form.allowFileUpload && files.length > 0) {
     throw new Error("File uploads are disabled for this form");
@@ -1045,9 +1216,22 @@ export const submitForm = async ({
     });
   }
 
+  const duplicateSubmission = await findDuplicateFormResponse(form._id, contact);
+  const legacyDuplicateSubmission = duplicateSubmission
+    ? null
+    : await findLegacyDuplicateFormResponse(form._id, contact);
+  if (duplicateSubmission || legacyDuplicateSubmission) {
+    const error = new Error("You have already filled this form.");
+    error.code = "DUPLICATE_SUBMISSION";
+    error.statusCode = 409;
+    throw error;
+  }
+
   const response = await FormResponse.create({
     formId: form._id,
     referenceId: `FRM-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    email: contact.email,
+    phone: contact.phone,
     submittedAt: new Date(),
     ipAddress,
     userAgent,
@@ -1077,13 +1261,15 @@ export const submitForm = async ({
     ),
   }));
 
-  await sendSubmissionNotifications({
+  void sendSubmissionNotifications({
     form,
     response,
     answers: populatedAnswers,
     adminUrl:
       adminUrl ||
       `${process.env.FRONTEND_URL || process.env.VITE_PUBLIC_URL || ""}/admin/dashboard/forms`,
+  }).catch((error) => {
+    console.error("Failed to send form submission notifications:", error);
   });
 
   return {

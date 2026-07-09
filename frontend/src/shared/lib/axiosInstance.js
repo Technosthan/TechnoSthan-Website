@@ -5,6 +5,8 @@ const baseURL =
   import.meta.env.VITE_API_BASE_URL_PROD ||
   import.meta.env.VITE_API_BASE_URL;
 
+export const API_BASE_URL = baseURL || "";
+
 const axiosInstance = axios.create({
   baseURL,
 });

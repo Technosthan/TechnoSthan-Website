@@ -51,6 +51,29 @@ const formQuestionSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    validation: {
+      minValue: {
+        type: Number,
+        default: null,
+      },
+      maxValue: {
+        type: Number,
+        default: null,
+      },
+      minDigits: {
+        type: Number,
+        default: null,
+      },
+      maxDigits: {
+        type: Number,
+        default: null,
+      },
+      errorMessage: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
     order: {
       type: Number,
       default: 0,

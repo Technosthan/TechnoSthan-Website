@@ -33,9 +33,11 @@ import {
   getAdminFormResponses,
   updateAdminForm,
 } from "../forms/formsApi";
+import { uploadFormBannerImage } from "./adminApi";
+import { API_BASE_URL } from "../../shared/lib/axiosInstance";
 
 const QUESTION_TYPES = [
-  { value: "shortAnswer", label: "Short Answer" },
+  { value: "One line Text", label: "One Line Text" },
   { value: "paragraph", label: "Paragraph" },
   { value: "email", label: "Email" },
   { value: "phone", label: "Phone" },
@@ -57,6 +59,7 @@ const EMPTY_FORM = {
   slug: "",
   status: "draft",
   successMessage: "Thanks for your response.",
+  bannerImageUrl: "",
   notificationEmail: "",
   confirmationEmailEnabled: false,
   allowFileUpload: false,
@@ -68,12 +71,13 @@ const EMPTY_FORM = {
 const createQuestion = () => ({
   id: crypto.randomUUID(),
   label: "Untitled question",
-  type: "shortAnswer",
+  type: "One line Text",
   placeholder: "",
   helpText: "",
   required: false,
   options: [],
   optionsText: "",
+  validation: normalizeNumberValidation(),
   order: 0,
 });
 
@@ -121,10 +125,58 @@ const parseOptionsText = (value = "") =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const normalizeNumberValidation = (validation = {}) => ({
+  minValue:
+    validation.minValue === null || validation.minValue === undefined
+      ? ""
+      : String(validation.minValue),
+  maxValue:
+    validation.maxValue === null || validation.maxValue === undefined
+      ? ""
+      : String(validation.maxValue),
+  minDigits:
+    validation.minDigits === null || validation.minDigits === undefined
+      ? ""
+      : String(validation.minDigits),
+  maxDigits:
+    validation.maxDigits === null || validation.maxDigits === undefined
+      ? ""
+      : String(validation.maxDigits),
+  errorMessage: validation.errorMessage || "",
+});
+
+const parseOptionalNumber = (value) => {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseOptionalInteger = (value) => {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const parsed = Number.parseInt(text, 10);
+  return Number.isInteger(parsed) ? parsed : null;
+};
+
+const buildQuestionValidationPayload = (question) => {
+  if (question.type !== "number") {
+    return undefined;
+  }
+
+  return {
+    minValue: parseOptionalNumber(question.validation?.minValue),
+    maxValue: parseOptionalNumber(question.validation?.maxValue),
+    minDigits: parseOptionalInteger(question.validation?.minDigits),
+    maxDigits: parseOptionalInteger(question.validation?.maxDigits),
+    errorMessage: String(question.validation?.errorMessage || "").trim(),
+  };
+};
+
 const normalizeQuestion = (question, index) => ({
   id: question._id || question.id || crypto.randomUUID(),
   label: question.label || "",
-  type: question.type || "shortAnswer",
+  type: question.type || "One line Text",
   placeholder: question.placeholder || "",
   helpText: question.helpText || "",
   required: question.required === true,
@@ -138,6 +190,7 @@ const normalizeQuestion = (question, index) => ({
     : typeof question.options === "string"
       ? question.options
       : "",
+  validation: normalizeNumberValidation(question.validation),
   order: typeof question.order === "number" ? question.order : index,
 });
 
@@ -170,6 +223,21 @@ const getResponseText = (response) => {
   ]
     .join(" ")
     .toLowerCase();
+};
+
+const resolveAssetUrl = (url = "") => {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) {
+    if (value.includes("/uploads/") && API_BASE_URL) {
+      return value.replace(/^https?:\/\/[^/]+/, API_BASE_URL);
+    }
+    return value;
+  }
+  if (value.startsWith("/uploads/") && API_BASE_URL) {
+    return `${API_BASE_URL}${value}`;
+  }
+  return value;
 };
 
 const getAnswerText = (answer) => {
@@ -338,6 +406,55 @@ const FormManagement = () => {
     }));
   };
 
+  const updateQuestionValidation = (index, field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...question,
+              validation: {
+                ...normalizeNumberValidation(question.validation),
+                [field]: value,
+              },
+            }
+          : question,
+      ),
+    }));
+  };
+
+  const handleBannerImageFile = (file) => {
+    if (!file) {
+      updateDraft("bannerImageUrl", "");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose a valid image file");
+      return;
+    }
+
+    const upload = async () => {
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await uploadFormBannerImage(formData);
+        const imageUrl = response.data?.data?.imageUrl || "";
+        if (!imageUrl) {
+          throw new Error("Image upload failed");
+        }
+        updateDraft("bannerImageUrl", imageUrl);
+        toast.success("Image uploaded");
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || error.message || "Failed to upload image",
+        );
+      }
+    };
+
+    upload();
+  };
+
   const addQuestion = () => {
     setDraft((prev) => ({
       ...prev,
@@ -400,6 +517,7 @@ const FormManagement = () => {
         helpText: question.helpText,
         required: question.required,
         options: parseOptionsText(question.optionsText ?? question.options),
+        validation: buildQuestionValidationPayload(question),
         order,
       })),
     };
@@ -973,6 +1091,80 @@ const FormManagement = () => {
                         <span className="text-xs text-slate-400">Type: {question.type}</span>
                       </div>
 
+                      {type === "number" && (
+                        <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+                          <div className="mb-4 text-sm font-semibold">Number Validation</div>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-sm font-semibold">Minimum Value</label>
+                              <input
+                                type="number"
+                                step="1"
+                                value={question.validation?.minValue ?? ""}
+                                onChange={(e) =>
+                                  updateQuestionValidation(index, "minValue", e.target.value)
+                                }
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                placeholder="18"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-sm font-semibold">Maximum Value</label>
+                              <input
+                                type="number"
+                                step="1"
+                                value={question.validation?.maxValue ?? ""}
+                                onChange={(e) =>
+                                  updateQuestionValidation(index, "maxValue", e.target.value)
+                                }
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                placeholder="60"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-sm font-semibold">Minimum Digit Length</label>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={question.validation?.minDigits ?? ""}
+                                onChange={(e) =>
+                                  updateQuestionValidation(index, "minDigits", e.target.value)
+                                }
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                placeholder="2"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-sm font-semibold">Maximum Digit Length</label>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={question.validation?.maxDigits ?? ""}
+                                onChange={(e) =>
+                                  updateQuestionValidation(index, "maxDigits", e.target.value)
+                                }
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                placeholder="2"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="mb-2 block text-sm font-semibold">Custom Error Message</label>
+                              <textarea
+                                value={question.validation?.errorMessage ?? ""}
+                                onChange={(e) =>
+                                  updateQuestionValidation(index, "errorMessage", e.target.value)
+                                }
+                                rows={3}
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                                placeholder="Please enter a valid age between 18 and 60."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {isChoice && (
                         <div className="mt-4">
                           <label className="mb-2 block text-sm font-semibold">Options</label>
@@ -1052,6 +1244,47 @@ const FormManagement = () => {
                   />
                 </div>
                 <div className="space-y-4">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Form Banner Image</label>
+                      <input
+                        value={draft.bannerImageUrl}
+                        onChange={(e) => updateDraft("bannerImageUrl", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="Paste image URL"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
+                        <Upload size={16} />
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={(e) => handleBannerImageFile(e.target.files?.[0] || null)}
+                        />
+                        Upload Image
+                      </label>
+                      {draft.bannerImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => updateDraft("bannerImageUrl", "")}
+                          className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                        >
+                          Clear Image
+                        </button>
+                      )}
+                    </div>
+                    {draft.bannerImageUrl && (
+                      <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+                        <img
+                          src={resolveAssetUrl(draft.bannerImageUrl)}
+                          alt="Form banner preview"
+                          className="h-40 w-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div>
                     <label className="mb-2 block text-sm font-semibold">Admin Notification Email</label>
                     <input

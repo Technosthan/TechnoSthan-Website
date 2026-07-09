@@ -171,6 +171,32 @@ export const submitPublicForm = async (req, res) => {
       });
     }
 
-    res.status(400).json({ success: false, message: error.message });
+    if (
+      error.code === "DUPLICATE_SUBMISSION" ||
+      error.statusCode === 409 ||
+      error.code === 11000
+    ) {
+      return res.status(409).json({
+        success: false,
+        code: "DUPLICATE_SUBMISSION",
+        message: "You have already filled this form.",
+      });
+    }
+
+    const isValidationError =
+      error.statusCode === 400 ||
+      /Question ".+" is required/i.test(error.message || "") ||
+      /must be a valid/i.test(error.message || "") ||
+      /Maximum file size allowed/i.test(error.message || "") ||
+      /File uploads are disabled/i.test(error.message || "");
+
+    const statusCode = isValidationError ? 400 : 500;
+    res.status(statusCode).json({
+      success: false,
+      message:
+        statusCode === 400
+          ? error.message || "Unable to submit form. Please check your entries."
+          : "Failed to submit form",
+    });
   }
 };

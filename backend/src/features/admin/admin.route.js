@@ -1,4 +1,7 @@
 import express from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import {
   getAdminStats,
   getMonitoringStats,
@@ -68,6 +71,26 @@ import authMiddleware from "../../shared/middleware/authMiddleware.js";
 import adminOnly from "../../shared/middleware/adminOnly.js";
 
 const router = express.Router();
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const imageStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `form-banner-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+
+const imageUpload = multer({
+  storage: imageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
 
 // All admin routes require authentication and admin role
 router.use(authMiddleware);
@@ -161,6 +184,43 @@ router.get("/search", globalSearch);
 // Form management
 router.get("/forms", getAdminForms);
 router.post("/forms", createForm);
+router.post("/forms/banner-image", (req, res, next) => {
+  imageUpload.single("image")(req, res, (error) => {
+    if (error) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          success: false,
+          message: "Maximum file size allowed is 5 MB.",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to upload image",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please choose an image to upload",
+      });
+    }
+
+    const baseUrl =
+      process.env.API_URL ||
+      process.env.VITE_API_URL ||
+      process.env.RENDER_EXTERNAL_URL ||
+      `${req.protocol}://${req.get("host")}`;
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        imageUrl: `${baseUrl}/uploads/${req.file.filename}`,
+      },
+    });
+  });
+});
 router.get("/forms/:formId", getAdminFormById);
 router.put("/forms/:formId", updateForm);
 router.delete("/forms/:formId", deleteForm);

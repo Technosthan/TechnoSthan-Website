@@ -30,6 +30,11 @@ const formSchema = new mongoose.Schema(
       default: "Thanks for your response.",
       trim: true,
     },
+    bannerImageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     notificationEmail: {
       type: String,
       default: "",

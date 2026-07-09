@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -8,6 +8,7 @@ import {
   submitPublicForm,
 } from "./formsApi";
 import { CheckCircle2, Upload, Send, ArrowLeft } from "lucide-react";
+import { API_BASE_URL } from "../../shared/lib/axiosInstance";
 
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -53,6 +54,43 @@ const validateEmail = (value) =>
 const validatePhone = (value) =>
   /^(?:\+91[\s-]?)?[6-9]\d{9}$/.test(String(value || "").trim());
 
+const getNumberValidationMessage = (question, value) => {
+  const validation = question?.validation || {};
+  const customMessage =
+    String(validation.errorMessage || "").trim() ||
+    `Question "${question.label}" must be a valid number`;
+  const normalizedValue = String(value ?? "").trim();
+
+  if (!normalizedValue) return null;
+  if (!/^-?\d+$/.test(normalizedValue)) return customMessage;
+
+  const digitCount = normalizedValue.replace(/^-/, "").length;
+  const numericValue = Number(normalizedValue);
+
+  if (Number.isFinite(validation.minValue) && numericValue < validation.minValue) {
+    return customMessage;
+  }
+
+  if (Number.isFinite(validation.maxValue) && numericValue > validation.maxValue) {
+    return customMessage;
+  }
+
+  if (Number.isInteger(validation.minDigits) && digitCount < validation.minDigits) {
+    return customMessage;
+  }
+
+  if (Number.isInteger(validation.maxDigits) && digitCount > validation.maxDigits) {
+    return customMessage;
+  }
+
+  return null;
+};
+
+const sanitizeNumberInput = (value = "") =>
+  String(value)
+    .replace(/[^\d-]/g, "")
+    .replace(/(?!^)-/g, "");
+
 const formatDateTime = (value) => {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
@@ -79,6 +117,25 @@ const validateSelectedFile = (questionType, file) => {
   return null;
 };
 
+const getSuccessMessage = (form = {}, submitted = null) =>
+  String(submitted?.successMessage || form?.successMessage || "").trim() ||
+  "Form submitted successfully.";
+
+const resolveAssetUrl = (url = "") => {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) {
+    if (value.includes("/uploads/") && API_BASE_URL) {
+      return value.replace(/^https?:\/\/[^/]+/, API_BASE_URL);
+    }
+    return value;
+  }
+  if (value.startsWith("/uploads/") && API_BASE_URL) {
+    return `${API_BASE_URL}${value}`;
+  }
+  return value;
+};
+
 const PublicFormPage = () => {
   const { slug } = useParams();
   const { theme, appSettings } = useTheme();
@@ -90,6 +147,7 @@ const PublicFormPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(null);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -280,9 +338,38 @@ const PublicFormPage = () => {
           </div>
         ) : (
           <input
-            type={question.type === "email" ? "email" : question.type === "phone" ? "tel" : question.type === "number" ? "number" : "text"}
+            type={
+              question.type === "email"
+                ? "email"
+                : question.type === "phone"
+                  ? "tel"
+                  : question.type === "number"
+                    ? "number"
+                    : "text"
+            }
+            step={question.type === "number" ? "1" : undefined}
+            inputMode={question.type === "number" ? "numeric" : undefined}
+            min={
+              question.type === "number" &&
+              Number.isFinite(question.validation?.minValue)
+                ? question.validation.minValue
+                : undefined
+            }
+            max={
+              question.type === "number" &&
+              Number.isFinite(question.validation?.maxValue)
+                ? question.validation.maxValue
+                : undefined
+            }
             value={values[question._id] || ""}
-            onChange={(e) => handleAnswer(question._id, e.target.value)}
+            onChange={(e) =>
+              handleAnswer(
+                question._id,
+                question.type === "number"
+                  ? sanitizeNumberInput(e.target.value)
+                  : e.target.value,
+              )
+            }
             placeholder={question.placeholder}
             {...commonProps}
           />
@@ -318,6 +405,12 @@ const PublicFormPage = () => {
           `${question.label} must be a valid Indian mobile number`,
         );
       }
+      if (question.type === "number") {
+        const validationMessage = getNumberValidationMessage(question, value);
+        if (validationMessage) {
+          throw new Error(validationMessage);
+        }
+      }
 
       if (file) {
         const validationMessage = validateSelectedFile(question.type, file);
@@ -330,11 +423,12 @@ const PublicFormPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form) return;
+    if (!form || submitLockRef.current || submitting || submitted) return;
 
+    submitLockRef.current = true;
+    setSubmitting(true);
     try {
       validate();
-      setSubmitting(true);
       setError("");
       const payload = new FormData();
       payload.append("answers", JSON.stringify(values));
@@ -348,11 +442,31 @@ const PublicFormPage = () => {
       setSubmitted(response.data?.data || response.data);
       setValues(initialValuesFromQuestions(form.questions || []));
       setFiles({});
-      toast.success("Form submitted successfully");
+      setSubmitting(false);
+      toast.success(getSuccessMessage(form, response.data?.data || response.data));
     } catch (err) {
-      setError(err.message || err.response?.data?.message || "Failed to submit form");
-      toast.error(err.message || err.response?.data?.message || "Failed to submit form");
+      const status = err.response?.status;
+      const responseMessage = err.response?.data?.message || "";
+      const duplicateMessage =
+        "You have already filled this form.";
+      const validationMessage = responseMessage || err.message || "Failed to submit form";
+      const serverMessage = "Something went wrong. Please try again.";
+      const isClientValidationError =
+        !status && err.message && !/Network Error/i.test(err.message);
+      const nextMessage =
+        status === 409
+          ? duplicateMessage
+          : status && status < 500
+            ? validationMessage
+            : isClientValidationError
+              ? validationMessage
+              : serverMessage;
+
+      setError(nextMessage);
+      toast.error(nextMessage);
+      setSubmitting(false);
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   };
@@ -399,11 +513,8 @@ const PublicFormPage = () => {
         <div className="mx-auto max-w-4xl px-6 py-8">
           <div className="mb-6 flex items-center justify-between">
             <Link to="/" className="inline-flex items-center gap-2 text-sm text-green-300">
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft size={16} /> Home
             </Link>
-            <div className="text-xs text-slate-400">
-              {appSettings.appName || "Technosthan AgriTech"}
-            </div>
           </div>
 
           <div className="rounded-[2rem] border border-red-500/20 bg-red-500/10 p-8">
@@ -425,14 +536,21 @@ const PublicFormPage = () => {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2 text-sm text-green-300">
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={16} /> Home
           </Link>
-          <div className="text-xs text-slate-400">
-            {appSettings.appName || "Technosthan AgriTech"}
-          </div>
         </div>
 
         <div className="mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl">
+          {form.bannerImageUrl && (
+            <div className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/20">
+              <img
+                src={resolveAssetUrl(form.bannerImageUrl)}
+                alt={form.title ? `${form.title} banner` : "Form banner"}
+                className="h-52 w-full object-cover sm:h-64"
+                loading="lazy"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-4">
             {appSettings.logoUrl ? (
               <img
@@ -446,9 +564,6 @@ const PublicFormPage = () => {
               </div>
             )}
             <div>
-              <div className="text-sm uppercase tracking-[0.2em] text-green-300">
-                Public Form
-              </div>
               <h1 className="mt-1 text-4xl font-black">{form.title}</h1>
               {form.description && (
                 <p className={`mt-2 max-w-2xl ${theme.textSecondary}`}>
@@ -462,10 +577,9 @@ const PublicFormPage = () => {
         {submitted ? (
           <div className="rounded-[2rem] border border-green-500/20 bg-green-500/10 p-8">
             <CheckCircle2 className="mb-4 text-green-300" size={36} />
-            <h2 className="text-3xl font-black">{form.successMessage}</h2>
-            <p className="mt-3 text-slate-300">
-              Reference ID: <span className="font-semibold">{submitted.referenceId}</span>
-            </p>
+            <h2 className="text-3xl font-black">
+              {getSuccessMessage(form, submitted)}
+            </h2>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
