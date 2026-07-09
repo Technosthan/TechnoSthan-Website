@@ -43,7 +43,10 @@ const routePositionOptions = {
 };
 
 const getPositionOptions = (routeValue) => {
-  return routePositionOptions[normalizeRoute(routeValue)] || routePositionOptions["/"];
+  return (
+    routePositionOptions[normalizeRoute(routeValue)] ||
+    routePositionOptions["/"]
+  );
 };
 
 const displayStyleOptions = [
@@ -73,7 +76,10 @@ const PageContentManager = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const availablePositions = useMemo(() => getPositionOptions(form.route), [form.route]);
+  const availablePositions = useMemo(
+    () => getPositionOptions(form.route),
+    [form.route],
+  );
 
   const loadSections = async () => {
     try {
@@ -101,7 +107,9 @@ const PageContentManager = () => {
       if (name === "route") {
         const nextRoute = normalizeRoute(value);
         const nextOptions = getPositionOptions(nextRoute);
-        const nextPosition = nextOptions.some((item) => item.value === prev.position)
+        const nextPosition = nextOptions.some(
+          (item) => item.value === prev.position,
+        )
           ? prev.position
           : nextOptions[0]?.value || "";
 

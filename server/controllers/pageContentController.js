@@ -82,12 +82,10 @@ const createPageContent = async (req, res) => {
     };
 
     if (!payload.route || !payload.position || !payload.title) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Route, position, and title are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Route, position, and title are required",
+      });
     }
 
     const section = await PageContent.create(payload);
