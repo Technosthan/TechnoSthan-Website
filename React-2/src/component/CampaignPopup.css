@@ -93,6 +93,37 @@
   background: rgba(99, 102, 241, 0.22);
 }
 
+.campaign-popup__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.campaign-popup__button {
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  font-weight: 800;
+  color: #f8fafc;
+  background: linear-gradient(135deg, #061032, #0a1b3a);
+  border: 1px solid rgba(56, 189, 248, 0.12);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.campaign-popup__button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 212, 255, 0.12);
+}
+
+.campaign-popup__button--secondary {
+  background: linear-gradient(135deg, #05203a, #083155);
+  border: 1px solid rgba(0, 212, 255, 0.08);
+}
+
 @keyframes popup-fade-in {
   from {
     opacity: 0;

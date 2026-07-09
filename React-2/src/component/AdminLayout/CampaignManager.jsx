@@ -1,36 +1,34 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, ArrowUpDown, X } from "lucide-react";
+import { Plus, Trash2, ArrowUpDown } from "lucide-react";
 import api from "../../lib/api";
 import { useToast } from "../Toast/ToastProvider";
 import AdminLayout from "./AdminLayout";
 import "./CampaignManager.css";
 
 const parseDateTimeValue = (value) => {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
 };
 
 const normalizeRedirectUrl = (value) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const parsedUrl = new URL(trimmed);
-  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("/")) return trimmed;
+  const parsed = new URL(trimmed);
+  if (!["http:", "https:"].includes(parsed.protocol)) {
     throw new Error("Redirect URL must use http or https");
   }
-
-  return parsedUrl.toString();
+  return parsed.toString();
 };
 
 const getCampaignState = (campaign, now) => {
-  const startAt = campaign.startAt ? new Date(campaign.startAt).getTime() : null;
-  const expiresAt = campaign.expiresAt ? new Date(campaign.expiresAt).getTime() : null;
+  const startAt = campaign.startAt
+    ? new Date(campaign.startAt).getTime()
+    : null;
+  const expiresAt = campaign.expiresAt
+    ? new Date(campaign.expiresAt).getTime()
+    : null;
   const nowMs = now.getTime();
   const isExpired = Number.isFinite(expiresAt) && expiresAt <= nowMs;
   const isLive =
@@ -58,22 +56,27 @@ const CampaignManager = () => {
   const [startAt, setStartAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [redirectUrl, setRedirectUrl] = useState("");
+  const [button1Text, setButton1Text] = useState("");
+  const [button1Url, setButton1Url] = useState("");
+  const [button2Text, setButton2Text] = useState("");
+  const [button2Url, setButton2Url] = useState("");
+  const [isActive, setIsActive] = useState(true);
   const [activeOnly, setActiveOnly] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeCampaignId, setActiveCampaignId] = useState(null);
-  const [replaceCampaign, setReplaceCampaign] = useState(null);
   const [error, setError] = useState(null);
   const [now, setNow] = useState(() => new Date());
+  const [replaceCampaign, setReplaceCampaign] = useState(null);
+
+  // editing mode uses same left form
+  const [editingCampaign, setEditingCampaign] = useState(null);
 
   const loadCampaigns = async () => {
     try {
       setLoading(true);
       setError(null);
       const { data } = await api.get("/api/campaigns");
-      if (data.success) {
-        setCampaigns(data.data || []);
-      }
+      if (data.success) setCampaigns(data.data || []);
     } catch (err) {
       console.error("Unable to load campaigns", err);
       setError("Unable to load campaigns");
@@ -82,48 +85,53 @@ const CampaignManager = () => {
     }
   };
 
-  const resetForm = () => {
-    setFile(null);
-    setPreview(null);
-    setReplaceCampaign(null);
-    setStartAt("");
-    setExpiresAt("");
-    setRedirectUrl("");
-    setError(null);
-  };
-
   useEffect(() => {
     loadCampaigns();
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 30000);
-
-    return () => window.clearInterval(timer);
+    const t = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(t);
   }, []);
 
   useEffect(() => {
-    if (!file) {
-      setPreview(null);
-      return;
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
     }
+    if (editingCampaign && editingCampaign.mediaUrl) {
+      setPreview(editingCampaign.mediaUrl);
+      return undefined;
+    }
+    setPreview(null);
+    return undefined;
+  }, [file, editingCampaign]);
 
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  const handleFileChange = (event) => {
+  const resetForm = () => {
+    setFile(null);
+    setPreview(null);
+    setStartAt("");
+    setExpiresAt("");
+    setRedirectUrl("");
+    setButton1Text("");
+    setButton1Url("");
+    setButton2Text("");
+    setButton2Url("");
+    setIsActive(true);
+    setReplaceCampaign(null);
     setError(null);
-    const selected = event.target.files?.[0];
+    setEditingCampaign(null);
+  };
+
+  const handleFileChange = (e) => {
+    setError(null);
+    const selected = e.target.files?.[0];
     if (!selected) {
       setFile(null);
       return;
     }
-
-    const allowedTypes = [
+    const allowed = [
       "image/jpeg",
       "image/png",
       "image/jpg",
@@ -131,31 +139,23 @@ const CampaignManager = () => {
       "video/mp4",
       "video/webm",
     ];
-    if (!allowedTypes.includes(selected.type)) {
+    if (!allowed.includes(selected.type)) {
       setError("Please upload a JPG, PNG, WEBP, MP4 or WEBM file.");
       setFile(null);
       return;
     }
-
     setFile(selected);
   };
 
   const validateCampaignTiming = () => {
-    const parsedStartAt = parseDateTimeValue(startAt);
-    const parsedExpiresAt = parseDateTimeValue(expiresAt);
-
-    if (startAt && !parsedStartAt) {
+    const parsedStart = parseDateTimeValue(startAt);
+    const parsedExpires = parseDateTimeValue(expiresAt);
+    if (startAt && !parsedStart)
       return "Please enter a valid start date and time.";
-    }
-
-    if (expiresAt && !parsedExpiresAt) {
+    if (expiresAt && !parsedExpires)
       return "Please enter a valid expiry date and time.";
-    }
-
-    if (parsedStartAt && parsedExpiresAt && parsedExpiresAt <= parsedStartAt) {
+    if (parsedStart && parsedExpires && parsedExpires <= parsedStart)
       return "Expiry date and time must be later than the start date and time.";
-    }
-
     if (redirectUrl.trim()) {
       try {
         normalizeRedirectUrl(redirectUrl);
@@ -163,34 +163,43 @@ const CampaignManager = () => {
         return err.message || "Please enter a valid redirect URL.";
       }
     }
-
+    if (button1Url && button1Url.trim()) {
+      try {
+        if (!button1Url.startsWith("/")) new URL(button1Url);
+      } catch {
+        return "Button 1 URL is invalid.";
+      }
+    }
+    if (button2Url && button2Url.trim()) {
+      try {
+        if (!button2Url.startsWith("/")) new URL(button2Url);
+      } catch {
+        return "Button 2 URL is invalid.";
+      }
+    }
     return null;
   };
 
   const appendCampaignFields = (formData) => {
-    if (startAt) {
-      formData.append("startAt", new Date(startAt).toISOString());
-    }
-
-    if (expiresAt) {
+    if (startAt) formData.append("startAt", new Date(startAt).toISOString());
+    if (expiresAt)
       formData.append("expiresAt", new Date(expiresAt).toISOString());
-    }
-
-    const normalizedUrl = redirectUrl.trim()
+    const normalized = redirectUrl.trim()
       ? normalizeRedirectUrl(redirectUrl)
       : "";
-
-    if (normalizedUrl) {
-      formData.append("redirectUrl", normalizedUrl);
-    }
+    if (normalized) formData.append("redirectUrl", normalized);
+    if (button1Text) formData.append("button1Text", button1Text);
+    if (button1Url) formData.append("button1Url", button1Url);
+    if (button2Text) formData.append("button2Text", button2Text);
+    if (button2Url) formData.append("button2Url", button2Url);
   };
 
-  const uploadCampaign = async () => {
-    if (!file) {
+  const submitCampaign = async () => {
+    // create or update
+    if (!editingCampaign && !file) {
       setError("Please select a campaign media file.");
       return;
     }
-
     const validationError = validateCampaignTiming();
     if (validationError) {
       setError(validationError);
@@ -201,28 +210,40 @@ const CampaignManager = () => {
       setSaving(true);
       setError(null);
       const formData = new FormData();
-      formData.append("media", file);
-      formData.append("isActive", "true");
+      if (file) formData.append("media", file);
+      formData.append("isActive", isActive ? "true" : "false");
       appendCampaignFields(formData);
 
-      const { data } = await api.post("/api/campaigns", formData);
-
-      if (data.success) {
-        window.sessionStorage.removeItem("technosthan_campaign_closed_id");
-        showToast({
-          title: "Campaign uploaded",
-          message: "New campaign has been added.",
-          type: "success",
-        });
-        resetForm();
-        loadCampaigns();
+      if (editingCampaign) {
+        const { data } = await api.put(
+          `/api/campaigns/${editingCampaign._id}`,
+          formData,
+        );
+        if (data.success) {
+          window.sessionStorage.removeItem("technosthan_campaign_closed_id");
+          showToast({ title: "Campaign updated", type: "success" });
+          resetForm();
+          loadCampaigns();
+        }
+      } else {
+        const { data } = await api.post("/api/campaigns", formData);
+        if (data.success) {
+          window.sessionStorage.removeItem("technosthan_campaign_closed_id");
+          showToast({
+            title: "Campaign uploaded",
+            message: "New campaign has been added.",
+            type: "success",
+          });
+          resetForm();
+          loadCampaigns();
+        }
       }
     } catch (err) {
-      console.error("Upload failed", err);
-      setError(err?.response?.data?.message || "Unable to upload campaign.");
+      console.error("Save failed", err);
+      setError(err?.response?.data?.message || "Unable to save campaign.");
       showToast({
-        title: "Upload failed",
-        message: "Check the file and try again.",
+        title: "Save failed",
+        message: err?.response?.data?.message || "Please try again.",
         type: "error",
       });
     } finally {
@@ -230,24 +251,21 @@ const CampaignManager = () => {
     }
   };
 
-  const applyActivation = async (campaignId, isActive) => {
+  const applyActivation = async (campaignId, active) => {
     try {
       setSaving(true);
-      setError(null);
       const { data } = await api.patch(`/api/campaigns/${campaignId}/toggle`, {
-        isActive,
+        isActive: active,
       });
       if (data.success) {
         showToast({
-          title: isActive ? "Campaign activated" : "Campaign deactivated",
+          title: active ? "Campaign activated" : "Campaign deactivated",
           type: "success",
         });
-        setActiveCampaignId(isActive ? campaignId : null);
         loadCampaigns();
       }
     } catch (err) {
       console.error("Unable to update status", err);
-      setError("Unable to update campaign status");
       showToast({
         title: "Status update failed",
         message: "Please try again.",
@@ -261,20 +279,13 @@ const CampaignManager = () => {
   const removeCampaign = async (campaignId) => {
     try {
       setSaving(true);
-      setError(null);
       const { data } = await api.delete(`/api/campaigns/${campaignId}`);
       if (data.success) {
         showToast({ title: "Campaign deleted", type: "success" });
-        setCampaigns((prev) =>
-          prev.filter((campaign) => campaign._id !== campaignId),
-        );
-        if (campaignId === activeCampaignId) {
-          setActiveCampaignId(null);
-        }
+        setCampaigns((p) => p.filter((c) => c._id !== campaignId));
       }
     } catch (err) {
       console.error("Unable to delete campaign", err);
-      setError("Unable to delete campaign");
       showToast({
         title: "Delete failed",
         message: "Please try again.",
@@ -290,28 +301,22 @@ const CampaignManager = () => {
       setError("Select an existing campaign to replace.");
       return;
     }
-
     if (!file) {
       setError("Please choose a replacement file.");
       return;
     }
-
     const validationError = validateCampaignTiming();
     if (validationError) {
       setError(validationError);
       return;
     }
-
     try {
       setSaving(true);
-      setError(null);
       const formData = new FormData();
       formData.append("media", file);
       formData.append("isActive", replaceCampaign.isActive ? "true" : "false");
       appendCampaignFields(formData);
-
       const createResponse = await api.post("/api/campaigns", formData);
-
       if (createResponse.data.success) {
         window.sessionStorage.removeItem("technosthan_campaign_closed_id");
         await api.delete(`/api/campaigns/${replaceCampaign._id}`);
@@ -325,7 +330,6 @@ const CampaignManager = () => {
       }
     } catch (err) {
       console.error("Replace failed", err);
-      setError("Unable to replace campaign.");
       showToast({
         title: "Replace failed",
         message: "Please try again.",
@@ -336,10 +340,36 @@ const CampaignManager = () => {
     }
   };
 
-  const campaignCountLabel = useMemo(() => {
-    const total = campaigns.length;
-    return `${total} campaign${total === 1 ? "" : "s"}`;
-  }, [campaigns.length]);
+  const openEdit = (campaign) => {
+    setEditingCampaign(campaign);
+    setFile(null);
+    setPreview(campaign.mediaUrl || null);
+    setStartAt(
+      campaign.startAt
+        ? new Date(campaign.startAt).toISOString().slice(0, 16)
+        : "",
+    );
+    setExpiresAt(
+      campaign.expiresAt
+        ? new Date(campaign.expiresAt).toISOString().slice(0, 16)
+        : "",
+    );
+    setRedirectUrl(campaign.redirectUrl || "");
+    setButton1Text(campaign.button1Text || "");
+    setButton1Url(campaign.button1Url || "");
+    setButton2Text(campaign.button2Text || "");
+    setButton2Url(campaign.button2Url || "");
+    setIsActive(Boolean(campaign.isActive));
+  };
+
+  const cancelEdit = () => {
+    resetForm();
+  };
+
+  const campaignCountLabel = useMemo(
+    () => `${campaigns.length} campaign${campaigns.length === 1 ? "" : "s"}`,
+    [campaigns.length],
+  );
 
   return (
     <AdminLayout
@@ -351,8 +381,14 @@ const CampaignManager = () => {
           <section className="card glass campaign-manager__form">
             <div className="section-header">
               <div>
-                <p className="eyebrow">Upload Campaign</p>
-                <h2>New campaign media</h2>
+                <p className="eyebrow">
+                  {editingCampaign ? "Edit Campaign" : "Upload Campaign"}
+                </p>
+                <h2>
+                  {editingCampaign
+                    ? "Edit campaign details"
+                    : "New campaign media"}
+                </h2>
               </div>
               <span className="status-chip">{campaignCountLabel}</span>
             </div>
@@ -376,49 +412,7 @@ const CampaignManager = () => {
               </p>
             </div>
 
-            <div className="field-set">
-              <label className="field-label" htmlFor="campaign-start-at">
-                Start Date & Time
-              </label>
-              <input
-                id="campaign-start-at"
-                type="datetime-local"
-                value={startAt}
-                onChange={(event) => setStartAt(event.target.value)}
-                className="select-control"
-                disabled={saving}
-              />
-            </div>
-
-            <div className="field-set">
-              <label className="field-label" htmlFor="campaign-expires-at">
-                Expiry Date & Time
-              </label>
-              <input
-                id="campaign-expires-at"
-                type="datetime-local"
-                value={expiresAt}
-                onChange={(event) => setExpiresAt(event.target.value)}
-                className="select-control"
-                disabled={saving}
-              />
-            </div>
-
-            <div className="field-set">
-              <label className="field-label" htmlFor="campaign-redirect-url">
-                Redirect URL
-              </label>
-              <input
-                id="campaign-redirect-url"
-                type="url"
-                value={redirectUrl}
-                onChange={(event) => setRedirectUrl(event.target.value)}
-                className="select-control"
-                placeholder="https://example.com"
-                disabled={saving}
-              />
-            </div>
-
+            {/* preview (either selected file or existing campaign media when editing) */}
             {preview && (
               <div className="media-preview">
                 {file?.type?.startsWith("video/") ? (
@@ -440,15 +434,136 @@ const CampaignManager = () => {
               </div>
             )}
 
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-start-at">
+                Start Date & Time
+              </label>
+              <input
+                id="campaign-start-at"
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                className="select-control"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-expires-at">
+                Expiry Date & Time
+              </label>
+              <input
+                id="campaign-expires-at"
+                type="datetime-local"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                className="select-control"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-redirect-url">
+                Redirect URL
+              </label>
+              <input
+                id="campaign-redirect-url"
+                type="url"
+                value={redirectUrl}
+                onChange={(e) => setRedirectUrl(e.target.value)}
+                className="select-control"
+                placeholder="/path or https://example.com"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-button1-text">
+                Button 1 Text (optional)
+              </label>
+              <input
+                id="campaign-button1-text"
+                type="text"
+                value={button1Text}
+                onChange={(e) => setButton1Text(e.target.value)}
+                className="select-control"
+                placeholder="Learn more"
+                disabled={saving}
+              />
+            </div>
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-button1-url">
+                Button 1 URL (optional)
+              </label>
+              <input
+                id="campaign-button1-url"
+                type="url"
+                value={button1Url}
+                onChange={(e) => setButton1Url(e.target.value)}
+                className="select-control"
+                placeholder="/pricing or https://example.com/pricing"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-button2-text">
+                Button 2 Text (optional)
+              </label>
+              <input
+                id="campaign-button2-text"
+                type="text"
+                value={button2Text}
+                onChange={(e) => setButton2Text(e.target.value)}
+                className="select-control"
+                placeholder="Sign up"
+                disabled={saving}
+              />
+            </div>
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-button2-url">
+                Button 2 URL (optional)
+              </label>
+              <input
+                id="campaign-button2-url"
+                type="url"
+                value={button2Url}
+                onChange={(e) => setButton2Url(e.target.value)}
+                className="select-control"
+                placeholder="/signup or https://example.com/signup"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="field-set">
+              <label className="field-label">Active</label>
+              <label className="toggle-filter">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                />{" "}
+                <span style={{ marginLeft: 8 }}>
+                  {isActive ? "Active" : "Inactive"}
+                </span>
+              </label>
+            </div>
+
             <div className="form-actions">
               <button
                 type="button"
-                onClick={uploadCampaign}
-                disabled={saving || !file}
+                onClick={submitCampaign}
+                disabled={saving || (!editingCampaign && !file)}
                 className="button button-primary"
               >
-                <Plus size={16} />
-                {saving ? "Uploading..." : "Upload Campaign"}
+                <Plus size={16} />{" "}
+                {saving
+                  ? editingCampaign
+                    ? "Saving..."
+                    : "Uploading..."
+                  : editingCampaign
+                    ? "Update Campaign"
+                    : "Upload Campaign"}
               </button>
               <button
                 type="button"
@@ -456,7 +571,7 @@ const CampaignManager = () => {
                 disabled={saving}
                 className="button button-secondary"
               >
-                Clear
+                {editingCampaign ? "Cancel Edit" : "Clear"}
               </button>
             </div>
 
@@ -476,20 +591,18 @@ const CampaignManager = () => {
               <div className="replace-actions">
                 <select
                   value={replaceCampaign?._id || ""}
-                  onChange={(event) => {
-                    const selected = campaigns.find(
-                      (campaign) => campaign._id === event.target.value,
-                    );
-                    setReplaceCampaign(selected || null);
+                  onChange={(e) => {
+                    const sel = campaigns.find((c) => c._id === e.target.value);
+                    setReplaceCampaign(sel || null);
                   }}
                   className="select-control"
                   disabled={saving || campaigns.length === 0}
                 >
                   <option value="">Replace an existing campaign</option>
-                  {campaigns.map((campaign) => (
-                    <option key={campaign._id} value={campaign._id}>
-                      {campaign.mediaType === "video" ? "Video" : "Image"} •{" "}
-                      {new Date(campaign.createdAt).toLocaleString()}
+                  {campaigns.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.mediaType === "video" ? "Video" : "Image"} •{" "}
+                      {new Date(c.createdAt).toLocaleString()}
                     </option>
                   ))}
                 </select>
@@ -515,89 +628,91 @@ const CampaignManager = () => {
                 <input
                   type="checkbox"
                   checked={activeOnly}
-                  onChange={(event) => setActiveOnly(event.target.checked)}
-                />
+                  onChange={(e) => setActiveOnly(e.target.checked)}
+                />{" "}
                 <span>Show active only</span>
               </label>
             </div>
 
             {loading ? (
               <div className="gallery-loading">
-                {[1, 2, 3].map((index) => (
-                  <div key={index} className="campaign-card shimmer" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="campaign-card shimmer" />
                 ))}
               </div>
             ) : (
               <div className="campaign-grid">
                 {(activeOnly
-                  ? campaigns.filter((campaign) => getCampaignState(campaign, now).isLive)
+                  ? campaigns.filter((c) => getCampaignState(c, now).isLive)
                   : campaigns
-                ).map((campaign) => {
-                  const campaignState = getCampaignState(campaign, now);
-
+                ).map((c) => {
+                  const state = getCampaignState(c, now);
                   return (
-                  <div key={campaign._id} className="campaign-card">
-                    <div className="campaign-card__preview">
-                      {campaign.mediaType === "video" ? (
-                        <video
-                          src={campaign.mediaUrl}
-                          muted
-                          loop
-                          className="campaign-thumb"
-                        />
-                      ) : (
-                        <img
-                          src={campaign.mediaUrl}
-                          alt="Campaign media"
-                          className="campaign-thumb"
-                        />
-                      )}
-                    </div>
-                    <div className="campaign-card__body">
-                      <div className="campaign-card__meta">
-                        <span
-                          className={`status-pill ${campaignState.className}`}
-                        >
-                          {campaignState.label}
-                        </span>
-                        <span className="campaign-type">
-                          {campaign.mediaType === "video" ? "Video" : "Image"}
-                        </span>
+                    <div key={c._id} className="campaign-card">
+                      <div className="campaign-card__preview">
+                        {c.mediaType === "video" ? (
+                          <video
+                            src={c.mediaUrl}
+                            muted
+                            loop
+                            className="campaign-thumb"
+                          />
+                        ) : (
+                          <img
+                            src={c.mediaUrl}
+                            alt="Campaign media"
+                            className="campaign-thumb"
+                          />
+                        )}
                       </div>
-                      <p className="campaign-timestamp">
-                        {new Date(campaign.createdAt).toLocaleString()}
-                      </p>
+                      <div className="campaign-card__body">
+                        <div className="campaign-card__meta">
+                          <span className={`status-pill ${state.className}`}>
+                            {state.label}
+                          </span>
+                          <span className="campaign-type">
+                            {c.mediaType === "video" ? "Video" : "Image"}
+                          </span>
+                        </div>
+                        <p className="campaign-timestamp">
+                          {new Date(c.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="campaign-card__actions">
+                        <button
+                          onClick={() => applyActivation(c._id, !c.isActive)}
+                          disabled={saving}
+                          className={`button button-sm ${c.isActive ? "button-secondary" : "button-primary"}`}
+                        >
+                          {c.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          onClick={() => openEdit(c)}
+                          disabled={saving}
+                          className="button button-secondary"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setReplaceCampaign(c);
+                            setError(null);
+                          }}
+                          disabled={saving}
+                          className="button button-secondary"
+                        >
+                          Replace
+                        </button>
+                        <button
+                          onClick={() => removeCampaign(c._id)}
+                          disabled={saving}
+                          className="button button-danger button-sm"
+                          aria-label="Delete campaign"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="campaign-card__actions">
-                      <button
-                        onClick={() =>
-                          applyActivation(campaign._id, !campaign.isActive)
-                        }
-                        disabled={saving}
-                        className={`button button-sm ${campaign.isActive ? "button-secondary" : "button-primary"}`}
-                      >
-                        {campaign.isActive ? "Deactivate" : "Activate"}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setReplaceCampaign(campaign);
-                          setError(null);
-                        }}
-                        disabled={saving}
-                        className="button button-secondary"
-                      >
-                        Replace
-                      </button>
-                      <button
-                        onClick={() => removeCampaign(campaign._id)}
-                        disabled={saving}
-                        className="button button-danger button-sm"
-                        aria-label="Delete campaign"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
                   );
                 })}
               </div>

@@ -5,6 +5,7 @@ const {
   getActiveCampaign,
   getCampaigns,
   createCampaign,
+  updateCampaign,
   toggleCampaign,
   deleteCampaign,
 } = require("../controllers/campaignController");
@@ -21,6 +22,7 @@ const router = express.Router();
 router.get("/active", getActiveCampaign);
 router.get("/", protect, admin, getCampaigns);
 router.post("/", protect, admin, upload.single("media"), createCampaign);
+router.put("/:id", protect, admin, upload.single("media"), updateCampaign);
 router.patch("/:id/toggle", protect, admin, toggleCampaign);
 router.delete("/:id", protect, admin, deleteCampaign);
 

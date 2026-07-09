@@ -25,6 +25,10 @@ const normalizeRedirectUrl = (value) => {
   if (!trimmedUrl) {
     return null;
   }
+  // Allow internal paths like "/some/path"
+  if (trimmedUrl.startsWith("/")) {
+    return trimmedUrl;
+  }
 
   let parsedUrl;
   try {
@@ -104,7 +108,9 @@ const getActiveCampaign = async (req, res) => {
       .sort({ startAt: 1, createdAt: -1 })
       .lean();
 
-    return res.status(200).json({ success: true, data: scheduledCampaign || null });
+    return res
+      .status(200)
+      .json({ success: true, data: scheduledCampaign || null });
   } catch (err) {
     console.error("Get active campaign error:", err);
     return res
@@ -134,7 +140,10 @@ const createCampaign = async (req, res) => {
         .json({ success: false, message: "Campaign media is required" });
     }
 
-    const startAt = parseOptionalDateTime(req.body.startAt, "start date and time");
+    const startAt = parseOptionalDateTime(
+      req.body.startAt,
+      "start date and time",
+    );
     const expiresAt = parseOptionalDateTime(
       req.body.expiresAt,
       "expiry date and time",
@@ -143,7 +152,8 @@ const createCampaign = async (req, res) => {
     if (startAt && expiresAt && expiresAt <= startAt) {
       return res.status(400).json({
         success: false,
-        message: "Expiry date and time must be later than the start date and time",
+        message:
+          "Expiry date and time must be later than the start date and time",
       });
     }
 
@@ -196,8 +206,14 @@ const createCampaign = async (req, res) => {
       publicId: result.public_id,
       startAt,
       expiresAt,
+      startDateTime: startAt,
+      expiryDateTime: expiresAt,
       redirectUrl,
       isActive,
+      button1Text: req.body.button1Text || null,
+      button1Url: req.body.button1Url || null,
+      button2Text: req.body.button2Text || null,
+      button2Url: req.body.button2Url || null,
     });
 
     try {
@@ -221,6 +237,135 @@ const createCampaign = async (req, res) => {
     return res.status(statusCode).json({
       success: false,
       message: err.message || "Unable to create campaign",
+    });
+  }
+};
+
+const updateCampaign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await Campaign.findById(id);
+    if (!campaign) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Campaign not found" });
+    }
+
+    // Parse optional dates
+    const startAt = parseOptionalDateTime(
+      req.body.startAt,
+      "start date and time",
+    );
+    const expiresAt = parseOptionalDateTime(
+      req.body.expiresAt,
+      "expiry date and time",
+    );
+
+    if (startAt && expiresAt && expiresAt <= startAt) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Expiry date and time must be later than the start date and time",
+      });
+    }
+
+    const redirectUrl = normalizeRedirectUrl(req.body.redirectUrl);
+
+    // If a new file is provided, upload and replace existing asset
+    const file = req.file;
+    if (file) {
+      ensureCloudinaryConfigured();
+      const mimeType = String(file.mimetype || "").toLowerCase();
+      const isImage = mimeType.startsWith("image/");
+      const isVideo = mimeType.startsWith("video/");
+
+      if (!isImage && !isVideo) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid campaign media type" });
+      }
+
+      const mediaType = isVideo ? "video" : "image";
+      const dataUri = `data:${mimeType};base64,${file.buffer.toString("base64")}`;
+      const uploadOptions = {
+        resource_type: mediaType === "video" ? "video" : "image",
+        folder: "technosthan_campaigns",
+        quality: "auto",
+        fetch_format: "auto",
+        overwrite: false,
+      };
+
+      const result = await cloudinary.uploader.upload(dataUri, uploadOptions);
+      if (!result || !result.secure_url || !result.public_id) {
+        return res
+          .status(500)
+          .json({ success: false, message: "Upload failed" });
+      }
+
+      // Try to remove old asset
+      if (campaign.publicId) {
+        try {
+          await cloudinary.uploader.destroy(campaign.publicId, {
+            resource_type: campaign.mediaType === "video" ? "video" : "image",
+            invalidate: true,
+          });
+        } catch (err) {
+          console.warn("Failed to destroy old Cloudinary asset:", err.message);
+        }
+      }
+
+      campaign.mediaType = mediaType;
+      campaign.mediaUrl = result.secure_url;
+      campaign.publicId = result.public_id;
+    }
+
+    // Update fields
+    if (typeof req.body.isActive !== "undefined") {
+      const isActive =
+        req.body.isActive === "true" || req.body.isActive === true;
+      if (isActive) {
+        await Campaign.updateMany(
+          { isActive: true },
+          { $set: { isActive: false } },
+        );
+      }
+      campaign.isActive = isActive;
+    }
+
+    campaign.startAt = startAt;
+    campaign.expiresAt = expiresAt;
+    campaign.startDateTime = startAt;
+    campaign.expiryDateTime = expiresAt;
+    campaign.redirectUrl = redirectUrl;
+
+    campaign.button1Text = req.body.button1Text || null;
+    campaign.button1Url = req.body.button1Url || null;
+    campaign.button2Text = req.body.button2Text || null;
+    campaign.button2Url = req.body.button2Url || null;
+
+    await campaign.save();
+
+    try {
+      if (req && typeof req.logActivity === "function") {
+        req.logActivity({
+          action: "CAMPAIGN_UPDATED",
+          module: "Campaign",
+          description: `Campaign updated ${campaign._id}`,
+          entityId: campaign._id?.toString(),
+          entityType: "Campaign",
+        });
+      }
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+
+    return res.status(200).json({ success: true, data: campaign });
+  } catch (err) {
+    console.error("Update campaign error:", err);
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || "Unable to update campaign",
     });
   }
 };
@@ -326,6 +471,7 @@ module.exports = {
   getActiveCampaign,
   getCampaigns,
   createCampaign,
+  updateCampaign,
   toggleCampaign,
   deleteCampaign,
 };

@@ -34,8 +34,12 @@ const CampaignPopup = () => {
       return undefined;
     }
 
-    const startAt = campaign.startAt ? new Date(campaign.startAt).getTime() : null;
-    const expiresAt = campaign.expiresAt ? new Date(campaign.expiresAt).getTime() : null;
+    const startAt = campaign.startAt
+      ? new Date(campaign.startAt).getTime()
+      : null;
+    const expiresAt = campaign.expiresAt
+      ? new Date(campaign.expiresAt).getTime()
+      : null;
     const now = Date.now();
     let openTimer = null;
     let expireTimer = null;
@@ -161,6 +165,45 @@ const CampaignPopup = () => {
                 alt="Campaign promotion"
                 className="campaign-popup__image"
               />
+            )}
+          </div>
+          <div className="campaign-popup__actions">
+            {campaign.button1Text && campaign.button1Url && (
+              <button
+                className="campaign-popup__button"
+                onClick={() => {
+                  if (campaign.button1Url.startsWith("/")) {
+                    window.location.href = campaign.button1Url;
+                  } else {
+                    window.open(
+                      campaign.button1Url,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  }
+                }}
+              >
+                {campaign.button1Text}
+              </button>
+            )}
+
+            {campaign.button2Text && campaign.button2Url && (
+              <button
+                className="campaign-popup__button campaign-popup__button--secondary"
+                onClick={() => {
+                  if (campaign.button2Url.startsWith("/")) {
+                    window.location.href = campaign.button2Url;
+                  } else {
+                    window.open(
+                      campaign.button2Url,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  }
+                }}
+              >
+                {campaign.button2Text}
+              </button>
             )}
           </div>
         </div>
