@@ -55,16 +55,42 @@ const DEFAULT_BUSINESS_VERTICALS = [
   },
 ];
 
+const PUBLIC_VERTICAL_COUNT = DEFAULT_BUSINESS_VERTICALS.length;
+
 const isDefaultVerticalId = (id) =>
   DEFAULT_BUSINESS_VERTICALS.some((vertical) => vertical._id === id);
 
+const getPublicSortOrder = (vertical) => {
+  const sortOrder = Number(vertical?.sortOrder) || 0;
+
+  if (vertical?.isDefault) {
+    return sortOrder;
+  }
+
+  return PUBLIC_VERTICAL_COUNT + sortOrder;
+};
+
 const buildPublicPayload = (verticals) =>
   [...DEFAULT_BUSINESS_VERTICALS, ...verticals]
-    .filter((vertical) => vertical.isActive !== false)
-    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  .filter((vertical) => vertical.isActive !== false)
+  .sort((a, b) => getPublicSortOrder(a) - getPublicSortOrder(b));
+
+const emitBusinessVerticalsUpdated = (req, payload = {}) => {
+  const io = req.app.get("io");
+
+  if (!io) {
+    return;
+  }
+
+  io.emit("business-verticals-updated", {
+    ...payload,
+    updatedAt: new Date().toISOString(),
+  });
+};
 
 const getBusinessVerticals = async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store");
     const customVerticals = await BusinessVertical.find({ isActive: true })
       .sort({ sortOrder: 1, createdAt: 1 })
       .lean();
@@ -84,6 +110,7 @@ const getBusinessVerticals = async (req, res) => {
 
 const getAdminBusinessVerticals = async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store");
     const customVerticals = await BusinessVertical.find({ isDefault: false })
       .sort({ sortOrder: 1, createdAt: 1 })
       .lean();
@@ -149,7 +176,12 @@ const createBusinessVertical = async (req, res) => {
       publicId: result.public_id,
       isDefault: false,
       isActive: true,
-      sortOrder: count + 1,
+      sortOrder: PUBLIC_VERTICAL_COUNT + count + 1,
+    });
+
+    emitBusinessVerticalsUpdated(req, {
+      action: "create",
+      id: businessVertical._id.toString(),
     });
 
     return res.status(201).json({ success: true, data: businessVertical });
@@ -225,6 +257,11 @@ const updateBusinessVertical = async (req, res) => {
 
     await businessVertical.save();
 
+    emitBusinessVerticalsUpdated(req, {
+      action: "update",
+      id: businessVertical._id.toString(),
+    });
+
     return res.status(200).json({ success: true, data: businessVertical });
   } catch (err) {
     console.error("Update business vertical error:", err);
@@ -272,6 +309,12 @@ const toggleBusinessVerticalActive = async (req, res) => {
     businessVertical.isActive = isActive;
     await businessVertical.save();
 
+    emitBusinessVerticalsUpdated(req, {
+      action: "toggle",
+      id: businessVertical._id.toString(),
+      isActive: businessVertical.isActive,
+    });
+
     return res.status(200).json({ success: true, data: businessVertical });
   } catch (err) {
     console.error("Toggle business vertical active error:", err);
@@ -310,6 +353,11 @@ const deleteBusinessVertical = async (req, res) => {
     }
 
     await businessVertical.deleteOne();
+
+    emitBusinessVerticalsUpdated(req, {
+      action: "delete",
+      id,
+    });
 
     return res.status(200).json({
       success: true,

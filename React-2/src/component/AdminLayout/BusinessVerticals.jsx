@@ -10,10 +10,12 @@ import {
 import AdminLayout from "./AdminLayout";
 import api from "../../lib/api";
 import { useToast } from "../Toast/ToastProvider";
+import BusinessVerticalImage from "../BusinessVerticalImage";
 import {
-  DEFAULT_BUSINESS_VERTICALS,
-  DEFAULT_VERTICAL_IMAGE_MAP,
-} from "../../lib/businessVerticalDefaults";
+  BUSINESS_VERTICALS_UPDATED_EVENT,
+  BUSINESS_VERTICALS_UPDATED_STORAGE_KEY,
+  resolveBusinessVerticalImageSrc,
+} from "../../lib/businessVerticalUtils";
 import "./BusinessVerticals.css";
 
 const ACCEPTED_IMAGE_TYPES = [
@@ -39,7 +41,12 @@ const BusinessVerticals = () => {
   const loadVerticals = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/api/admin/business-verticals");
+      const { data } = await api.get("/api/admin/business-verticals", {
+        headers: {
+          "Cache-Control": "no-store",
+          Pragma: "no-cache",
+        },
+      });
       if (data.success) {
         setVerticals(data.data || []);
       }
@@ -65,8 +72,19 @@ const BusinessVerticals = () => {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const resolveImageUrl = (item) =>
-    DEFAULT_VERTICAL_IMAGE_MAP[item.imageUrl] || item.imageUrl || "";
+  const triggerVerticalsRefresh = () => {
+    window.dispatchEvent(new Event(BUSINESS_VERTICALS_UPDATED_EVENT));
+    try {
+      window.localStorage.setItem(
+        BUSINESS_VERTICALS_UPDATED_STORAGE_KEY,
+        String(Date.now()),
+      );
+    } catch (storageError) {
+      console.warn("Unable to persist business vertical refresh signal", storageError);
+    }
+  };
+
+  const resolveImageUrl = (item) => resolveBusinessVerticalImageSrc(item);
 
   const resetForm = () => {
     setError("");
@@ -144,7 +162,8 @@ const BusinessVerticals = () => {
           type: "success",
         });
         resetForm();
-        loadVerticals();
+        await loadVerticals();
+        triggerVerticalsRefresh();
       }
     } catch (err) {
       console.error("Unable to save business vertical", err);
@@ -185,6 +204,7 @@ const BusinessVerticals = () => {
           title: data.data.isActive ? "Activated" : "Deactivated",
           type: "success",
         });
+        triggerVerticalsRefresh();
       }
     } catch (err) {
       console.error("Unable to update active state", err);
@@ -215,6 +235,7 @@ const BusinessVerticals = () => {
       await api.delete(`/api/admin/business-verticals/${vertical._id}`);
       setVerticals((prev) => prev.filter((item) => item._id !== vertical._id));
       showToast({ title: "Vertical deleted", type: "success" });
+      triggerVerticalsRefresh();
     } catch (err) {
       console.error("Unable to delete business vertical", err);
       showToast({
@@ -278,10 +299,11 @@ const BusinessVerticals = () => {
                   const imageUrl = resolveImageUrl(vertical);
                   return (
                     <div key={vertical._id} className="vertical-item-card">
-                      <img
-                        className="vertical-item-image"
-                        src={imageUrl}
+                      <BusinessVerticalImage
+                        vertical={{ ...vertical, imageUrl }}
                         alt={vertical.title}
+                        className="vertical-item-image-wrap"
+                        imageClassName="vertical-item-image"
                       />
                       <div className="vertical-item-body">
                         <div className="vertical-item-title-row">

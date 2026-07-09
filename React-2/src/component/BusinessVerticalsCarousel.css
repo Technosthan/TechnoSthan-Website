@@ -33,25 +33,19 @@
 
 .carousel-track {
   display: inline-flex;
+  flex-wrap: nowrap;
   gap: 20px;
   width: max-content;
   align-items: stretch;
-  animation: carousel-scroll 20s linear infinite;
-  animation-timing-function: linear;
+  animation: carousel-scroll 18s linear infinite;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-}
-
-.carousel-track.carousel-loading {
-  animation: none;
-}
-
-.carousel-viewport:hover .carousel-track {
-  animation-play-state: paused;
+  backface-visibility: hidden;
 }
 
 .carousel-track > .carousel-card {
   flex: 0 0 auto;
+  flex-shrink: 0;
 }
 
 .carousel-card {
@@ -90,7 +84,7 @@
   );
 }
 
-.carousel-card__logo img {
+.carousel-card__logo-image {
   width: 150px;
   height: 120px;
   object-fit: contain;
@@ -98,6 +92,14 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   padding: 12px;
+}
+
+.carousel-card__logo-fallback {
+  width: 150px;
+  height: 120px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .carousel-card__content {
@@ -144,8 +146,8 @@
 
 @media (max-width: 1080px) {
   .carousel-card {
-    width: 280px;
-    min-width: 280px;
+    width: 320px;
+    min-width: 320px;
     height: 360px;
   }
 
@@ -153,7 +155,8 @@
     height: 140px;
   }
 
-  .carousel-card__logo img {
+  .carousel-card__logo-image,
+  .carousel-card__logo-fallback {
     width: 140px;
     height: 110px;
   }
@@ -166,15 +169,62 @@
 
   .carousel-track {
     gap: 16px;
-    animation: none;
+    animation-duration: 16s;
   }
 
   .carousel-card {
-    min-width: 90vw;
-    width: auto;
+    width: 280px;
+    min-width: 280px;
+    height: 382px;
+  }
+
+  .carousel-card__logo {
+    height: 132px;
+  }
+
+  .carousel-card__logo-image,
+  .carousel-card__logo-fallback {
+    width: 132px;
+    height: 104px;
+  }
+
+  .carousel-card__content {
+    padding: 18px 20px 22px;
+  }
+
+  .carousel-card__content h3 {
+    font-size: 1rem;
+  }
+
+  .carousel-card__content p {
+    -webkit-line-clamp: 4;
+    font-size: 0.92rem;
   }
 
   .carousel-viewport {
     padding-bottom: 8px;
+    touch-action: pan-y;
+  }
+}
+
+@media (max-width: 480px) {
+  .carousel-card {
+    width: 272px;
+    min-width: 272px;
+    height: 390px;
+  }
+
+  .carousel-card__content {
+    padding: 16px 18px 20px;
+  }
+
+  .carousel-card__content p {
+    -webkit-line-clamp: 4;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .carousel-viewport:hover .carousel-track {
+    animation-play-state: paused;
   }
 }

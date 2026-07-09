@@ -282,7 +282,7 @@ app.use(
       setHeaders: (res) => {
         res.set("Cross-Origin-Resource-Policy", "cross-origin");
 
-        res.set("Cache-Control", "public, max-age=3600");
+        res.set("Cache-Control", "no-store");
       },
     },
   ),
