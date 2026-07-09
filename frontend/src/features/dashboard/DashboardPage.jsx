@@ -487,30 +487,32 @@ const DashboardPage = () => {
                   Recent Activity
                 </h3>
                 <div className="space-y-4">
-                  {dashboardData?.recentActivity?.map((activity, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: index * 0.1 }}
-                      className={`flex items-center gap-3 p-3 ${theme.card} rounded-lg`}
-                    >
-                      <div
-                        className={`w-10 h-10 ${theme.primary} rounded-full flex items-center justify-center`}
+                  {dashboardData?.recentActivity?.length ? (
+                    dashboardData.recentActivity.map((activity, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className={`flex items-center gap-3 p-3 ${theme.card} rounded-lg`}
                       >
-                        <Star className="text-white" size={16} />
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-medium ${theme.text}`}>
-                          Quiz Completed
-                        </p>
-                        <p className={`text-sm ${theme.text} opacity-60`}>
-                          Score: {activity.score}/{activity.total} â€¢{" "}
-                          {new Date(activity.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )) || (
+                        <div
+                          className={`w-10 h-10 ${theme.primary} rounded-full flex items-center justify-center`}
+                        >
+                          <Star className="text-white" size={16} />
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-medium ${theme.text}`}>
+                            Quiz Completed
+                          </p>
+                          <p className={`text-sm ${theme.text} opacity-60`}>
+                            Score: {activity.score}/{activity.total} •{" "}
+                            {new Date(activity.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : (
                     <div className="text-center py-8">
                       <Calendar
                         className="mx-auto mb-3 text-gray-400"
@@ -540,7 +542,7 @@ const DashboardPage = () => {
                   onClick={() => navigate("/chat")}
                   className={`${theme.link} text-sm font-medium cursor-pointer transition-colors`}
                 >
-                  Open Chat ->
+                  Open Chat {"→"}
                 </button>
               </div>
               <div className="space-y-4">
@@ -589,7 +591,7 @@ const DashboardPage = () => {
                       onClick={() => navigate("/chat")}
                       className={`${theme.link} text-sm font-medium transition-colors`}
                     >
-                      Start a conversation ->
+                      Start a conversation {"→"}
                     </button>
                   </div>
                 )}
@@ -624,10 +626,11 @@ const DashboardPage = () => {
                           {notification.title || "Form notification"}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                          {notification.summary || "A new form response was received."}
+                          {notification.summary ||
+                            "A new form response was received."}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                          {new Date(notification.createdAt).toLocaleDateString()} - {" "}
+                          {new Date(notification.createdAt).toLocaleDateString()} -{" "}
                           {new Date(notification.createdAt).toLocaleTimeString()}
                         </p>
                       </div>
