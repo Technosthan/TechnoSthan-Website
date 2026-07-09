@@ -23,19 +23,17 @@ const resolveInlineStyles = (section) => {
 };
 
 const renderSectionContent = (content) => {
-  return content
-    .split(/\n{2,}/g)
-    .map((paragraph, index) => (
-      <p key={index}>
-        {paragraph.split(/\n/).reduce((elements, line, lineIndex) => {
-          if (lineIndex > 0) {
-            elements.push(<br key={`br-${index}-${lineIndex}`} />);
-          }
-          elements.push(line);
-          return elements;
-        }, [])}
-      </p>
-    ));
+  return content.split(/\n{2,}/g).map((paragraph, index) => (
+    <p key={index}>
+      {paragraph.split(/\n/).reduce((elements, line, lineIndex) => {
+        if (lineIndex > 0) {
+          elements.push(<br key={`br-${index}-${lineIndex}`} />);
+        }
+        elements.push(line);
+        return elements;
+      }, [])}
+    </p>
+  ));
 };
 
 const PageContentRenderer = ({ route, position }) => {
@@ -109,7 +107,6 @@ const PageContentRenderer = ({ route, position }) => {
     <>
       {sortedSections.map((section) => {
         const styles = resolveInlineStyles(section);
-        const isExternalLink = /^https?:\/\//i.test(section.buttonLink || "");
         const key = section._id || section.id;
 
         return (
@@ -122,24 +119,6 @@ const PageContentRenderer = ({ route, position }) => {
               }`}
               style={styles}
             >
-              {section.mediaUrl ? (
-                <div className="dynamic-section__media">
-                  {section.mediaUrl.match(/\.(mp4|webm)$/i) ? (
-                    <video
-                      src={section.mediaUrl}
-                      controls
-                      className="dynamic-section__media-media"
-                    />
-                  ) : (
-                    <img
-                      src={section.mediaUrl}
-                      alt={section.title}
-                      className="dynamic-section__media-media"
-                    />
-                  )}
-                </div>
-              ) : null}
-
               {section.title ? (
                 <h2 className="dynamic-section__title">{section.title}</h2>
               ) : null}
@@ -155,25 +134,6 @@ const PageContentRenderer = ({ route, position }) => {
                   }`}
                 >
                   {renderSectionContent(section.content)}
-                </div>
-              ) : null}
-
-              {section.buttonText && section.buttonLink ? (
-                <div className="dynamic-section__cta">
-                  {isExternalLink ? (
-                    <a
-                      href={section.buttonLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="dynamic-section__button"
-                    >
-                      {section.buttonText}
-                    </a>
-                  ) : (
-                    <a href={section.buttonLink} className="dynamic-section__button">
-                      {section.buttonText}
-                    </a>
-                  )}
                 </div>
               ) : null}
             </div>

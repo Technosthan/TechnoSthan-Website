@@ -71,9 +71,6 @@ const createPageContent = async (req, res) => {
       title: String(req.body.title || "").trim(),
       subtitle: String(req.body.subtitle || "").trim(),
       content: String(req.body.content || ""),
-      mediaUrl: String(req.body.mediaUrl || "").trim(),
-      buttonText: String(req.body.buttonText || "").trim(),
-      buttonLink: normalizeOptionalUrl(req.body.buttonLink),
       themeType: ["website", "original"].includes(req.body.themeType)
         ? req.body.themeType
         : "website",
@@ -82,7 +79,6 @@ const createPageContent = async (req, res) => {
           ? req.body.customStyles
           : {},
       status: req.body.status === undefined ? true : Boolean(req.body.status),
-      sortOrder: Number(req.body.sortOrder || 0),
     };
 
     if (!payload.route || !payload.position || !payload.title) {
@@ -119,11 +115,6 @@ const updatePageContent = async (req, res) => {
       title: String(req.body.title ?? section.title).trim(),
       subtitle: String(req.body.subtitle ?? section.subtitle).trim(),
       content: String(req.body.content ?? section.content),
-      mediaUrl: String(req.body.mediaUrl ?? section.mediaUrl).trim(),
-      buttonText: String(req.body.buttonText ?? section.buttonText).trim(),
-      buttonLink: normalizeOptionalUrl(
-        req.body.buttonLink ?? section.buttonLink,
-      ),
       themeType: ["website", "original"].includes(req.body.themeType)
         ? req.body.themeType
         : section.themeType,
@@ -135,10 +126,6 @@ const updatePageContent = async (req, res) => {
         req.body.status === undefined
           ? section.status
           : Boolean(req.body.status),
-      sortOrder:
-        req.body.sortOrder === undefined
-          ? section.sortOrder
-          : Number(req.body.sortOrder || 0),
     };
 
     Object.assign(section, payload);

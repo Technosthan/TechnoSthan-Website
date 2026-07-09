@@ -3,15 +3,48 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import api from "../../lib/api";
 import AdminLayout from "./AdminLayout";
 
-const positions = [
-  { value: "hero", label: "Below Hero" },
-  { value: "whoWeAre", label: "Below Who We Are" },
-  { value: "businessVerticals", label: "Below Our Business Verticals" },
-  { value: "footer", label: "Before Footer" },
-  { value: "top", label: "Top of Page" },
-  { value: "bottom", label: "Bottom of Page" },
-  { value: "custom", label: "Custom Order" },
-];
+const normalizeRoute = (value) => {
+  if (typeof value !== "string") {
+    return "/";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "/";
+  }
+
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+};
+
+const routePositionOptions = {
+  "/": [
+    { value: "hero", label: "Below Hero" },
+    { value: "whoWeAre", label: "Below Who We Are" },
+    { value: "businessVerticals", label: "Below Our Business Verticals" },
+    { value: "footer", label: "Before Footer" },
+  ],
+  "/about": [
+    { value: "aboutHero", label: "Below About Hero" },
+    { value: "servicesCards", label: "Below Services / Cards Section" },
+    { value: "mission", label: "Below Mission Section" },
+    { value: "footer", label: "Before Footer" },
+  ],
+  "/contact": [
+    { value: "contactHero", label: "Below Contact Hero" },
+    { value: "contactForm", label: "Below Contact Form" },
+    { value: "contactInfo", label: "Below Contact Info" },
+    { value: "footer", label: "Before Footer" },
+  ],
+  "/verticals": [
+    { value: "verticalsHero", label: "Below Verticals Hero" },
+    { value: "verticalsCards", label: "Below Verticals Cards" },
+    { value: "footer", label: "Before Footer" },
+  ],
+};
+
+const getPositionOptions = (routeValue) => {
+  return routePositionOptions[normalizeRoute(routeValue)] || routePositionOptions["/"];
+};
 
 const displayStyleOptions = [
   { value: "original", label: "Original Text Style" },
@@ -24,12 +57,8 @@ const emptyForm = {
   title: "",
   subtitle: "",
   content: "",
-  mediaUrl: "",
-  buttonText: "",
-  buttonLink: "",
   themeType: "website",
   status: true,
-  sortOrder: 0,
 };
 
 const triggerPageContentRefresh = () => {
@@ -44,6 +73,7 @@ const PageContentManager = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const availablePositions = useMemo(() => getPositionOptions(form.route), [form.route]);
 
   const loadSections = async () => {
     try {
@@ -67,10 +97,26 @@ const PageContentManager = () => {
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setForm((prev) => {
+      if (name === "route") {
+        const nextRoute = normalizeRoute(value);
+        const nextOptions = getPositionOptions(nextRoute);
+        const nextPosition = nextOptions.some((item) => item.value === prev.position)
+          ? prev.position
+          : nextOptions[0]?.value || "";
+
+        return {
+          ...prev,
+          route: nextRoute,
+          position: nextPosition,
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+    });
   };
 
   const resetForm = () => {
@@ -90,8 +136,8 @@ const PageContentManager = () => {
       setError("");
       const payload = {
         ...form,
+        route: normalizeRoute(form.route),
         status: form.status,
-        sortOrder: Number(form.sortOrder || 0),
       };
 
       if (editingId) {
@@ -115,8 +161,8 @@ const PageContentManager = () => {
     setForm({
       ...emptyForm,
       ...section,
+      route: normalizeRoute(section.route || "/"),
       status: Boolean(section.status),
-      sortOrder: section.sortOrder || 0,
     });
   };
 
@@ -192,7 +238,7 @@ const PageContentManager = () => {
                 onChange={handleChange}
                 className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white"
               >
-                {positions.map((item) => (
+                {availablePositions.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
                   </option>
@@ -231,36 +277,6 @@ const PageContentManager = () => {
               />
             </label>
             <label className="flex flex-col gap-2 text-sm text-slate-300">
-              <span>Media URL</span>
-              <input
-                name="mediaUrl"
-                value={form.mediaUrl}
-                onChange={handleChange}
-                className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white"
-                placeholder="https://..."
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
-              <span>Button Text</span>
-              <input
-                name="buttonText"
-                value={form.buttonText}
-                onChange={handleChange}
-                className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white"
-                placeholder="Learn more"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
-              <span>Button Link</span>
-              <input
-                name="buttonLink"
-                value={form.buttonLink}
-                onChange={handleChange}
-                className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white"
-                placeholder="https://example.com"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
               <span>Text Display Style</span>
               <select
                 name="themeType"
@@ -274,16 +290,6 @@ const PageContentManager = () => {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
-              <span>Sort Order / Priority</span>
-              <input
-                type="number"
-                name="sortOrder"
-                value={form.sortOrder}
-                onChange={handleChange}
-                className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white"
-              />
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input
@@ -333,8 +339,7 @@ const PageContentManager = () => {
                       {section.title}
                     </div>
                     <div className="text-sm text-slate-400">
-                      Route: {section.route} • Position: {section.position} •
-                      Order: {section.sortOrder}
+                      Route: {section.route} • Position: {section.position}
                     </div>
                   </div>
                   <div className="flex gap-2">

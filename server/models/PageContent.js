@@ -28,20 +28,6 @@ const pageContentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    mediaUrl: {
-      type: String,
-      default: "",
-    },
-    buttonText: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-    buttonLink: {
-      type: String,
-      trim: true,
-      default: "",
-    },
     themeType: {
       type: String,
       enum: ["website", "original"],
@@ -54,10 +40,6 @@ const pageContentSchema = new mongoose.Schema(
     status: {
       type: Boolean,
       default: true,
-    },
-    sortOrder: {
-      type: Number,
-      default: 0,
     },
   },
   {
