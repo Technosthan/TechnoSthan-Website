@@ -16,11 +16,66 @@ const safeUrl = (value = "") => {
   return `https://${raw}`;
 };
 
+const normalizeHexColor = (value, fallback) => {
+  const raw = String(value || "").trim();
+  if (!raw) return fallback;
+  if (
+    /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw) ||
+    /^rgba?\(/i.test(raw) ||
+    /^hsla?\(/i.test(raw) ||
+    /^var\(--[\w-]+\)$/i.test(raw)
+  ) {
+    return raw;
+  }
+  return fallback;
+};
+
+const normalizeBorderRadius = (value, fallback = 24) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+const isLightColor = (value = "") => {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^#([0-9a-f]{6})$/i);
+  if (!match) return false;
+  const hex = match[1];
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 160;
+};
+
+const formatDateTime = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const replaceTokens = (value = "", context = {}) => {
+  const escaped = escapeHtml(value);
+  return escaped.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, token) => {
+    if (token === "responsesTable") {
+      return context.responsesTable || "";
+    }
+
+    const replacement = context[token];
+    return escapeHtml(replacement ?? "");
+  });
+};
+
 const formatAnswerValue = (answer) => {
   if (!answer) return "";
   if (answer.fileUrl) {
     const fileLabel = escapeHtml(answer.fileName || answer.fileUrl);
-    return `<a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noreferrer" style="color:#16a34a;text-decoration:none;font-weight:700;">${fileLabel}</a>`;
+    return `<a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;font-weight:700;">${fileLabel}</a>`;
   }
   if (Array.isArray(answer.value)) {
     return escapeHtml(answer.value.join(", "));
@@ -28,95 +83,145 @@ const formatAnswerValue = (answer) => {
   return escapeHtml(String(answer.value ?? ""));
 };
 
-const renderAnswerCards = (rows = []) =>
-  rows
-    .map(
-      ({ question, answer }) => `
-        <tr>
-          <td style="padding:14px 16px;border-bottom:1px solid #e5e7eb;background:#f8fafc;color:#0f172a;font-weight:700;width:34%;vertical-align:top;">${escapeHtml(question)}</td>
-          <td style="padding:14px 16px;border-bottom:1px solid #e5e7eb;color:#334155;vertical-align:top;">${answer}</td>
-        </tr>`,
-    )
-    .join("");
-
-const renderSocialLinks = (branding = {}) => {
-  const socials = [
-    { label: "Facebook", url: branding.facebookUrl },
-    { label: "Instagram", url: branding.instagramUrl },
-    { label: "LinkedIn", url: branding.linkedinUrl },
-    { label: "YouTube", url: branding.youtubeUrl },
-    { label: "WhatsApp", url: branding.whatsappUrl },
-  ].filter((item) => item.url);
-
-  if (!socials.length) return "";
+const renderResponsesTable = (rows = [], styles = {}) => {
+  if (!rows.length) return "";
+  const border = styles.borderColor || "rgba(148,163,184,0.24)";
+  const accent = styles.accentColor || "#16a34a";
+  const textColor = styles.textColor || "#0f172a";
 
   return `
-    <div style="margin-top:18px;">
-      ${socials
-        .map(
-          (item) => `
-            <a href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noreferrer" style="display:inline-block;margin:0 8px 8px 0;padding:10px 14px;border:1px solid #bbf7d0;border-radius:999px;color:#14532d;text-decoration:none;font-size:13px;font-weight:700;background:#f0fdf4;">${escapeHtml(item.label)}</a>`,
-        )
-        .join("")}
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0;border:1px solid ${border};border-radius:${styles.borderRadius || 24}px;overflow:hidden;background:${styles.cardBackgroundColor || "#ffffff"};">
+      <tbody>
+        ${rows
+          .map(
+            ({ question, answer }) => `
+              <tr>
+                <td style="padding:14px 16px;border-bottom:1px solid ${border};background:rgba(0,0,0,0.02);color:${textColor};font-weight:700;width:34%;vertical-align:top;">${escapeHtml(question)}</td>
+                <td style="padding:14px 16px;border-bottom:1px solid ${border};color:${textColor};vertical-align:top;line-height:1.65;">
+                  <span style="display:inline-block;border-left:3px solid ${accent};padding-left:12px;">${answer}</span>
+                </td>
+              </tr>`,
+          )
+          .join("")}
+      </tbody>
+    </table>
   `;
 };
 
-const renderFooter = (branding = {}) => {
-  const website = branding.brandWebsiteUrl || branding.websiteUrl || "";
-  const contactEmail = branding.contactEmail || "";
-  const contactPhone = branding.contactPhone || "";
-  const contactAddress = branding.contactAddress || "";
-  const footerText = branding.footerText || "";
-
-  return `
-    <div style="margin-top:28px;padding-top:18px;border-top:1px solid #d1fae5;color:#475569;font-size:13px;line-height:1.6;">
-      <div style="font-weight:700;color:#0f172a;margin-bottom:8px;">${escapeHtml(branding.companyName || "Technosthan AgriTech")}</div>
-      ${website ? `<div>Website: <a href="${escapeHtml(safeUrl(website))}" style="color:#16a34a;text-decoration:none;">${escapeHtml(stripProtocol(website))}</a></div>` : ""}
-      ${contactEmail ? `<div>Email: <a href="mailto:${escapeHtml(contactEmail)}" style="color:#16a34a;text-decoration:none;">${escapeHtml(contactEmail)}</a></div>` : ""}
-      ${contactPhone ? `<div>Phone: <a href="tel:${escapeHtml(contactPhone)}" style="color:#16a34a;text-decoration:none;">${escapeHtml(contactPhone)}</a></div>` : ""}
-      ${contactAddress ? `<div>Address: ${escapeHtml(contactAddress)}</div>` : ""}
-      ${footerText ? `<div style="margin-top:10px;color:#64748b;">${escapeHtml(footerText)}</div>` : ""}
-    </div>
-  `;
+const renderLogo = (branding = {}, styles = {}) => {
+  const companyName = branding.companyName || styles.companyName || "Form Submission";
+  const headerTextColor = styles.headerTextColor || "#ffffff";
+  if (branding.logoUrl) {
+    return `<img src="${escapeHtml(branding.logoUrl)}" alt="${escapeHtml(companyName)}" style="display:block;height:54px;max-width:180px;object-fit:contain;" />`;
+  }
+  return `<div style="font-size:22px;line-height:1.2;font-weight:800;color:${headerTextColor};">${escapeHtml(companyName)}</div>`;
 };
 
-const renderLogoBlock = (branding = {}) =>
-  branding.logoUrl
-    ? `<img src="${escapeHtml(branding.logoUrl)}" alt="${escapeHtml(branding.companyName || "Technosthan AgriTech")}" style="display:block;height:52px;max-width:180px;object-fit:contain;" />`
-    : `<div style="font-size:22px;line-height:1.2;font-weight:800;color:#ffffff;">${escapeHtml(branding.companyName || "Technosthan AgriTech")}</div>`;
-
-const buildCommonShell = ({
-  title,
-  subtitle,
-  branding = {},
-  body,
+const buildEmailShell = ({
+  headerTitle,
+  headerSubtitle,
+  successMessage,
+  footerText,
   buttonLabel,
   buttonUrl,
-  accent = "#16a34a",
-}) => `
-<!DOCTYPE html>
-<html>
-  <body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-    <div style="max-width:760px;margin:0 auto;padding:24px 16px;">
-      <div style="border-radius:28px;overflow:hidden;box-shadow:0 20px 50px rgba(15,23,42,0.12);background:#ffffff;">
-        <div style="background:linear-gradient(135deg,#052e16,#16a34a 55%,#22c55e);padding:28px 28px 24px;color:#fff;">
-          ${renderLogoBlock(branding)}
-          <div style="margin-top:18px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.9;">${escapeHtml(branding.companyName || "Technosthan AgriTech")}</div>
-          <h1 style="margin:10px 0 0;font-size:30px;line-height:1.2;">${escapeHtml(title)}</h1>
-          ${subtitle ? `<p style="margin:10px 0 0;font-size:15px;line-height:1.6;opacity:0.95;">${escapeHtml(subtitle)}</p>` : ""}
-        </div>
-        <div style="padding:28px;">
-          ${body}
-          ${buttonUrl ? `<div style="margin-top:26px;"><a href="${escapeHtml(buttonUrl)}" target="_blank" rel="noreferrer" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:14px 22px;border-radius:14px;font-weight:700;">${escapeHtml(buttonLabel || "Open")}</a></div>` : ""}
-          ${renderFooter(branding)}
-          ${renderSocialLinks(branding)}
+  branding = {},
+  rows = [],
+  submittedAt = "",
+  referenceId = "",
+  includeReferenceId = false,
+  styles = {},
+  bodyContent = "",
+}) => {
+  const headerBackgroundColor = normalizeHexColor(
+    styles.headerBackgroundColor,
+    "#16a34a",
+  );
+  const bodyBackgroundColor = normalizeHexColor(
+    styles.bodyBackgroundColor,
+    "#f3f4f6",
+  );
+  const cardBackgroundColor = normalizeHexColor(
+    styles.cardBackgroundColor,
+    "#ffffff",
+  );
+  const accentColor = normalizeHexColor(styles.accentColor, "#16a34a");
+  const textColor = normalizeHexColor(styles.textColor, "#0f172a");
+  const buttonColor = normalizeHexColor(styles.buttonColor, accentColor);
+  const borderRadius = normalizeBorderRadius(styles.borderRadius, 24);
+  const headerTextColor =
+    styles.headerTextColor ||
+    (isLightColor(headerBackgroundColor) ? "#0f172a" : "#ffffff");
+  const responsesTable = renderResponsesTable(rows, {
+    cardBackgroundColor,
+    accentColor,
+    textColor,
+    borderRadius,
+  });
+
+  const context = {
+    formName: branding.formName || "",
+    submissionDate: submittedAt,
+    userName: branding.userName || "",
+    userEmail: branding.userEmail || "",
+    responsesTable,
+    companyName: branding.companyName || "",
+    referenceId,
+  };
+
+  const resolvedHeaderTitle = replaceTokens(headerTitle, context) || "";
+  const resolvedHeaderSubtitle = replaceTokens(headerSubtitle, context) || "";
+  const resolvedSuccessMessage = replaceTokens(successMessage, context) || "";
+  const resolvedFooterText = replaceTokens(footerText, context) || "";
+  const resolvedButtonLabel = replaceTokens(buttonLabel, context) || "";
+  const resolvedButtonUrl = safeUrl(replaceTokens(buttonUrl, context));
+
+  return `<!DOCTYPE html>
+  <html>
+    <body style="margin:0;background:${bodyBackgroundColor};font-family:Arial,Helvetica,sans-serif;color:${textColor};">
+      <div style="max-width:760px;margin:0 auto;padding:24px 16px;">
+        <div style="border-radius:${borderRadius + 8}px;overflow:hidden;box-shadow:0 20px 50px rgba(15,23,42,0.12);background:${cardBackgroundColor};">
+          <div style="background:${headerBackgroundColor};padding:28px;color:${headerTextColor};">
+            ${renderLogo(branding, { companyName: branding.companyName, headerTextColor })}
+            <div style="margin-top:18px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85;">${escapeHtml(branding.companyName || "Form Builder")}</div>
+            <h1 style="margin:10px 0 0;font-size:30px;line-height:1.2;color:${headerTextColor};">${resolvedHeaderTitle || "Form Submission"}</h1>
+            ${resolvedHeaderSubtitle ? `<p style="margin:10px 0 0;font-size:15px;line-height:1.6;opacity:0.95;color:${headerTextColor};">${resolvedHeaderSubtitle}</p>` : ""}
+          </div>
+
+          ${branding.bannerImageUrl ? `
+            <div style="padding:20px 24px 0;">
+              <img src="${escapeHtml(branding.bannerImageUrl)}" alt="${escapeHtml(branding.companyName || "Banner")}" style="display:block;width:100%;max-height:220px;object-fit:cover;border-radius:${borderRadius}px;" />
+            </div>
+          ` : ""}
+
+          <div style="padding:28px;">
+            ${successMessage ? `
+              <div style="background:${bodyBackgroundColor};border:1px solid ${accentColor};border-radius:${borderRadius}px;padding:18px 20px;color:${textColor};margin-bottom:18px;line-height:1.65;">
+                <div style="font-weight:800;margin-bottom:6px;">${resolvedSuccessMessage}</div>
+                ${submittedAt ? `<div><strong>Submitted at:</strong> ${escapeHtml(submittedAt)}</div>` : ""}
+                ${includeReferenceId && referenceId ? `<div><strong>Reference ID:</strong> ${escapeHtml(referenceId)}</div>` : ""}
+              </div>
+            ` : ""}
+
+            ${bodyContent}
+
+            ${resolvedButtonUrl ? `
+              <div style="margin-top:26px;">
+                <a href="${escapeHtml(resolvedButtonUrl)}" target="_blank" rel="noreferrer" style="display:inline-block;background:${buttonColor};color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:${Math.max(12, Math.min(borderRadius, 32))}px;font-weight:700;">${resolvedButtonLabel || "Open"}</a>
+              </div>
+            ` : ""}
+
+            ${footerText || branding.footerText ? `
+              <div style="margin-top:28px;padding-top:18px;border-top:1px solid rgba(148,163,184,0.28);color:${textColor};font-size:13px;line-height:1.7;opacity:0.9;">
+                <div style="font-weight:700;margin-bottom:8px;">${escapeHtml(branding.companyName || "Form Builder")}</div>
+                ${resolvedFooterText ? `<div>${resolvedFooterText}</div>` : ""}
+              </div>
+            ` : ""}
+          </div>
         </div>
       </div>
-    </div>
-  </body>
-</html>
-`;
+    </body>
+  </html>`;
+};
 
 export const buildAdminFormSubmissionEmail = ({
   formTitle = "Form Submission",
@@ -125,68 +230,100 @@ export const buildAdminFormSubmissionEmail = ({
   rows = [],
   adminUrl = "",
   branding = {},
-}) =>
-  buildCommonShell({
-    title: "New Form Submission",
-    subtitle: `${formTitle} · ${referenceId}`,
-    branding,
-    body: `
-      <div style="margin-bottom:18px;color:#475569;font-size:14px;line-height:1.7;">
-        <div><strong style="color:#0f172a;">Form:</strong> ${escapeHtml(formTitle)}</div>
-        <div><strong style="color:#0f172a;">Reference ID:</strong> ${escapeHtml(referenceId)}</div>
-        <div><strong style="color:#0f172a;">Submitted at:</strong> ${escapeHtml(submittedAt)}</div>
-      </div>
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
-        <tbody>
-          ${renderAnswerCards(rows.map((row) => ({
-            question: row.question,
-            answer: row.answer,
-          })))}
-        </tbody>
-      </table>
-    `,
-    buttonLabel: "Open Response in Admin Dashboard",
+  emailTemplate = {},
+}) => {
+  const resolvedBranding = {
+    ...branding,
+    formName: formTitle,
+    companyName: emailTemplate.companyName || branding.companyName || "Technosthan AgriTech",
+    logoUrl: emailTemplate.logoUrl || branding.logoUrl || "",
+    bannerImageUrl: emailTemplate.bannerImageUrl || branding.bannerImageUrl || "",
+  };
+
+  return buildEmailShell({
+    headerTitle: emailTemplate.headerTitle || "New Form Submission",
+    headerSubtitle:
+      emailTemplate.headerSubtitle || "{{formName}} - {{submissionDate}}",
+    successMessage: "",
+    footerText: emailTemplate.footerText || "",
+    buttonLabel: emailTemplate.websiteButtonText || "Open Response in Admin Dashboard",
     buttonUrl: adminUrl,
+    branding: resolvedBranding,
+    rows,
+    submittedAt: submittedAt ? formatDateTime(submittedAt) : "",
+    referenceId,
+    includeReferenceId: true,
+    styles: {
+      ...emailTemplate,
+      companyName: resolvedBranding.companyName,
+    },
+    bodyContent: `
+      <div style="margin-bottom:18px;color:${normalizeHexColor(emailTemplate.textColor, "#0f172a")};font-size:14px;line-height:1.7;">
+        <div><strong>Form:</strong> ${escapeHtml(formTitle)}</div>
+        <div><strong>Reference ID:</strong> ${escapeHtml(referenceId)}</div>
+        <div><strong>Submitted at:</strong> ${escapeHtml(formatDateTime(submittedAt))}</div>
+      </div>
+      ${rows.length ? `<div style="margin-bottom:12px;font-size:15px;font-weight:700;color:${normalizeHexColor(emailTemplate.textColor, "#0f172a")};">Submission Summary</div>${renderResponsesTable(rows, {
+        cardBackgroundColor: normalizeHexColor(emailTemplate.cardBackgroundColor, "#ffffff"),
+        accentColor: normalizeHexColor(emailTemplate.accentColor, "#16a34a"),
+        textColor: normalizeHexColor(emailTemplate.textColor, "#0f172a"),
+        borderRadius: normalizeBorderRadius(emailTemplate.borderRadius, 24),
+      })}` : ""}
+    `,
   });
+};
 
 export const buildUserConfirmationEmail = ({
   formTitle = "Form Submission",
   submittedAt = new Date().toISOString(),
-  referenceId = "",
   successMessage = "Thanks for your response.",
   rows = [],
   publicUrl = "",
   branding = {},
-}) =>
-  buildCommonShell({
-    title: "Thank you for your submission",
-    subtitle: formTitle,
-    branding,
-    body: `
-      <div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:20px;padding:18px 20px;color:#14532d;margin-bottom:18px;">
-        <div style="font-weight:700;margin-bottom:6px;">${escapeHtml(successMessage)}</div>
-        <div style="font-size:14px;line-height:1.7;">
-          <div><strong>Form:</strong> ${escapeHtml(formTitle)}</div>
-          <div><strong>Reference ID:</strong> ${escapeHtml(referenceId)}</div>
-          <div><strong>Submitted at:</strong> ${escapeHtml(submittedAt)}</div>
-        </div>
-      </div>
-      ${rows.length ? `
-        <div style="margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a;">Submission Summary</div>
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
-          <tbody>
-            ${renderAnswerCards(rows.map((row) => ({
-              question: row.question,
-              answer: row.answer,
-            })))}
-          </tbody>
-        </table>
-      ` : ""}
-    `,
-    buttonLabel: "Visit Website",
-    buttonUrl: publicUrl,
-    accent: "#0f766e",
+  emailTemplate = {},
+}) => {
+  const resolvedBranding = {
+    ...branding,
+    formName: formTitle,
+    companyName: emailTemplate.companyName || branding.companyName || "Technosthan AgriTech",
+    logoUrl: emailTemplate.logoUrl || branding.logoUrl || "",
+    bannerImageUrl: emailTemplate.bannerImageUrl || branding.bannerImageUrl || "",
+  };
+
+  const fallbackButtonUrl =
+    emailTemplate.websiteButtonUrl ||
+    publicUrl ||
+    branding.brandWebsiteUrl ||
+    "";
+
+  return buildEmailShell({
+    headerTitle: emailTemplate.headerTitle || "Thank you for your submission",
+    headerSubtitle: emailTemplate.headerSubtitle || "{{formName}}",
+    successMessage: emailTemplate.successMessage || successMessage,
+    footerText: emailTemplate.footerText || "",
+    buttonLabel: emailTemplate.websiteButtonText || "Visit Website",
+    buttonUrl: fallbackButtonUrl,
+    branding: resolvedBranding,
+    rows,
+    submittedAt: submittedAt ? formatDateTime(submittedAt) : "",
+    includeReferenceId: false,
+    styles: {
+      ...emailTemplate,
+      companyName: resolvedBranding.companyName,
+    },
+    bodyContent: rows.length
+      ? `
+        <div style="margin-bottom:12px;font-size:15px;font-weight:700;color:${normalizeHexColor(emailTemplate.textColor, "#0f172a")};">Submission Summary</div>
+        ${renderResponsesTable(rows, {
+          cardBackgroundColor: normalizeHexColor(emailTemplate.cardBackgroundColor, "#ffffff"),
+          accentColor: normalizeHexColor(emailTemplate.accentColor, "#16a34a"),
+          textColor: normalizeHexColor(emailTemplate.textColor, "#0f172a"),
+          borderRadius: normalizeBorderRadius(emailTemplate.borderRadius, 24),
+        })}
+      `
+      : "",
   });
+};
 
 export const formatSubmissionRows = (answers = []) =>
   answers.map((answer) => ({

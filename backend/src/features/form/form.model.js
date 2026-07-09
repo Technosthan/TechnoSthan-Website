@@ -30,6 +30,140 @@ const formSchema = new mongoose.Schema(
       default: "Thanks for your response.",
       trim: true,
     },
+    emailTemplate: {
+      preset: {
+        type: String,
+        default: "green-professional",
+        trim: true,
+      },
+      headerTitle: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      headerSubtitle: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      successMessage: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      footerText: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      companyName: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      websiteButtonText: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      websiteButtonUrl: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      headerBackgroundColor: {
+        type: String,
+        default: "#16a34a",
+        trim: true,
+      },
+      bodyBackgroundColor: {
+        type: String,
+        default: "#f3f4f6",
+        trim: true,
+      },
+      cardBackgroundColor: {
+        type: String,
+        default: "#ffffff",
+        trim: true,
+      },
+      accentColor: {
+        type: String,
+        default: "#16a34a",
+        trim: true,
+      },
+      textColor: {
+        type: String,
+        default: "#0f172a",
+        trim: true,
+      },
+      buttonColor: {
+        type: String,
+        default: "#16a34a",
+        trim: true,
+      },
+      borderRadius: {
+        type: Number,
+        default: 24,
+      },
+      logoUrl: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      bannerImageUrl: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
+    notificationSettings: {
+      sendEmailNotification: {
+        type: Boolean,
+        default: true,
+      },
+      sendDashboardNotification: {
+        type: Boolean,
+        default: false,
+      },
+      sendTelegramNotification: {
+        type: Boolean,
+        default: false,
+      },
+      telegramBotToken: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      telegramChatId: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      sendWhatsAppNotification: {
+        type: Boolean,
+        default: false,
+      },
+      whatsappAccessToken: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      whatsappPhoneNumberId: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      whatsappVerifyToken: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      whatsappBusinessNumber: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
     bannerImageUrl: {
       type: String,
       default: "",

@@ -5,6 +5,7 @@ import Form from "./form.model.js";
 import FormQuestion from "./formQuestion.model.js";
 import FormResponse from "./formResponse.model.js";
 import FormResponseAnswer from "./formResponseAnswer.model.js";
+import FormNotification from "./formNotification.model.js";
 import User from "../auth/user.model.js";
 import Settings from "../admin/settings.model.js";
 import { sendEmail } from "../../services/email/sendEmail.js";
@@ -32,6 +33,37 @@ const QUESTION_TYPES = new Set([
 ]);
 
 const DEFAULT_THEME_COLOR = "#16a34a";
+const DEFAULT_EMAIL_TEMPLATE = {
+  preset: "green-professional",
+  headerTitle: "",
+  headerSubtitle: "",
+  successMessage: "",
+  footerText: "",
+  companyName: "",
+  websiteButtonText: "",
+  websiteButtonUrl: "",
+  headerBackgroundColor: "#16a34a",
+  bodyBackgroundColor: "#f3f4f6",
+  cardBackgroundColor: "#ffffff",
+  accentColor: "#16a34a",
+  textColor: "#0f172a",
+  buttonColor: "#16a34a",
+  borderRadius: 24,
+  logoUrl: "",
+  bannerImageUrl: "",
+};
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  sendEmailNotification: true,
+  sendDashboardNotification: false,
+  sendTelegramNotification: false,
+  telegramBotToken: "",
+  telegramChatId: "",
+  sendWhatsAppNotification: false,
+  whatsappAccessToken: "",
+  whatsappPhoneNumberId: "",
+  whatsappVerifyToken: "",
+  whatsappBusinessNumber: "",
+};
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const FILE_MIME_TYPES = new Set([
@@ -170,6 +202,11 @@ const normalizeFormPayload = async (
       String(payload.successMessage || "").trim() ||
       "Thanks for your response.",
     bannerImageUrl: String(payload.bannerImageUrl || "").trim(),
+    emailTemplate: normalizeEmailTemplate(payload.emailTemplate, payload),
+    notificationSettings: normalizeNotificationSettings(
+      payload.notificationSettings,
+      payload,
+    ),
     notificationEmail: String(payload.notificationEmail || "").trim(),
     confirmationEmailEnabled: payload.confirmationEmailEnabled === true,
     allowFileUpload: payload.allowFileUpload === true,
@@ -189,6 +226,86 @@ const parseOptionalInteger = (value) => {
   if (value === "" || value === null || value === undefined) return null;
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) ? parsed : null;
+};
+
+const normalizeEmailTemplate = (template = {}, fallback = {}) => {
+  const source = template && typeof template === "object" ? template : {};
+  const legacy = fallback && typeof fallback === "object" ? fallback : {};
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(source, key);
+  const pick = (key, ...values) =>
+    hasOwn(key) ? source[key] : values.find((value) => value !== undefined);
+  return {
+    preset: String(pick("preset", legacy.preset, DEFAULT_EMAIL_TEMPLATE.preset)).trim(),
+    headerTitle: String(pick("headerTitle", legacy.headerTitle, "")).trim(),
+    headerSubtitle: String(pick("headerSubtitle", legacy.headerSubtitle, "")).trim(),
+    successMessage: String(
+      pick(
+        "successMessage",
+        legacy.emailTemplate?.successMessage ||
+        legacy.successMessage ||
+          "",
+      ),
+    ).trim(),
+    footerText: String(pick("footerText", legacy.footerText, "")).trim(),
+    companyName: String(
+      pick(
+        "companyName",
+        legacy.companyName ||
+        legacy.emailTemplate?.companyName ||
+          "",
+      ),
+    ).trim(),
+    websiteButtonText: String(pick("websiteButtonText", legacy.websiteButtonText, "")).trim(),
+    websiteButtonUrl: String(pick("websiteButtonUrl", legacy.websiteButtonUrl, "")).trim(),
+    headerBackgroundColor:
+      String(pick("headerBackgroundColor", legacy.headerBackgroundColor, DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor)).trim(),
+    bodyBackgroundColor:
+      String(pick("bodyBackgroundColor", legacy.bodyBackgroundColor, DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor)).trim(),
+    cardBackgroundColor:
+      String(pick("cardBackgroundColor", legacy.cardBackgroundColor, DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor)).trim(),
+    accentColor:
+      String(pick("accentColor", legacy.accentColor, DEFAULT_EMAIL_TEMPLATE.accentColor)).trim(),
+    textColor:
+      String(pick("textColor", legacy.textColor, DEFAULT_EMAIL_TEMPLATE.textColor)).trim(),
+    buttonColor:
+      String(pick("buttonColor", legacy.buttonColor, DEFAULT_EMAIL_TEMPLATE.buttonColor)).trim(),
+    borderRadius:
+      parseOptionalInteger(source.borderRadius ?? legacy.borderRadius) ??
+      DEFAULT_EMAIL_TEMPLATE.borderRadius,
+    logoUrl: String(pick("logoUrl", legacy.logoUrl, "")).trim(),
+    bannerImageUrl: String(
+      pick(
+        "bannerImageUrl",
+        legacy.bannerImageUrl ||
+        legacy.emailTemplate?.bannerImageUrl ||
+          "",
+      ),
+    ).trim(),
+  };
+};
+
+const normalizeNotificationSettings = (settings = {}, fallback = {}) => {
+  const source = settings && typeof settings === "object" ? settings : {};
+  const legacy = fallback && typeof fallback === "object" ? fallback : {};
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(source, key);
+  const pick = (key, ...values) =>
+    hasOwn(key) ? source[key] : values.find((value) => value !== undefined);
+  return {
+    sendEmailNotification:
+      pick("sendEmailNotification", legacy.sendEmailNotification, DEFAULT_NOTIFICATION_SETTINGS.sendEmailNotification) === true,
+    sendDashboardNotification:
+      pick("sendDashboardNotification", legacy.sendDashboardNotification, DEFAULT_NOTIFICATION_SETTINGS.sendDashboardNotification) === true,
+    sendTelegramNotification:
+      pick("sendTelegramNotification", legacy.sendTelegramNotification, DEFAULT_NOTIFICATION_SETTINGS.sendTelegramNotification) === true,
+    telegramBotToken: String(pick("telegramBotToken", legacy.telegramBotToken, "")).trim(),
+    telegramChatId: String(pick("telegramChatId", legacy.telegramChatId, "")).trim(),
+    sendWhatsAppNotification:
+      pick("sendWhatsAppNotification", legacy.sendWhatsAppNotification, DEFAULT_NOTIFICATION_SETTINGS.sendWhatsAppNotification) === true,
+    whatsappAccessToken: String(pick("whatsappAccessToken", legacy.whatsappAccessToken, "")).trim(),
+    whatsappPhoneNumberId: String(pick("whatsappPhoneNumberId", legacy.whatsappPhoneNumberId, "")).trim(),
+    whatsappVerifyToken: String(pick("whatsappVerifyToken", legacy.whatsappVerifyToken, "")).trim(),
+    whatsappBusinessNumber: String(pick("whatsappBusinessNumber", legacy.whatsappBusinessNumber, "")).trim(),
+  };
 };
 
 const getBrandingSettings = async (form = {}) => {
@@ -232,6 +349,11 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
     status: resolvedStatus,
     active: resolvedStatus === "live",
     isExpired: isExpired(plainForm.expiresAt),
+    emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
+    notificationSettings: normalizeNotificationSettings(
+      plainForm.notificationSettings,
+      plainForm,
+    ),
     questions: sortedQuestions,
     responseCount,
   };
@@ -857,17 +979,94 @@ const prepareAnswerRecord = (
   };
 };
 
+const stripTags = (value = "") => String(value || "").replace(/<[^>]*>/g, " ");
+
+const buildResponseSummary = (rows = []) =>
+  rows
+    .slice(0, 4)
+    .map((row) => `${row.question}: ${stripTags(row.answer)}`.trim())
+    .filter(Boolean)
+    .join(" | ");
+
+const formatWhatsappNumber = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("+")) return raw;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  return `+${digits}`;
+};
+
+const findRegisteredUserForContact = async (contact = {}) => {
+  const orConditions = [];
+  if (contact.email) {
+    orConditions.push({ email: contact.email });
+  }
+  if (contact.phone) {
+    orConditions.push({ mobile: contact.phone });
+    orConditions.push({ whatsappNumber: contact.phone });
+    orConditions.push({ mobile: `+91${contact.phone}` });
+    orConditions.push({ whatsappNumber: `+91${contact.phone}` });
+  }
+
+  if (!orConditions.length) {
+    return null;
+  }
+
+  return await User.findOne({ $or: orConditions }).lean();
+};
+
+const logNotification = async ({
+  formId,
+  responseId,
+  recipientUserId = null,
+  channel,
+  title = "",
+  summary = "",
+  actionUrl = "",
+  status = "sent",
+  error = "",
+}) => {
+  try {
+    await FormNotification.create({
+      formId,
+      responseId,
+      recipientUserId,
+      channel,
+      title,
+      summary,
+      actionUrl,
+      status,
+      error,
+      sentAt: status === "sent" ? new Date() : null,
+    });
+  } catch (logError) {
+    console.error("Failed to log form notification:", logError);
+  }
+};
+
 const sendSubmissionNotifications = async ({
   form,
   response,
   answers,
   adminUrl,
+  contact = {},
 }) => {
   const branding = await getBrandingSettings(form);
+  const emailTemplate = normalizeEmailTemplate(form.emailTemplate, form);
+  const notificationSettings = normalizeNotificationSettings(
+    form.notificationSettings,
+    form,
+  );
   const rows = formatSubmissionRows(answers);
-  const submittedAtText = new Date(
-    response.submittedAt || response.createdAt,
-  ).toLocaleString();
+  const answerContact = extractSummary(answers);
+  const submittedAt = new Date(response.submittedAt || response.createdAt);
+  const submittedAtText = submittedAt.toLocaleString();
+  const submittedDateText = submittedAt.toLocaleDateString();
+  const submittedTimeText = submittedAt.toLocaleTimeString();
+  const responseSummary = buildResponseSummary(rows);
 
   const createdByUser = form.createdBy
     ? await User.findById(form.createdBy).select("email").lean()
@@ -875,42 +1074,232 @@ const sendSubmissionNotifications = async ({
   const notificationRecipient =
     form.notificationEmail || createdByUser?.email || "";
 
-  if (notificationRecipient) {
-    await sendEmail({
-      to: notificationRecipient,
-      subject: `New Form Submission - ${form.title} - ${response.referenceId}`,
-      html: buildAdminFormSubmissionEmail({
-        formTitle: form.title,
-        submittedAt: submittedAtText,
-        referenceId: response.referenceId,
-        rows,
-        adminUrl,
-        branding,
-      }),
-    });
+  if (notificationRecipient && notificationSettings.sendEmailNotification) {
+    try {
+      await sendEmail({
+        to: notificationRecipient,
+        subject: `New Form Submission - ${form.title} - ${response.referenceId}`,
+        html: buildAdminFormSubmissionEmail({
+          formTitle: form.title,
+          submittedAt: submittedAtText,
+          referenceId: response.referenceId,
+          rows,
+          adminUrl,
+          branding,
+          emailTemplate,
+        }),
+      });
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "email",
+        title: `Email notification sent for ${form.title}`,
+        summary: responseSummary,
+        actionUrl: adminUrl,
+        status: "sent",
+      });
+    } catch (error) {
+      console.error("Failed to send admin email notification:", error);
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "email",
+        title: `Email notification failed for ${form.title}`,
+        summary: responseSummary,
+        actionUrl: adminUrl,
+        status: "failed",
+        error: error?.message || String(error),
+      });
+    }
   }
 
   const emailAnswer =
     answers.find((answer) => answer.question?.type === "email") ||
     answers.find((answer) => /[^\s@]+@[^\s@]+\.[^\s@]+/.test(String(answer.value || "")));
   if (form.confirmationEmailEnabled && emailAnswer?.value) {
-    await sendEmail({
-      to: String(emailAnswer.value),
-      subject: `Thank you for your submission - ${form.title}`,
-      html: buildUserConfirmationEmail({
-        formTitle: form.title,
-        submittedAt: submittedAtText,
-        referenceId: response.referenceId,
-        successMessage: form.successMessage,
-        rows,
-        publicUrl:
-          branding.brandWebsiteUrl ||
-          process.env.FRONTEND_URL ||
-          process.env.VITE_PUBLIC_URL ||
-          "",
-        branding,
-      }),
-    });
+    try {
+      await sendEmail({
+        to: String(emailAnswer.value),
+        subject: `Thank you for your submission - ${form.title}`,
+        html: buildUserConfirmationEmail({
+          formTitle: form.title,
+          submittedAt: submittedAtText,
+          successMessage: form.successMessage,
+          rows,
+          publicUrl:
+            branding.brandWebsiteUrl ||
+            process.env.FRONTEND_URL ||
+            process.env.VITE_PUBLIC_URL ||
+            "",
+          branding,
+          emailTemplate,
+        }),
+      });
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "email",
+        title: `Confirmation email sent for ${form.title}`,
+        summary: responseSummary,
+        status: "sent",
+      });
+    } catch (error) {
+      console.error("Failed to send confirmation email:", error);
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "email",
+        title: `Confirmation email failed for ${form.title}`,
+        summary: responseSummary,
+        status: "failed",
+        error: error?.message || String(error),
+      });
+    }
+  }
+
+  const matchedUser = await findRegisteredUserForContact({
+    email: notificationSettings.sendDashboardNotification ? contact.email : "",
+    phone: notificationSettings.sendDashboardNotification ? contact.phone : "",
+  });
+  if (notificationSettings.sendDashboardNotification && matchedUser?._id) {
+    try {
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        recipientUserId: matchedUser._id,
+        channel: "dashboard",
+        title: `New form submission: ${form.title}`,
+        summary: responseSummary,
+        actionUrl: adminUrl,
+        status: "sent",
+      });
+    } catch (error) {
+      console.error("Failed to store dashboard notification:", error);
+    }
+  }
+
+  if (
+    notificationSettings.sendTelegramNotification &&
+    notificationSettings.telegramBotToken &&
+    notificationSettings.telegramChatId
+  ) {
+    const telegramMessage = [
+      `Form Name: ${form.title}`,
+      `Submitter Name: ${answerContact.name || "-"}`,
+      `Email: ${contact.email || "-"}`,
+      `Phone: ${contact.phone || "-"}`,
+      `Submitted Date: ${submittedDateText}`,
+      `Submitted Time: ${submittedTimeText}`,
+      `Response Summary: ${responseSummary || "-"}`,
+    ].join("\n");
+
+    try {
+      const telegramResponse = await fetch(
+        `https://api.telegram.org/bot${notificationSettings.telegramBotToken}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: notificationSettings.telegramChatId,
+            text: telegramMessage,
+          }),
+        },
+      );
+      if (!telegramResponse.ok) {
+        throw new Error(`Telegram API error: ${telegramResponse.status}`);
+      }
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "telegram",
+        title: `Telegram notification sent for ${form.title}`,
+        summary: responseSummary,
+        status: "sent",
+      });
+    } catch (error) {
+      console.error("Failed to send Telegram notification:", error);
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "telegram",
+        title: `Telegram notification failed for ${form.title}`,
+        summary: responseSummary,
+        status: "failed",
+        error: error?.message || String(error),
+      });
+    }
+  }
+
+  if (notificationSettings.sendWhatsAppNotification) {
+    const whatsappNumber = formatWhatsappNumber(contact.phone);
+    if (
+      !whatsappNumber ||
+      !notificationSettings.whatsappAccessToken ||
+      !notificationSettings.whatsappPhoneNumberId
+    ) {
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "whatsapp",
+        title: `WhatsApp notification skipped for ${form.title}`,
+        summary: responseSummary,
+        status: "skipped",
+        error: !whatsappNumber
+          ? "Phone number missing"
+          : "WhatsApp configuration missing",
+      });
+      return;
+    }
+
+    const whatsappMessage = [
+      `Thank you for your submission`,
+      `Form Name: ${form.title}`,
+      `Submitted Date: ${submittedDateText}`,
+      `Submitted Time: ${submittedTimeText}`,
+      `Success Message: ${form.successMessage || ""}`,
+      `Response Summary: ${responseSummary || "-"}`,
+    ].join("\n");
+
+    try {
+      const whatsappResponse = await fetch(
+        `https://graph.facebook.com/v22.0/${notificationSettings.whatsappPhoneNumberId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${notificationSettings.whatsappAccessToken}`,
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: whatsappNumber.replace(/^\+/, ""),
+            type: "text",
+            text: { body: whatsappMessage },
+          }),
+        },
+      );
+      if (!whatsappResponse.ok) {
+        throw new Error(`WhatsApp API error: ${whatsappResponse.status}`);
+      }
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "whatsapp",
+        title: `WhatsApp notification sent for ${form.title}`,
+        summary: responseSummary,
+        status: "sent",
+      });
+    } catch (error) {
+      console.error("Failed to send WhatsApp notification:", error);
+      await logNotification({
+        formId: form._id,
+        responseId: response._id,
+        channel: "whatsapp",
+        title: `WhatsApp notification failed for ${form.title}`,
+        summary: responseSummary,
+        status: "failed",
+        error: error?.message || String(error),
+      });
+    }
   }
 };
 
@@ -954,6 +1343,7 @@ export const getAdminForms = async () => {
     status: form.status || (form.active ? "live" : "draft"),
     active:
       (form.status || (form.active ? "live" : "draft")) === "live",
+    emailTemplate: normalizeEmailTemplate(form.emailTemplate, form),
     responseCount: countMap.get(String(form._id)) || 0,
     questionCount: questionCountMap.get(String(form._id)) || 0,
   }));
@@ -980,6 +1370,8 @@ export const updateForm = async (formId, payload) => {
   existing.status = formPayload.status;
   existing.successMessage = formPayload.successMessage;
   existing.bannerImageUrl = formPayload.bannerImageUrl;
+  existing.emailTemplate = formPayload.emailTemplate;
+  existing.notificationSettings = formPayload.notificationSettings;
   existing.notificationEmail = formPayload.notificationEmail;
   existing.confirmationEmailEnabled = formPayload.confirmationEmailEnabled;
   existing.allowFileUpload = formPayload.allowFileUpload;
@@ -1265,6 +1657,7 @@ export const submitForm = async ({
     form,
     response,
     answers: populatedAnswers,
+    contact,
     adminUrl:
       adminUrl ||
       `${process.env.FRONTEND_URL || process.env.VITE_PUBLIC_URL || ""}/admin/dashboard/forms`,

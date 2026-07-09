@@ -12,6 +12,7 @@ import chatRoutes from "./features/chat/chat.route.js";
 import adminRoutes from "./features/admin/admin.route.js";
 import settingsRoutes from "./features/settings/settings.route.js";
 import announcementsRoutes from "./features/announcements/announcements.route.js";
+import notificationRoutes from "./features/notifications/notification.route.js";
 import formRoutes from "./features/form/form.route.js";
 import { sendEmail } from "./services/email/sendEmail.js";
 import { resolveEmailProvider } from "./features/admin/otpProvider.service.js";
@@ -166,6 +167,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/forms", formRoutes);
 app.use("/api/announcements", announcementsRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/settings", settingsRoutes);
 
 console.log("Routes mounted");

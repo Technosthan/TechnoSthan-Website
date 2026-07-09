@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getDashboardStats, getChatHistory } from "./dashboardApi";
@@ -6,11 +6,13 @@ import Navbar from "../../components/Navbar";
 import AnnouncementBanner from "../../components/AnnouncementBanner";
 import Footer from "../../components/Footer";
 import { useTheme } from "../../contexts/ThemeContext";
+import { getMyNotifications } from "../../shared/lib/notificationsApi";
 import {
   User,
   BookOpen,
   HelpCircle,
   MessageCircle,
+  Bell,
   LogOut,
   Trophy,
   Target,
@@ -44,6 +46,7 @@ const DashboardPage = () => {
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const [dashboardData, setDashboardData] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -58,12 +61,14 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [dashboardStats, chatData] = await Promise.all([
+        const [dashboardStats, chatData, notificationData] = await Promise.all([
           getDashboardStats(),
           getChatHistory().catch(() => ({ data: { data: [] } })), // Handle if chat API fails
+          getMyNotifications().catch(() => ({ data: { data: [] } })),
         ]);
         setDashboardData(dashboardStats);
         setChatHistory(chatData.data.data || []);
+        setNotifications(notificationData.data.data || []);
       } catch (err) {
         console.error("Dashboard Error:", err);
         setError(err.message);
@@ -107,6 +112,7 @@ const DashboardPage = () => {
           contentCount: 25,
         });
         setChatHistory([]);
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
@@ -169,7 +175,7 @@ const DashboardPage = () => {
         className={`min-h-screen ${theme.bg} flex items-center justify-center`}
       >
         <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
+          <div className="text-6xl mb-4">âš ï¸</div>
           <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
             Oops! Something went wrong
           </h2>
@@ -207,7 +213,7 @@ const DashboardPage = () => {
               </div>
               <div>
                 <h2 className={`text-2xl font-bold ${theme.text}`}>
-                  Welcome back, {dashboardData?.profile?.name || "Farmer"}! 👋
+                  Welcome back, {dashboardData?.profile?.name || "Farmer"}! ðŸ‘‹
                 </h2>
                 <p className={`${theme.text} opacity-80`}>
                   Ready to continue your agricultural AgriTech Wiki journey?
@@ -499,7 +505,7 @@ const DashboardPage = () => {
                           Quiz Completed
                         </p>
                         <p className={`text-sm ${theme.text} opacity-60`}>
-                          Score: {activity.score}/{activity.total} •{" "}
+                          Score: {activity.score}/{activity.total} â€¢{" "}
                           {new Date(activity.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -519,73 +525,125 @@ const DashboardPage = () => {
               </motion.div>
             )}
           </div>
-          {/* Chat History Section */}
-          <motion.div
-            variants={itemVariants}
-            className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
-                <MessageCircle size={24} />
-                Recent AI Conversations
-              </h3>
-              <button
-                onClick={() => navigate("/chat")}
-                className={`${theme.link} text-sm font-medium cursor-pointer transition-colors`}
-              >
-                Open Chat →
-              </button>
-            </div>
-            <div className="space-y-4">
-              {chatHistory.slice(0, 5).map((chat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+          {/* Chat History & Notifications */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <motion.div
+              variants={itemVariants}
+              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
+                  <MessageCircle size={24} />
+                  Recent AI Conversations
+                </h3>
+                <button
+                  onClick={() => navigate("/chat")}
+                  className={`${theme.link} text-sm font-medium cursor-pointer transition-colors`}
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Bot className="text-white" size={14} />
+                  Open Chat ->
+                </button>
+              </div>
+              <div className="space-y-4">
+                {chatHistory.slice(0, 5).length ? (
+                  chatHistory.slice(0, 5).map((chat, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    >
+                      <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Bot className="text-white" size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
+                          You asked:
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                          {chat.message}
+                        </p>
+                        <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
+                          AI Response:
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                          {chat.response}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                          {new Date(chat.createdAt).toLocaleDateString()} - {" "}
+                          {new Date(chat.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <MessageCircle
+                      className="mx-auto mb-3 text-gray-400"
+                      size={32}
+                    />
+                    <p className="text-gray-500 dark:text-gray-400 mb-2">
+                      No chat history yet
+                    </p>
+                    <button
+                      onClick={() => navigate("/chat")}
+                      className={`${theme.link} text-sm font-medium transition-colors`}
+                    >
+                      Start a conversation ->
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
-                      You asked:
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                      {chat.message}
-                    </p>
-                    <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
-                      AI Response:
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
-                      {chat.response}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                      {new Date(chat.createdAt).toLocaleDateString()} •{" "}
-                      {new Date(chat.createdAt).toLocaleTimeString()}
+                )}
+              </div>
+            </motion.div>
+
+            <motion.div
+              variants={itemVariants}
+              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
+                  <Bell size={24} />
+                  Recent Notifications
+                </h3>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {notifications.length} new
+                </span>
+              </div>
+              <div className="space-y-4">
+                {notifications.slice(0, 5).length ? (
+                  notifications.slice(0, 5).map((notification) => (
+                    <div
+                      key={notification._id}
+                      className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    >
+                      <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Activity className="text-white" size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 dark:text-white text-sm mb-1">
+                          {notification.title || "Form notification"}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {notification.summary || "A new form response was received."}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                          {new Date(notification.createdAt).toLocaleDateString()} - {" "}
+                          {new Date(notification.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Bell className="mx-auto mb-3 text-gray-400" size={32} />
+                    <p className="text-gray-500 dark:text-gray-400">
+                      No new notifications
                     </p>
                   </div>
-                </motion.div>
-              )) || (
-                <div className="text-center py-8">
-                  <MessageCircle
-                    className="mx-auto mb-3 text-gray-400"
-                    size={32}
-                  />
-                  <p className="text-gray-500 dark:text-gray-400 mb-2">
-                    No chat history yet
-                  </p>
-                  <button
-                    onClick={() => navigate("/chat")}
-                    className={`${theme.link} text-sm font-medium transition-colors`}
-                  >
-                    Start a conversation →
-                  </button>
-                </div>
-              )}
-            </div>
-          </motion.div>{" "}
+                )}
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
 
@@ -595,3 +653,4 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+

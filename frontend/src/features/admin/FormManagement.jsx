@@ -19,6 +19,8 @@ import {
   MessageSquare,
   ListPlus,
   Upload,
+  Mail,
+  Bell,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
@@ -53,6 +55,85 @@ const QUESTION_TYPES = [
   { value: "sectionHeading", label: "Section Heading" },
 ];
 
+const EMAIL_TEMPLATE_PRESETS = {
+  "green-professional": {
+    label: "Green Professional",
+    headerBackgroundColor: "#166534",
+    bodyBackgroundColor: "#f0fdf4",
+    cardBackgroundColor: "#ffffff",
+    accentColor: "#16a34a",
+    textColor: "#0f172a",
+    buttonColor: "#16a34a",
+    borderRadius: 24,
+  },
+  "blue-corporate": {
+    label: "Blue Corporate",
+    headerBackgroundColor: "#1e3a8a",
+    bodyBackgroundColor: "#eff6ff",
+    cardBackgroundColor: "#ffffff",
+    accentColor: "#2563eb",
+    textColor: "#0f172a",
+    buttonColor: "#2563eb",
+    borderRadius: 22,
+  },
+  "dark-modern": {
+    label: "Dark Modern",
+    headerBackgroundColor: "#020617",
+    bodyBackgroundColor: "#0f172a",
+    cardBackgroundColor: "#111827",
+    accentColor: "#38bdf8",
+    textColor: "#e2e8f0",
+    buttonColor: "#38bdf8",
+    borderRadius: 28,
+  },
+  "minimal-white": {
+    label: "Minimal White",
+    headerBackgroundColor: "#ffffff",
+    bodyBackgroundColor: "#f8fafc",
+    cardBackgroundColor: "#ffffff",
+    accentColor: "#0f172a",
+    textColor: "#0f172a",
+    buttonColor: "#0f172a",
+    borderRadius: 18,
+  },
+  custom: {
+    label: "Custom",
+  },
+};
+
+const DEFAULT_EMAIL_TEMPLATE = {
+  preset: "green-professional",
+  headerTitle: "{{formName}}",
+  headerSubtitle: "Thank you for your submission",
+  successMessage: "Thank you for your response.",
+  footerText: "This email was sent automatically.",
+  companyName: "Technosthan AgriTech",
+  websiteButtonText: "Visit Website",
+  websiteButtonUrl: "",
+  headerBackgroundColor: "#166534",
+  bodyBackgroundColor: "#f0fdf4",
+  cardBackgroundColor: "#ffffff",
+  accentColor: "#16a34a",
+  textColor: "#0f172a",
+  buttonColor: "#16a34a",
+  borderRadius: 24,
+  logoUrl: "",
+  bannerImageUrl: "",
+};
+
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  sendEmailNotification: true,
+  sendDashboardNotification: false,
+  sendTelegramNotification: false,
+  telegramBotToken: "",
+  telegramChatId: "",
+  sendWhatsAppNotification: false,
+  whatsappAccessToken: "",
+  whatsappPhoneNumberId: "",
+  whatsappVerifyToken: "",
+  whatsappBusinessNumber: "",
+};
+
 const EMPTY_FORM = {
   title: "",
   description: "",
@@ -60,6 +141,8 @@ const EMPTY_FORM = {
   status: "draft",
   successMessage: "Thanks for your response.",
   bannerImageUrl: "",
+  emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
+  notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
   notificationEmail: "",
   confirmationEmailEnabled: false,
   allowFileUpload: false,
@@ -145,6 +228,167 @@ const normalizeNumberValidation = (validation = {}) => ({
   errorMessage: validation.errorMessage || "",
 });
 
+const normalizeEmailTemplate = (template = {}, form = {}) => {
+  const source = template && typeof template === "object" ? template : {};
+  const legacy = form && typeof form === "object" ? form : {};
+  return {
+    preset: source.preset || legacy.emailTemplate?.preset || DEFAULT_EMAIL_TEMPLATE.preset,
+    headerTitle: source.headerTitle ?? legacy.emailTemplate?.headerTitle ?? DEFAULT_EMAIL_TEMPLATE.headerTitle,
+    headerSubtitle:
+      source.headerSubtitle ?? legacy.emailTemplate?.headerSubtitle ?? DEFAULT_EMAIL_TEMPLATE.headerSubtitle,
+    successMessage:
+      source.successMessage ?? legacy.emailTemplate?.successMessage ?? legacy.successMessage ?? DEFAULT_EMAIL_TEMPLATE.successMessage,
+    footerText: source.footerText ?? legacy.emailTemplate?.footerText ?? DEFAULT_EMAIL_TEMPLATE.footerText,
+    companyName:
+      source.companyName ?? legacy.emailTemplate?.companyName ?? legacy.companyName ?? DEFAULT_EMAIL_TEMPLATE.companyName,
+    websiteButtonText:
+      source.websiteButtonText ?? legacy.emailTemplate?.websiteButtonText ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonText,
+    websiteButtonUrl:
+      source.websiteButtonUrl ?? legacy.emailTemplate?.websiteButtonUrl ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonUrl,
+    headerBackgroundColor:
+      source.headerBackgroundColor ?? legacy.emailTemplate?.headerBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor,
+    bodyBackgroundColor:
+      source.bodyBackgroundColor ?? legacy.emailTemplate?.bodyBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor,
+    cardBackgroundColor:
+      source.cardBackgroundColor ?? legacy.emailTemplate?.cardBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor,
+    accentColor:
+      source.accentColor ?? legacy.emailTemplate?.accentColor ?? DEFAULT_EMAIL_TEMPLATE.accentColor,
+    textColor: source.textColor ?? legacy.emailTemplate?.textColor ?? DEFAULT_EMAIL_TEMPLATE.textColor,
+    buttonColor: source.buttonColor ?? legacy.emailTemplate?.buttonColor ?? DEFAULT_EMAIL_TEMPLATE.buttonColor,
+    borderRadius:
+      source.borderRadius ?? legacy.emailTemplate?.borderRadius ?? DEFAULT_EMAIL_TEMPLATE.borderRadius,
+    logoUrl: source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
+    bannerImageUrl:
+      source.bannerImageUrl ?? legacy.emailTemplate?.bannerImageUrl ?? legacy.bannerImageUrl ?? "",
+  };
+};
+
+const normalizeNotificationSettings = (settings = {}, form = {}) => {
+  const source = settings && typeof settings === "object" ? settings : {};
+  const legacy = form && typeof form === "object" ? form : {};
+  return {
+    sendEmailNotification:
+      source.sendEmailNotification ??
+      legacy.notificationSettings?.sendEmailNotification ??
+      DEFAULT_NOTIFICATION_SETTINGS.sendEmailNotification,
+    sendDashboardNotification:
+      source.sendDashboardNotification ??
+      legacy.notificationSettings?.sendDashboardNotification ??
+      DEFAULT_NOTIFICATION_SETTINGS.sendDashboardNotification,
+    sendTelegramNotification:
+      source.sendTelegramNotification ??
+      legacy.notificationSettings?.sendTelegramNotification ??
+      DEFAULT_NOTIFICATION_SETTINGS.sendTelegramNotification,
+    telegramBotToken:
+      source.telegramBotToken ??
+      legacy.notificationSettings?.telegramBotToken ??
+      "",
+    telegramChatId:
+      source.telegramChatId ?? legacy.notificationSettings?.telegramChatId ?? "",
+    sendWhatsAppNotification:
+      source.sendWhatsAppNotification ??
+      legacy.notificationSettings?.sendWhatsAppNotification ??
+      DEFAULT_NOTIFICATION_SETTINGS.sendWhatsAppNotification,
+    whatsappAccessToken:
+      source.whatsappAccessToken ??
+      legacy.notificationSettings?.whatsappAccessToken ??
+      "",
+    whatsappPhoneNumberId:
+      source.whatsappPhoneNumberId ??
+      legacy.notificationSettings?.whatsappPhoneNumberId ??
+      "",
+    whatsappVerifyToken:
+      source.whatsappVerifyToken ??
+      legacy.notificationSettings?.whatsappVerifyToken ??
+      "",
+    whatsappBusinessNumber:
+      source.whatsappBusinessNumber ??
+      legacy.notificationSettings?.whatsappBusinessNumber ??
+      "",
+  };
+};
+
+const applyPresetToTemplate = (presetKey, currentTemplate = {}) => {
+  const preset = EMAIL_TEMPLATE_PRESETS[presetKey] || EMAIL_TEMPLATE_PRESETS.custom;
+  if (presetKey === "custom") {
+    return {
+      ...normalizeEmailTemplate(currentTemplate),
+      preset: "custom",
+    };
+  }
+
+  const { label: _label, ...presetStyles } = preset;
+  return {
+    ...normalizeEmailTemplate(currentTemplate),
+    preset: presetKey,
+    ...presetStyles,
+  };
+};
+
+const interpolateTemplateText = (value = "", context = {}) =>
+  String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, token) => {
+    const replacement = context[token];
+    return replacement === undefined || replacement === null ? "" : String(replacement);
+  });
+
+const isLightHexColor = (value = "") => {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^#([0-9a-f]{6})$/i);
+  if (!match) return false;
+  const hex = match[1];
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 160;
+};
+
+const buildTemplatePreview = (template = {}, formTitle = "") => {
+  const resolved = normalizeEmailTemplate(template, { title: formTitle });
+  const context = {
+    formName: formTitle || "Sample Form",
+    submissionDate: "09 Jul 2026, 01:24 PM",
+    userName: "John Doe",
+    userEmail: "john@example.com",
+    companyName: resolved.companyName || "Technosthan AgriTech",
+  };
+
+  const headerTitle = interpolateTemplateText(resolved.headerTitle, context) || context.formName;
+  const headerSubtitle =
+    interpolateTemplateText(resolved.headerSubtitle, context) || "Thank you for your submission";
+  const successMessage =
+    interpolateTemplateText(resolved.successMessage, context) ||
+    "Thank you for your response.";
+  const footerText = interpolateTemplateText(resolved.footerText, context);
+  const buttonText =
+    interpolateTemplateText(resolved.websiteButtonText, context) || "Visit Website";
+  const buttonUrl =
+    interpolateTemplateText(resolved.websiteButtonUrl, context) || "https://example.com";
+  const bannerUrl = resolved.bannerImageUrl || "";
+  const logoUrl = resolved.logoUrl || "";
+  const tableRows = [
+    { question: "Full Name", answer: "John Doe" },
+    { question: "Email", answer: "john@example.com" },
+    { question: "Phone", answer: "+91 98765 43210" },
+  ];
+
+  return {
+    resolved,
+    headerTextColor: isLightHexColor(resolved.headerBackgroundColor)
+      ? "#0f172a"
+      : "#ffffff",
+    headerTitle,
+    headerSubtitle,
+    successMessage,
+    footerText,
+    buttonText,
+    buttonUrl,
+    bannerUrl,
+    logoUrl,
+    tableRows,
+    context,
+  };
+};
+
 const parseOptionalNumber = (value) => {
   const text = String(value ?? "").trim();
   if (!text) return null;
@@ -200,6 +444,11 @@ const normalizeForm = (form) => ({
   status: form?.status || (form?.active ? "live" : "draft"),
   slug: form?.slug || form?.publicSlug || "",
   expiresAt: formatDateTimeLocal(form?.expiresAt),
+  emailTemplate: normalizeEmailTemplate(form?.emailTemplate, form),
+  notificationSettings: normalizeNotificationSettings(
+    form?.notificationSettings,
+    form,
+  ),
   questions: Array.isArray(form?.questions)
     ? form.questions.map(normalizeQuestion)
     : [],
@@ -326,7 +575,11 @@ const FormManagement = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("questions");
   const [selectedFormId, setSelectedFormId] = useState(null);
-  const [draft, setDraft] = useState(EMPTY_FORM);
+  const [draft, setDraft] = useState(() => ({
+    ...EMPTY_FORM,
+    emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
+    notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
+  }));
   const [responses, setResponses] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -382,7 +635,11 @@ const FormManagement = () => {
     setActiveTab("questions");
     setResponsesTab("list");
     setSlugTouched(false);
-    setDraft(EMPTY_FORM);
+    setDraft({
+      ...EMPTY_FORM,
+      emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
+      notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
+    });
     setResponses([]);
     setSelectedResponse(null);
   };
@@ -395,6 +652,33 @@ const FormManagement = () => {
       }
       return next;
     });
+  };
+
+  const updateEmailTemplate = (field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      emailTemplate: {
+        ...normalizeEmailTemplate(prev.emailTemplate),
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateEmailTemplatePreset = (presetKey) => {
+    setDraft((prev) => ({
+      ...prev,
+      emailTemplate: applyPresetToTemplate(presetKey, prev.emailTemplate),
+    }));
+  };
+
+  const updateNotificationSettings = (field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      notificationSettings: {
+        ...normalizeNotificationSettings(prev.notificationSettings, prev),
+        [field]: value,
+      },
+    }));
   };
 
   const updateQuestion = (index, field, value) => {
@@ -444,6 +728,38 @@ const FormManagement = () => {
           throw new Error("Image upload failed");
         }
         updateDraft("bannerImageUrl", imageUrl);
+        toast.success("Image uploaded");
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || error.message || "Failed to upload image",
+        );
+      }
+    };
+
+    upload();
+  };
+
+  const handleEmailTemplateImageFile = (field, file) => {
+    if (!file) {
+      updateEmailTemplate(field, "");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose a valid image file");
+      return;
+    }
+
+    const upload = async () => {
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await uploadFormBannerImage(formData);
+        const imageUrl = response.data?.data?.imageUrl || "";
+        if (!imageUrl) {
+          throw new Error("Image upload failed");
+        }
+        updateEmailTemplate(field, imageUrl);
         toast.success("Image uploaded");
       } catch (error) {
         toast.error(
@@ -761,6 +1077,11 @@ const FormManagement = () => {
     );
   }, [analysisRows]);
 
+  const emailTemplatePreview = useMemo(
+    () => buildTemplatePreview(draft.emailTemplate, draft.title),
+    [draft.emailTemplate, draft.title],
+  );
+
   return (
     <div className={`p-6 ${theme.text} space-y-6`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -936,6 +1257,8 @@ const FormManagement = () => {
             {[
               { id: "questions", label: "Questions", icon: ListPlus },
               { id: "settings", label: "Settings", icon: Settings },
+              { id: "notification-settings", label: "Notification Settings", icon: Bell },
+              { id: "email-template", label: "Email Template", icon: Mail },
               { id: "responses", label: "Responses", icon: MessageSquare },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -1310,6 +1633,483 @@ const FormManagement = () => {
                     />
                     Allow file/image uploads
                   </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "notification-settings" && (
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div className="text-lg font-semibold">Notification Settings</div>
+                <div className="text-sm text-slate-400">
+                  Enable the delivery channels you want for this form.
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={draft.notificationSettings?.sendEmailNotification !== false}
+                    onChange={(e) =>
+                      updateNotificationSettings("sendEmailNotification", e.target.checked)
+                    }
+                  />
+                  Email Notification
+                </label>
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={draft.notificationSettings?.sendDashboardNotification === true}
+                    onChange={(e) =>
+                      updateNotificationSettings("sendDashboardNotification", e.target.checked)
+                    }
+                  />
+                  Send Dashboard Notification
+                </label>
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={draft.notificationSettings?.sendTelegramNotification === true}
+                    onChange={(e) =>
+                      updateNotificationSettings("sendTelegramNotification", e.target.checked)
+                    }
+                  />
+                  Send Telegram Notification
+                </label>
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={draft.notificationSettings?.sendWhatsAppNotification === true}
+                    onChange={(e) =>
+                      updateNotificationSettings("sendWhatsAppNotification", e.target.checked)
+                    }
+                  />
+                  Send WhatsApp Notification
+                </label>
+              </div>
+
+              {draft.notificationSettings?.sendTelegramNotification && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Telegram Bot Token</label>
+                    <input
+                      value={draft.notificationSettings?.telegramBotToken || ""}
+                      onChange={(e) =>
+                        updateNotificationSettings("telegramBotToken", e.target.value)
+                      }
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="123456:ABC..."
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Telegram Chat ID</label>
+                    <input
+                      value={draft.notificationSettings?.telegramChatId || ""}
+                      onChange={(e) =>
+                        updateNotificationSettings("telegramChatId", e.target.value)
+                      }
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="-1001234567890"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {draft.notificationSettings?.sendWhatsAppNotification && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Access Token</label>
+                    <input
+                      value={draft.notificationSettings?.whatsappAccessToken || ""}
+                      onChange={(e) =>
+                        updateNotificationSettings("whatsappAccessToken", e.target.value)
+                      }
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="Meta access token"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Phone Number ID</label>
+                    <input
+                      value={draft.notificationSettings?.whatsappPhoneNumberId || ""}
+                      onChange={(e) =>
+                        updateNotificationSettings("whatsappPhoneNumberId", e.target.value)
+                      }
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="1234567890"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Verify Token (optional)</label>
+                    <input
+                      value={draft.notificationSettings?.whatsappVerifyToken || ""}
+                      onChange={(e) =>
+                        updateNotificationSettings("whatsappVerifyToken", e.target.value)
+                      }
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="optional"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Business Number</label>
+                    <input
+                      value={draft.notificationSettings?.whatsappBusinessNumber || ""}
+                      onChange={(e) =>
+                        updateNotificationSettings("whatsappBusinessNumber", e.target.value)
+                      }
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      placeholder="+91 9876543210"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "email-template" && (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div>
+                  <div className="text-lg font-semibold">Email Template</div>
+                  <div className="text-sm text-slate-400">
+                    Configure confirmation and notification emails for this form.
+                  </div>
+                </div>
+                <div className="text-xs text-slate-400">
+                  Variables: {"{{formName}}"}, {"{{submissionDate}}"}, {"{{userName}}"}, {"{{userEmail}}"}, {"{{responsesTable}}"}, {"{{companyName}}"}
+                </div>
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="space-y-5">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                    <label className="mb-3 block text-sm font-semibold">Theme Preset</label>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {Object.entries(EMAIL_TEMPLATE_PRESETS).map(([key, preset]) => {
+                        const active = (draft.emailTemplate?.preset || "green-professional") === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => updateEmailTemplatePreset(key)}
+                            className={`rounded-2xl border p-4 text-left transition ${
+                              active
+                                ? "border-green-500 bg-green-500/10 text-white"
+                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            <div className="font-semibold">{preset.label}</div>
+                            <div className="mt-2 flex gap-2">
+                              {key !== "custom" && (
+                                <>
+                                  <span className="h-4 w-4 rounded-full" style={{ backgroundColor: preset.headerBackgroundColor }} />
+                                  <span className="h-4 w-4 rounded-full" style={{ backgroundColor: preset.accentColor }} />
+                                  <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: preset.cardBackgroundColor }} />
+                                </>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Header Title</label>
+                      <input
+                        value={draft.emailTemplate?.headerTitle || ""}
+                        onChange={(e) => updateEmailTemplate("headerTitle", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="{{formName}}"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Header Subtitle</label>
+                      <input
+                        value={draft.emailTemplate?.headerSubtitle || ""}
+                        onChange={(e) => updateEmailTemplate("headerSubtitle", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="Thank you for your submission"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Success / Thank-you Message</label>
+                      <textarea
+                        value={draft.emailTemplate?.successMessage || ""}
+                        onChange={(e) => updateEmailTemplate("successMessage", e.target.value)}
+                        rows={3}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                        placeholder="Thank you for your response."
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Footer Text</label>
+                      <textarea
+                        value={draft.emailTemplate?.footerText || ""}
+                        onChange={(e) => updateEmailTemplate("footerText", e.target.value)}
+                        rows={3}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                        placeholder="This email was sent automatically."
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Company Name</label>
+                      <input
+                        value={draft.emailTemplate?.companyName || ""}
+                        onChange={(e) => updateEmailTemplate("companyName", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="Technosthan AgriTech"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Website Button Text</label>
+                      <input
+                        value={draft.emailTemplate?.websiteButtonText || ""}
+                        onChange={(e) => updateEmailTemplate("websiteButtonText", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="Visit Website"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold">Website Button URL</label>
+                      <input
+                        value={draft.emailTemplate?.websiteButtonUrl || ""}
+                        onChange={(e) => updateEmailTemplate("websiteButtonUrl", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Header Background</label>
+                      <input
+                        value={draft.emailTemplate?.headerBackgroundColor || ""}
+                        onChange={(e) => updateEmailTemplate("headerBackgroundColor", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="#166534"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Body Background</label>
+                      <input
+                        value={draft.emailTemplate?.bodyBackgroundColor || ""}
+                        onChange={(e) => updateEmailTemplate("bodyBackgroundColor", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="#f0fdf4"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Card Background</label>
+                      <input
+                        value={draft.emailTemplate?.cardBackgroundColor || ""}
+                        onChange={(e) => updateEmailTemplate("cardBackgroundColor", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="#ffffff"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Accent Color</label>
+                      <input
+                        value={draft.emailTemplate?.accentColor || ""}
+                        onChange={(e) => updateEmailTemplate("accentColor", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="#16a34a"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Text Color</label>
+                      <input
+                        value={draft.emailTemplate?.textColor || ""}
+                        onChange={(e) => updateEmailTemplate("textColor", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="#0f172a"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Button Color</label>
+                      <input
+                        value={draft.emailTemplate?.buttonColor || ""}
+                        onChange={(e) => updateEmailTemplate("buttonColor", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="#16a34a"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Border Radius</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={draft.emailTemplate?.borderRadius ?? ""}
+                        onChange={(e) => updateEmailTemplate("borderRadius", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        placeholder="24"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Logo URL</label>
+                        <input
+                          value={draft.emailTemplate?.logoUrl || ""}
+                          onChange={(e) => updateEmailTemplate("logoUrl", e.target.value)}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          placeholder="Paste logo image URL"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
+                          <Upload size={16} />
+                          <input
+                            type="file"
+                            hidden
+                            accept="image/*"
+                            onChange={(e) => handleEmailTemplateImageFile("logoUrl", e.target.files?.[0] || null)}
+                          />
+                          Upload Logo
+                        </label>
+                        {draft.emailTemplate?.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => updateEmailTemplate("logoUrl", "")}
+                            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Clear Logo
+                          </button>
+                        )}
+                      </div>
+                      {draft.emailTemplate?.logoUrl && (
+                        <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-4">
+                          <img
+                            src={resolveAssetUrl(draft.emailTemplate.logoUrl)}
+                            alt="Email logo preview"
+                            className="h-20 w-full object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Banner Image URL</label>
+                        <input
+                          value={draft.emailTemplate?.bannerImageUrl || ""}
+                          onChange={(e) => updateEmailTemplate("bannerImageUrl", e.target.value)}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          placeholder="Paste banner image URL"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
+                          <Upload size={16} />
+                          <input
+                            type="file"
+                            hidden
+                            accept="image/*"
+                            onChange={(e) => handleEmailTemplateImageFile("bannerImageUrl", e.target.files?.[0] || null)}
+                          />
+                          Upload Banner
+                        </label>
+                        {draft.emailTemplate?.bannerImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => updateEmailTemplate("bannerImageUrl", "")}
+                            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Clear Banner
+                          </button>
+                        )}
+                      </div>
+                      {draft.emailTemplate?.bannerImageUrl && (
+                        <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+                          <img
+                            src={resolveAssetUrl(draft.emailTemplate.bannerImageUrl)}
+                            alt="Email banner preview"
+                            className="h-32 w-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">Live Preview</div>
+                    <div className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl" style={{ backgroundColor: emailTemplatePreview.resolved.bodyBackgroundColor }}>
+                    <div style={{ backgroundColor: emailTemplatePreview.resolved.headerBackgroundColor, color: emailTemplatePreview.headerTextColor }} className="p-5">
+                      {emailTemplatePreview.logoUrl ? (
+                        <img
+                          src={resolveAssetUrl(emailTemplatePreview.logoUrl)}
+                          alt="Email preview logo"
+                          className="mb-4 h-12 w-full object-contain object-left"
+                        />
+                      ) : (
+                        <div className="mb-4 text-lg font-black">{emailTemplatePreview.context.companyName}</div>
+                      )}
+                      <div className="text-xs uppercase tracking-[0.25em] opacity-80">{emailTemplatePreview.context.companyName}</div>
+                      <div className="mt-2 text-2xl font-black">{emailTemplatePreview.headerTitle}</div>
+                      <p className="mt-2 text-sm leading-6 opacity-90">{emailTemplatePreview.headerSubtitle}</p>
+                    </div>
+
+                      {emailTemplatePreview.bannerUrl && (
+                        <div className="px-5 pt-5">
+                          <img
+                            src={resolveAssetUrl(emailTemplatePreview.bannerUrl)}
+                            alt="Email banner preview"
+                            className="h-40 w-full rounded-3xl object-cover"
+                          />
+                        </div>
+                      )}
+
+                      <div className="p-5" style={{ color: emailTemplatePreview.resolved.textColor }}>
+                        <div className="rounded-3xl border p-4" style={{ backgroundColor: emailTemplatePreview.resolved.bodyBackgroundColor, borderColor: emailTemplatePreview.resolved.accentColor }}>
+                          <div className="text-sm font-bold">{emailTemplatePreview.successMessage}</div>
+                          <div className="mt-3 space-y-1 text-xs leading-6 opacity-80">
+                            <div><strong>Form:</strong> {draft.title || "Sample Form"}</div>
+                            <div><strong>Submitted at:</strong> {emailTemplatePreview.context.submissionDate}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 overflow-hidden rounded-3xl border" style={{ borderColor: "rgba(148,163,184,0.18)", backgroundColor: emailTemplatePreview.resolved.cardBackgroundColor }}>
+                          <table className="min-w-full text-left text-sm">
+                            <tbody>
+                              {emailTemplatePreview.tableRows.map((row) => (
+                                <tr key={row.question} className="border-t first:border-t-0" style={{ borderColor: "rgba(148,163,184,0.18)" }}>
+                                  <td className="w-1/3 px-4 py-3 font-semibold" style={{ color: emailTemplatePreview.resolved.textColor, backgroundColor: "rgba(0,0,0,0.02)" }}>{row.question}</td>
+                                  <td className="px-4 py-3" style={{ color: emailTemplatePreview.resolved.textColor }}>{row.answer}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="mt-4">
+                          <a
+                            href={emailTemplatePreview.buttonUrl || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex rounded-2xl px-4 py-3 text-sm font-semibold text-white"
+                            style={{ backgroundColor: emailTemplatePreview.resolved.buttonColor || emailTemplatePreview.resolved.accentColor }}
+                          >
+                            {emailTemplatePreview.buttonText}
+                          </a>
+                        </div>
+
+                        {emailTemplatePreview.footerText && (
+                          <div className="mt-5 border-t pt-4 text-xs leading-6 opacity-80" style={{ borderColor: "rgba(148,163,184,0.18)" }}>
+                            {emailTemplatePreview.footerText}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

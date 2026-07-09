@@ -6,7 +6,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { useSettings } from "../contexts/SettingsContext";
-import { getUnreadCount } from "../shared/lib/announcementsApi";
+import { getMyUnreadNotificationCount } from "../shared/lib/notificationsApi";
 
 const LanguageSelector = ({
   currentLanguage = "en",
@@ -118,7 +118,7 @@ const Navbar = () => {
     const fetchCount = async () => {
       try {
         if (!token) return;
-        const res = await getUnreadCount();
+        const res = await getMyUnreadNotificationCount();
         if (!mounted) return;
         setUnread(res.data?.data?.count || 0);
       } catch (err) {
@@ -248,7 +248,7 @@ const Navbar = () => {
               </Link>
             )}
             <button
-              title="Announcements"
+              title="Notifications"
               onClick={() => navigate("/dashboard")}
               className="relative mr-3 cursor-pointer"
             >
@@ -298,7 +298,7 @@ const Navbar = () => {
         {token && (
           <div className="flex items-center gap-2">
             <button
-              title="Announcements"
+              title="Notifications"
               onClick={() => navigate("/dashboard")}
               className="relative cursor-pointer"
             >
