@@ -3,10 +3,7 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
-import {
-  getPublicFormBySlug,
-  submitPublicForm,
-} from "./formsApi";
+import { getPublicFormBySlug, submitPublicForm } from "./formsApi";
 import { CheckCircle2, Upload, Send, ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "../../shared/lib/axiosInstance";
 
@@ -27,12 +24,16 @@ const EXPIRY_COPY = {
     label: "Form expired on:",
   },
   hi: {
-    headline: "\u092f\u0939 \u092b\u093c\u0949\u0930\u094d\u092e \u0905\u092c \u092a\u094d\u0930\u0924\u093f\u0915\u094d\u0930\u093f\u092f\u093e\u090f\u0901 \u0938\u094d\u0935\u0940\u0915\u093e\u0930 \u0928\u0939\u0940\u0902 \u0915\u0930 \u0930\u0939\u093e \u0939\u0948\u0964",
-    label: "\u092b\u093c\u0949\u0930\u094d\u092e \u0938\u092e\u093e\u092a\u094d\u0924 \u0939\u0941\u0906:",
+    headline:
+      "\u092f\u0939 \u092b\u093c\u0949\u0930\u094d\u092e \u0905\u092c \u092a\u094d\u0930\u0924\u093f\u0915\u094d\u0930\u093f\u092f\u093e\u090f\u0901 \u0938\u094d\u0935\u0940\u0915\u093e\u0930 \u0928\u0939\u0940\u0902 \u0915\u0930 \u0930\u0939\u093e \u0939\u0948\u0964",
+    label:
+      "\u092b\u093c\u0949\u0930\u094d\u092e \u0938\u092e\u093e\u092a\u094d\u0924 \u0939\u0941\u0906:",
   },
   rj: {
-    headline: "\u0908 \u092b\u0949\u0930\u094d\u092e \u0905\u092c \u091c\u0935\u093e\u092c \u0938\u094d\u0935\u0940\u0915\u093e\u0930 \u0915\u094b\u0928\u0940 \u0915\u0930\u0948\u0964",
-    label: "\u092b\u0949\u0930\u094d\u092e \u0916\u0924\u094d\u092e \u092d\u094d\u092f\u094b:",
+    headline:
+      "\u0908 \u092b\u0949\u0930\u094d\u092e \u0905\u092c \u091c\u0935\u093e\u092c \u0938\u094d\u0935\u0940\u0915\u093e\u0930 \u0915\u094b\u0928\u0940 \u0915\u0930\u0948\u0964",
+    label:
+      "\u092b\u0949\u0930\u094d\u092e \u0916\u0924\u094d\u092e \u092d\u094d\u092f\u094b:",
   },
 };
 
@@ -67,19 +68,31 @@ const getNumberValidationMessage = (question, value) => {
   const digitCount = normalizedValue.replace(/^-/, "").length;
   const numericValue = Number(normalizedValue);
 
-  if (Number.isFinite(validation.minValue) && numericValue < validation.minValue) {
+  if (
+    Number.isFinite(validation.minValue) &&
+    numericValue < validation.minValue
+  ) {
     return customMessage;
   }
 
-  if (Number.isFinite(validation.maxValue) && numericValue > validation.maxValue) {
+  if (
+    Number.isFinite(validation.maxValue) &&
+    numericValue > validation.maxValue
+  ) {
     return customMessage;
   }
 
-  if (Number.isInteger(validation.minDigits) && digitCount < validation.minDigits) {
+  if (
+    Number.isInteger(validation.minDigits) &&
+    digitCount < validation.minDigits
+  ) {
     return customMessage;
   }
 
-  if (Number.isInteger(validation.maxDigits) && digitCount > validation.maxDigits) {
+  if (
+    Number.isInteger(validation.maxDigits) &&
+    digitCount > validation.maxDigits
+  ) {
     return customMessage;
   }
 
@@ -289,7 +302,8 @@ const PublicFormPage = () => {
               </label>
             ))}
           </div>
-        ) : question.type === "fileUpload" || question.type === "imageUpload" ? (
+        ) : question.type === "fileUpload" ||
+          question.type === "imageUpload" ? (
           <div className="space-y-3">
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
               <Upload size={16} />
@@ -345,7 +359,9 @@ const PublicFormPage = () => {
                   ? "tel"
                   : question.type === "number"
                     ? "number"
-                    : "text"
+                    : question.type === "date"
+                      ? "date"
+                      : "text"
             }
             step={question.type === "number" ? "1" : undefined}
             inputMode={question.type === "number" ? "numeric" : undefined}
@@ -370,7 +386,9 @@ const PublicFormPage = () => {
                   : e.target.value,
               )
             }
-            placeholder={question.placeholder}
+            placeholder={
+              question.type === "date" ? undefined : question.placeholder
+            }
             {...commonProps}
           />
         )}
@@ -443,13 +461,15 @@ const PublicFormPage = () => {
       setValues(initialValuesFromQuestions(form.questions || []));
       setFiles({});
       setSubmitting(false);
-      toast.success(getSuccessMessage(form, response.data?.data || response.data));
+      toast.success(
+        getSuccessMessage(form, response.data?.data || response.data),
+      );
     } catch (err) {
       const status = err.response?.status;
       const responseMessage = err.response?.data?.message || "";
-      const duplicateMessage =
-        "You have already filled this form.";
-      const validationMessage = responseMessage || err.message || "Failed to submit form";
+      const duplicateMessage = "You have already filled this form.";
+      const validationMessage =
+        responseMessage || err.message || "Failed to submit form";
       const serverMessage = "Something went wrong. Please try again.";
       const isClientValidationError =
         !status && err.message && !/Network Error/i.test(err.message);
@@ -477,7 +497,11 @@ const PublicFormPage = () => {
   const expiresAt = form?.expiresAt ? new Date(form.expiresAt) : null;
   const isExpired =
     Boolean(form?.isExpired) ||
-    Boolean(expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now());
+    Boolean(
+      expiresAt &&
+      !Number.isNaN(expiresAt.getTime()) &&
+      expiresAt.getTime() < Date.now(),
+    );
 
   if (loadingState) {
     return (
@@ -495,7 +519,10 @@ const PublicFormPage = () => {
     return (
       <div className={`min-h-screen ${theme.bgGradient} ${theme.text} p-6`}>
         <div className="mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-3xl border border-white/10 bg-white/5 p-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-green-300">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-green-300"
+          >
             <ArrowLeft size={16} /> Back to home
           </Link>
           <h1 className="text-3xl font-black">Form unavailable</h1>
@@ -512,7 +539,10 @@ const PublicFormPage = () => {
       <div className={`min-h-screen ${theme.bgGradient} ${theme.text}`}>
         <div className="mx-auto max-w-4xl px-6 py-8">
           <div className="mb-6 flex items-center justify-between">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-green-300">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm text-green-300"
+            >
               <ArrowLeft size={16} /> Home
             </Link>
           </div>
@@ -522,7 +552,9 @@ const PublicFormPage = () => {
             {expiresAt && !Number.isNaN(expiresAt.getTime()) && (
               <p className="mt-3 text-sm text-slate-300">
                 {expiryCopy.label}{" "}
-                <span className="font-semibold">{formatDateTime(expiresAt)}</span>
+                <span className="font-semibold">
+                  {formatDateTime(expiresAt)}
+                </span>
               </p>
             )}
           </div>
@@ -535,7 +567,10 @@ const PublicFormPage = () => {
     <div className={`min-h-screen ${theme.bgGradient} ${theme.text}`}>
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-green-300">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-green-300"
+          >
             <ArrowLeft size={16} /> Home
           </Link>
         </div>
