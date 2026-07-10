@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import i18n from "../i18n/i18n.js";
 import { getPublicSettings } from "../shared/lib/settingsApi";
+import { resolveAssetUrl } from "../shared/lib/assetUrl";
 
 const LANGUAGE_CODE_MAP = {
   en: "en",
@@ -39,7 +40,8 @@ const normalizeSettings = (input = {}, fallback = {}) => {
 
   return {
     appName: merged.appName || "Technosthan AgriTech",
-    logoUrl: merged.logoUrl || "",
+    logoUrl: resolveAssetUrl(merged.logoAsset || merged.logoUrl || ""),
+    logoAsset: merged.logoAsset || null,
     language: input.language || fallback.language || "english",
     websiteLanguage,
     aiSettings: {

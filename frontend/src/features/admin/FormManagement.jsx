@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -35,8 +35,8 @@ import {
   getAdminFormResponses,
   updateAdminForm,
 } from "../forms/formsApi";
-import { uploadFormBannerImage } from "./adminApi";
-import { API_BASE_URL } from "../../shared/lib/axiosInstance";
+import { deleteCloudinaryAsset, uploadFormBannerImage } from "./adminApi";
+import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
 
 const QUESTION_TYPES = [
   { value: "One line Text", label: "One Line Text" },
@@ -118,7 +118,9 @@ const DEFAULT_EMAIL_TEMPLATE = {
   buttonColor: "#16a34a",
   borderRadius: 24,
   logoUrl: "",
+  logoAsset: null,
   bannerImageUrl: "",
+  bannerImageAsset: null,
 };
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -141,6 +143,7 @@ const EMPTY_FORM = {
   status: "draft",
   successMessage: "Thanks for your response.",
   bannerImageUrl: "",
+  bannerImageAsset: null,
   emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
   notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
   notificationEmail: "",
@@ -258,8 +261,14 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
     borderRadius:
       source.borderRadius ?? legacy.emailTemplate?.borderRadius ?? DEFAULT_EMAIL_TEMPLATE.borderRadius,
     logoUrl: source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
+    logoAsset: source.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
     bannerImageUrl:
       source.bannerImageUrl ?? legacy.emailTemplate?.bannerImageUrl ?? legacy.bannerImageUrl ?? "",
+    bannerImageAsset:
+      source.bannerImageAsset ??
+      legacy.emailTemplate?.bannerImageAsset ??
+      legacy.bannerImageAsset ??
+      null,
   };
 };
 
@@ -363,8 +372,8 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     interpolateTemplateText(resolved.websiteButtonText, context) || "Visit Website";
   const buttonUrl =
     interpolateTemplateText(resolved.websiteButtonUrl, context) || "https://example.com";
-  const bannerUrl = resolved.bannerImageUrl || "";
-  const logoUrl = resolved.logoUrl || "";
+  const bannerUrl = resolved.bannerImageAsset || resolved.bannerImageUrl || "";
+  const logoUrl = resolved.logoAsset || resolved.logoUrl || "";
   const tableRows = [
     { question: "Full Name", answer: "John Doe" },
     { question: "Email", answer: "john@example.com" },
@@ -474,21 +483,6 @@ const getResponseText = (response) => {
     .toLowerCase();
 };
 
-const resolveAssetUrl = (url = "") => {
-  const value = String(url || "").trim();
-  if (!value) return "";
-  if (/^https?:\/\//i.test(value)) {
-    if (value.includes("/uploads/") && API_BASE_URL) {
-      return value.replace(/^https?:\/\/[^/]+/, API_BASE_URL);
-    }
-    return value;
-  }
-  if (value.startsWith("/uploads/") && API_BASE_URL) {
-    return `${API_BASE_URL}${value}`;
-  }
-  return value;
-};
-
 const getAnswerText = (answer) => {
   if (!answer) return "";
   if (Array.isArray(answer.value)) return answer.value.join(", ");
@@ -595,6 +589,8 @@ const FormManagement = () => {
   const [analysisAvailabilityFilter, setAnalysisAvailabilityFilter] = useState("all");
   const [analysisEmailFilter, setAnalysisEmailFilter] = useState("all");
   const [analysisPhoneFilter, setAnalysisPhoneFilter] = useState("all");
+  const lastSavedFormRef = useRef(null);
+  const sessionUploadedAssetsRef = useRef([]);
 
   const loadForms = async () => {
     setLoading(true);
@@ -618,12 +614,15 @@ const FormManagement = () => {
     setResponsesTab("list");
     setSlugTouched(true);
     setSelectedResponse(null);
+    sessionUploadedAssetsRef.current = [];
     try {
       const [detailRes, responseRes] = await Promise.all([
         getAdminFormById(form._id),
         getAdminFormResponses(form._id),
       ]);
-      setDraft(normalizeForm(detailRes.data?.data || form));
+      const normalized = normalizeForm(detailRes.data?.data || form);
+      lastSavedFormRef.current = normalized;
+      setDraft(normalized);
       setResponses(normalizeResponsesPayload(responseRes.data?.data));
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load form");
@@ -640,6 +639,8 @@ const FormManagement = () => {
       emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
       notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
     });
+    lastSavedFormRef.current = null;
+    sessionUploadedAssetsRef.current = [];
     setResponses([]);
     setSelectedResponse(null);
   };
@@ -710,6 +711,7 @@ const FormManagement = () => {
   const handleBannerImageFile = (file) => {
     if (!file) {
       updateDraft("bannerImageUrl", "");
+      updateDraft("bannerImageAsset", null);
       return;
     }
 
@@ -722,12 +724,37 @@ const FormManagement = () => {
       try {
         const formData = new FormData();
         formData.append("image", file);
+        formData.append("folder", "forms/banners");
         const response = await uploadFormBannerImage(formData);
-        const imageUrl = response.data?.data?.imageUrl || "";
+        const uploadData = response.data?.data || {};
+        const imageUrl = uploadData.imageUrl || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
         updateDraft("bannerImageUrl", imageUrl);
+        updateDraft("bannerImageAsset", {
+          url: uploadData.url || imageUrl,
+          secureUrl: uploadData.secureUrl || imageUrl,
+          publicId: uploadData.publicId || "",
+          resourceType: uploadData.resourceType || "image",
+          format: uploadData.format || "",
+          originalName: uploadData.originalName || file.name,
+          mimeType: uploadData.mimeType || file.type,
+          size: uploadData.size || file.size,
+          bytes: uploadData.size || file.size,
+          width: uploadData.asset?.width || null,
+          height: uploadData.asset?.height || null,
+          version: uploadData.asset?.version || null,
+          folder: uploadData.asset?.folder || "technosthan/forms/banners",
+        });
+        registerSessionAsset(
+          uploadData.asset || {
+            publicId: uploadData.publicId || "",
+            resourceType: uploadData.resourceType || "image",
+            url: uploadData.url || imageUrl,
+            secureUrl: uploadData.secureUrl || imageUrl,
+          },
+        );
         toast.success("Image uploaded");
       } catch (error) {
         toast.error(
@@ -742,6 +769,7 @@ const FormManagement = () => {
   const handleEmailTemplateImageFile = (field, file) => {
     if (!file) {
       updateEmailTemplate(field, "");
+      updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", null);
       return;
     }
 
@@ -754,12 +782,42 @@ const FormManagement = () => {
       try {
         const formData = new FormData();
         formData.append("image", file);
+        formData.append(
+          "folder",
+          field === "logoUrl"
+            ? "forms/email-templates"
+            : "forms/email-templates",
+        );
         const response = await uploadFormBannerImage(formData);
-        const imageUrl = response.data?.data?.imageUrl || "";
+        const uploadData = response.data?.data || {};
+        const imageUrl = uploadData.imageUrl || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
         updateEmailTemplate(field, imageUrl);
+        updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", {
+          url: uploadData.url || imageUrl,
+          secureUrl: uploadData.secureUrl || imageUrl,
+          publicId: uploadData.publicId || "",
+          resourceType: uploadData.resourceType || "image",
+          format: uploadData.format || "",
+          originalName: uploadData.originalName || file.name,
+          mimeType: uploadData.mimeType || file.type,
+          size: uploadData.size || file.size,
+          bytes: uploadData.size || file.size,
+          width: uploadData.asset?.width || null,
+          height: uploadData.asset?.height || null,
+          version: uploadData.asset?.version || null,
+          folder: uploadData.asset?.folder || "technosthan/forms/email-templates",
+        });
+        registerSessionAsset(
+          uploadData.asset || {
+            publicId: uploadData.publicId || "",
+            resourceType: uploadData.resourceType || "image",
+            url: uploadData.url || imageUrl,
+            secureUrl: uploadData.secureUrl || imageUrl,
+          },
+        );
         toast.success("Image uploaded");
       } catch (error) {
         toast.error(
@@ -815,6 +873,98 @@ const FormManagement = () => {
     });
   };
 
+  const getAssetPublicId = (asset) =>
+    asset && typeof asset === "object" ? asset.publicId || asset.public_id || "" : "";
+
+  const registerSessionAsset = (asset) => {
+    const publicId = getAssetPublicId(asset);
+    if (!publicId) return;
+
+    sessionUploadedAssetsRef.current = [
+      ...sessionUploadedAssetsRef.current.filter(
+        (item) => getAssetPublicId(item) !== publicId,
+      ),
+      asset,
+    ];
+  };
+
+  const collectSavedAssetPublicIds = (form) =>
+    new Set(
+      [
+        form?.bannerImageAsset,
+        form?.emailTemplate?.logoAsset,
+        form?.emailTemplate?.bannerImageAsset,
+      ]
+        .filter(Boolean)
+        .map((asset) => getAssetPublicId(asset))
+        .filter(Boolean),
+    );
+
+  const cleanupSessionUploads = async (savedForm) => {
+    const keepIds = collectSavedAssetPublicIds(savedForm);
+    const assetsToDelete = sessionUploadedAssetsRef.current.filter((asset) => {
+      const publicId = getAssetPublicId(asset);
+      return publicId && !keepIds.has(publicId);
+    });
+
+    await Promise.all(
+      assetsToDelete.map((asset) =>
+        deleteCloudinaryAsset({
+          publicId: getAssetPublicId(asset),
+          resourceType: asset?.resourceType || "image",
+        }).catch((error) => {
+          console.warn("Failed to delete temporary uploaded asset:", error.message);
+        }),
+      ),
+    );
+
+    sessionUploadedAssetsRef.current = sessionUploadedAssetsRef.current.filter((asset) =>
+      keepIds.has(getAssetPublicId(asset)),
+    );
+  };
+
+  const cleanupReplacedAssets = async (previousForm, nextForm) => {
+    const previousBanner = previousForm?.bannerImageAsset || null;
+    const nextBanner = nextForm?.bannerImageAsset || null;
+    const previousLogo = previousForm?.emailTemplate?.logoAsset || null;
+    const nextLogo = nextForm?.emailTemplate?.logoAsset || null;
+    const previousTemplateBanner =
+      previousForm?.emailTemplate?.bannerImageAsset || null;
+    const nextTemplateBanner = nextForm?.emailTemplate?.bannerImageAsset || null;
+
+    const assetsToDelete = [
+      {
+        previous: previousBanner,
+        current: nextBanner,
+      },
+      {
+        previous: previousLogo,
+        current: nextLogo,
+      },
+      {
+        previous: previousTemplateBanner,
+        current: nextTemplateBanner,
+      },
+    ]
+      .filter(({ previous, current }) => {
+        const previousId = getAssetPublicId(previous);
+        const currentId = getAssetPublicId(current);
+        return previousId && previousId !== currentId;
+      })
+      .map(({ previous }) => previous);
+
+    await Promise.all(
+      assetsToDelete.map((asset) =>
+        deleteCloudinaryAsset({
+          publicId: getAssetPublicId(asset),
+          resourceType: asset?.resourceType || "image",
+        }).catch((error) => {
+          console.warn("Failed to delete replaced asset:", error.message);
+        }),
+      ),
+    );
+  };
+
   const saveForm = async (nextStatus = draft.status) => {
     if (!draft.title.trim()) {
       toast.error("Form title is required");
@@ -840,11 +990,21 @@ const FormManagement = () => {
 
     setSaving(true);
     try {
+      const previousForm = lastSavedFormRef.current;
       const res = selectedFormId
         ? await updateAdminForm(selectedFormId, payload)
         : await createAdminForm(payload);
 
       const saved = res.data?.data;
+      await cleanupReplacedAssets(previousForm, {
+        ...saved,
+        emailTemplate: saved?.emailTemplate || payload.emailTemplate,
+      });
+      await cleanupSessionUploads({
+        ...saved,
+        emailTemplate: saved?.emailTemplate || payload.emailTemplate,
+      });
+      lastSavedFormRef.current = normalizeForm(saved || payload);
       toast.success(selectedFormId ? "Form updated" : "Form created");
       await loadForms();
       if (saved?._id) {
@@ -857,6 +1017,7 @@ const FormManagement = () => {
         status: nextStatus,
       }));
     } catch (error) {
+      await cleanupSessionUploads(lastSavedFormRef.current);
       toast.error(error.response?.data?.message || "Failed to save form");
     } finally {
       setSaving(false);
@@ -1572,7 +1733,10 @@ const FormManagement = () => {
                       <label className="mb-2 block text-sm font-semibold">Form Banner Image</label>
                       <input
                         value={draft.bannerImageUrl}
-                        onChange={(e) => updateDraft("bannerImageUrl", e.target.value)}
+                        onChange={(e) => {
+                          updateDraft("bannerImageUrl", e.target.value);
+                          updateDraft("bannerImageAsset", null);
+                        }}
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="Paste image URL"
                       />
@@ -1588,20 +1752,23 @@ const FormManagement = () => {
                         />
                         Upload Image
                       </label>
-                      {draft.bannerImageUrl && (
-                        <button
-                          type="button"
-                          onClick={() => updateDraft("bannerImageUrl", "")}
-                          className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
-                        >
-                          Clear Image
+                        {draft.bannerImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateDraft("bannerImageUrl", "");
+                              updateDraft("bannerImageAsset", null);
+                            }}
+                            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Clear Image
                         </button>
                       )}
                     </div>
                     {draft.bannerImageUrl && (
                       <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
                         <img
-                          src={resolveAssetUrl(draft.bannerImageUrl)}
+                          src={getOptimizedImageUrl(draft.bannerImageAsset || draft.bannerImageUrl)}
                           alt="Form banner preview"
                           className="h-40 w-full object-cover"
                         />
@@ -1959,7 +2126,10 @@ const FormManagement = () => {
                         <label className="mb-2 block text-sm font-semibold">Logo URL</label>
                         <input
                           value={draft.emailTemplate?.logoUrl || ""}
-                          onChange={(e) => updateEmailTemplate("logoUrl", e.target.value)}
+                          onChange={(e) => {
+                            updateEmailTemplate("logoUrl", e.target.value);
+                            updateEmailTemplate("logoAsset", null);
+                          }}
                           className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                           placeholder="Paste logo image URL"
                         />
@@ -1978,7 +2148,10 @@ const FormManagement = () => {
                         {draft.emailTemplate?.logoUrl && (
                           <button
                             type="button"
-                            onClick={() => updateEmailTemplate("logoUrl", "")}
+                            onClick={() => {
+                              updateEmailTemplate("logoUrl", "");
+                              updateEmailTemplate("logoAsset", null);
+                            }}
                             className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
                           >
                             Clear Logo
@@ -1988,7 +2161,7 @@ const FormManagement = () => {
                       {draft.emailTemplate?.logoUrl && (
                         <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-4">
                           <img
-                            src={resolveAssetUrl(draft.emailTemplate.logoUrl)}
+                            src={getOptimizedImageUrl(draft.emailTemplate.logoAsset || draft.emailTemplate.logoUrl)}
                             alt="Email logo preview"
                             className="h-20 w-full object-contain"
                           />
@@ -2000,7 +2173,10 @@ const FormManagement = () => {
                         <label className="mb-2 block text-sm font-semibold">Banner Image URL</label>
                         <input
                           value={draft.emailTemplate?.bannerImageUrl || ""}
-                          onChange={(e) => updateEmailTemplate("bannerImageUrl", e.target.value)}
+                          onChange={(e) => {
+                            updateEmailTemplate("bannerImageUrl", e.target.value);
+                            updateEmailTemplate("bannerImageAsset", null);
+                          }}
                           className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                           placeholder="Paste banner image URL"
                         />
@@ -2019,7 +2195,10 @@ const FormManagement = () => {
                         {draft.emailTemplate?.bannerImageUrl && (
                           <button
                             type="button"
-                            onClick={() => updateEmailTemplate("bannerImageUrl", "")}
+                            onClick={() => {
+                              updateEmailTemplate("bannerImageUrl", "");
+                              updateEmailTemplate("bannerImageAsset", null);
+                            }}
                             className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
                           >
                             Clear Banner
@@ -2029,7 +2208,7 @@ const FormManagement = () => {
                       {draft.emailTemplate?.bannerImageUrl && (
                         <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
                           <img
-                            src={resolveAssetUrl(draft.emailTemplate.bannerImageUrl)}
+                            src={getOptimizedImageUrl(draft.emailTemplate.bannerImageAsset || draft.emailTemplate.bannerImageUrl)}
                             alt="Email banner preview"
                             className="h-32 w-full object-cover"
                           />
@@ -2046,7 +2225,7 @@ const FormManagement = () => {
                     <div style={{ backgroundColor: emailTemplatePreview.resolved.headerBackgroundColor, color: emailTemplatePreview.headerTextColor }} className="p-5">
                       {emailTemplatePreview.logoUrl ? (
                         <img
-                          src={resolveAssetUrl(emailTemplatePreview.logoUrl)}
+                          src={getOptimizedImageUrl(emailTemplatePreview.logoUrl)}
                           alt="Email preview logo"
                           className="mb-4 h-12 w-full object-contain object-left"
                         />
@@ -2061,7 +2240,7 @@ const FormManagement = () => {
                       {emailTemplatePreview.bannerUrl && (
                         <div className="px-5 pt-5">
                           <img
-                            src={resolveAssetUrl(emailTemplatePreview.bannerUrl)}
+                            src={getOptimizedImageUrl(emailTemplatePreview.bannerUrl)}
                             alt="Email banner preview"
                             className="h-40 w-full rounded-3xl object-cover"
                           />

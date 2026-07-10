@@ -110,10 +110,118 @@ const formSchema = new mongoose.Schema(
         default: "",
         trim: true,
       },
+      logoAsset: {
+        url: {
+          type: String,
+          default: "",
+        },
+        secureUrl: {
+          type: String,
+          default: "",
+        },
+        publicId: {
+          type: String,
+          default: "",
+        },
+        resourceType: {
+          type: String,
+          default: "",
+        },
+        format: {
+          type: String,
+          default: "",
+        },
+        originalName: {
+          type: String,
+          default: "",
+        },
+        mimeType: {
+          type: String,
+          default: "",
+        },
+        size: {
+          type: Number,
+          default: 0,
+        },
+        bytes: {
+          type: Number,
+          default: 0,
+        },
+        width: {
+          type: Number,
+          default: null,
+        },
+        height: {
+          type: Number,
+          default: null,
+        },
+        version: {
+          type: Number,
+          default: null,
+        },
+        folder: {
+          type: String,
+          default: "",
+        },
+      },
       bannerImageUrl: {
         type: String,
         default: "",
         trim: true,
+      },
+      bannerImageAsset: {
+        url: {
+          type: String,
+          default: "",
+        },
+        secureUrl: {
+          type: String,
+          default: "",
+        },
+        publicId: {
+          type: String,
+          default: "",
+        },
+        resourceType: {
+          type: String,
+          default: "",
+        },
+        format: {
+          type: String,
+          default: "",
+        },
+        originalName: {
+          type: String,
+          default: "",
+        },
+        mimeType: {
+          type: String,
+          default: "",
+        },
+        size: {
+          type: Number,
+          default: 0,
+        },
+        bytes: {
+          type: Number,
+          default: 0,
+        },
+        width: {
+          type: Number,
+          default: null,
+        },
+        height: {
+          type: Number,
+          default: null,
+        },
+        version: {
+          type: Number,
+          default: null,
+        },
+        folder: {
+          type: String,
+          default: "",
+        },
       },
     },
     notificationSettings: {
@@ -168,6 +276,60 @@ const formSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    bannerImageAsset: {
+      url: {
+        type: String,
+        default: "",
+      },
+      secureUrl: {
+        type: String,
+        default: "",
+      },
+      publicId: {
+        type: String,
+        default: "",
+      },
+      resourceType: {
+        type: String,
+        default: "",
+      },
+      format: {
+        type: String,
+        default: "",
+      },
+      originalName: {
+        type: String,
+        default: "",
+      },
+      mimeType: {
+        type: String,
+        default: "",
+      },
+      size: {
+        type: Number,
+        default: 0,
+      },
+      bytes: {
+        type: Number,
+        default: 0,
+      },
+      width: {
+        type: Number,
+        default: null,
+      },
+      height: {
+        type: Number,
+        default: null,
+      },
+      version: {
+        type: Number,
+        default: null,
+      },
+      folder: {
+        type: String,
+        default: "",
+      },
     },
     notificationEmail: {
       type: String,

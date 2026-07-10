@@ -22,6 +22,7 @@ import {
   Brain,
   Loader2,
 } from "lucide-react";
+import { getOptimizedImageUrl, resolveAssetUrl } from "../../shared/lib/assetUrl";
 
 const ContentPage = () => {
   const { theme } = useTheme();
@@ -669,19 +670,19 @@ const ContentPage = () => {
                                   </div>
                                 ) : isPDF(resource) ? (
                                   <iframe
-                                    src={resource.url}
+                                    src={resolveAssetUrl(resource.url)}
                                     title={resource.label}
                                     className="w-full h-96 rounded-xl border-0"
                                   />
                                 ) : isImage(resource) ? (
                                   <img
-                                    src={resource.url}
+                                    src={getOptimizedImageUrl(resource.url)}
                                     alt={resource.label}
                                     className="w-full rounded-xl max-h-96 object-contain"
                                   />
                                 ) : (
                                   <a
-                                    href={resource.url}
+                                    href={resolveAssetUrl(resource.url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-600 dark:text-blue-400 hover:underline"

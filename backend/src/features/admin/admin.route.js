@@ -1,7 +1,4 @@
 import express from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
 import {
   getAdminStats,
   getMonitoringStats,
@@ -69,27 +66,18 @@ import {
 
 import authMiddleware from "../../shared/middleware/authMiddleware.js";
 import adminOnly from "../../shared/middleware/adminOnly.js";
+import {
+  createMemoryUpload,
+  getCloudinaryFolder,
+  deleteCloudinaryAsset,
+  uploadBufferToCloudinary,
+} from "../../shared/services/cloudinary.service.js";
 
 const router = express.Router();
 
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `form-banner-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
-
-const imageUpload = multer({
-  storage: imageStorage,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
+const imageUpload = createMemoryUpload({
+  maxFileSize: 5 * 1024 * 1024,
+  allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
 });
 
 // All admin routes require authentication and admin role
@@ -184,6 +172,32 @@ router.get("/search", globalSearch);
 // Form management
 router.get("/forms", getAdminForms);
 router.post("/forms", createForm);
+router.delete("/uploads/cloudinary", async (req, res) => {
+  try {
+    const publicId = String(req.body?.publicId || "").trim();
+    const resourceType = String(req.body?.resourceType || "image").trim() || "image";
+
+    if (!publicId) {
+      return res.status(400).json({
+        success: false,
+        message: "publicId is required",
+      });
+    }
+
+    await deleteCloudinaryAsset(publicId, resourceType);
+
+    return res.json({
+      success: true,
+      message: "Asset deleted successfully",
+    });
+  } catch (error) {
+    console.error("[admin.route] cloudinary delete failed:", error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: "Failed to delete asset",
+    });
+  }
+});
 router.post("/forms/banner-image", (req, res, next) => {
   imageUpload.single("image")(req, res, (error) => {
     if (error) {
@@ -207,18 +221,46 @@ router.post("/forms/banner-image", (req, res, next) => {
       });
     }
 
-    const baseUrl =
-      process.env.API_URL ||
-      process.env.VITE_API_URL ||
-      process.env.RENDER_EXTERNAL_URL ||
-      `${req.protocol}://${req.get("host")}`;
+    const uploadPurpose = String(req.body?.folder || "").trim();
+    const folder = uploadPurpose
+      ? getCloudinaryFolder(uploadPurpose)
+      : getCloudinaryFolder("forms", "banners");
 
-    return res.status(201).json({
-      success: true,
-      data: {
-        imageUrl: `${baseUrl}/uploads/${req.file.filename}`,
-      },
-    });
+    uploadBufferToCloudinary({
+      buffer: req.file.buffer,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      folder,
+      resourceType: "image",
+    })
+      .then((asset) =>
+        res.status(201).json({
+          success: true,
+          data: {
+            imageUrl: asset.secureUrl,
+            url: asset.url,
+            secureUrl: asset.secureUrl,
+            publicId: asset.publicId,
+            resourceType: asset.resourceType,
+            format: asset.format,
+            originalName: asset.originalName,
+            mimeType: asset.mimeType,
+            size: asset.size,
+            asset,
+          },
+        }),
+      )
+      .catch((uploadError) => {
+        console.error("[admin.route] banner image upload failed:", uploadError);
+        return res.status(uploadError.statusCode || 500).json({
+          success: false,
+          message:
+            uploadError.statusCode === 503
+              ? "Upload service is not configured"
+              : "Failed to upload image",
+        });
+      });
   });
 });
 router.get("/forms/:formId", getAdminFormById);

@@ -4,6 +4,7 @@ dotenv.config();
 import mongoose from "mongoose";
 import app from "./app.js";
 import { migrateAISettings } from "./features/admin/aiMigration.service.js";
+import { validateCloudinaryConfig } from "./shared/services/cloudinary.service.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 
 const connectDB = async () => {
   try {
+    validateCloudinaryConfig();
     await mongoose.connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,

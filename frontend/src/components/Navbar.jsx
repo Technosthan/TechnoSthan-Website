@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { useSettings } from "../contexts/SettingsContext";
 import { getMyUnreadNotificationCount } from "../shared/lib/notificationsApi";
+import { getOptimizedImageUrl } from "../shared/lib/assetUrl";
 
 const LanguageSelector = ({
   currentLanguage = "en",
@@ -186,7 +187,7 @@ const Navbar = () => {
       {/* Logo and Brand */}
       <Link to="/" className="flex items-center gap-3" onClick={handleNavClick}>
         <img
-          src={appSettings.logoUrl || "/hero.png"}
+          src={getOptimizedImageUrl(appSettings.logoUrl || "/hero.png")}
           className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 ${theme.border} shadow`}
           alt={`${appSettings.appName || "TECHNOSTHAN AGRITECH"} Logo`}
         />

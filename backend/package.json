@@ -8,6 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "dotenv nodemon src/server.js",
     "start": "node src/server.js",
+    "migrate:uploads-to-cloudinary": "node scripts/migrate-uploads-to-cloudinary.js",
     "telegram:webhook": "node telegram-webhook.js",
     "telegram:webhook:dev": "nodemon telegram-webhook.js"
   },

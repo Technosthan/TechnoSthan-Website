@@ -16,6 +16,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
@@ -124,7 +125,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             >
               {appSettings.logoUrl ? (
                 <img
-                  src={appSettings.logoUrl}
+                  src={getOptimizedImageUrl(appSettings.logoUrl)}
                   alt={appSettings.appName || "Admin logo"}
                   className="w-12 h-12 rounded-2xl object-cover"
                 />

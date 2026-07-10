@@ -1,6 +1,4 @@
 import crypto from "crypto";
-import path from "path";
-import fs from "fs";
 import Form from "./form.model.js";
 import FormQuestion from "./formQuestion.model.js";
 import FormResponse from "./formResponse.model.js";
@@ -14,6 +12,14 @@ import {
   buildUserConfirmationEmail,
   formatSubmissionRows,
 } from "../../services/email/templates/formEmailTemplates.js";
+import {
+  deleteCloudinaryAsset,
+  getCloudinaryFolder,
+  getCloudinaryResourceType,
+  normalizeStoredAsset,
+  resolveStoredAssetUrl,
+  uploadBufferToCloudinary,
+} from "../../shared/services/cloudinary.service.js";
 
 const QUESTION_TYPES = new Set([
   "shortAnswer",
@@ -50,7 +56,9 @@ const DEFAULT_EMAIL_TEMPLATE = {
   buttonColor: "#16a34a",
   borderRadius: 24,
   logoUrl: "",
+  logoAsset: null,
   bannerImageUrl: "",
+  bannerImageAsset: null,
 };
 const DEFAULT_NOTIFICATION_SETTINGS = {
   sendEmailNotification: true,
@@ -70,6 +78,9 @@ const FILE_MIME_TYPES = new Set([
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -90,6 +101,31 @@ const slugify = (text = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/-+/g, "-");
+
+const toAssetPayload = (asset = null, fallbackUrl = "") => {
+  if (!asset && !fallbackUrl) {
+    return null;
+  }
+
+  const normalized = normalizeStoredAsset(asset, fallbackUrl);
+  if (!normalized || typeof normalized === "string") {
+    return null;
+  }
+
+  return {
+    ...normalized,
+    url: normalized.url || fallbackUrl || "",
+    secureUrl: normalized.secureUrl || normalized.url || fallbackUrl || "",
+  };
+};
+
+const resolveAssetUrl = (assetOrUrl = "") => {
+  const value =
+    typeof assetOrUrl === "object"
+      ? assetOrUrl?.secureUrl || assetOrUrl?.url || assetOrUrl?.fileUrl || ""
+      : assetOrUrl;
+  return resolveStoredAssetUrl(value);
+};
 
 const parseDateValue = (value) => {
   if (!value) return null;
@@ -202,6 +238,10 @@ const normalizeFormPayload = async (
       String(payload.successMessage || "").trim() ||
       "Thanks for your response.",
     bannerImageUrl: String(payload.bannerImageUrl || "").trim(),
+    bannerImageAsset: toAssetPayload(
+      payload.bannerImageAsset,
+      payload.bannerImageUrl,
+    ),
     emailTemplate: normalizeEmailTemplate(payload.emailTemplate, payload),
     notificationSettings: normalizeNotificationSettings(
       payload.notificationSettings,
@@ -273,6 +313,10 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       parseOptionalInteger(source.borderRadius ?? legacy.borderRadius) ??
       DEFAULT_EMAIL_TEMPLATE.borderRadius,
     logoUrl: String(pick("logoUrl", legacy.logoUrl, "")).trim(),
+    logoAsset: toAssetPayload(
+      pick("logoAsset", legacy.logoAsset, null),
+      pick("logoUrl", legacy.logoUrl, ""),
+    ),
     bannerImageUrl: String(
       pick(
         "bannerImageUrl",
@@ -281,6 +325,20 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
           "",
       ),
     ).trim(),
+    bannerImageAsset: toAssetPayload(
+      pick(
+        "bannerImageAsset",
+        legacy.bannerImageAsset,
+        legacy.emailTemplate?.bannerImageAsset,
+        null,
+      ),
+      pick(
+        "bannerImageUrl",
+        legacy.bannerImageUrl ||
+          legacy.emailTemplate?.bannerImageUrl ||
+          "",
+      ),
+    ),
   };
 };
 
@@ -312,7 +370,8 @@ const getBrandingSettings = async (form = {}) => {
   const settings = await Settings.findOne().lean();
   return {
     companyName: settings?.appName || "Technosthan AgriTech",
-    logoUrl: settings?.logoUrl || form?.logoUrl || "",
+    logoUrl:
+      resolveAssetUrl(settings?.logoAsset || settings?.logoUrl || form?.logoAsset || form?.logoUrl || ""),
     brandWebsiteUrl:
       settings?.brandWebsiteUrl ||
       process.env.FRONTEND_URL ||
@@ -806,17 +865,6 @@ const findLegacyDuplicateFormResponse = async (formId, contact = {}) => {
   );
 };
 
-const getFileUrl = (file, baseUrl = "") => {
-  const apiUrl =
-    baseUrl ||
-    process.env.API_URL ||
-    process.env.VITE_API_URL ||
-    process.env.RENDER_EXTERNAL_URL ||
-    "";
-  const publicPath = `/uploads/${file.filename}`;
-  return apiUrl ? `${apiUrl}${publicPath}` : publicPath;
-};
-
 const validateQuestionValue = (question, value, fileList = []) => {
   const isEmpty =
     value === undefined ||
@@ -928,7 +976,7 @@ const validateUploadedFiles = (question, fileEntries = []) => {
     if (question.type === "fileUpload") {
       if (!FILE_MIME_TYPES.has(file.mimetype)) {
         throw new Error(
-          `Question "${question.label}" only accepts PDF, DOC, DOCX, JPG, JPEG, PNG, or WEBP files`,
+          `Question "${question.label}" only accepts PDF, DOC, DOCX, MP4, WEBM, MOV, JPG, JPEG, PNG, or WEBP files`,
         );
       }
     }
@@ -945,19 +993,35 @@ const getFileEntriesByQuestion = (files = []) => {
   return map;
 };
 
-const prepareAnswerRecord = (
+const prepareAnswerRecord = async (
   question,
   submittedValue,
   fileEntries = [],
-  baseUrl = "",
+  uploadContext = {},
 ) => {
   if (fileEntries.length > 0) {
     const file = fileEntries[0];
+    const folder = getCloudinaryFolder(
+      "forms",
+      "responses",
+      uploadContext.formSlug || uploadContext.formId || "general",
+    );
+    const resourceType = getCloudinaryResourceType(file);
+    const asset = await uploadBufferToCloudinary({
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      folder,
+      resourceType,
+    });
+
     return {
       value: submittedValue ?? file.originalname,
-      fileUrl: getFileUrl(file, baseUrl),
+      fileUrl: asset.secureUrl,
       fileName: file.originalname,
       fileType: file.mimetype,
+      fileAsset: asset,
     };
   }
 
@@ -1370,6 +1434,7 @@ export const updateForm = async (formId, payload) => {
   existing.status = formPayload.status;
   existing.successMessage = formPayload.successMessage;
   existing.bannerImageUrl = formPayload.bannerImageUrl;
+  existing.bannerImageAsset = formPayload.bannerImageAsset;
   existing.emailTemplate = formPayload.emailTemplate;
   existing.notificationSettings = formPayload.notificationSettings;
   existing.notificationEmail = formPayload.notificationEmail;
@@ -1619,61 +1684,111 @@ export const submitForm = async ({
     throw error;
   }
 
-  const response = await FormResponse.create({
-    formId: form._id,
-    referenceId: `FRM-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    email: contact.email,
-    phone: contact.phone,
-    submittedAt: new Date(),
-    ipAddress,
-    userAgent,
-  });
+  const uploadedAssets = [];
+  const createdAnswerIds = [];
+  let response = null;
 
-  const insertedAnswers = [];
-  for (const item of answersToInsert) {
-    const payload = prepareAnswerRecord(
-      item.question,
-      item.submittedValue,
-      item.fileEntries,
-      publicBaseUrl,
-    );
-    insertedAnswers.push(
-      await FormResponseAnswer.create({
+  try {
+    response = await FormResponse.create({
+      formId: form._id,
+      referenceId: `FRM-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      email: contact.email,
+      phone: contact.phone,
+      submittedAt: new Date(),
+      ipAddress,
+      userAgent,
+    });
+
+    const insertedAnswers = [];
+    for (const item of answersToInsert) {
+      const payload = await prepareAnswerRecord(
+        item.question,
+        item.submittedValue,
+        item.fileEntries,
+        {
+          formId: String(form._id),
+          formSlug: form.slug || form.publicSlug || slugify(form.title),
+        },
+      );
+
+      if (payload.fileAsset?.publicId) {
+        uploadedAssets.push(payload.fileAsset);
+      }
+
+      const answerDoc = await FormResponseAnswer.create({
         responseId: response._id,
         questionId: item.question._id,
         ...payload,
-      }),
+      });
+      createdAnswerIds.push(answerDoc._id);
+      insertedAnswers.push(answerDoc);
+    }
+
+    const populatedAnswers = insertedAnswers.map((answer) => ({
+      ...answer.toObject(),
+      question: questions.find(
+        (question) => String(question._id) === String(answer.questionId),
+      ),
+    }));
+
+    void sendSubmissionNotifications({
+      form,
+      response,
+      answers: populatedAnswers,
+      contact,
+      adminUrl:
+        adminUrl ||
+        `${process.env.FRONTEND_URL || process.env.VITE_PUBLIC_URL || ""}/admin/dashboard/forms`,
+    }).catch((error) => {
+      console.error("Failed to send form submission notifications:", error);
+    });
+
+    return {
+      ...response.toObject(),
+      answers: populatedAnswers,
+      successMessage: form.successMessage,
+    };
+  } catch (error) {
+    await Promise.all(
+      uploadedAssets.map((asset) =>
+        deleteCloudinaryAsset(
+          asset.publicId,
+          asset.resourceType || "raw",
+        ).catch((cleanupError) => {
+          console.warn(
+            "[submitForm] Failed to delete uploaded asset after error:",
+            cleanupError.message,
+          );
+        }),
+      ),
     );
+
+    if (createdAnswerIds.length) {
+      await FormResponseAnswer.deleteMany({ _id: { $in: createdAnswerIds } }).catch(
+        (cleanupError) => {
+          console.warn(
+            "[submitForm] Failed to clean up partial answers after error:",
+            cleanupError.message,
+          );
+        },
+      );
+    }
+
+    if (response?._id) {
+      await FormResponse.deleteOne({ _id: response._id }).catch((cleanupError) => {
+        console.warn(
+          "[submitForm] Failed to clean up partial response after error:",
+          cleanupError.message,
+        );
+      });
+    }
+
+    throw error;
   }
-
-  const populatedAnswers = insertedAnswers.map((answer) => ({
-    ...answer.toObject(),
-    question: questions.find(
-      (question) => String(question._id) === String(answer.questionId),
-    ),
-  }));
-
-  void sendSubmissionNotifications({
-    form,
-    response,
-    answers: populatedAnswers,
-    contact,
-    adminUrl:
-      adminUrl ||
-      `${process.env.FRONTEND_URL || process.env.VITE_PUBLIC_URL || ""}/admin/dashboard/forms`,
-  }).catch((error) => {
-    console.error("Failed to send form submission notifications:", error);
-  });
-
-  return {
-    ...response.toObject(),
-    answers: populatedAnswers,
-    successMessage: form.successMessage,
-  };
 };
 
 export const createPublicFileEntry = (file) => ({
-  fileUrl: getFileUrl(file),
+  fileUrl: resolveStoredAssetUrl(file?.secureUrl || file?.url || ""),
   fileName: file.originalname,
   fileType: file.mimetype,
 });

@@ -163,6 +163,13 @@ export const submitPublicForm = async (req, res) => {
       data: submission,
     });
   } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({
+        success: false,
+        message: "Upload service is not configured",
+      });
+    }
+
     if (error.code === "FORM_EXPIRED") {
       return res.status(410).json({
         success: false,

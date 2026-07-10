@@ -5,7 +5,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getPublicFormBySlug, submitPublicForm } from "./formsApi";
 import { CheckCircle2, Upload, Send, ArrowLeft } from "lucide-react";
-import { API_BASE_URL } from "../../shared/lib/axiosInstance";
+import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
 
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -13,6 +13,9 @@ const FILE_MIME_TYPES = [
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -124,7 +127,7 @@ const validateSelectedFile = (questionType, file) => {
   }
 
   if (questionType === "fileUpload" && !FILE_MIME_TYPES.includes(file.type)) {
-    return "Only PDF, DOC, DOCX, JPG, JPEG, PNG, and WEBP files are allowed.";
+    return "Only PDF, DOC, DOCX, MP4, WEBM, MOV, JPG, JPEG, PNG, and WEBP files are allowed.";
   }
 
   return null;
@@ -133,21 +136,6 @@ const validateSelectedFile = (questionType, file) => {
 const getSuccessMessage = (form = {}, submitted = null) =>
   String(submitted?.successMessage || form?.successMessage || "").trim() ||
   "Form submitted successfully.";
-
-const resolveAssetUrl = (url = "") => {
-  const value = String(url || "").trim();
-  if (!value) return "";
-  if (/^https?:\/\//i.test(value)) {
-    if (value.includes("/uploads/") && API_BASE_URL) {
-      return value.replace(/^https?:\/\/[^/]+/, API_BASE_URL);
-    }
-    return value;
-  }
-  if (value.startsWith("/uploads/") && API_BASE_URL) {
-    return `${API_BASE_URL}${value}`;
-  }
-  return value;
-};
 
 const PublicFormPage = () => {
   const { slug } = useParams();
@@ -579,7 +567,7 @@ const PublicFormPage = () => {
           {form.bannerImageUrl && (
             <div className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/20">
               <img
-                src={resolveAssetUrl(form.bannerImageUrl)}
+                src={getOptimizedImageUrl(form.bannerImageAsset || form.bannerImageUrl)}
                 alt={form.title ? `${form.title} banner` : "Form banner"}
                 className="h-52 w-full object-cover sm:h-64"
                 loading="lazy"
@@ -589,7 +577,7 @@ const PublicFormPage = () => {
           <div className="flex items-center gap-4">
             {appSettings.logoUrl ? (
               <img
-                src={appSettings.logoUrl}
+                src={getOptimizedImageUrl(appSettings.logoUrl)}
                 alt={appSettings.appName}
                 className="h-16 w-16 rounded-2xl object-cover"
               />

@@ -1,63 +1,43 @@
 import { getAIResponse } from "./ai.service.js";
 import Chat from "./chat.model.js";
 import Conversation from "./conversation.model.js";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import { promisify } from "util";
 import * as pdfParse from "pdf-parse";
+import {
+  deleteCloudinaryAsset,
+  createMemoryUpload,
+  getCloudinaryFolder,
+  getCloudinaryResourceType,
+  uploadBufferToCloudinary,
+} from "../../shared/services/cloudinary.service.js";
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "application/pdf",
-      "text/plain",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/csv",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ];
-
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(`File type ${file.mimetype} is not allowed`), false);
-    }
-  },
+const upload = createMemoryUpload({
+  maxFileSize: 10 * 1024 * 1024,
+  allowedMimeTypes: [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ],
 });
 
 // Helper function to extract text from files
-const extractTextFromFile = async (filePath, mimeType) => {
+const extractTextFromBuffer = async (buffer, mimeType) => {
   try {
     if (mimeType.startsWith("text/")) {
-      const content = await promisify(fs.readFile)(filePath, "utf8");
-      return content;
+      return Buffer.from(buffer).toString("utf8");
     } else if (mimeType === "application/pdf") {
-      const dataBuffer = await promisify(fs.readFile)(filePath);
-      const data = await pdfParse(dataBuffer);
+      const data = await pdfParse(buffer);
       return data.text;
     } else if (mimeType.startsWith("image/")) {
       return "This is an image file. AI vision analysis would be implemented here to describe the image content.";
@@ -91,6 +71,8 @@ const createOrGetConversation = async ({
 };
 
 export const uploadFile = async (req, res) => {
+  let uploadedAsset = null;
+
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -110,7 +92,17 @@ export const uploadFile = async (req, res) => {
     }
 
     const file = req.file;
-    const fileContent = await extractTextFromFile(file.path, file.mimetype);
+    const fileContent = await extractTextFromBuffer(file.buffer, file.mimetype);
+    const resourceType = getCloudinaryResourceType(file);
+    const folder = getCloudinaryFolder("chat");
+    uploadedAsset = await uploadBufferToCloudinary({
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      folder,
+      resourceType,
+    });
 
     const analysisPrompt = `Please analyze this uploaded file and provide insights:
 
@@ -145,23 +137,18 @@ Please structure your response to include:
         conversationId: conversation._id,
         message: `File uploaded: ${file.originalname} - ${message}`,
         response: aiResponse,
-        file: {
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-          path: file.path,
-        },
-      });
+      file: {
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        path: uploadedAsset.secureUrl,
+        asset: uploadedAsset,
+      },
+    });
 
       await chatEntry.save();
       conversation.updatedAt = new Date();
       await conversation.save();
-    }
-
-    try {
-      await promisify(fs.unlink)(file.path);
-    } catch (cleanupError) {
-      console.warn("Failed to clean up uploaded file:", cleanupError);
     }
 
     res.json({
@@ -172,19 +159,26 @@ Please structure your response to include:
           name: file.originalname,
           type: file.mimetype,
           size: file.size,
+          url: uploadedAsset.secureUrl,
+          publicId: uploadedAsset.publicId,
+          resourceType: uploadedAsset.resourceType,
         },
       },
     });
   } catch (error) {
-    console.error("File upload error:", error);
-
-    if (req.file && req.file.path) {
-      try {
-        await promisify(fs.unlink)(req.file.path);
-      } catch (cleanupError) {
-        console.warn("Failed to clean up file after error:", cleanupError);
-      }
+    if (uploadedAsset?.publicId) {
+      await deleteCloudinaryAsset(
+        uploadedAsset.publicId,
+        uploadedAsset.resourceType || "raw",
+      ).catch((cleanupError) => {
+        console.warn(
+          "[chat.uploadFile] Failed to delete uploaded asset after error:",
+          cleanupError.message,
+        );
+      });
     }
+
+    console.error("File upload error:", error);
 
     let statusCode = 500;
     let errorMessage = "Failed to process uploaded file";
@@ -192,6 +186,9 @@ Please structure your response to include:
     if (error.message.includes("File too large")) {
       statusCode = 413;
       errorMessage = "File is too large. Maximum size is 10MB.";
+    } else if (error.statusCode === 503) {
+      statusCode = 503;
+      errorMessage = "Upload service is not configured";
     } else if (error.message.includes("not allowed")) {
       statusCode = 400;
       errorMessage = error.message;

@@ -73,6 +73,7 @@ app.use(
 );
 
 app.use(express.json());
+// Legacy support for previously uploaded local files.
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // General rate limiting

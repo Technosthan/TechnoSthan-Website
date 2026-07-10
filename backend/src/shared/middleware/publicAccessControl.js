@@ -7,6 +7,7 @@ const publicAccessControl = async (req, res, next) => {
       "/api/settings/public",
       "/api/health",
       "/api/forms",
+      "/api/admin/forms/banner-image",
       "/uploads",
     ];
 

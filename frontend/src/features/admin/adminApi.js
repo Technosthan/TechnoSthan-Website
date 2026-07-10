@@ -33,6 +33,10 @@ export const updateForm = (formId, formData) =>
   axiosInstance.put(`/api/admin/forms/${formId}`, formData);
 export const uploadFormBannerImage = (formData) =>
   axiosInstance.post("/api/admin/forms/banner-image", formData);
+export const deleteCloudinaryAsset = ({ publicId, resourceType }) =>
+  axiosInstance.delete("/api/admin/uploads/cloudinary", {
+    data: { publicId, resourceType },
+  });
 export const deleteForm = (formId) =>
   axiosInstance.delete(`/api/admin/forms/${formId}`);
 export const getFormSubmissions = (formId, params = {}) =>

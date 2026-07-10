@@ -793,7 +793,7 @@ const ChatPage = () => {
                 ref={fileInputRef}
                 onChange={handleFileSelect}
                 multiple
-                accept="image/*,.pdf,.txt,.doc,.docx,.csv,.xls,.xlsx"
+                accept="image/*,video/*,.pdf,.txt,.doc,.docx,.csv,.xls,.xlsx"
                 className="hidden"
               />
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">

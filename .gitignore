@@ -40,6 +40,9 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+uploads/
+backend/uploads/
+backend/.migration/
 
 # Coverage directory used by tools like istanbul
 coverage/
