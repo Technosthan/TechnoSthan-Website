@@ -27,12 +27,12 @@ const ProgramsLandingPage = () => {
     <section className="section">
       <div className="container">
         <SectionHeader
-          eyebrow="Programs"
+          // eyebrow="Programs"
           title="Choose your specialisation"
-          description="Innovation Hub programs are organised by clear learning tracks so learners can move from interest to outcome with focus."
+          // description="Innovation Hub programs are organised by clear learning tracks so learners can move from interest to outcome with focus."
         />
 
-        <div className="programs-intro card glass">
+        {/* <div className="programs-intro card glass">
           <div>
             <p className="badge">Innovation Hub Specialisations</p>
             <h3>Explore Techno or AgroSthan and open the program pathways inside each track.</h3>
@@ -48,7 +48,7 @@ const ProgramsLandingPage = () => {
               <Sparkles size={14} /> Focused filters
             </span>
           </div>
-        </div>
+        </div> */}
 
         {specialisations.length ? (
           <div className="grid programs-specialisation-grid">

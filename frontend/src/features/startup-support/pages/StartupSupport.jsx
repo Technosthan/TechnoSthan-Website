@@ -8,11 +8,11 @@ const StartupSupport = () => {
     <section className="section">
       <div className="container">
         <SectionHeader
-          eyebrow="Startup Support"
+          // eyebrow="Startup Support"
           title="Support that helps ideas become impact"
-          description="We guide startups from concept to commercialization with strategic, technical, and business assistance."
+          // description="We guide startups from concept to commercialization with strategic, technical, and business assistance."
         />
-        <div className="page-hero-card glass">
+        {/* <div className="page-hero-card glass">
           <div>
             <p className="badge">Founder Growth</p>
             <h3>
@@ -34,7 +34,7 @@ const StartupSupport = () => {
               <Sparkles size={14} /> Innovation
             </span>
           </div>
-        </div>
+        </div> */}
         <div className="grid cards-grid-3">
           {startupData.map((item) => (
             <StartupCard key={item.title} item={item} />

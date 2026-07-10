@@ -59,8 +59,8 @@ const Home = () => {
         <div className="container">
           <SectionHeader
             eyebrow="Programs Preview"
-            title="Premium programs built for ambitious learners"
-            description="Each route blends practical labs, portfolio work, and real outcomes."
+            // title="Premium programs built for ambitious learners"
+            // description="Each route blends practical labs, portfolio work, and real outcomes."
           />
           {programs.length ? (
             <div className="grid cards-grid-3">
@@ -77,8 +77,7 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <SectionHeader
-            eyebrow="Learning Journey"
-            title="From guidance to placement confidence"
+           
             description="A structured path that keeps progress visible and momentum high."
           />
           <div className="timeline-shell glass">
@@ -106,8 +105,7 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <SectionHeader
-            eyebrow="Live Projects"
-            title="Real products students can proudly showcase"
+           
             description="Every project reflects technical execution and practical problem-solving."
           />
           <div className="grid cards-grid-3">
@@ -132,8 +130,7 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <SectionHeader
-            eyebrow="Workshops Highlight"
-            title="Fast-paced sessions with expert-led mentorship"
+            
             description="Join practical workshops designed for rapid certification and portfolio growth."
           />
           {workshops.length ? (
@@ -175,8 +172,7 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <SectionHeader
-            eyebrow="Innovation Labs"
-            title="Spaces made for experimentation and product thinking"
+            
             description="Hands-on environments for research, prototyping, and advanced learning."
           />
           <div className="innovation-grid">
@@ -200,8 +196,7 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <SectionHeader
-            eyebrow="Student Success"
-            title="Outcomes that make a real difference"
+            
             description="The goal is simple: turn skills into credible career momentum."
           />
           <div className="grid cards-grid-4">
@@ -231,8 +226,8 @@ const Home = () => {
             className="card glass cta-card"
           >
             <div>
-              <p className="badge">Ready to begin?</p>
-              <h3>Build your future with practical innovation and real projects.</h3>
+              {/* <p className="badge">Ready to begin?</p>
+              <h3>Build your future with practical innovation and real projects.</h3> */}
               <p>
                 Join TechnoSthan Innovation Hub for training, internships,
                 startup support, and portfolio-ready growth.

@@ -5,11 +5,7 @@ const Contact = () => {
   return (
     <section className="section">
       <div className="container">
-        <SectionHeader
-          eyebrow="Contact"
-          title="Connect with TechnoSthan Innovation Hub"
-          description="Share your goals, projects, training needs, or innovation ideas and our team will respond promptly."
-        />
+       
         <div
           className="grid"
           style={{ gridTemplateColumns: "0.9fr 1.1fr", gap: "1.4rem" }}

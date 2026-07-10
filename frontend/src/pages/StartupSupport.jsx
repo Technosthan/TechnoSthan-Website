@@ -6,9 +6,9 @@ const StartupSupport = () => {
     <section className="section">
       <div className="container">
         <SectionHeader
-          eyebrow="Startup Support"
+          // eyebrow="Startup Support"
           title="Support that helps ideas become impact"
-          description="We guide startups from concept to commercialization with strategic, technical, and business assistance."
+          // description="We guide startups from concept to commercialization with strategic, technical, and business assistance."
         />
         <div
           className="grid"
