@@ -30,7 +30,7 @@ export const DEFAULT_BUSINESS_VERTICALS = [
     imageUrl: "DEFAULT_INNOVATION",
     image: innovationIcon,
     isDefault: true,
-    path: "/services/technosthan-innovations-hub",
+    path: "https://ih.technosthan.com",
     sortOrder: 2,
   },
   {

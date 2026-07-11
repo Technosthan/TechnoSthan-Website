@@ -6,6 +6,7 @@ import {
   LogOut,
   Megaphone,
   PanelsTopLeft,
+  Shapes,
   X,
   Users,
 } from "lucide-react";
@@ -71,6 +72,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               icon: Megaphone,
             },
             {
+              label: "Form Builder",
+              to: "/admin/forms",
+              icon: Shapes,
+            },
+            {
               label: "Page Content Manager",
               to: "/admin/page-content",
               icon: PanelsTopLeft,
@@ -90,7 +96,7 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-[100] flex w-64 transform flex-col border-r border-white/10 bg-slate-950 transition-transform duration-300 ease-in-out xl:translate-x-0 ${
+      className={`admin-sidebar-scrollbar fixed inset-y-0 left-0 z-[100] flex h-screen min-h-screen w-64 transform flex-col overflow-hidden border-r border-white/10 bg-slate-950 transition-transform duration-300 ease-in-out xl:translate-x-0 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -121,7 +127,7 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1.5 px-3 py-4">
+      <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden px-3 py-4 pb-8">
         {items.map((item) => {
           const IconComponent = item.icon;
           return (

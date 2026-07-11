@@ -52,6 +52,8 @@ const pageContentRoutes = require("./routes/pageContentRoutes");
 const adminBusinessVerticalRoutes = require("./routes/adminBusinessVerticalRoutes");
 const adminDailyTaskRoutes = require("./routes/adminDailyTaskRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const formAdminRoutes = require("./form/form.admin.route");
+const formPublicRoutes = require("./form/form.route");
 const dailyTaskSchedulerService = require("./services/dailyTaskSchedulerService");
 const { loadWorkspaceSettings } = require("./middleware/workspaceSettings");
 const {
@@ -487,6 +489,11 @@ app.use(
 );
 
 app.use(
+  "/api/admin/forms",
+  formAdminRoutes,
+);
+
+app.use(
   "/api/admin/business-verticals",
 
   adminBusinessVerticalRoutes,
@@ -572,6 +579,11 @@ app.use(
   "/api",
 
   pageContentRoutes,
+);
+
+app.use(
+  "/api/forms",
+  formPublicRoutes,
 );
 
 // ================= HEALTH CHECK =================

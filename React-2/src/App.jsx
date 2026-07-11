@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -26,6 +26,7 @@ import Register from "./component/Auth/Register";
 import Dashboard from "./component/Dashboard/Dashboard";
 import AdminDashboard from "./component/AdminDashboard/AdminDashboard";
 import AdminAssignments from "./component/Assignments/AdminAssignments";
+import AdminLayout from "./component/AdminLayout/AdminLayout";
 import AdminUsers from "./component/AdminLayout/AdminUsers";
 import ActivityLogs from "./component/AdminLayout/ActivityLogs";
 import WorkspaceServices from "./component/AdminLayout/WorkspaceServices";
@@ -66,16 +67,25 @@ import DataDeletion from "./pages/DataDeletion";
 import TechnoSthanHospitality from "./component/Services/TechnoSthanHospitality";
 import TechnoSthanInnovationsHub from "./component/Services/TechnoSthanInnovationsHub";
 import TechnoSthanAgritech from "./component/Services/TechnoSthanAgritech";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { SettingsProvider } from "./contexts/SettingsContext";
+
+const FormManagement = lazy(() => import("./component/AdminLayout/FormManagement"));
+const PublicFormPage = lazy(() => import("./forms/PublicFormPage"));
 
 /* WRAPPER */
 function AppWrapper() {
   return (
     <Router>
       <HelmetProvider>
-        <WorkspaceAccessProvider>
-          <ScrollToTop />
-          <App />
-        </WorkspaceAccessProvider>
+        <ThemeProvider>
+          <SettingsProvider>
+            <WorkspaceAccessProvider>
+              <ScrollToTop />
+              <App />
+            </WorkspaceAccessProvider>
+          </SettingsProvider>
+        </ThemeProvider>
       </HelmetProvider>
     </Router>
   );
@@ -98,6 +108,7 @@ function App() {
 
   const hideLayout =
     noGlobalLayoutPaths.includes(location.pathname) ||
+    location.pathname.startsWith("/forms/") ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/hr");
 
@@ -108,6 +119,29 @@ function App() {
       {!hideLayout && <CampaignPopup />}
 
       <Routes>
+        <Route
+          path="/admin/dashboard/forms"
+          element={<Navigate to="/admin/forms" replace />}
+        />
+
+        <Route
+          path="/forms/:slug"
+          element={
+            <Suspense
+              fallback={
+                <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
+                  <div className="mx-auto max-w-4xl space-y-4">
+                    <div className="h-20 animate-pulse rounded-3xl bg-white/10" />
+                    <div className="h-64 animate-pulse rounded-3xl bg-white/10" />
+                  </div>
+                </div>
+              }
+            >
+              <PublicFormPage />
+            </Suspense>
+          }
+        />
+
         {/* HOME */}
         <Route path="/" element={<Homepage />} />
 
@@ -222,6 +256,25 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <AdminDashboard />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/forms"
+          element={
+            <ProtectedAdminRoute>
+              <AdminLayout >
+                <Suspense
+                  fallback={
+                    <div className="rounded-[24px] border border-white/10 bg-white/5 p-8 text-slate-300">
+                      Loading Form Builder...
+                    </div>
+                  }
+                >
+                  <FormManagement />
+                </Suspense>
+              </AdminLayout>
             </ProtectedAdminRoute>
           }
         />
