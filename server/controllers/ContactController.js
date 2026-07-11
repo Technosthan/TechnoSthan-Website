@@ -47,6 +47,7 @@ exports.createContact = async (req, res) => {
     //  Email setup
     const transporter = nodemailer.createTransport({
       service: "gmail",
+      family: 4,
       auth: {
         user: process.env.EMAIL_USER,   //  from .env
         pass: process.env.EMAIL_PASS    //  App Password

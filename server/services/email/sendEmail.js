@@ -47,6 +47,7 @@ const buildTransport = () => {
 
     cachedTransport = nodemailer.createTransport({
       service: "gmail",
+      family: 4,
       auth: {
         user,
         pass,
@@ -60,6 +61,7 @@ const buildTransport = () => {
     host,
     port,
     secure,
+    family: 4,
     auth: {
       user,
       pass,
