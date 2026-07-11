@@ -59,6 +59,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const formAdminRoutes = require("./form/form.admin.route");
 const formPublicRoutes = require("./form/form.route");
 const dailyTaskSchedulerService = require("./services/dailyTaskSchedulerService");
+const { bootstrapEmailTransport } = require("./services/email/sendEmail");
 const { loadWorkspaceSettings } = require("./middleware/workspaceSettings");
 const {
   initializeDefaultPermissions,
@@ -648,6 +649,16 @@ mongoose
     // Initialize default permissions on startup
     await initializeDefaultPermissions();
     await dailyTaskSchedulerService.startDailyTaskScheduler(app);
+    const emailReady = await bootstrapEmailTransport();
+    if (!emailReady) {
+      console.warn("⚠️ Email transport bootstrap did not complete successfully.");
+    }
+
+    const PORT = process.env.PORT || 5000;
+
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
   })
 
   .catch((err) => {
@@ -667,17 +678,3 @@ app.use((err, req, res, next) => {
     message: err.message || "Internal Server Error",
   });
 });
-
-// ================= PORT =================
-
-const PORT = process.env.PORT || 5000;
-
-// ================= START SERVER =================
-
-server.listen(
-  PORT,
-
-  () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  },
-);

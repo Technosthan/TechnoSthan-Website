@@ -1,32 +1,7 @@
-const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const HRProfile = require("../models/HRProfile");
 const { sendWhatsAppMessage } = require("./whatsapp");
-
-const hasEmailConfig = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
-
-const getMailer = (() => {
-  let transporter = null;
-
-  return () => {
-    if (!hasEmailConfig) {
-      return null;
-    }
-
-    if (!transporter) {
-      transporter = nodemailer.createTransport({
-        service: "gmail",
-        family: 4,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-    }
-
-    return transporter;
-  };
-})();
+const { sendEmail, validateEmailEnvironment } = require("./email/sendEmail");
 
 const buildDailyTaskMessage = (instance, template) => {
   const timeLabel = template?.notificationTime || "09:00";
@@ -43,8 +18,9 @@ const buildDailyTaskMessage = (instance, template) => {
 };
 
 const sendDailyTaskEmail = async ({ recipient, instance, template }) => {
-  const transporter = getMailer();
-  if (!transporter) {
+  try {
+    validateEmailEnvironment();
+  } catch {
     return { delivered: false, skipped: true, reason: "email_not_configured" };
   }
 
@@ -52,8 +28,7 @@ const sendDailyTaskEmail = async ({ recipient, instance, template }) => {
     return { delivered: false, skipped: true, reason: "missing_email" };
   }
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+  await sendEmail({
     to: recipient.email,
     subject: `Daily Task: ${instance.title}`,
     html: `
@@ -67,6 +42,7 @@ const sendDailyTaskEmail = async ({ recipient, instance, template }) => {
         </ul>
       </div>
     `,
+    retries: 3,
   });
 
   return { delivered: true, channel: "email" };

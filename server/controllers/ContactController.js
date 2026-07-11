@@ -10,12 +10,8 @@
 //     res.status(500).json({ error: error.message });
 //   }
 // };
-
-
-
 const Contact = require("../models/ContactModel");
-const nodemailer = require("nodemailer");
-require("dotenv").config();
+const { sendEmail } = require("../services/email/sendEmail");
 
 exports.createContact = async (req, res) => {
   try {
@@ -44,21 +40,9 @@ exports.createContact = async (req, res) => {
     const newContact = new Contact(sanitizedData);
     await newContact.save();
 
-    //  Email setup
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      family: 4,
-      auth: {
-        user: process.env.EMAIL_USER,   //  from .env
-        pass: process.env.EMAIL_PASS    //  App Password
-      }
-    });
-
-    //  Email content
-    const mailOptions = {
-      from: process.env.EMAIL_USER, //  safer
-      to: process.env.EMAIL_USER,   //  apne inbox me
-      subject: " New Contact Form Submission",
+    await sendEmail({
+      to: process.env.EMAIL_USER,
+      subject: "New Contact Form Submission",
       html: `
         <h2>New Client Message</h2>
         <p><b>Name:</b> ${name}</p>
@@ -67,11 +51,9 @@ exports.createContact = async (req, res) => {
         <p><b>Website:</b> ${website}</p>
         <p><b>Location:</b> ${location}</p>
         <p><b>Message:</b> ${message}</p>
-      `
-    };
-
-    //  Send email
-    await transporter.sendMail(mailOptions);
+      `,
+      retries: 2,
+    });
 
     res.status(200).json({
       success: true,

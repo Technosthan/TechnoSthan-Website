@@ -1,94 +1,42 @@
-const nodemailer = require("nodemailer");
+const {
+  bootstrapEmailTransport,
+  sendMailWithRetry,
+  verifyTransport,
+} = require("./gmailTransport");
+const {
+  getEmailFromAddress,
+  validateEmailEnvironment,
+} = require("./emailConfig");
 
-let cachedTransport = null;
-let cachedTransportKey = "";
+const sendEmail = async ({ to, subject, html, text = "", retries = 3 }) => {
+  validateEmailEnvironment();
 
-const buildTransportKey = () => {
-  const host = process.env.SMTP_HOST;
-  const port = Number.parseInt(process.env.SMTP_PORT || "587", 10);
-  const secure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true";
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
-
-  return JSON.stringify({
-    host: host || "",
-    port,
-    secure,
-    smtpUser: smtpUser || "",
-    smtpPass: smtpPass || "",
-    emailUser: emailUser || "",
-    emailPass: emailPass || "",
-  });
-};
-
-const buildTransport = () => {
-  const transportKey = buildTransportKey();
-  if (cachedTransport && cachedTransportKey === transportKey) {
-    return cachedTransport;
-  }
-
-  const host = process.env.SMTP_HOST;
-  const port = Number.parseInt(process.env.SMTP_PORT || "587", 10);
-  const secure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true";
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
-
-  const user = smtpUser || emailUser;
-  const pass = smtpPass || emailPass;
-
-  if (!host || !user || !pass) {
-    if (!user || !pass) {
-      throw new Error("Email configuration is missing");
-    }
-
-    cachedTransport = nodemailer.createTransport({
-      service: "gmail",
-      family: 4,
-      auth: {
-        user,
-        pass,
-      },
-    });
-    cachedTransportKey = transportKey;
-    return cachedTransport;
-  }
-
-  cachedTransport = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    family: 4,
-    auth: {
-      user,
-      pass,
-    },
-  });
-  cachedTransportKey = transportKey;
-
-  return cachedTransport;
-};
-
-const sendEmail = async ({ to, subject, html, text = "" }) => {
-  const from =
-    process.env.SMTP_FROM ||
-    process.env.SMTP_USER ||
-    process.env.EMAIL_USER;
+  const from = getEmailFromAddress();
   if (!from) {
-    throw new Error("Email sender is not configured");
+    const error = new Error("Email sender is not configured");
+    error.code = "EMAIL_FROM_MISSING";
+    error.statusCode = 500;
+    throw error;
   }
 
-  const transport = buildTransport();
-  return transport.sendMail({
-    from,
-    to,
-    subject,
-    html,
-    text: text || undefined,
-  });
+  return sendMailWithRetry(
+    {
+      from,
+      to,
+      subject,
+      html,
+      text: text || undefined,
+    },
+    {
+      retries,
+      verifyBeforeSend: true,
+    },
+  );
 };
 
-module.exports = { sendEmail };
+module.exports = {
+  bootstrapEmailTransport,
+  sendEmail,
+  validateEmailEnvironment,
+  verifyTransport,
+};
