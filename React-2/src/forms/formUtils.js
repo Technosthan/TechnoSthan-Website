@@ -20,5 +20,5 @@ export const normalizeHttpUrl = (value = "") => {
 
 export const maskSecretValue = (value = "") => {
   const raw = String(value || "");
-  return raw ? "••••••••••••" : "";
+  return raw ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "";
 };

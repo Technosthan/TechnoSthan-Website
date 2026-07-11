@@ -176,7 +176,7 @@ const normalizeImportText = (value = "") =>
 
 const cleanImportLabel = (value = "") =>
   String(value || "")
-    .replace(/^\s*[\-*•]\s*/, "")
+    .replace(/^\s*[\-*\u2022]\s*/, "")
     .replace(/^\s*\d+[.)]\s*/, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -200,7 +200,7 @@ const isSectionHeadingLine = (line = "") => {
 };
 
 const isOptionsLine = (line = "") =>
-  /^\s*(?:[-*•]|\d+[.)]|[a-zA-Z][.)])\s+/.test(String(line || "").trim());
+  /^\s*(?:[-*\u2022]|\d+[.)]|[a-zA-Z][.)])\s+/.test(String(line || "").trim());
 
 const normalizeChoiceValue = (line = "") => cleanImportLabel(line);
 

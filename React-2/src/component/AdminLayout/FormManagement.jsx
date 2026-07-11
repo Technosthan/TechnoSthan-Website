@@ -556,7 +556,7 @@ const getResponseText = (response) => {
     .toLowerCase();
 };
 
-const maskSecretValue = () => "••••••••••••";
+const maskSecretValue = () => "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
 
 const getLinkHref = (value = "") => normalizeHttpUrl(value);
 
