@@ -71,6 +71,24 @@ const formSchema = new mongoose.Schema(
         default: "",
         trim: true,
       },
+      footerButtons: [
+        {
+          text: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+          url: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+          order: {
+            type: Number,
+            default: 0,
+          },
+        },
+      ],
       headerBackgroundColor: {
         type: String,
         default: "#16a34a",

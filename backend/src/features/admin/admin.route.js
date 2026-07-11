@@ -53,6 +53,7 @@ import {
 } from "./admin.controller.js";
 import {
   createForm,
+  importFormFromFile,
   getAdminForms,
   getAdminFormById,
   updateForm,
@@ -61,6 +62,7 @@ import {
   getFormResponseAnalysis,
   getFormSubmissionById,
   deleteFormSubmission,
+  revealFormResponseSecret,
   exportFormSubmissions,
 } from "../form/form.controller.js";
 
@@ -78,6 +80,16 @@ const router = express.Router();
 const imageUpload = createMemoryUpload({
   maxFileSize: 5 * 1024 * 1024,
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+});
+
+const formImportUpload = createMemoryUpload({
+  maxFileSize: 10 * 1024 * 1024,
+  allowedMimeTypes: [
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
 });
 
 // All admin routes require authentication and admin role
@@ -172,6 +184,25 @@ router.get("/search", globalSearch);
 // Form management
 router.get("/forms", getAdminForms);
 router.post("/forms", createForm);
+router.post("/forms/import-file", (req, res, next) => {
+  formImportUpload.single("file")(req, res, (error) => {
+    if (error) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          success: false,
+          message: "Maximum file size allowed is 10 MB.",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to upload file",
+      });
+    }
+
+    return importFormFromFile(req, res, next);
+  });
+});
 router.delete("/uploads/cloudinary", async (req, res) => {
   try {
     const publicId = String(req.body?.publicId || "").trim();
@@ -269,6 +300,7 @@ router.delete("/forms/:formId", deleteForm);
 router.get("/forms/:formId/responses", getFormSubmissions);
 router.get("/forms/:formId/responses/analysis", getFormResponseAnalysis);
 router.get("/forms/:formId/responses/:responseId", getFormSubmissionById);
+router.post("/forms/:formId/responses/:responseId/reveal-secret", revealFormResponseSecret);
 router.delete("/forms/:formId/responses/:responseId", deleteFormSubmission);
 router.get("/forms/:formId/export", exportFormSubmissions);
 

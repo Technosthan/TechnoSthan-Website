@@ -9,6 +9,23 @@ const escapeHtml = (value) =>
 const stripProtocol = (value = "") =>
   String(value).replace(/^https?:\/\//i, "");
 
+const normalizeHttpUrl = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "";
+    }
+    return parsed.href;
+  } catch {
+    return "";
+  }
+};
+
 const safeUrl = (value = "") => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -73,14 +90,78 @@ const replaceTokens = (value = "", context = {}) => {
 
 const formatAnswerValue = (answer) => {
   if (!answer) return "";
+  if (answer.question?.type === "password") {
+    return "";
+  }
+  if (answer.question?.type === "link") {
+    const normalizedUrl = normalizeHttpUrl(answer.value);
+    if (!normalizedUrl) {
+      return escapeHtml(String(answer.value ?? ""));
+    }
+    return `<a href="${escapeHtml(normalizedUrl)}" target="_blank" rel="noopener noreferrer" style="color:#0891b2;text-decoration:none;font-weight:700;word-break:break-word;">Open Link <span style="font-weight:500;">${escapeHtml(normalizedUrl)}</span></a>`;
+  }
   if (answer.fileUrl) {
     const fileLabel = escapeHtml(answer.fileName || answer.fileUrl);
-    return `<a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;font-weight:700;">${fileLabel}</a>`;
+    return `<a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;font-weight:700;word-break:break-word;">${fileLabel}</a>`;
   }
   if (Array.isArray(answer.value)) {
     return escapeHtml(answer.value.join(", "));
   }
   return escapeHtml(String(answer.value ?? ""));
+};
+
+const normalizeFooterButtons = (buttons = [], legacy = {}) => {
+  const source = Array.isArray(buttons) ? buttons : [];
+  const normalized = source
+    .map((button, index) => {
+      const text = String(button?.text || button?.label || "").trim();
+      const url = normalizeHttpUrl(button?.url || "");
+      if (!text || !url) return null;
+      return {
+        text,
+        url,
+        order: Number.isInteger(button?.order) ? button.order : index,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order);
+
+  if (normalized.length) {
+    return normalized;
+  }
+
+  const legacyText = String(legacy.websiteButtonText || "").trim();
+  const legacyUrl = normalizeHttpUrl(legacy.websiteButtonUrl || "");
+  if (!legacyText || !legacyUrl) {
+    return [];
+  }
+
+  return [
+    {
+      text: legacyText,
+      url: legacyUrl,
+      order: 0,
+    },
+  ];
+};
+
+const renderFooterButtons = (buttons = [], styles = {}) => {
+  if (!buttons.length) return "";
+  const buttonColor = normalizeHexColor(styles.buttonColor, styles.accentColor || "#16a34a");
+  const buttonTextColor = "#ffffff";
+  const radius = Math.max(12, Math.min(normalizeBorderRadius(styles.borderRadius, 24), 32));
+  return `
+    <div style="margin-top:26px;">
+      ${buttons
+        .map(
+          (button) => `
+            <div style="margin:0 0 12px;">
+              <a href="${escapeHtml(button.url)}" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;box-sizing:border-box;background:${buttonColor};color:${buttonTextColor};text-decoration:none;padding:14px 20px;border-radius:${radius}px;font-weight:700;text-align:center;">${escapeHtml(button.text)}</a>
+            </div>`,
+        )
+        .join("")}
+    </div>
+  `;
 };
 
 const renderResponsesTable = (rows = [], styles = {}) => {
@@ -174,6 +255,14 @@ const buildEmailShell = ({
   const resolvedFooterText = replaceTokens(footerText, context) || "";
   const resolvedButtonLabel = replaceTokens(buttonLabel, context) || "";
   const resolvedButtonUrl = safeUrl(replaceTokens(buttonUrl, context));
+  const resolvedFooterButtons = normalizeFooterButtons(
+    styles.footerButtons,
+    {
+      websiteButtonText: buttonLabel,
+      websiteButtonUrl: buttonUrl,
+      ...styles,
+    },
+  );
 
   return `<!DOCTYPE html>
   <html>
@@ -204,11 +293,18 @@ const buildEmailShell = ({
 
             ${bodyContent}
 
-            ${resolvedButtonUrl ? `
-              <div style="margin-top:26px;">
-                <a href="${escapeHtml(resolvedButtonUrl)}" target="_blank" rel="noreferrer" style="display:inline-block;background:${buttonColor};color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:${Math.max(12, Math.min(borderRadius, 32))}px;font-weight:700;">${resolvedButtonLabel || "Open"}</a>
-              </div>
-            ` : ""}
+            ${renderFooterButtons(
+              resolvedFooterButtons.length
+                ? resolvedFooterButtons
+                : resolvedButtonUrl
+                  ? [{ text: resolvedButtonLabel || "Open", url: resolvedButtonUrl, order: 0 }]
+                  : [],
+              {
+                buttonColor,
+                accentColor,
+                borderRadius,
+              },
+            )}
 
             ${footerText || branding.footerText ? `
               <div style="margin-top:28px;padding-top:18px;border-top:1px solid rgba(148,163,184,0.28);color:${textColor};font-size:13px;line-height:1.7;opacity:0.9;">
@@ -326,10 +422,12 @@ export const buildUserConfirmationEmail = ({
 };
 
 export const formatSubmissionRows = (answers = []) =>
-  answers.map((answer) => ({
-    question: answer.question?.label || "Question",
-    answer: formatAnswerValue(answer),
-  }));
+  answers
+    .filter((answer) => answer.question?.type !== "password")
+    .map((answer) => ({
+      question: answer.question?.label || "Question",
+      answer: formatAnswerValue(answer),
+    }));
 
 export default {
   buildAdminFormSubmissionEmail,

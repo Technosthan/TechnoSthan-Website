@@ -4,8 +4,14 @@ import FormQuestion from "./formQuestion.model.js";
 import FormResponse from "./formResponse.model.js";
 import FormResponseAnswer from "./formResponseAnswer.model.js";
 import FormNotification from "./formNotification.model.js";
+import FormSecretReveal from "./formSecretReveal.model.js";
+import FormVerification from "./formVerification.model.js";
 import User from "../auth/user.model.js";
 import Settings from "../admin/settings.model.js";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import path from "path";
+import { OfficeGenerator, OfficeParser } from "officeparser";
 import { sendEmail } from "../../services/email/sendEmail.js";
 import {
   buildAdminFormSubmissionEmail,
@@ -20,6 +26,7 @@ import {
   resolveStoredAssetUrl,
   uploadBufferToCloudinary,
 } from "../../shared/services/cloudinary.service.js";
+import { OtpManager } from "../../services/otp/otpManager.js";
 
 const QUESTION_TYPES = new Set([
   "shortAnswer",
@@ -28,6 +35,7 @@ const QUESTION_TYPES = new Set([
   "phone",
   "number",
   "date",
+  "link",
   "dropdown",
   "radio",
   "checkbox",
@@ -35,6 +43,7 @@ const QUESTION_TYPES = new Set([
   "imageUpload",
   "rating",
   "address",
+  "password",
   "sectionHeading",
 ]);
 
@@ -48,6 +57,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   companyName: "",
   websiteButtonText: "",
   websiteButtonUrl: "",
+  footerButtons: [],
   headerBackgroundColor: "#16a34a",
   bodyBackgroundColor: "#f3f4f6",
   cardBackgroundColor: "#ffffff",
@@ -85,6 +95,8 @@ const FILE_MIME_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
+const SECRET_MASK = "••••••••••••";
+const SECRET_PAYLOAD_PREFIX = "enc:v1:";
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -138,6 +150,120 @@ const isExpired = (expiresAt) => {
   const resolved = new Date(expiresAt);
   if (Number.isNaN(resolved.getTime())) return false;
   return resolved.getTime() < Date.now();
+};
+
+const normalizeHttpUrl = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "";
+    }
+    return parsed.href;
+  } catch {
+    return "";
+  }
+};
+
+const getSecretEncryptionKey = () => {
+  const key = String(process.env.FORM_SECRET_ENCRYPTION_KEY || "").trim();
+  if (!key) {
+    throw new Error("FORM_SECRET_ENCRYPTION_KEY is not configured");
+  }
+  return crypto.createHash("sha256").update(key).digest();
+};
+
+const encryptSecretValue = (value = "") => {
+  const raw = String(value || "");
+  if (!raw) return "";
+
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", getSecretEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(raw, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  return [
+    SECRET_PAYLOAD_PREFIX,
+    iv.toString("base64"),
+    tag.toString("base64"),
+    encrypted.toString("base64"),
+  ].join("");
+};
+
+const decryptSecretValue = (value = "") => {
+  const raw = String(value || "");
+  if (!raw.startsWith(SECRET_PAYLOAD_PREFIX)) {
+    return raw;
+  }
+
+  const payload = raw.slice(SECRET_PAYLOAD_PREFIX.length);
+  const [ivBase64, tagBase64, encryptedBase64] = payload.split(":");
+  if (!ivBase64 || !tagBase64 || !encryptedBase64) {
+    throw new Error("Invalid secret payload");
+  }
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    getSecretEncryptionKey(),
+    Buffer.from(ivBase64, "base64"),
+  );
+  decipher.setAuthTag(Buffer.from(tagBase64, "base64"));
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encryptedBase64, "base64")),
+    decipher.final(),
+  ]);
+  return decrypted.toString("utf8");
+};
+
+const formatAnswerValue = (answer, { includeSecret = false } = {}) => {
+  if (!answer) return "";
+  const questionType = answer.question?.type;
+
+  if (questionType === "password") {
+    if (!answer.value) return "";
+    return includeSecret ? decryptSecretValue(answer.value) : SECRET_MASK;
+  }
+
+  if (questionType === "link") {
+    return normalizeHttpUrl(answer.value) || String(answer.value ?? "");
+  }
+
+  if (answer.fileUrl) {
+    return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
+  }
+
+  if (Array.isArray(answer.value)) {
+    return answer.value.map((item) => String(item)).join(", ");
+  }
+
+  return String(answer.value ?? "");
+};
+
+const shouldIncludeAnswerInSearch = (answer) =>
+  answer?.question?.type !== "password";
+
+const sanitizeAnswerForResponse = (answer) => {
+  const questionType = answer?.question?.type;
+  if (questionType === "password") {
+    return {
+      ...answer,
+      value: SECRET_MASK,
+    };
+  }
+
+  if (questionType === "link") {
+    const normalizedUrl = normalizeHttpUrl(answer.value);
+    return {
+      ...answer,
+      value: normalizedUrl || String(answer.value ?? ""),
+    };
+  }
+
+  return answer;
 };
 
 const createFormExpiredError = () => {
@@ -198,6 +324,7 @@ const normalizeQuestion = (question, index) => {
     placeholder: String(question.placeholder || "").trim(),
     helpText: String(question.helpText || "").trim(),
     required: question.required === true,
+    validationEnabled: question.validationEnabled === true,
     options: Array.isArray(question.options)
       ? question.options.map((item) => String(item).trim()).filter(Boolean)
       : [],
@@ -297,6 +424,10 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
     ).trim(),
     websiteButtonText: String(pick("websiteButtonText", legacy.websiteButtonText, "")).trim(),
     websiteButtonUrl: String(pick("websiteButtonUrl", legacy.websiteButtonUrl, "")).trim(),
+    footerButtons: normalizeFooterButtons(
+      pick("footerButtons", legacy.footerButtons, DEFAULT_EMAIL_TEMPLATE.footerButtons),
+      legacy,
+    ),
     headerBackgroundColor:
       String(pick("headerBackgroundColor", legacy.headerBackgroundColor, DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor)).trim(),
     bodyBackgroundColor:
@@ -365,6 +496,38 @@ const normalizeNotificationSettings = (settings = {}, fallback = {}) => {
     whatsappBusinessNumber: String(pick("whatsappBusinessNumber", legacy.whatsappBusinessNumber, "")).trim(),
   };
 };
+
+function normalizeFooterButtons(buttons = [], legacy = {}) {
+  const legacyButton =
+    String(legacy.websiteButtonText || "").trim() &&
+    String(legacy.websiteButtonUrl || "").trim()
+      ? [
+          {
+            id: crypto.randomUUID(),
+            text: String(legacy.websiteButtonText || "").trim(),
+            url: String(legacy.websiteButtonUrl || "").trim(),
+            order: 0,
+          },
+        ]
+      : [];
+
+  const source = Array.isArray(buttons) ? buttons : [];
+  const normalized = source
+    .map((button, index) => {
+      const text = String(button?.text || button?.label || "").trim();
+      const url = normalizeHttpUrl(button?.url || "");
+      if (!text || !url) return null;
+      return {
+        id: String(button?.id || crypto.randomUUID()),
+        text,
+        url,
+        order: Number.isInteger(button?.order) ? button.order : index,
+      };
+    })
+    .filter(Boolean);
+
+  return normalized.length ? normalized.sort((a, b) => a.order - b.order) : legacyButton;
+}
 
 const getBrandingSettings = async (form = {}) => {
   const settings = await Settings.findOne().lean();
@@ -469,7 +632,9 @@ const collectResponses = async (formId) => {
   }
 
   return responses.map((response) => {
-    const responseAnswers = grouped.get(String(response._id)) || [];
+    const responseAnswers = (grouped.get(String(response._id)) || []).map(
+      sanitizeAnswerForResponse,
+    );
     const summary = extractSummary(responseAnswers);
     return {
       ...response,
@@ -492,9 +657,10 @@ const extractSummary = (answers = []) => {
   for (const answer of answers) {
     const questionLabel = String(answer.question?.label || "").toLowerCase();
     const questionType = answer.question?.type;
-    const value = Array.isArray(answer.value)
-      ? answer.value.join(", ")
-      : String(answer.value || "");
+    if (questionType === "password") {
+      continue;
+    }
+    const value = formatAnswerValue(answer);
     const emailRegex = /[^\s@]+@[^\s@]+\.[^\s@]+/;
     const phoneRegex = /(?:\+91[\s-]?)?[6-9]\d{9}/;
 
@@ -512,10 +678,10 @@ const extractSummary = (answers = []) => {
       email = value.match(emailRegex)?.[0] || "";
     }
     if (!phone && (questionType === "phone" || /phone|mobile|contact/.test(questionLabel))) {
-      phone = value || "";
+      phone = normalizePhoneValue(value) || value || "";
     }
     if (!phone && phoneRegex.test(value.replace(/\s+/g, ""))) {
-      phone = value.match(phoneRegex)?.[0] || "";
+      phone = normalizePhoneValue(value.match(phoneRegex)?.[0] || "");
     }
   }
 
@@ -538,9 +704,11 @@ const matchesResponseSearch = (response, search = "") => {
 
   const answerTexts = (response.answers || [])
     .flatMap((answer) => {
+      if (!shouldIncludeAnswerInSearch(answer)) return [];
+      const value = formatAnswerValue(answer);
       if (answer.fileName) return [answer.fileName, answer.fileUrl || ""];
       if (Array.isArray(answer.value)) return answer.value;
-      return [answer.value ?? ""];
+      return [value];
     })
     .map((item) => normalizeSearchText(item))
     .join(" ");
@@ -570,18 +738,15 @@ const canonicalYesNo = (value) => {
   return null;
 };
 
-const getAnswerText = (answer) => {
-  if (!answer) return "";
-  if (Array.isArray(answer.value)) {
-    return answer.value.map((item) => String(item)).join(", ");
-  }
-  return String(answer.value ?? "");
-};
+const getAnswerText = (answer, options = {}) => formatAnswerValue(answer, options);
 
 const detectRatingValue = (answers = []) => {
   for (const answer of answers) {
     const questionLabel = normalizeComparableText(answer.question?.label);
     const questionType = answer.question?.type;
+    if (questionType === "password") {
+      continue;
+    }
     const value = getAnswerText(answer);
     if (questionType === "rating" || /star|rating/.test(questionLabel)) {
       const rating = Number.parseInt(value, 10);
@@ -602,6 +767,9 @@ const detectInterestSignals = (answers = []) => {
   for (const answer of answers) {
     const questionLabel = normalizeComparableText(answer.question?.label);
     const questionType = answer.question?.type;
+    if (questionType === "password") {
+      continue;
+    }
     const value = getAnswerText(answer);
     const yesNo = canonicalYesNo(value);
 
@@ -738,6 +906,12 @@ const buildCsv = (form, questions, responses) => {
       ...questionIdOrder.map((questionId) => {
         const answer = answerMap.get(questionId);
         if (!answer) return "";
+        if (answer.question?.type === "password") {
+          return "";
+        }
+        if (answer.question?.type === "link") {
+          return normalizeHttpUrl(answer.value) || String(answer.value ?? "");
+        }
         if (answer.fileUrl) {
           return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
         }
@@ -777,15 +951,310 @@ const parseAnswersPayload = (body = {}) => {
   return {};
 };
 
+const parseVerificationTokensPayload = (body = {}) => {
+  const raw =
+    body.verificationTokens ??
+    body.verificationToken ??
+    body.verification ??
+    body.tokens ??
+    {};
+
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw;
+  }
+
+  return {};
+};
+
 const normalizeEmailValue = (value = "") =>
   String(value || "").trim().toLowerCase();
 
 const normalizePhoneValue = (value = "") => {
   const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 10) return digits;
   if (digits.length === 12 && digits.startsWith("91")) {
     return digits.slice(-10);
   }
-  return digits;
+  return "";
+};
+
+const isValidIndianMobileNumber = (value = "") =>
+  /^[6-9]\d{9}$/.test(normalizePhoneValue(value));
+
+const normalizeEmailAddress = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const getVerificationTokenSecret = () =>
+  String(process.env.FORM_VERIFICATION_TOKEN_SECRET || process.env.JWT_SECRET || "")
+    .trim();
+
+const buildVerificationToken = ({
+  formId,
+  questionId,
+  destination,
+  destinationType,
+  verifiedAt = new Date(),
+}) => {
+  const secret = getVerificationTokenSecret();
+  if (!secret) {
+    throw new Error("FORM_VERIFICATION_TOKEN_SECRET is not configured");
+  }
+
+  const jti = crypto.randomUUID();
+  return {
+    token: jwt.sign(
+      {
+        formId: String(formId),
+        questionId: String(questionId),
+        destination,
+        destinationType,
+        jti,
+      },
+      secret,
+      { expiresIn: "15m" },
+    ),
+    jti,
+    verifiedAt: verifiedAt.toISOString(),
+  };
+};
+
+const verifySubmissionToken = async (token, question, submittedValue, formId) => {
+  if (!token) {
+    throw new Error(`Please verify ${question.label} before submitting.`);
+  }
+
+  const secret = getVerificationTokenSecret();
+  if (!secret) {
+    throw new Error("FORM_VERIFICATION_TOKEN_SECRET is not configured");
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, secret);
+  } catch {
+    throw new Error(`Please verify ${question.label} before submitting.`);
+  }
+
+  const normalizedValue =
+    question.type === "email"
+      ? normalizeEmailAddress(submittedValue)
+      : normalizePhoneValue(submittedValue);
+  const tokenDestination = normalizeComparableText(decoded.destination);
+  const submittedDestination = normalizeComparableText(normalizedValue);
+
+  if (
+    String(decoded.formId) !== String(formId) ||
+    String(decoded.questionId) !== String(question._id) ||
+    tokenDestination !== submittedDestination ||
+    String(decoded.destinationType) !== question.type
+  ) {
+    throw new Error(`Please verify ${question.label} before submitting.`);
+  }
+
+  const verificationRecord = await FormVerification.findOne({
+    formId,
+    questionId: question._id,
+    destination: normalizedValue,
+    destinationType: question.type,
+    challengeType: question.type,
+    verifiedAt: { $ne: null },
+    verificationTokenJti: decoded.jti,
+  }).lean();
+
+  if (!verificationRecord) {
+    throw new Error(`Please verify ${question.label} before submitting.`);
+  }
+
+  return decoded;
+};
+
+const VERIFICATION_OTP_TTL_MS = 5 * 60 * 1000;
+const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const VERIFICATION_MAX_ATTEMPTS = 6;
+
+const getVerificationDestination = (questionType, value = "") => {
+  if (questionType === "email") {
+    return normalizeEmailAddress(value);
+  }
+  if (questionType === "phone") {
+    return normalizePhoneValue(value);
+  }
+  return "";
+};
+
+const ensureVerificationQuestion = (question, value) => {
+  if (!question?.validationEnabled) {
+    throw new Error("Validation is not enabled for this question");
+  }
+  if (!["email", "phone"].includes(question.type)) {
+    throw new Error("Verification is only supported for email and phone questions");
+  }
+
+  const destination = getVerificationDestination(question.type, value);
+  if (!destination) {
+    throw new Error(
+      question.type === "email"
+        ? "Please enter a valid email address."
+        : "Please enter a valid 10-digit mobile number.",
+    );
+  }
+
+  return destination;
+};
+
+const ensureVerificationChallengeType = (question, challengeType) => {
+  if (challengeType !== question.type) {
+    throw new Error("Verification is only supported for the selected question type");
+  }
+};
+
+const buildVerificationResponseToken = (record) => {
+  const payload = buildVerificationToken({
+    formId: record.formId,
+    questionId: record.questionId,
+    destination: record.destination,
+    destinationType: record.destinationType,
+    verifiedAt: record.verifiedAt || new Date(),
+  });
+
+  return {
+    verificationToken: payload.token,
+    verificationTokenJti: payload.jti,
+    verifiedAt: payload.verifiedAt,
+  };
+};
+
+const requestVerificationOtp = async ({
+  form,
+  question,
+  value,
+  destinationType,
+}) => {
+  ensureVerificationChallengeType(question, destinationType);
+  const destination = ensureVerificationQuestion(question, value);
+  const now = new Date();
+
+  let record = await FormVerification.findOne({
+    formId: form._id,
+    questionId: question._id,
+    destination,
+    destinationType,
+    challengeType: destinationType,
+  });
+
+  if (record?.resendAvailableAt && record.resendAvailableAt > now) {
+    throw new Error("Please wait before requesting another OTP");
+  }
+
+  const otp = String(crypto.randomInt(100000, 1000000));
+  const otpHash = await bcrypt.hash(otp, 10);
+  const expiresAt = new Date(now.getTime() + VERIFICATION_OTP_TTL_MS);
+  const resendAvailableAt = new Date(now.getTime() + VERIFICATION_RESEND_COOLDOWN_MS);
+
+  if (!record) {
+    record = new FormVerification({
+      formId: form._id,
+      questionId: question._id,
+      destination,
+      destinationType,
+      challengeType: destinationType,
+    });
+  }
+
+  record.otpHash = otpHash;
+  record.attempts = 0;
+  record.verifiedAt = null;
+  record.expiresAt = expiresAt;
+  record.resendAvailableAt = resendAvailableAt;
+  record.lastSentAt = now;
+  record.verificationTokenJti = "";
+  await record.save();
+
+  if (destinationType === "email") {
+    await OtpManager.sendEmailOTP({
+      email: destination,
+      otp,
+      senderName: form.title || "Form Builder",
+    });
+  } else {
+    await OtpManager.sendPhoneOTP({
+      phoneNumber: destination,
+      otp,
+    });
+  }
+
+  return {
+    success: true,
+    message:
+      destinationType === "email"
+        ? "OTP sent to your email address"
+        : "OTP sent to your phone number",
+    expiresAt: record.expiresAt,
+    resendAvailableAt: record.resendAvailableAt,
+  };
+};
+
+const verifyVerificationOtp = async ({
+  form,
+  question,
+  value,
+  otp,
+  destinationType,
+}) => {
+  ensureVerificationChallengeType(question, destinationType);
+  const destination = ensureVerificationQuestion(question, value);
+  const record = await FormVerification.findOne({
+    formId: form._id,
+    questionId: question._id,
+    destination,
+    destinationType,
+    challengeType: destinationType,
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (!record) {
+    throw new Error("OTP not found or expired");
+  }
+
+  if (record.attempts >= VERIFICATION_MAX_ATTEMPTS) {
+    throw new Error("Maximum OTP attempts exceeded. Please request a new OTP.");
+  }
+
+  record.attempts += 1;
+  record.lastAttemptAt = new Date();
+
+  const isValid = await bcrypt.compare(String(otp || ""), record.otpHash || "");
+  if (!isValid) {
+    await record.save();
+    throw new Error("Invalid OTP");
+  }
+
+  const tokenPayload = buildVerificationResponseToken({
+    ...record.toObject(),
+    verifiedAt: new Date(),
+  });
+
+  record.verifiedAt = new Date();
+  record.verificationTokenJti = tokenPayload.verificationTokenJti;
+  await record.save();
+
+  return {
+    success: true,
+    message: "Verification successful",
+    ...tokenPayload,
+    expiresAt: record.expiresAt,
+  };
 };
 
 const extractSubmissionContact = (questions = [], answersPayload = {}) => {
@@ -795,10 +1264,13 @@ const extractSubmissionContact = (questions = [], answersPayload = {}) => {
   for (const question of questions) {
     const questionKey = String(question._id);
     const slugKey = slugify(question.label);
+    if (question.type === "password") {
+      continue;
+    }
     const submittedValue =
-      answersPayload[questionKey] ??
-      answersPayload[slugKey] ??
-      answersPayload[question.label] ??
+      answersPayload[questionKey] ?? 
+      answersPayload[slugKey] ?? 
+      answersPayload[question.label] ?? 
       null;
     const value = Array.isArray(submittedValue)
       ? submittedValue.join(", ")
@@ -948,11 +1420,18 @@ const validateQuestionValue = (question, value, fileList = []) => {
   }
 
   if (question.type === "phone" && stringValue) {
-    const phoneRegex = /^(?:\+91[\s-]?)?[6-9]\d{9}$/;
-    if (!phoneRegex.test(stringValue)) {
+    const normalizedPhone = normalizePhoneValue(stringValue);
+    if (!normalizedPhone || !isValidIndianMobileNumber(normalizedPhone)) {
       throw new Error(
-        `Question "${question.label}" must be a valid Indian mobile number`,
+        `Question "${question.label}" must be a valid 10-digit mobile number.`,
       );
+    }
+  }
+
+  if (question.type === "link" && stringValue) {
+    const normalizedUrl = normalizeHttpUrl(stringValue);
+    if (!normalizedUrl) {
+      throw new Error(`Question "${question.label}" must be a valid link`);
     }
   }
 };
@@ -1034,6 +1513,25 @@ const prepareAnswerRecord = async (
           .filter(Boolean),
       };
     }
+  }
+
+  if (question.type === "password") {
+    return {
+      value: encryptSecretValue(submittedValue),
+    };
+  }
+
+  if (question.type === "link") {
+    const normalizedUrl = normalizeHttpUrl(submittedValue);
+    return {
+      value: normalizedUrl,
+    };
+  }
+
+  if (question.type === "phone") {
+    return {
+      value: normalizePhoneValue(submittedValue),
+    };
   }
 
   return {
@@ -1561,10 +2059,51 @@ export const getFormResponseById = async (formId, responseId) => {
     .lean();
   return {
     ...response,
-    answers: answers.map((answer) => ({
-      ...answer,
-      question: answer.questionId,
-    })),
+    answers: answers.map((answer) =>
+      sanitizeAnswerForResponse({
+        ...answer,
+        question: answer.questionId,
+      }),
+    ),
+  };
+};
+
+export const revealFormResponseSecret = async ({
+  formId,
+  responseId,
+  questionId,
+  adminId,
+  ipAddress = "",
+}) => {
+  const [response, question, answer] = await Promise.all([
+    FormResponse.findOne({ _id: responseId, formId }).lean(),
+    FormQuestion.findOne({ _id: questionId, formId }).lean(),
+    FormResponseAnswer.findOne({ responseId, questionId }).lean(),
+  ]);
+
+  if (!response || !question || !answer) {
+    throw new Error("Secret answer not found");
+  }
+
+  if (question.type !== "password") {
+    throw new Error("This question is not a secret question");
+  }
+
+  const value = decryptSecretValue(answer.value);
+  await FormSecretReveal.create({
+    formId,
+    responseId,
+    questionId,
+    adminId,
+    revealedAt: new Date(),
+    ipAddress: String(ipAddress || "").trim(),
+  });
+
+  return {
+    questionId,
+    responseId,
+    revealedAt: new Date().toISOString(),
+    value,
   };
 };
 
@@ -1643,6 +2182,7 @@ export const submitForm = async ({
     .sort({ order: 1, createdAt: 1 })
     .lean();
   const answersPayload = parseAnswersPayload(body);
+  const verificationTokens = parseVerificationTokensPayload(body);
   const fileEntriesByKey = getFileEntriesByQuestion(files);
   const contact = extractSubmissionContact(questions, answersPayload);
 
@@ -1666,6 +2206,16 @@ export const submitForm = async ({
 
     validateUploadedFiles(question, fileEntries);
     validateQuestionValue(question, submittedValue, fileEntries);
+    if (question.validationEnabled && ["email", "phone"].includes(question.type)) {
+      await verifySubmissionToken(
+        verificationTokens[questionKey] ||
+          verificationTokens[slugKey] ||
+          verificationTokens[question.label],
+        question,
+        submittedValue,
+        form._id,
+      );
+    }
     answersToInsert.push({
       question,
       submittedValue,
@@ -1787,8 +2337,291 @@ export const submitForm = async ({
   }
 };
 
+const IMPORT_SUPPORTED_MIME_TYPES = new Set([
+  "application/pdf",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+const normalizeImportText = (value = "") =>
+  String(value || "")
+    .replace(/\r/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+const stripMarkdownFormatting = (value = "") =>
+  String(value || "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^[>\-\*\d.\)\s]+/gm, "")
+    .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .trim();
+
+const inferImportedQuestionType = (label = "", options = []) => {
+  const text = normalizeComparableText(label);
+  if (/email/.test(text)) return "email";
+  if (/phone|mobile/.test(text)) return "phone";
+  if (/website|portfolio|linkedin|github|link|url|drive|document/.test(text)) {
+    return "link";
+  }
+  if (/date of birth|dob|date/.test(text)) return "date";
+  if (/address/.test(text)) return "address";
+  if (/upload|resume|file|attachment/.test(text)) return "fileUpload";
+  if (/yes\/no|yes no/.test(text) || options.length === 2) return "radio";
+  if (options.length > 2) return options.length > 5 ? "dropdown" : "checkbox";
+  if (/long answer|describe|description|details|paragraph/.test(text)) {
+    return "paragraph";
+  }
+  return "shortAnswer";
+};
+
+const buildImportedQuestion = ({ label, options = [], helpText = "" }) => {
+  const cleanedLabel = String(label || "").trim();
+  const trimmedOptions = options.map((option) => String(option || "").trim()).filter(Boolean);
+  const type = inferImportedQuestionType(cleanedLabel, trimmedOptions);
+  const normalizedOptions =
+    type === "radio" && trimmedOptions.length === 2 && /yes\/no|yes no/i.test(cleanedLabel)
+      ? ["Yes", "No"]
+      : trimmedOptions;
+
+  return {
+    _id: crypto.randomUUID(),
+    label: cleanedLabel,
+    type,
+    required: /\brequired\b|\*/i.test(cleanedLabel),
+    placeholder:
+      type === "link"
+        ? "https://example.com"
+        : type === "email"
+          ? "name@example.com"
+          : type === "phone"
+            ? "9876543210"
+            : "",
+    helpText: String(helpText || "").trim(),
+    options: normalizedOptions,
+    validationEnabled: false,
+    order: 0,
+  };
+};
+
+const extractImportText = async (file) => {
+  const mimeType = String(file?.mimetype || "").toLowerCase();
+  const extension = path.extname(file?.originalname || "").toLowerCase().replace(".", "");
+
+  if (!IMPORT_SUPPORTED_MIME_TYPES.has(mimeType)) {
+    throw new Error("Only PDF, DOC, DOCX, and TXT files are allowed");
+  }
+
+  if (mimeType.startsWith("text/") || extension === "txt") {
+    return normalizeImportText(Buffer.from(file.buffer).toString("utf8"));
+  }
+
+  const ast = await OfficeParser.parseOffice(file.buffer, {
+    fileType: extension || undefined,
+  });
+  const { value } = await OfficeGenerator.generate(ast, "md");
+  return normalizeImportText(value);
+};
+
+const detectImportedQuestions = (text = "") => {
+  const rawLines = normalizeImportText(text)
+    .split("\n")
+    .map((line) => String(line || "").trim())
+    .filter(Boolean);
+
+  const questions = [];
+  let title = rawLines[0] || "Imported Form";
+  let description = "";
+  let index = 1;
+
+  const cleanLine = (line) =>
+    stripMarkdownFormatting(line).replace(/\s+/g, " ").trim();
+
+  title = cleanLine(title) || "Imported Form";
+
+  const isHeading = (line) => {
+    const cleaned = cleanLine(line);
+    return (
+      /^section\b/i.test(cleaned) ||
+      (/^[A-Z0-9][A-Z0-9\s&/-]{3,}$/.test(cleaned) && cleaned.length < 80) ||
+      /^#+\s*/.test(line)
+    );
+  };
+
+  const isQuestionLine = (line) => {
+    const cleaned = cleanLine(line);
+    return (
+      /[?]$/.test(cleaned) ||
+      /:\s*$/.test(cleaned) ||
+      /name|email|phone|address|website|portfolio|date|upload|resume|company|subject|message/i.test(
+        cleaned,
+      )
+    );
+  };
+
+  const isOptionLine = (line) => /^(?:[-*]|\d+[\.)])/.test(cleanLine(line));
+
+  const parseOptions = (startIndex) => {
+    const options = [];
+    let cursor = startIndex;
+    while (cursor < rawLines.length && isOptionLine(rawLines[cursor])) {
+      options.push(cleanLine(rawLines[cursor]).replace(/^(?:[-*]|\d+[\.)])\s+/, "").trim());
+      cursor += 1;
+    }
+    return { options, nextIndex: cursor };
+  };
+
+  while (
+    index < rawLines.length &&
+    !isHeading(rawLines[index]) &&
+    !isQuestionLine(rawLines[index])
+  ) {
+    description += `${description ? "\n" : ""}${cleanLine(rawLines[index])}`;
+    index += 1;
+  }
+
+  while (index < rawLines.length) {
+    const line = rawLines[index];
+    const cleaned = cleanLine(line);
+    if (!cleaned) {
+      index += 1;
+      continue;
+    }
+
+    if (isHeading(line)) {
+      questions.push({
+        ...buildImportedQuestion({ label: cleaned.replace(/^#+\s*/, "") }),
+        type: "sectionHeading",
+        options: [],
+        required: false,
+      });
+      index += 1;
+      continue;
+    }
+
+    if (!isQuestionLine(line)) {
+      index += 1;
+      continue;
+    }
+
+    const labelParts = cleaned.split(/ - /);
+    const label = labelParts[0].replace(/[:?]\s*$/, "").trim();
+    const helperText = labelParts.slice(1).join(" - ").trim();
+    const next = parseOptions(index + 1);
+
+    questions.push(
+      buildImportedQuestion({
+        label,
+        options: next.options,
+        helpText: helperText,
+      }),
+    );
+    index = next.nextIndex;
+  }
+
+  const filteredQuestions = questions.filter((question) => question.label);
+
+  return {
+    title,
+    description,
+    questions: filteredQuestions,
+    sourceText: text,
+  };
+};
+
+export const importFormFromFile = async (file) => {
+  if (!file) {
+    throw new Error("File is required");
+  }
+
+  const text = await extractImportText(file);
+  const imported = detectImportedQuestions(text);
+  return {
+    ...imported,
+    questions: imported.questions.map((question, index) => ({
+      ...question,
+      order: index,
+    })),
+  };
+};
+
 export const createPublicFileEntry = (file) => ({
   fileUrl: resolveStoredAssetUrl(file?.secureUrl || file?.url || ""),
   fileName: file.originalname,
   fileType: file.mimetype,
 });
+
+export const sendFormVerificationOtp = async ({
+  slug,
+  questionId,
+  value,
+  challengeType,
+}) => {
+  const normalizedSlug = String(slug).toLowerCase();
+  const form = await Form.findOne({
+    $or: [{ slug: normalizedSlug }, { publicSlug: normalizedSlug }],
+  }).lean();
+  if (!form) {
+    throw new Error("Form not found");
+  }
+  if (form.status !== "live") {
+    throw new Error("This form is not live yet");
+  }
+  if (isExpired(form.expiresAt)) {
+    throw createFormExpiredError();
+  }
+
+  const question = await FormQuestion.findOne({
+    _id: questionId,
+    formId: form._id,
+  }).lean();
+  if (!question) {
+    throw new Error("Question not found");
+  }
+
+  return requestVerificationOtp({
+    form,
+    question,
+    value,
+    destinationType: challengeType,
+  });
+};
+
+export const verifyFormVerificationOtp = async ({
+  slug,
+  questionId,
+  value,
+  otp,
+  challengeType,
+}) => {
+  const normalizedSlug = String(slug).toLowerCase();
+  const form = await Form.findOne({
+    $or: [{ slug: normalizedSlug }, { publicSlug: normalizedSlug }],
+  }).lean();
+  if (!form) {
+    throw new Error("Form not found");
+  }
+  if (form.status !== "live") {
+    throw new Error("This form is not live yet");
+  }
+  if (isExpired(form.expiresAt)) {
+    throw createFormExpiredError();
+  }
+
+  const question = await FormQuestion.findOne({
+    _id: questionId,
+    formId: form._id,
+  }).lean();
+  if (!question) {
+    throw new Error("Question not found");
+  }
+
+  return verifyVerificationOtp({
+    form,
+    question,
+    value,
+    otp,
+    destinationType: challengeType,
+  });
+};

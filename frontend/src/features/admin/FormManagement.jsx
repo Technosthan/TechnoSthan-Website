@@ -5,6 +5,7 @@ import {
   Plus,
   Copy,
   Eye,
+  EyeOff,
   Pencil,
   Trash2,
   Save,
@@ -29,22 +30,26 @@ import {
   deleteAdminForm,
   deleteAdminFormResponse,
   exportAdminFormResponses,
+  importAdminFormFromFile,
   getAdminFormById,
   getAdminForms,
   getAdminFormResponse,
   getAdminFormResponses,
+  revealAdminFormResponseSecret,
   updateAdminForm,
 } from "../forms/formsApi";
 import { deleteCloudinaryAsset, uploadFormBannerImage } from "./adminApi";
 import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
+import { normalizeHttpUrl } from "../../shared/lib/url";
 
 const QUESTION_TYPES = [
-  { value: "One line Text", label: "One Line Text" },
+  { value: "shortAnswer", label: "One Line Text" },
   { value: "paragraph", label: "Paragraph" },
   { value: "email", label: "Email" },
   { value: "phone", label: "Phone" },
   { value: "number", label: "Number" },
   { value: "date", label: "Date" },
+  { value: "link", label: "Link" },
   { value: "dropdown", label: "Dropdown" },
   { value: "radio", label: "Radio" },
   { value: "checkbox", label: "Checkbox" },
@@ -52,8 +57,10 @@ const QUESTION_TYPES = [
   { value: "imageUpload", label: "Image Upload" },
   { value: "rating", label: "Rating" },
   { value: "address", label: "Address" },
+  { value: "password", label: "Password / Secret" },
   { value: "sectionHeading", label: "Section Heading" },
 ];
+const MAX_IMPORT_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const EMAIL_TEMPLATE_PRESETS = {
   "green-professional": {
@@ -110,6 +117,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   companyName: "Technosthan AgriTech",
   websiteButtonText: "Visit Website",
   websiteButtonUrl: "",
+  footerButtons: [],
   headerBackgroundColor: "#166534",
   bodyBackgroundColor: "#f0fdf4",
   cardBackgroundColor: "#ffffff",
@@ -157,10 +165,11 @@ const EMPTY_FORM = {
 const createQuestion = () => ({
   id: crypto.randomUUID(),
   label: "Untitled question",
-  type: "One line Text",
+  type: "shortAnswer",
   placeholder: "",
   helpText: "",
   required: false,
+  validationEnabled: false,
   options: [],
   optionsText: "",
   validation: normalizeNumberValidation(),
@@ -234,6 +243,30 @@ const normalizeNumberValidation = (validation = {}) => ({
 const normalizeEmailTemplate = (template = {}, form = {}) => {
   const source = template && typeof template === "object" ? template : {};
   const legacy = form && typeof form === "object" ? form : {};
+  const normalizeFooterButtons = (buttons = [], fallback = {}) => {
+    const sourceButtons = Array.isArray(buttons) ? buttons : [];
+    const normalized = sourceButtons
+      .map((button, index) => {
+        const text = String(button?.text || button?.label || "").trim();
+        const url = normalizeHttpUrl(button?.url || "");
+        if (!text || !url) return null;
+        return {
+          id: String(button?.id || crypto.randomUUID()),
+          text,
+          url,
+          order: Number.isInteger(button?.order) ? button.order : index,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.order - b.order);
+
+    if (normalized.length) return normalized;
+
+    const legacyText = String(fallback.websiteButtonText || "").trim();
+    const legacyUrl = normalizeHttpUrl(fallback.websiteButtonUrl || "");
+    if (!legacyText || !legacyUrl) return [];
+    return [{ id: crypto.randomUUID(), text: legacyText, url: legacyUrl, order: 0 }];
+  };
   return {
     preset: source.preset || legacy.emailTemplate?.preset || DEFAULT_EMAIL_TEMPLATE.preset,
     headerTitle: source.headerTitle ?? legacy.emailTemplate?.headerTitle ?? DEFAULT_EMAIL_TEMPLATE.headerTitle,
@@ -248,6 +281,15 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       source.websiteButtonText ?? legacy.emailTemplate?.websiteButtonText ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonText,
     websiteButtonUrl:
       source.websiteButtonUrl ?? legacy.emailTemplate?.websiteButtonUrl ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonUrl,
+    footerButtons: normalizeFooterButtons(
+      source.footerButtons ?? legacy.emailTemplate?.footerButtons ?? DEFAULT_EMAIL_TEMPLATE.footerButtons,
+      {
+        websiteButtonText:
+          source.websiteButtonText ?? legacy.emailTemplate?.websiteButtonText ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonText,
+        websiteButtonUrl:
+          source.websiteButtonUrl ?? legacy.emailTemplate?.websiteButtonUrl ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonUrl,
+      },
+    ),
     headerBackgroundColor:
       source.headerBackgroundColor ?? legacy.emailTemplate?.headerBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor,
     bodyBackgroundColor:
@@ -368,6 +410,12 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     interpolateTemplateText(resolved.successMessage, context) ||
     "Thank you for your response.";
   const footerText = interpolateTemplateText(resolved.footerText, context);
+  const footerButtons = Array.isArray(resolved.footerButtons)
+    ? resolved.footerButtons.map((button) => ({
+        text: interpolateTemplateText(button.text, context),
+        url: interpolateTemplateText(button.url, context),
+      }))
+    : [];
   const buttonText =
     interpolateTemplateText(resolved.websiteButtonText, context) || "Visit Website";
   const buttonUrl =
@@ -389,6 +437,7 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     headerSubtitle,
     successMessage,
     footerText,
+    footerButtons,
     buttonText,
     buttonUrl,
     bannerUrl,
@@ -429,10 +478,11 @@ const buildQuestionValidationPayload = (question) => {
 const normalizeQuestion = (question, index) => ({
   id: question._id || question.id || crypto.randomUUID(),
   label: question.label || "",
-  type: question.type || "One line Text",
+  type: question.type || "shortAnswer",
   placeholder: question.placeholder || "",
   helpText: question.helpText || "",
   required: question.required === true,
+  validationEnabled: question.validationEnabled === true,
   options: Array.isArray(question.options)
     ? question.options
     : typeof question.options === "string"
@@ -466,6 +516,8 @@ const normalizeForm = (form) => ({
 const normalizeResponsesPayload = (payload) =>
   Array.isArray(payload) ? payload : payload?.items || [];
 
+const PASSWORD_MASK = "••••••••••••";
+
 const getResponseText = (response) => {
   const answers = Array.isArray(response?.answers) ? response.answers : [];
   return [
@@ -474,6 +526,11 @@ const getResponseText = (response) => {
     response?.email,
     response?.phone,
     ...answers.flatMap((answer) => {
+      if (answer.question?.type === "password") return [];
+      if (answer.question?.type === "link") {
+        const normalizedUrl = normalizeHttpUrl(answer.value);
+        return [normalizedUrl || String(answer.value ?? "")];
+      }
       if (answer.fileName) return [answer.fileName, answer.fileUrl || ""];
       if (Array.isArray(answer.value)) return answer.value;
       return [answer.value ?? ""];
@@ -485,8 +542,48 @@ const getResponseText = (response) => {
 
 const getAnswerText = (answer) => {
   if (!answer) return "";
+  if (answer.question?.type === "password") return PASSWORD_MASK;
+  if (answer.question?.type === "link") {
+    return normalizeHttpUrl(answer.value) || String(answer.value ?? "");
+  }
   if (Array.isArray(answer.value)) return answer.value.join(", ");
   return String(answer.value ?? "");
+};
+
+const getAnswerDisplay = (answer, revealedValue = "") => {
+  if (!answer) return "-";
+  if (answer.question?.type === "password") {
+    return revealedValue || PASSWORD_MASK;
+  }
+  if (answer.question?.type === "link") {
+    const normalizedUrl = normalizeHttpUrl(answer.value);
+    if (!normalizedUrl) return String(answer.value ?? "-");
+    return (
+      <div className="space-y-3 text-cyan-100">
+        <div className="flex flex-wrap items-center gap-2 text-cyan-300">
+          <ExternalLink size={15} />
+          <span className="font-semibold">Open Link</span>
+        </div>
+        <a
+          href={normalizedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block break-all rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-cyan-100 transition hover:border-cyan-400/60 hover:bg-cyan-500/15"
+        >
+          {normalizedUrl}
+        </a>
+      </div>
+    );
+  }
+  if (answer.fileUrl) {
+    return (
+      <a href={answer.fileUrl} target="_blank" rel="noreferrer" className="text-green-300 underline">
+        {answer.fileName || answer.fileUrl}
+      </a>
+    );
+  }
+  if (Array.isArray(answer.value)) return answer.value.join(", ");
+  return String(answer.value ?? "-");
 };
 
 const getRatingValue = (response) => {
@@ -576,6 +673,8 @@ const FormManagement = () => {
   }));
   const [responses, setResponses] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
+  const [revealedSecrets, setRevealedSecrets] = useState({});
+  const secretHideTimersRef = useRef({});
   const [slugTouched, setSlugTouched] = useState(false);
   const [search, setSearch] = useState("");
   const [responsesTab, setResponsesTab] = useState("list");
@@ -589,6 +688,11 @@ const FormManagement = () => {
   const [analysisAvailabilityFilter, setAnalysisAvailabilityFilter] = useState("all");
   const [analysisEmailFilter, setAnalysisEmailFilter] = useState("all");
   const [analysisPhoneFilter, setAnalysisPhoneFilter] = useState("all");
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importingFormFile, setImportingFormFile] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importPreview, setImportPreview] = useState(null);
+  const importFileInputRef = useRef(null);
   const lastSavedFormRef = useRef(null);
   const sessionUploadedAssetsRef = useRef([]);
 
@@ -608,12 +712,22 @@ const FormManagement = () => {
     loadForms();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      Object.values(secretHideTimersRef.current).forEach((timerId) =>
+        clearTimeout(timerId),
+      );
+      secretHideTimersRef.current = {};
+    };
+  }, []);
+
   const selectForm = async (form, nextTab = "questions") => {
     setSelectedFormId(form._id);
     setActiveTab(nextTab);
     setResponsesTab("list");
     setSlugTouched(true);
     setSelectedResponse(null);
+    setRevealedSecrets({});
     sessionUploadedAssetsRef.current = [];
     try {
       const [detailRes, responseRes] = await Promise.all([
@@ -670,6 +784,76 @@ const FormManagement = () => {
       ...prev,
       emailTemplate: applyPresetToTemplate(presetKey, prev.emailTemplate),
     }));
+  };
+
+  const updateFooterButton = (index, field, value) => {
+    setDraft((prev) => {
+      const currentButtons = Array.isArray(prev.emailTemplate?.footerButtons)
+        ? prev.emailTemplate.footerButtons
+        : [];
+      const nextButtons = currentButtons.map((button, currentIndex) =>
+        currentIndex === index ? { ...button, [field]: value } : button,
+      );
+      return {
+        ...prev,
+        emailTemplate: {
+          ...normalizeEmailTemplate(prev.emailTemplate),
+          footerButtons: nextButtons,
+        },
+      };
+    });
+  };
+
+  const addFooterButton = () => {
+    setDraft((prev) => {
+      const currentButtons = Array.isArray(prev.emailTemplate?.footerButtons)
+        ? prev.emailTemplate.footerButtons
+        : [];
+      return {
+        ...prev,
+        emailTemplate: {
+          ...normalizeEmailTemplate(prev.emailTemplate),
+          footerButtons: [
+            ...currentButtons,
+            { id: crypto.randomUUID(), text: "", url: "", order: currentButtons.length },
+          ],
+        },
+      };
+    });
+  };
+
+  const removeFooterButton = (index) => {
+    setDraft((prev) => {
+      const currentButtons = Array.isArray(prev.emailTemplate?.footerButtons)
+        ? prev.emailTemplate.footerButtons
+        : [];
+      return {
+        ...prev,
+        emailTemplate: {
+          ...normalizeEmailTemplate(prev.emailTemplate),
+          footerButtons: currentButtons.filter((_, currentIndex) => currentIndex !== index),
+        },
+      };
+    });
+  };
+
+  const moveFooterButton = (index, direction) => {
+    setDraft((prev) => {
+      const currentButtons = Array.isArray(prev.emailTemplate?.footerButtons)
+        ? [...prev.emailTemplate.footerButtons]
+        : [];
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= currentButtons.length) return prev;
+      const [button] = currentButtons.splice(index, 1);
+      currentButtons.splice(nextIndex, 0, button);
+      return {
+        ...prev,
+        emailTemplate: {
+          ...normalizeEmailTemplate(prev.emailTemplate),
+          footerButtons: currentButtons.map((button, order) => ({ ...button, order })),
+        },
+      };
+    });
   };
 
   const updateNotificationSettings = (field, value) => {
@@ -839,6 +1023,158 @@ const FormManagement = () => {
     }));
   };
 
+  const normalizeImportedQuestion = (question, order = 0) => ({
+    ...createQuestion(),
+    id: question.id || question._id || crypto.randomUUID(),
+    label: String(question.label || "Untitled question").trim(),
+    type: question.type || "shortAnswer",
+    placeholder: String(question.placeholder || "").trim(),
+    helpText: String(question.helpText || "").trim(),
+    required: question.required === true,
+    validationEnabled: question.validationEnabled === true,
+    options: Array.isArray(question.options)
+      ? question.options.map((item) => String(item).trim()).filter(Boolean)
+      : [],
+    optionsText: Array.isArray(question.options)
+      ? question.options.join("\n")
+      : String(question.optionsText || ""),
+    validation: normalizeNumberValidation(question.validation),
+    order,
+    selected: question.type !== "sectionHeading",
+  });
+
+  const openImportPicker = () => {
+    importFileInputRef.current?.click();
+  };
+
+  const handleImportFormFile = async (file) => {
+    if (!file) return;
+    if (file.size > MAX_IMPORT_FILE_SIZE_BYTES) {
+      toast.error("Maximum file size allowed is 10 MB.");
+      return;
+    }
+    const allowedTypes = new Set([
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]);
+    if (!allowedTypes.has(file.type)) {
+      toast.error("Please upload a PDF, DOC, DOCX, or TXT file.");
+      return;
+    }
+
+    setImportingFormFile(true);
+    setImportError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await importAdminFormFromFile(formData);
+      const payload = response.data?.data || {};
+      const nextQuestions = Array.isArray(payload.questions)
+        ? payload.questions.map((question, index) =>
+            normalizeImportedQuestion(question, index),
+          )
+        : [];
+
+      setImportPreview({
+        title: String(payload.title || draft.title || "").trim(),
+        description: String(payload.description || draft.description || "").trim(),
+        questions: nextQuestions,
+      });
+      setImportModalOpen(true);
+      toast.success("File analyzed successfully");
+    } catch (error) {
+      const message =
+        error.response?.data?.message || error.message || "Failed to import form";
+      setImportError(message);
+      toast.error(message);
+    } finally {
+      setImportingFormFile(false);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const updateImportedQuestion = (index, field, value) => {
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        questions: prev.questions.map((question, currentIndex) =>
+          currentIndex === index ? { ...question, [field]: value } : question,
+        ),
+      };
+    });
+  };
+
+  const updateImportedQuestionOptions = (index, value) => {
+    const nextOptions = String(value || "")
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    updateImportedQuestion(index, "options", nextOptions);
+    updateImportedQuestion(index, "optionsText", value);
+  };
+
+  const toggleImportedQuestion = (index) => {
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        questions: prev.questions.map((question, currentIndex) =>
+          currentIndex === index
+            ? { ...question, selected: !question.selected }
+            : question,
+        ),
+      };
+    });
+  };
+
+  const applyImportedForm = () => {
+    if (!importPreview) return;
+    const selectedQuestions = importPreview.questions.filter((question) => question.selected);
+    const existingKeys = new Set(
+      draft.questions.map((question) =>
+        `${slugify(question.label)}::${String(question.type || "")}`,
+      ),
+    );
+    const nextQuestions = [...draft.questions];
+
+    selectedQuestions.forEach((question) => {
+      const key = `${slugify(question.label)}::${String(question.type || "")}`;
+      if (existingKeys.has(key)) return;
+      existingKeys.add(key);
+      nextQuestions.push({
+        ...createQuestion(),
+        id: crypto.randomUUID(),
+        label: question.label,
+        type: question.type,
+        placeholder: question.placeholder,
+        helpText: question.helpText,
+        required: question.required,
+        validationEnabled: question.validationEnabled,
+        options: Array.isArray(question.options) ? question.options : [],
+        optionsText: Array.isArray(question.options)
+          ? question.options.join("\n")
+          : "",
+        validation: normalizeNumberValidation(question.validation),
+        order: nextQuestions.length,
+      });
+    });
+
+    setDraft((prev) => ({
+      ...prev,
+      title: importPreview.title || prev.title,
+      description: importPreview.description || prev.description,
+      questions: nextQuestions.map((question, order) => ({ ...question, order })),
+    }));
+    setImportPreview(null);
+    setImportModalOpen(false);
+    toast.success("Imported questions added");
+  };
+
   const duplicateQuestion = (index) => {
     setDraft((prev) => {
       const source = prev.questions[index];
@@ -982,6 +1318,7 @@ const FormManagement = () => {
         placeholder: question.placeholder,
         helpText: question.helpText,
         required: question.required,
+        validationEnabled: question.validationEnabled,
         options: parseOptionsText(question.optionsText ?? question.options),
         validation: buildQuestionValidationPayload(question),
         order,
@@ -1072,8 +1409,51 @@ const FormManagement = () => {
     try {
       const res = await getAdminFormResponse(selectedFormId, response._id);
       setSelectedResponse(res.data?.data || response);
+      setRevealedSecrets({});
     } catch (error) {
       setSelectedResponse(response);
+      setRevealedSecrets({});
+    }
+  };
+
+  const scheduleSecretHide = (responseId, questionId) => {
+    const key = `${responseId}:${questionId}`;
+    const existingTimer = secretHideTimersRef.current[key];
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    secretHideTimersRef.current[key] = setTimeout(() => {
+      setRevealedSecrets((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      delete secretHideTimersRef.current[key];
+    }, 30000);
+  };
+
+  const revealSecret = async (answer) => {
+    if (!selectedFormId || !selectedResponse?._id || !answer?.question?._id) return;
+
+    const responseId = selectedResponse._id;
+    const questionId = answer.question._id;
+    const key = `${responseId}:${questionId}`;
+
+    try {
+      const res = await revealAdminFormResponseSecret(
+        selectedFormId,
+        responseId,
+        questionId,
+      );
+      const revealedValue = String(res.data?.data?.value || "");
+      setRevealedSecrets((prev) => ({
+        ...prev,
+        [key]: revealedValue,
+      }));
+      scheduleSecretHide(responseId, questionId);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to reveal secret");
     }
   };
 
@@ -1085,7 +1465,10 @@ const FormManagement = () => {
       toast.success("Response deleted");
       const res = await getAdminFormResponses(selectedFormId);
       setResponses(normalizeResponsesPayload(res.data?.data));
-      if (selectedResponse?._id === responseId) setSelectedResponse(null);
+      if (selectedResponse?._id === responseId) {
+        setSelectedResponse(null);
+        setRevealedSecrets({});
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to delete response");
     }
@@ -1482,13 +1865,31 @@ const FormManagement = () => {
                   <div className="font-semibold">Questions</div>
                   <div className="text-sm text-slate-400">Add unlimited questions.</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={addQuestion}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white"
-                >
-                  <Plus size={16} /> Add Question
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={openImportPicker}
+                    disabled={importingFormFile}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 disabled:opacity-60"
+                  >
+                    <Upload size={16} />{" "}
+                    {importingFormFile ? "Analyzing File..." : "Upload Form File"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addQuestion}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white"
+                  >
+                    <Plus size={16} /> Add Question
+                  </button>
+                  <input
+                    ref={importFileInputRef}
+                    type="file"
+                    hidden
+                    accept=".pdf,.doc,.docx,.txt,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => handleImportFormFile(e.target.files?.[0] || null)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -1571,6 +1972,14 @@ const FormManagement = () => {
                             onChange={(e) => updateQuestion(index, "required", e.target.checked)}
                           />
                           Required
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={question.validationEnabled === true}
+                            onChange={(e) => updateQuestion(index, "validationEnabled", e.target.checked)}
+                          />
+                          Enable Validation
                         </label>
                         <span className="text-xs text-slate-400">Type: {question.type}</span>
                       </div>
@@ -2051,6 +2460,74 @@ const FormManagement = () => {
                     </div>
                   </div>
 
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">Footer Buttons</div>
+                        <p className="text-xs text-slate-400">
+                          Optional call-to-action buttons shown at the bottom of emails.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addFooterButton}
+                        className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200"
+                      >
+                        + Add Footer Button
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {(draft.emailTemplate?.footerButtons || []).map((button, index) => (
+                        <div key={button.id || `${index}`} className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-3">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Button Text</label>
+                              <input
+                                value={button.text || ""}
+                                onChange={(e) => updateFooterButton(index, "text", e.target.value)}
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                placeholder="Visit Website"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Button URL</label>
+                              <input
+                                value={button.url || ""}
+                                onChange={(e) => updateFooterButton(index, "url", e.target.value)}
+                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                placeholder="https://example.com"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => moveFooterButton(index, -1)}
+                              className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-semibold"
+                            >
+                              Move Up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveFooterButton(index, 1)}
+                              className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-semibold"
+                            >
+                              Move Down
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeFooterButton(index)}
+                              className="rounded-2xl border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <label className="mb-2 block text-sm font-semibold">Header Background</label>
@@ -2269,16 +2746,24 @@ const FormManagement = () => {
                           </table>
                         </div>
 
-                        <div className="mt-4">
-                          <a
-                            href={emailTemplatePreview.buttonUrl || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex rounded-2xl px-4 py-3 text-sm font-semibold text-white"
-                            style={{ backgroundColor: emailTemplatePreview.resolved.buttonColor || emailTemplatePreview.resolved.accentColor }}
-                          >
-                            {emailTemplatePreview.buttonText}
-                          </a>
+                        <div className="mt-4 space-y-3">
+                          {(emailTemplatePreview.footerButtons?.length
+                            ? emailTemplatePreview.footerButtons
+                            : emailTemplatePreview.buttonUrl && emailTemplatePreview.buttonText
+                              ? [{ text: emailTemplatePreview.buttonText, url: emailTemplatePreview.buttonUrl }]
+                              : []
+                          ).map((button, index) => (
+                            <a
+                              key={`${button.text}-${index}`}
+                              href={button.url || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white"
+                              style={{ backgroundColor: emailTemplatePreview.resolved.buttonColor || emailTemplatePreview.resolved.accentColor }}
+                            >
+                              {button.text}
+                            </a>
+                          ))}
                         </div>
 
                         {emailTemplatePreview.footerText && (
@@ -2736,7 +3221,10 @@ const FormManagement = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedResponse(null)}
+                onClick={() => {
+                  setSelectedResponse(null);
+                  setRevealedSecrets({});
+                }}
                 className="rounded-2xl border border-white/10 px-4 py-2 text-sm"
               >
                 Close
@@ -2754,19 +3242,268 @@ const FormManagement = () => {
               {(selectedResponse.answers || []).map((answer) => (
                 <div key={answer._id || answer.questionId} className="rounded-3xl border border-white/10 bg-white/5 p-4">
                   <div className="text-sm font-semibold">{answer.question?.label || "Question"}</div>
-                  <div className="mt-2 text-sm text-slate-300">
-                    {answer.fileUrl ? (
-                      <a href={answer.fileUrl} target="_blank" rel="noreferrer" className="text-green-300 underline">
+                  <div className="mt-3">
+                    {answer.question?.type === "password" ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-cyan-100">
+                          <span className="font-mono tracking-[0.25em]">
+                            {revealedSecrets[`${selectedResponse._id}:${answer.question._id}`] ||
+                              PASSWORD_MASK}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => revealSecret(answer)}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-500"
+                          >
+                            <Eye size={15} />
+                            Reveal Secret
+                          </button>
+                          {revealedSecrets[`${selectedResponse._id}:${answer.question._id}`] && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  revealedSecrets[
+                                    `${selectedResponse._id}:${answer.question._id}`
+                                  ],
+                                );
+                                toast.success("Secret copied");
+                              }}
+                              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/10"
+                            >
+                              <Copy size={15} />
+                              Copy
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : answer.question?.type === "link" ? (
+                      getAnswerDisplay(answer)
+                    ) : answer.fileUrl ? (
+                      <a
+                        href={answer.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-green-300 underline break-all"
+                      >
                         {answer.fileName || answer.fileUrl}
                       </a>
                     ) : Array.isArray(answer.value) ? (
-                      answer.value.join(", ")
+                      <div className="text-sm text-slate-300">
+                        {answer.value.join(", ")}
+                      </div>
                     ) : (
-                      String(answer.value ?? "-")
+                      <div className="text-sm text-slate-300">
+                        {String(answer.value ?? "-")}
+                      </div>
                     )}
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importModalOpen && importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+              <div>
+                <h3 className="text-2xl font-bold">Import Preview</h3>
+                <p className="text-sm text-slate-400">
+                  Review detected fields before merging them into the current form.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportModalOpen(false);
+                  setImportPreview(null);
+                }}
+                className="rounded-2xl border border-white/10 px-4 py-2 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="max-h-[calc(90vh-140px)] overflow-y-auto px-6 py-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Form Title</label>
+                  <input
+                    value={importPreview.title || ""}
+                    onChange={(e) =>
+                      setImportPreview((prev) => ({ ...prev, title: e.target.value }))
+                    }
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">Description</label>
+                  <textarea
+                    value={importPreview.description || ""}
+                    onChange={(e) =>
+                      setImportPreview((prev) => ({ ...prev, description: e.target.value }))
+                    }
+                    rows={3}
+                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                  />
+                </div>
+              </div>
+
+              {importError && (
+                <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+                  {importError}
+                </div>
+              )}
+
+              <div className="mt-6 space-y-4">
+                {importPreview.questions.map((question, index) => (
+                  <div key={question.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={question.selected !== false}
+                          onChange={() => toggleImportedQuestion(index)}
+                        />
+                        Import this field
+                      </label>
+                      <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                        {question.type}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Question Label
+                        </label>
+                        <input
+                          value={question.label || ""}
+                          onChange={(e) => updateImportedQuestion(index, "label", e.target.value)}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Question Type
+                        </label>
+                        <select
+                          value={question.type || "shortAnswer"}
+                          onChange={(e) => updateImportedQuestion(index, "type", e.target.value)}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        >
+                          {QUESTION_TYPES.map((typeOption) => (
+                            <option key={typeOption.value} value={typeOption.value}>
+                              {typeOption.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Placeholder
+                        </label>
+                        <input
+                          value={question.placeholder || ""}
+                          onChange={(e) =>
+                            updateImportedQuestion(index, "placeholder", e.target.value)
+                          }
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Help Text
+                        </label>
+                        <input
+                          value={question.helpText || ""}
+                          onChange={(e) =>
+                            updateImportedQuestion(index, "helpText", e.target.value)
+                          }
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-4">
+                      <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={question.required === true}
+                          onChange={(e) =>
+                            updateImportedQuestion(index, "required", e.target.checked)
+                          }
+                        />
+                        Required
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={question.validationEnabled === true}
+                          onChange={(e) =>
+                            updateImportedQuestion(
+                              index,
+                              "validationEnabled",
+                              e.target.checked,
+                            )
+                          }
+                        />
+                        Enable Validation
+                      </label>
+                    </div>
+
+                    {["dropdown", "radio", "checkbox"].includes(question.type) && (
+                      <div className="mt-4">
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Options one per line
+                        </label>
+                        <textarea
+                          value={question.optionsText || (question.options || []).join("\n")}
+                          onChange={(e) =>
+                            updateImportedQuestionOptions(index, e.target.value)
+                          }
+                          rows={4}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                          placeholder="Option 1\nOption 2"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-6 py-4">
+              <div className="text-sm text-slate-400">
+                Selected questions will be merged into the current form.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportModalOpen(false);
+                    setImportPreview(null);
+                  }}
+                  className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={applyImportedForm}
+                  className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Apply Imported Form
+                </button>
+              </div>
             </div>
           </div>
         </div>

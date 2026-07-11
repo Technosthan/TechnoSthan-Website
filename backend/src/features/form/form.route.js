@@ -1,9 +1,12 @@
 import express from "express";
 import {
   getPublicFormBySlug,
+  sendPublicFormVerificationOtp,
   submitPublicForm,
+  verifyPublicFormVerificationOtp,
 } from "./form.controller.js";
 import { createMemoryUpload } from "../../shared/services/cloudinary.service.js";
+import { otpRateLimit } from "../../shared/middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
@@ -27,6 +30,8 @@ const upload = createMemoryUpload({
 });
 
 router.get("/:slug", getPublicFormBySlug);
+router.post("/:slug/verification/:kind/send", otpRateLimit, sendPublicFormVerificationOtp);
+router.post("/:slug/verification/:kind/verify", otpRateLimit, verifyPublicFormVerificationOtp);
 router.post("/:slug/submit", (req, res, next) => {
   upload.any()(req, res, (error) => {
     if (error) {

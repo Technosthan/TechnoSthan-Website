@@ -29,6 +29,8 @@ const formQuestionSchema = new mongoose.Schema(
         "imageUpload",
         "rating",
         "address",
+        "link",
+        "password",
         "sectionHeading",
       ],
       default: "shortAnswer",
@@ -44,6 +46,10 @@ const formQuestionSchema = new mongoose.Schema(
       trim: true,
     },
     required: {
+      type: Boolean,
+      default: false,
+    },
+    validationEnabled: {
       type: Boolean,
       default: false,
     },

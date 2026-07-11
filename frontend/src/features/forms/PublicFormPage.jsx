@@ -3,9 +3,24 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
-import { getPublicFormBySlug, submitPublicForm } from "./formsApi";
-import { CheckCircle2, Upload, Send, ArrowLeft } from "lucide-react";
+import {
+  getPublicFormBySlug,
+  sendPublicFormVerificationOtp,
+  submitPublicForm,
+  verifyPublicFormVerificationOtp,
+} from "./formsApi";
+import {
+  CheckCircle2,
+  Upload,
+  Send,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
+import { normalizeHttpUrl } from "../../shared/lib/url";
 
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -56,7 +71,7 @@ const validateEmail = (value) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 
 const validatePhone = (value) =>
-  /^(?:\+91[\s-]?)?[6-9]\d{9}$/.test(String(value || "").trim());
+  /^[6-9]\d{9}$/.test(String(value || "").trim());
 
 const getNumberValidationMessage = (question, value) => {
   const validation = question?.validation || {};
@@ -107,6 +122,15 @@ const sanitizeNumberInput = (value = "") =>
     .replace(/[^\d-]/g, "")
     .replace(/(?!^)-/g, "");
 
+const sanitizePhoneInput = (value = "") =>
+  String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+
+const isVerificationSupported = (question) =>
+  question?.validationEnabled === true &&
+  ["email", "phone"].includes(question?.type);
+
 const formatDateTime = (value) => {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
@@ -137,6 +161,11 @@ const getSuccessMessage = (form = {}, submitted = null) =>
   String(submitted?.successMessage || form?.successMessage || "").trim() ||
   "Form submitted successfully.";
 
+const getDefaultLinkPlaceholder = (question) =>
+  String(question?.placeholder || "").trim() || "https://example.com";
+
+const getVerificationStatus = (state = {}) => state.status || "idle";
+
 const PublicFormPage = () => {
   const { slug } = useParams();
   const { theme, appSettings } = useTheme();
@@ -144,10 +173,15 @@ const PublicFormPage = () => {
   const [form, setForm] = useState(null);
   const [values, setValues] = useState({});
   const [files, setFiles] = useState({});
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+  const [verificationTokens, setVerificationTokens] = useState({});
+  const [verificationState, setVerificationState] = useState({});
+  const [otpValues, setOtpValues] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(null);
+  const [now, setNow] = useState(Date.now());
   const submitLockRef = useRef(false);
 
   useEffect(() => {
@@ -161,6 +195,9 @@ const PublicFormPage = () => {
         const nextForm = response.data?.data;
         setForm(nextForm);
         setValues(initialValuesFromQuestions(nextForm?.questions || []));
+        setVerificationTokens({});
+        setVerificationState({});
+        setOtpValues({});
       } catch (err) {
         if (!mounted) return;
         setError(err.response?.data?.message || "Form not found.");
@@ -175,8 +212,40 @@ const PublicFormPage = () => {
     };
   }, [slug]);
 
-  const handleAnswer = (questionId, value) => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const resetVerificationForQuestion = (questionId) => {
+    setVerificationTokens((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+    setOtpValues((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+    setVerificationState((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      next[questionId] = { status: "idle", otp: "", verifiedAt: null };
+      return next;
+    });
+  };
+
+  const handleAnswer = (questionId, value, question = null) => {
     setValues((prev) => ({ ...prev, [questionId]: value }));
+    if (isVerificationSupported(question)) {
+      resetVerificationForQuestion(questionId);
+    }
   };
 
   const handleCheckbox = (questionId, option) => {
@@ -206,6 +275,212 @@ const PublicFormPage = () => {
 
     setError("");
     setFiles((prev) => ({ ...prev, [question._id]: file }));
+  };
+
+  const togglePasswordVisibility = (questionId) => {
+    setVisiblePasswords((prev) => ({
+      ...prev,
+      [questionId]: !prev[questionId],
+    }));
+  };
+
+  const updateVerificationState = (questionId, nextState) => {
+    setVerificationState((prev) => ({
+      ...prev,
+      [questionId]:
+        typeof nextState === "function"
+          ? nextState(prev[questionId] || {})
+          : nextState,
+    }));
+  };
+
+  const requestVerificationOtp = async (question) => {
+    const currentValue = String(values[question._id] || "").trim();
+    if (question.type === "email" && !validateEmail(currentValue)) {
+      throw new Error("Please enter a valid email address.");
+    }
+    if (question.type === "phone" && !validatePhone(currentValue)) {
+      throw new Error("Please enter a valid 10-digit mobile number.");
+    }
+
+    updateVerificationState(question._id, {
+      status: "sending",
+      otp: otpValues[question._id] || "",
+      verifiedAt: null,
+      resendAvailableAt: null,
+      message: "",
+    });
+
+    const response = await sendPublicFormVerificationOtp(form.slug, {
+      questionId: question._id,
+      value: currentValue,
+      challengeType: question.type,
+    });
+
+    updateVerificationState(question._id, {
+      status: "otp_sent",
+      otp: "",
+      verifiedAt: null,
+      resendAvailableAt: response.data?.data?.resendAvailableAt || null,
+      message: response.data?.data?.message || "OTP sent.",
+    });
+    setOtpValues((prev) => ({ ...prev, [question._id]: "" }));
+    toast.success(response.data?.data?.message || "OTP sent.");
+  };
+
+  const verifyQuestionOtp = async (question) => {
+    const otp = String(otpValues[question._id] || "").trim();
+    if (!otp) {
+      throw new Error("Please enter the OTP sent to you.");
+    }
+
+    updateVerificationState(question._id, {
+      status: "verifying",
+      otp,
+      verifiedAt: null,
+      message: "",
+    });
+
+    const response = await verifyPublicFormVerificationOtp(form.slug, {
+      questionId: question._id,
+      value: values[question._id],
+      otp,
+      challengeType: question.type,
+    });
+
+    const token = response.data?.data?.verificationToken || "";
+    if (token) {
+      setVerificationTokens((prev) => ({ ...prev, [question._id]: token }));
+    }
+    updateVerificationState(question._id, {
+      status: "verified",
+      otp: "",
+      verifiedAt: response.data?.data?.verifiedAt || new Date().toISOString(),
+      message: response.data?.data?.message || "Verified",
+    });
+    toast.success(response.data?.data?.message || "Verified");
+  };
+
+  const getPreparedAnswerValue = (question, value) => {
+    if (question.type === "link") {
+      return normalizeHttpUrl(value);
+    }
+    return value;
+  };
+
+  const renderVerificationUI = (question) => {
+    if (!isVerificationSupported(question)) return null;
+
+    const state = verificationState[question._id] || { status: "idle" };
+    const status = getVerificationStatus(state);
+    const isVerified = status === "verified";
+    const isBusy = status === "sending" || status === "verifying";
+    const showOtpRow = status === "otp_sent" || status === "verifying" || isVerified;
+
+    return (
+      <div className="mt-3 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+          <button
+            type="button"
+            disabled={isBusy || isVerified}
+            onClick={async () => {
+              try {
+                await requestVerificationOtp(question);
+              } catch (err) {
+                const message =
+                  err.response?.data?.message || err.message || "Failed to send OTP";
+                toast.error(message);
+                setError(message);
+                updateVerificationState(question._id, {
+                  status: "idle",
+                  otp: "",
+                  verifiedAt: null,
+                  message,
+                });
+              }
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-44"
+          >
+            {status === "sending" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : isVerified ? (
+              <ShieldCheck size={16} />
+            ) : (
+              <Send size={16} />
+            )}
+            {status === "sending"
+              ? "Sending OTP..."
+              : isVerified
+                ? "Verified"
+                : status === "otp_sent"
+                  ? "Resend OTP"
+                  : "Verify Now"}
+          </button>
+
+          {showOtpRow && !isVerified && (
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otpValues[question._id] || ""}
+                onChange={(e) =>
+                  setOtpValues((prev) => ({
+                    ...prev,
+                    [question._id]: e.target.value.replace(/\D/g, "").slice(0, 6),
+                  }))
+                }
+                placeholder="Enter OTP"
+                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+              />
+              <button
+                type="button"
+                disabled={status === "verifying"}
+                onClick={async () => {
+                  try {
+                    await verifyQuestionOtp(question);
+                  } catch (err) {
+                    const message =
+                      err.response?.data?.message ||
+                      err.message ||
+                      "Failed to verify OTP";
+                    toast.error(message);
+                    setError(message);
+                    updateVerificationState(question._id, {
+                      ...state,
+                      status: "otp_sent",
+                      message,
+                    });
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-36"
+              >
+                {status === "verifying" ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={16} />
+                )}
+                {status === "verifying" ? "Verifying..." : "Verify OTP"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {isVerified && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+            <ShieldCheck size={14} />
+            Verified
+          </div>
+        )}
+
+        {status === "otp_sent" && (
+          <p className="text-xs text-slate-300">
+            Enter the OTP we sent to the verified contact.
+          </p>
+        )}
+      </div>
+    );
   };
 
   const renderQuestion = (question) => {
@@ -338,47 +613,122 @@ const PublicFormPage = () => {
               </button>
             ))}
           </div>
-        ) : (
+        ) : question.type === "link" ? (
           <input
-            type={
-              question.type === "email"
-                ? "email"
-                : question.type === "phone"
-                  ? "tel"
-                  : question.type === "number"
-                    ? "number"
-                    : question.type === "date"
-                      ? "date"
-                      : "text"
-            }
-            step={question.type === "number" ? "1" : undefined}
-            inputMode={question.type === "number" ? "numeric" : undefined}
-            min={
-              question.type === "number" &&
-              Number.isFinite(question.validation?.minValue)
-                ? question.validation.minValue
-                : undefined
-            }
-            max={
-              question.type === "number" &&
-              Number.isFinite(question.validation?.maxValue)
-                ? question.validation.maxValue
-                : undefined
-            }
+            type="url"
+            autoComplete="url"
             value={values[question._id] || ""}
-            onChange={(e) =>
-              handleAnswer(
-                question._id,
-                question.type === "number"
-                  ? sanitizeNumberInput(e.target.value)
-                  : e.target.value,
-              )
-            }
-            placeholder={
-              question.type === "date" ? undefined : question.placeholder
-            }
+            onChange={(e) => handleAnswer(question._id, e.target.value)}
+            placeholder={getDefaultLinkPlaceholder(question)}
             {...commonProps}
           />
+        ) : question.type === "password" ? (
+          <div className="relative">
+            <input
+              type={visiblePasswords[question._id] ? "text" : "password"}
+              autoComplete="new-password"
+              value={values[question._id] || ""}
+              onChange={(e) => handleAnswer(question._id, e.target.value)}
+              placeholder={question.placeholder || "Enter secret"}
+              {...commonProps}
+              className={`${commonProps.className} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility(question._id)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-300 transition hover:bg-white/10"
+              aria-label={
+                visiblePasswords[question._id]
+                  ? "Hide secret"
+                  : "Show secret"
+              }
+            >
+              {visiblePasswords[question._id] ? (
+                <EyeOff size={18} />
+              ) : (
+                <Eye size={18} />
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <input
+              type={
+                question.type === "email"
+                  ? "email"
+                  : question.type === "phone"
+                    ? "tel"
+                    : question.type === "number"
+                      ? "number"
+                      : question.type === "date"
+                        ? "date"
+                        : "text"
+              }
+              step={question.type === "number" ? "1" : undefined}
+              inputMode={
+                question.type === "number" || question.type === "phone"
+                  ? "numeric"
+                  : undefined
+              }
+              pattern={question.type === "phone" ? "[0-9]*" : undefined}
+              maxLength={question.type === "phone" ? 10 : undefined}
+              autoComplete={
+                question.type === "email"
+                  ? "email"
+                  : question.type === "phone"
+                    ? "tel"
+                    : undefined
+              }
+              min={
+                question.type === "number" &&
+                Number.isFinite(question.validation?.minValue)
+                  ? question.validation.minValue
+                  : undefined
+              }
+              max={
+                question.type === "number" &&
+                Number.isFinite(question.validation?.maxValue)
+                  ? question.validation.maxValue
+                  : undefined
+              }
+              value={values[question._id] || ""}
+              onChange={(e) =>
+                handleAnswer(
+                  question._id,
+                  question.type === "number"
+                    ? sanitizeNumberInput(e.target.value)
+                    : question.type === "phone"
+                      ? sanitizePhoneInput(e.target.value)
+                    : getPreparedAnswerValue(question, e.target.value),
+                  question,
+                )
+              }
+              onPaste={
+                question.type === "phone"
+                  ? (e) => {
+                      e.preventDefault();
+                      const pastedText =
+                        sanitizePhoneInput(e.clipboardData?.getData("text") || "");
+                      const input = e.currentTarget;
+                      const start = input.selectionStart ?? input.value.length;
+                      const end = input.selectionEnd ?? input.value.length;
+                      const nextValue = sanitizePhoneInput(
+                        `${input.value.slice(0, start)}${pastedText}${input.value.slice(end)}`,
+                      );
+                      handleAnswer(question._id, nextValue, question);
+                    }
+                  : undefined
+              }
+              placeholder={
+                question.type === "date"
+                  ? undefined
+                  : question.placeholder ||
+                    (question.type === "link" ? "https://example.com" : undefined)
+              }
+              {...commonProps}
+            />
+            {renderVerificationUI(question)}
+          </div>
         )}
 
         {question.helpText && (
@@ -388,16 +738,21 @@ const PublicFormPage = () => {
     );
   };
 
-  const validate = () => {
+  const prepareSubmissionValues = () => {
+    const normalizedValues = { ...values };
+    const normalizedVerificationTokens = {};
+
     for (const question of form?.questions || []) {
       if (question.type === "sectionHeading") continue;
       const value = values[question._id];
       const file = files[question._id];
+      const normalizedLinkValue =
+        question.type === "link" ? normalizeHttpUrl(value) : value;
       const empty =
-        value === undefined ||
-        value === null ||
-        value === "" ||
-        (Array.isArray(value) && value.length === 0);
+        normalizedLinkValue === undefined ||
+        normalizedLinkValue === null ||
+        normalizedLinkValue === "" ||
+        (Array.isArray(normalizedLinkValue) && normalizedLinkValue.length === 0);
 
       if (question.required && empty && !file) {
         throw new Error(`${question.label} is required`);
@@ -407,15 +762,30 @@ const PublicFormPage = () => {
         throw new Error(`${question.label} must be a valid email`);
       }
       if (question.type === "phone" && value && !validatePhone(value)) {
-        throw new Error(
-          `${question.label} must be a valid Indian mobile number`,
-        );
+        throw new Error("Please enter a valid 10-digit mobile number.");
       }
       if (question.type === "number") {
         const validationMessage = getNumberValidationMessage(question, value);
         if (validationMessage) {
           throw new Error(validationMessage);
         }
+      }
+
+      if (question.type === "link" && value) {
+        if (!normalizedLinkValue) {
+          throw new Error("Please enter a valid link.");
+        }
+        normalizedValues[question._id] = normalizedLinkValue;
+      }
+
+      if (isVerificationSupported(question) && !empty) {
+        const token = verificationTokens[question._id];
+        if (!token) {
+          throw new Error(
+            `Please verify ${question.label} before submitting.`,
+          );
+        }
+        normalizedVerificationTokens[question._id] = token;
       }
 
       if (file) {
@@ -425,6 +795,11 @@ const PublicFormPage = () => {
         }
       }
     }
+
+    return {
+      answers: normalizedValues,
+      verificationTokens: normalizedVerificationTokens,
+    };
   };
 
   const handleSubmit = async (e) => {
@@ -434,10 +809,14 @@ const PublicFormPage = () => {
     submitLockRef.current = true;
     setSubmitting(true);
     try {
-      validate();
+      const { answers: normalizedValues, verificationTokens: tokens } =
+        prepareSubmissionValues();
       setError("");
       const payload = new FormData();
-      payload.append("answers", JSON.stringify(values));
+      payload.append("answers", JSON.stringify(normalizedValues));
+      if (Object.keys(tokens).length) {
+        payload.append("verificationTokens", JSON.stringify(tokens));
+      }
       Object.entries(files).forEach(([questionId, file]) => {
         if (file) {
           payload.append(questionId, file);
@@ -448,6 +827,9 @@ const PublicFormPage = () => {
       setSubmitted(response.data?.data || response.data);
       setValues(initialValuesFromQuestions(form.questions || []));
       setFiles({});
+      setVerificationTokens({});
+      setVerificationState({});
+      setOtpValues({});
       setSubmitting(false);
       toast.success(
         getSuccessMessage(form, response.data?.data || response.data),
@@ -488,7 +870,7 @@ const PublicFormPage = () => {
     Boolean(
       expiresAt &&
       !Number.isNaN(expiresAt.getTime()) &&
-      expiresAt.getTime() < Date.now(),
+      expiresAt.getTime() < now,
     );
 
   if (loadingState) {
@@ -605,7 +987,7 @@ const PublicFormPage = () => {
             </h2>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {form.questions?.map((question) => (
               <div key={question._id}>{renderQuestion(question)}</div>
             ))}

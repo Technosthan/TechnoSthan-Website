@@ -10,7 +10,11 @@ import {
   deleteFormResponse as deleteFormResponseService,
   exportFormResponses as exportFormResponsesService,
   getFormBySlug as getFormBySlugService,
+  importFormFromFile as importFormFromFileService,
+  sendFormVerificationOtp as sendFormVerificationOtpService,
+  revealFormResponseSecret as revealFormResponseSecretService,
   submitForm as submitFormService,
+  verifyFormVerificationOtp as verifyFormVerificationOtpService,
 } from "./form.service.js";
 
 export const createForm = async (req, res) => {
@@ -47,6 +51,16 @@ export const updateForm = async (req, res) => {
   try {
     const form = await updateFormService(req.params.formId, req.body);
     res.json({ success: true, data: form });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const importFormFromFile = async (req, res) => {
+  try {
+    const file = req.file || req.files?.[0];
+    const data = await importFormFromFileService(file);
+    res.json({ success: true, data });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -105,6 +119,22 @@ export const deleteFormSubmission = async (req, res) => {
   }
 };
 
+export const revealFormResponseSecret = async (req, res) => {
+  try {
+    const payload = await revealFormResponseSecretService({
+      formId: req.params.formId,
+      responseId: req.params.responseId,
+      questionId: req.body?.questionId,
+      adminId: req.user?._id,
+      ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+    });
+
+    res.json({ success: true, data: payload });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const exportFormSubmissions = async (req, res) => {
   try {
     const csv = await exportFormResponsesService(req.params.formId, req.query);
@@ -131,6 +161,41 @@ export const getPublicFormBySlug = async (req, res) => {
     res.json({ success: true, data: form });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const sendPublicFormVerificationOtp = async (req, res) => {
+  try {
+    const result = await sendFormVerificationOtpService({
+      slug: req.params.slug,
+      challengeType: req.params.kind || req.body?.challengeType,
+      questionId: req.body?.questionId,
+      value: req.body?.value,
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    const statusCode =
+      /wait before requesting another OTP/i.test(error.message || "") ? 429 : 400;
+    res.status(statusCode).json({ success: false, message: error.message });
+  }
+};
+
+export const verifyPublicFormVerificationOtp = async (req, res) => {
+  try {
+    const result = await verifyFormVerificationOtpService({
+      slug: req.params.slug,
+      challengeType: req.params.kind || req.body?.challengeType,
+      questionId: req.body?.questionId,
+      value: req.body?.value,
+      otp: req.body?.otp,
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    const statusCode =
+      /not found or expired|maximum otp attempts exceeded/i.test(error.message || "")
+        ? 400
+        : 400;
+    res.status(statusCode).json({ success: false, message: error.message });
   }
 };
 
