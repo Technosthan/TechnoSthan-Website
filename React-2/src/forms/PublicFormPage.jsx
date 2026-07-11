@@ -149,6 +149,24 @@ const getSuccessMessage = (form = {}, submitted = null) =>
   String(submitted?.successMessage || form?.successMessage || "").trim() ||
   "Form submitted successfully.";
 
+const getVerificationResendRemainingMs = (state, now) => {
+  const resendAt = Date.parse(state?.resendAvailableAt || "");
+  if (!Number.isFinite(resendAt)) {
+    return 0;
+  }
+
+  return Math.max(resendAt - now, 0);
+};
+
+const formatRemainingCooldown = (remainingMs) => {
+  const seconds = Math.ceil(remainingMs / 1000);
+  if (seconds <= 0) return "";
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}m ${rest}s`;
+};
+
 const PublicFormPage = () => {
   const { slug } = useParams();
   const { theme, appSettings } = useTheme();
@@ -197,7 +215,7 @@ const PublicFormPage = () => {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(Date.now());
-    }, 30000);
+    }, 1000);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -621,9 +639,25 @@ const PublicFormPage = () => {
                   <button
                     type="button"
                     onClick={() => sendVerificationCode(question)}
+                    disabled={
+                      getVerificationResendRemainingMs(
+                        verificationStates[question._id],
+                        now,
+                      ) > 0 ||
+                      (verificationStates[question._id]?.status || "idle") ===
+                        "sending"
+                    }
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold sm:w-40"
                   >
-                    <RefreshCcw size={16} /> Resend OTP
+                    <RefreshCcw size={16} />
+                    {(() => {
+                      const remainingMs = getVerificationResendRemainingMs(
+                        verificationStates[question._id],
+                        now,
+                      );
+                      const cooldown = formatRemainingCooldown(remainingMs);
+                      return cooldown ? `Resend in ${cooldown}` : "Resend OTP";
+                    })()}
                   </button>
                 </div>
               )}
