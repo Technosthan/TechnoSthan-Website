@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  BookOpen,
-  CalendarDays,
-} from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays } from "lucide-react";
 import HeroSection from "../components/HeroSection";
 import SectionHeader from "../../../shared/components/SectionHeader";
 import ProgramCard from "../../skill-programs/components/ProgramCard";
@@ -65,7 +61,10 @@ const Home = () => {
           {programs.length ? (
             <div className="grid cards-grid-3">
               {programs.slice(0, 6).map((program) => (
-                <ProgramCard key={program.id || program.title} program={program} />
+                <ProgramCard
+                  key={program.id || program.title}
+                  program={program}
+                />
               ))}
             </div>
           ) : (
@@ -76,10 +75,7 @@ const Home = () => {
 
       <section className="section">
         <div className="container">
-          <SectionHeader
-           
-            description="A structured path that keeps progress visible and momentum high."
-          />
+          <SectionHeader description="A structured path that keeps progress visible and momentum high." />
           <div className="timeline-shell glass">
             {learningJourney.map((step, index) => (
               <motion.div
@@ -104,10 +100,7 @@ const Home = () => {
 
       <section className="section">
         <div className="container">
-          <SectionHeader
-           
-            description="Every project reflects technical execution and practical problem-solving."
-          />
+          <SectionHeader description="Every project reflects technical execution and practical problem-solving." />
           <div className="grid cards-grid-3">
             {projectShowcase.map((project) => (
               <motion.article
@@ -117,8 +110,8 @@ const Home = () => {
               >
                 <div className="project-visual">
                   <project.icon size={22} />
+                  <span className="project-badge">{project.tag}</span>
                 </div>
-                <div className="project-badge">{project.tag}</div>
                 <h3>{project.title}</h3>
                 <p>{project.meta}</p>
               </motion.article>
@@ -129,10 +122,7 @@ const Home = () => {
 
       <section className="section">
         <div className="container">
-          <SectionHeader
-            
-            description="Join practical workshops designed for rapid certification and portfolio growth."
-          />
+          <SectionHeader description="Join practical workshops designed for rapid certification and portfolio growth." />
           {workshops.length ? (
             <div className="grid cards-grid-3">
               {workshops.map((item) => (
@@ -142,9 +132,13 @@ const Home = () => {
                   className="card glass workshop-card"
                 >
                   <div className="workshop-top">
-                    <span className="program-badge">{item.badge || "Workshop"}</span>
+                    <span className="program-badge">
+                      {item.badge || "Workshop"}
+                    </span>
                     <span className="meta-pill">
-                      {item.date ? new Date(item.date).toLocaleDateString("en-IN") : "Upcoming"}
+                      {item.date
+                        ? new Date(item.date).toLocaleDateString("en-IN")
+                        : "Upcoming"}
                     </span>
                   </div>
                   <h3>{item.title}</h3>
@@ -154,7 +148,8 @@ const Home = () => {
                       <CalendarDays size={14} /> {item.mode}
                     </span>
                     <span>
-                      <BookOpen size={14} /> {item.seatsLeft ?? item.seats ?? "Seats available"}
+                      <BookOpen size={14} />{" "}
+                      {item.seatsLeft ?? item.seats ?? "Seats available"}
                     </span>
                   </div>
                   <a href="/workshops" className="btn btn-secondary">
@@ -162,19 +157,18 @@ const Home = () => {
                   </a>
                 </motion.article>
               ))}
-          </div>
-        ) : (
-            <div className="card glass empty-state">No workshops available right now.</div>
+            </div>
+          ) : (
+            <div className="card glass empty-state">
+              No workshops available right now.
+            </div>
           )}
         </div>
       </section>
 
       <section className="section">
         <div className="container">
-          <SectionHeader
-            
-            description="Hands-on environments for research, prototyping, and advanced learning."
-          />
+          <SectionHeader description="Hands-on environments for research, prototyping, and advanced learning." />
           <div className="innovation-grid">
             {innovationLabs.map((lab) => (
               <motion.article
@@ -195,10 +189,7 @@ const Home = () => {
 
       <section className="section">
         <div className="container">
-          <SectionHeader
-            
-            description="The goal is simple: turn skills into credible career momentum."
-          />
+          <SectionHeader description="The goal is simple: turn skills into credible career momentum." />
           <div className="grid cards-grid-4">
             {outcomeCards.map((item) => (
               <motion.article
