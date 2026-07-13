@@ -64,12 +64,12 @@ const CampaignPopup = () => {
   const redirectUrl = campaign?.redirectUrl?.trim() || "";
   const showCtaButton = buttonText && redirectUrl;
   const isButtonExternal = isExternalLink(redirectUrl);
-  
+
   const buttonText2 = campaign?.buttonText2?.trim() || "";
   const redirectUrl2 = campaign?.redirectUrl2?.trim() || "";
   const showCtaButton2 = buttonText2 && redirectUrl2;
   const isButtonExternal2 = isExternalLink(redirectUrl2);
-  
+
   const mediaType = String(campaign?.mediaType || "IMAGE").toUpperCase();
   const mediaUrl = getMediaUrl(
     campaign?.mediaUrl,
@@ -92,7 +92,7 @@ const CampaignPopup = () => {
     e.stopPropagation();
     const url = buttonNum === 2 ? redirectUrl2 : redirectUrl;
     const isButtonExt = buttonNum === 2 ? isButtonExternal2 : isButtonExternal;
-    
+
     if (!url) return;
 
     if (isButtonExt) {
