@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import app from "./app.js";
 import { migrateAISettings } from "./features/admin/aiMigration.service.js";
 import { validateCloudinaryConfig } from "./shared/services/cloudinary.service.js";
+import { seedHomepageServices } from "./features/homepageServices/homepageServices.seed.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -49,6 +50,15 @@ const connectDB = async () => {
         console.log("✅ AI settings migration completed");
       } catch (error) {
         console.error("❌ AI migration failed:", error.message);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await seedHomepageServices();
+        console.log("✅ Homepage services seed completed");
+      } catch (error) {
+        console.error("❌ Homepage services seed failed:", error.message);
       }
     });
   } catch (err) {

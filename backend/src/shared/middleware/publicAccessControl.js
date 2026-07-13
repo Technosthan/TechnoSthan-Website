@@ -5,6 +5,7 @@ const publicAccessControl = async (req, res, next) => {
     const publicApiPaths = [
       "/api/auth",
       "/api/settings/public",
+      "/api/homepage-services/public",
       "/api/health",
       "/api/forms",
       "/api/admin/forms/banner-image",

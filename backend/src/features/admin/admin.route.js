@@ -52,6 +52,17 @@ import {
   unlinkAdminTelegramProfile,
 } from "./admin.controller.js";
 import {
+  createService,
+  deleteService,
+  getHomepageService,
+  listHomepageServices,
+  reorderServices,
+  translateService,
+  updateService,
+  updateServiceStatus,
+  uploadServiceImage,
+} from "../homepageServices/homepageServices.controller.js";
+import {
   createForm,
   importFormFromFile,
   getAdminForms,
@@ -113,6 +124,17 @@ router.delete("/users/:userId", deleteUser);
 // Settings management
 router.get("/settings", getSettings);
 router.post("/settings", updateSettings);
+
+// Homepage services management
+router.get("/homepage-services", listHomepageServices);
+router.patch("/homepage-services/reorder", reorderServices);
+router.post("/homepage-services/translate", translateService);
+router.post("/homepage-services/upload-image", uploadServiceImage);
+router.get("/homepage-services/:serviceId", getHomepageService);
+router.post("/homepage-services", createService);
+router.put("/homepage-services/:serviceId", updateService);
+router.delete("/homepage-services/:serviceId", deleteService);
+router.patch("/homepage-services/:serviceId/status", updateServiceStatus);
 
 // Auth settings management
 router.get("/auth-settings", getAuthSettings);

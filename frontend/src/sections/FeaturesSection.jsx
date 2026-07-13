@@ -1,258 +1,313 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
-import { useTheme } from "../contexts/ThemeContext";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-
+import { useTheme } from "../contexts/ThemeContext";
+import { getPublicHomepageServices } from "../features/homepageServices/homepageServicesApi";
 import {
-  ChevronDown,
-  ChevronUp,
-  Leaf,
-  Bot,
-  BookOpen,
+  getLocalizedText,
+  isSafeServiceUrl,
+  normalizeServiceLanguage,
+} from "../features/homepageServices/homepageServices.utils";
+import {
   BarChart3,
-  ClipboardList,
+  BookOpen,
+  Bot,
   Building2,
+  ChevronDown,
+  ClipboardList,
   Code2,
+  ExternalLink,
   Hotel,
+  Leaf,
+  RefreshCcw,
   Sparkles,
+  Layers3,
 } from "lucide-react";
 
+const ICON_MAP = {
+  Leaf,
+  Sparkles,
+  Code2,
+  Hotel,
+  Building2,
+  BookOpen,
+  ClipboardList,
+  Bot,
+  BarChart3,
+  Layers3,
+};
+
+const DEFAULT_ICON = Sparkles;
+
 const FeaturesSection = () => {
-  const { theme } = useTheme();
+  const { language } = useTheme();
   const { t } = useTranslation();
+  const reduceMotion = useReducedMotion();
 
-  const agritechServices = [
-    {
-      icon: <BookOpen size={20} />,
-      title: t("home.features.serviceWiki"),
-    },
-    {
-      icon: <ClipboardList size={20} />,
-      title: t("home.features.serviceQuiz"),
-    },
-    {
-      icon: <Bot size={20} />,
-      title: t("home.features.serviceAIChatbot"),
-    },
-    {
-      icon: <BarChart3 size={20} />,
-      title: t("home.features.serviceProgress"),
-    },
-  ];
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
 
-  const otherServices = [
-    {
-      icon: <Building2 size={22} />,
-      title: t("home.features.otherServiceInnovationHub"),
-    },
-    {
-      icon: <Code2 size={22} />,
-      title: t("home.features.otherServiceITDevelopment"),
-    },
-    {
-      icon: <Hotel size={22} />,
-      title: t("home.features.otherServiceHospitality"),
-    },
-  ];
+  const activeLanguage = normalizeServiceLanguage(language || "en");
 
-  const [openAgritech, setOpenAgritech] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadServices = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await getPublicHomepageServices();
+        const nextServices = response.data?.data || [];
+        if (cancelled) return;
+
+        setServices(nextServices);
+        setSelectedId((current) => {
+          if (current && nextServices.some((service) => (service._id || service.id) === current)) {
+            return current;
+          }
+
+          const firstExpandable = nextServices.find((service) => (service.innerServices || []).length > 0);
+          return firstExpandable?._id || firstExpandable?.id || null;
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setError(err.response?.data?.message || err.message || "Failed to load services");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadServices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sortedServices = useMemo(
+    () =>
+      [...services].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)),
+    [services],
+  );
+
+  const selectedService = useMemo(
+    () => sortedServices.find((service) => (service._id || service.id) === selectedId) || null,
+    [selectedId, sortedServices],
+  );
+
+  const expandedInnerServices = selectedService?.innerServices || [];
+  const hasExpandableServices = expandedInnerServices.length > 0;
+
+  const handleToggle = (serviceId, expandable) => {
+    if (!expandable) return;
+    setSelectedId((current) => (current === serviceId ? null : serviceId));
+  };
+
+  const iconFor = (value = "") => ICON_MAP[value] || DEFAULT_ICON;
+
+  const panelMotion = reduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 18 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -14 },
+        transition: { duration: 0.25 },
+      };
 
   return (
-    <section className="py-16 px-6 md:px-12 relative overflow-hidden">
-      {/* BG BLUR */}
-      <div className="absolute top-0 left-0 w-72 h-72 bg-green-500/10 rounded-full blur-3xl" />
+    <section className="relative overflow-hidden bg-[#07111f] px-4 py-16 sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-0 top-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
+      </div>
 
-      <div className="absolute bottom-0 right-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl" />
-
-      <div className="relative max-w-7xl mx-auto">
-        {/* HEADING */}
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 40,
-          }}
-          whileInView={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.7,
-          }}
-          viewport={{ once: true }}
-          className="text-center mb-14"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium mb-5">
+      <div className="relative mx-auto max-w-7xl">
+        <div className="mx-auto mb-10 max-w-3xl text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
             <Sparkles size={15} />
             {t("home.features.badge")}
           </div>
-
-          <h2 className={`text-4xl md:text-5xl font-black ${theme.text}`}>
+          <h2 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-5xl">
             {t("home.features.title")}
           </h2>
-        </motion.div>
+        </div>
 
-        {/* SERVICES ROW */}
-        <div className="flex flex-col xl:flex-row gap-6 items-start">
-          {/* AGRITECH */}
-          <motion.div
-            initial={{
-              opacity: 0,
-              x: -40,
-            }}
-            whileInView={{
-              opacity: 1,
-              x: 0,
-            }}
-            transition={{
-              duration: 0.7,
-            }}
-            viewport={{ once: true }}
-            className={`
-              flex-1
-              ${theme.card}
-              border
-              ${theme.border}
-              rounded-[2rem]
-              shadow-2xl
-              overflow-hidden
-            `}
-          >
-            {/* TOP BUTTON */}
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="animate-pulse rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
+              >
+                <div className="h-12 w-12 rounded-2xl bg-white/10" />
+                <div className="mt-5 h-6 w-2/3 rounded bg-white/10" />
+                <div className="mt-3 h-4 w-full rounded bg-white/10" />
+                <div className="mt-2 h-4 w-5/6 rounded bg-white/10" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-[2rem] border border-rose-400/20 bg-rose-500/10 p-6 text-rose-100 shadow-2xl">
+            <h3 className="text-lg font-bold">Services unavailable</h3>
+            <p className="mt-2 text-sm text-rose-100/85">{error}</p>
             <button
-              onClick={() => setOpenAgritech(!openAgritech)}
-              className="w-full flex items-center justify-between p-6 text-left group"
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-400"
             >
-              <div className="flex items-center gap-4">
-                {/* ICON */}
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg">
-                  <Leaf size={26} />
-                </div>
-
-                {/* TEXT */}
-                <div>
-                  <h3 className={`text-2xl font-black ${theme.text}`}>
-                    {t("home.features.agriTechTitle")}
-                  </h3>
-
-                  <p className={`text-sm mt-1 ${theme.textSecondary}`}>
-                    {t("home.features.agriTechSubtitle")}
-                  </p>
-                </div>
-              </div>
-
-              {/* TOGGLE */}
-              <div className="w-11 h-11 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                {openAgritech ? (
-                  <ChevronUp size={22} />
-                ) : (
-                  <ChevronDown size={22} />
-                )}
-              </div>
+              <RefreshCcw className="h-4 w-4" />
+              Retry
             </button>
+          </div>
+        ) : sortedServices.length === 0 ? (
+          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-10 text-center text-white shadow-2xl backdrop-blur">
+            <h3 className="text-2xl font-bold">No active services yet</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              The homepage stays usable while services are configured in the admin dashboard.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {sortedServices.map((service) => {
+                const id = service._id || service.id;
+                const expandable = (service.innerServices || []).length > 0;
+                const active = selectedId === id;
+                const Icon = iconFor(service.icon);
 
-            {/* DROPDOWN */}
-            <AnimatePresence>
-              {openAgritech && (
-                <motion.div
-                  initial={{
-                    height: 0,
-                    opacity: 0,
-                  }}
-                  animate={{
-                    height: "auto",
-                    opacity: 1,
-                  }}
-                  exit={{
-                    height: 0,
-                    opacity: 0,
-                  }}
-                  transition={{
-                    duration: 0.35,
-                  }}
-                  className="overflow-hidden"
-                >
-                  <div className="grid grid-cols-2 gap-4 px-6 pb-6">
-                    {agritechServices.map((service, index) => (
-                      <motion.div
-                        key={index}
-                        whileHover={{
-                          y: -4,
-                        }}
-                        className="bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg flex items-center gap-3 cursor-pointer"
+                const card = (
+                  <>
+                    <div className="flex items-start justify-between gap-4">
+                      <div
+                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
+                        style={{ background: service.accentColor || "#16a34a" }}
                       >
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-md">
-                          {service.icon}
-                        </div>
+                        <Icon className="h-7 w-7" />
+                      </div>
+                      {expandable ? (
+                        <ChevronDown
+                          className={`mt-1 h-5 w-5 transition ${active ? "rotate-180 text-emerald-300" : "text-slate-400"}`}
+                        />
+                      ) : null}
+                    </div>
 
-                        <span className={`font-semibold text-sm ${theme.text}`}>
-                          {service.title}
-                        </span>
-                      </motion.div>
-                    ))}
+                    <h3 className="mt-5 text-xl font-bold text-white">
+                      {getLocalizedText(service.name, activeLanguage)}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      {getLocalizedText(service.description, activeLanguage)}
+                    </p>
+                  </>
+                );
+
+                if (!expandable) {
+                  return (
+                    <div
+                      key={id}
+                      className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
+                    >
+                      {card}
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-expanded={active}
+                    onClick={() => handleToggle(id, expandable)}
+                    className={`rounded-[2rem] border p-5 text-left shadow-2xl backdrop-blur transition duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 ${
+                      active
+                        ? "border-emerald-400/60 bg-slate-950 text-white"
+                        : "border-white/10 bg-white/5 text-white hover:border-emerald-300/40 hover:bg-white/10"
+                    }`}
+                    style={
+                      active
+                        ? { boxShadow: `0 28px 70px ${service.accentColor || "#16a34a"}22` }
+                        : {}
+                    }
+                  >
+                    {card}
+                  </button>
+                );
+              })}
+            </div>
+
+            <AnimatePresence mode="wait">
+              {selectedService && hasExpandableServices ? (
+                <motion.div
+                  key={selectedService._id || selectedService.id}
+                  {...panelMotion}
+                  className="rounded-[2rem] border border-white/10 bg-slate-950/75 p-6 shadow-2xl backdrop-blur sm:p-8"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+                        {t("home.features.badge")}
+                      </div>
+                      <h3 className="mt-4 text-3xl font-black tracking-tight text-white">
+                        {getLocalizedText(selectedService.name, activeLanguage)}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    {expandedInnerServices.map((inner, index) => {
+                      const title = getLocalizedText(inner.title, activeLanguage) || `Inner service ${index + 1}`;
+                      const description = getLocalizedText(inner.description, activeLanguage);
+                      const clickable = isSafeServiceUrl(inner.redirectUrl);
+                      const Icon = iconFor(inner.icon || selectedService.icon);
+
+                      const innerCard = (
+                        <div className="group h-full rounded-[1.5rem] border border-white/10 bg-white/5 p-4 transition hover:border-emerald-300/40 hover:bg-white/10">
+                          <div className="flex items-start gap-4">
+                            <div
+                              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
+                              style={{ background: selectedService.accentColor || "#16a34a" }}
+                            >
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="font-semibold text-white">{title}</h4>
+                                {clickable ? (
+                                  <ExternalLink className="mt-0.5 h-4 w-4 text-slate-400 transition group-hover:text-emerald-300" />
+                                ) : null}
+                              </div>
+                              {description ? (
+                                <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+
+                      if (!clickable) {
+                        return <div key={inner._id || inner.id || index}>{innerCard}</div>;
+                      }
+
+                      return (
+                        <a
+                          key={inner._id || inner.id || index}
+                          href={inner.redirectUrl}
+                          target={inner.openInNewTab ? "_blank" : "_self"}
+                          rel={inner.openInNewTab ? "noreferrer" : undefined}
+                          className="block h-full"
+                        >
+                          {innerCard}
+                        </a>
+                      );
+                    })}
                   </div>
                 </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
-          </motion.div>
-
-          {/* OTHER SERVICES */}
-          <motion.div
-            initial={{
-              opacity: 0,
-              x: 40,
-            }}
-            whileInView={{
-              opacity: 1,
-              x: 0,
-            }}
-            transition={{
-              duration: 0.7,
-            }}
-            viewport={{ once: true }}
-            className="flex-[1.2] grid sm:grid-cols-3 gap-5 w-full"
-          >
-            {otherServices.map((service, index) => (
-              <motion.div
-                key={index}
-                whileHover={{
-                  y: -6,
-                  scale: 1.02,
-                }}
-                className={`
-                    ${theme.card}
-                    border
-                    ${theme.border}
-                    rounded-[2rem]
-                    p-6
-                    shadow-xl
-                    flex
-                    flex-col
-                    items-center
-                    justify-center
-                    text-center
-                    min-h-[190px]
-                    group
-                    cursor-pointer
-                    relative
-                    overflow-hidden
-                  `}
-              >
-                {/* HOVER EFFECT */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-r from-green-500/10 to-emerald-500/10" />
-
-                {/* ICON */}
-                <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg mb-4">
-                  {service.icon}
-                </div>
-
-                {/* TITLE */}
-                <h3 className={`relative z-10 text-lg font-bold ${theme.text}`}>
-                  {service.title}
-                </h3>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );

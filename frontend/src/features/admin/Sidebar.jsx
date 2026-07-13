@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Activity,
   FileText,
+  LayoutGrid,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
@@ -38,6 +39,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       path: "content",
       description: "AgriTech Wiki Materials",
       color: "from-green-500 to-teal-600",
+    },
+    {
+      id: "homepage-services",
+      label: "Homepage Services",
+      icon: LayoutGrid,
+      path: "homepage-services",
+      description: "Dynamic homepage services",
+      color: "from-emerald-500 to-teal-600",
     },
     {
       id: "quiz",

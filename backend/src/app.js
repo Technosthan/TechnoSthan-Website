@@ -14,6 +14,7 @@ import settingsRoutes from "./features/settings/settings.route.js";
 import announcementsRoutes from "./features/announcements/announcements.route.js";
 import notificationRoutes from "./features/notifications/notification.route.js";
 import formRoutes from "./features/form/form.route.js";
+import homepageServicesRoutes from "./features/homepageServices/homepageServices.route.js";
 import { sendEmail } from "./services/email/sendEmail.js";
 import { resolveEmailProvider } from "./features/admin/otpProvider.service.js";
 
@@ -170,6 +171,7 @@ app.use("/api/forms", formRoutes);
 app.use("/api/announcements", announcementsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/homepage-services", homepageServicesRoutes);
 
 console.log("Routes mounted");
 
