@@ -35,19 +35,21 @@ const connectDB = async () => {
       console.log("🟡 MongoDB disconnected");
     });
 
-    /* ---------------------- Run AI Migration ---------------------- */
-
-    try {
-      await migrateAISettings();
-      console.log("✅ AI settings migration completed");
-    } catch (error) {
-      console.error("❌ AI migration failed:", error.message);
-    }
-
     /* -------------------------- Start Server -------------------------- */
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+    /* ---------------------- Run AI Migration ---------------------- */
+
+    setImmediate(async () => {
+      try {
+        await migrateAISettings();
+        console.log("✅ AI settings migration completed");
+      } catch (error) {
+        console.error("❌ AI migration failed:", error.message);
+      }
     });
   } catch (err) {
     console.error("❌ DB Connection Error:", err.message);

@@ -15,7 +15,29 @@ const AboutSection = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
 
-  const farmers = ["/farmer1.png", "/farmer2.png", "/farmer3.png"];
+  const farmers = [
+    {
+      avif: "/optimized/farmer1-768.avif 768w, /optimized/farmer1-1536.avif 1536w",
+      webp: "/optimized/farmer1-768.webp 768w, /optimized/farmer1-1536.webp 1536w",
+      fallback: "/optimized/farmer1-1536.jpg",
+      width: 1536,
+      height: 1024,
+    },
+    {
+      avif: "/optimized/farmer2-960.avif 960w, /optimized/farmer2-1536.avif 1536w",
+      webp: "/optimized/farmer2-960.webp 960w, /optimized/farmer2-1536.webp 1536w",
+      fallback: "/optimized/farmer2-1536.jpg",
+      width: 2816,
+      height: 1536,
+    },
+    {
+      avif: "/optimized/farmer3-960.avif 960w, /optimized/farmer3-1536.avif 1536w",
+      webp: "/optimized/farmer3-960.webp 960w, /optimized/farmer3-1536.webp 1536w",
+      fallback: "/optimized/farmer3-1536.jpg",
+      width: 2816,
+      height: 1536,
+    },
+  ];
 
   return (
     <section className="relative overflow-hidden">
@@ -104,11 +126,27 @@ const AboutSection = () => {
               className="group relative overflow-hidden rounded-[2rem] shadow-2xl border border-white/10"
             >
               {/* Image */}
-              <img
-                src={image}
-                alt={`Farmer ${index + 1}`}
-                className="w-full h-[420px] object-cover transition-transform duration-700 group-hover:scale-110"
-              />
+              <picture>
+                <source
+                  type="image/avif"
+                  srcSet={image.avif}
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                />
+                <source
+                  type="image/webp"
+                  srcSet={image.webp}
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src={image.fallback}
+                  alt={`Farmer ${index + 1}`}
+                  width={image.width}
+                  height={image.height}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-[420px] object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+              </picture>
 
               {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

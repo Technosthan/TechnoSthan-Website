@@ -1,10 +1,19 @@
+import { hasConfiguredApiBaseUrl, resolveApiBaseUrl } from "./apiConfig";
+
 const baseURL =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_API_BASE_URL_PROD ||
-  import.meta.env.VITE_API_BASE_URL ||
-  window.location.origin;
+  resolveApiBaseUrl({
+    allowSameOriginProxy: false,
+  }) || "";
 
 export const getPublicSettings = async () => {
+  if (!baseURL) {
+    throw new Error(
+      hasConfiguredApiBaseUrl()
+        ? "Public settings base URL is unavailable"
+        : "Missing VITE_API_BASE_URL in production. Falling back to safe defaults.",
+    );
+  }
+
   const response = await fetch(`${baseURL}/api/settings/public`, {
     method: "GET",
     cache: "no-store",

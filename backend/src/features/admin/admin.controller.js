@@ -21,6 +21,7 @@ import bcrypt from "bcryptjs";
 import axios from "axios";
 import * as otpProviderService from "./otpProvider.service.js";
 import * as userServicePermissionService from "./userServicePermission.service.js";
+import { invalidatePublicSettingsCache } from "../../shared/cache/publicSettingsCache.js";
 
 const maskSensitiveProviderPayload = (payload) => {
   if (!payload || typeof payload !== "object") return payload;
@@ -1352,6 +1353,8 @@ export const updateSettings = async (req, res) => {
         setDefaultsOnInsert: true,
       },
     );
+
+    invalidatePublicSettingsCache();
 
     console.log("Settings updated successfully:", settings._id);
 

@@ -1,4 +1,4 @@
-import Settings from "../../features/admin/settings.model.js";
+import { loadPublicAccessControlSnapshot } from "../cache/publicSettingsCache.js";
 
 const publicAccessControl = async (req, res, next) => {
   try {
@@ -15,7 +15,7 @@ const publicAccessControl = async (req, res, next) => {
       return next();
     }
 
-    const settings = await Settings.findOne().lean();
+    const settings = await loadPublicAccessControlSnapshot();
     const publicWebsiteEnabled = settings?.publicWebsiteEnabled;
     const publicAccessSetting = settings?.publicAccessEnabled;
     const publicAccessEnabled =

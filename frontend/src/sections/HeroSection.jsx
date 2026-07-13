@@ -164,11 +164,27 @@ const HeroSection = () => {
             }}
             className="relative"
           >
-            <img
-              src="/hero.png"
-              alt="Smart Farming"
-              className="w-full rounded-[2rem] shadow-2xl border border-white/20"
-            />
+            <picture>
+              <source
+                type="image/avif"
+                srcSet="/optimized/hero-768.avif 768w, /optimized/hero-1536.avif 1536w"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+              />
+              <source
+                type="image/webp"
+                srcSet="/optimized/hero-768.webp 768w, /optimized/hero-1536.webp 1536w"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+              />
+              <img
+                src="/optimized/hero-1536.jpg"
+                alt="Smart Farming"
+                width="1536"
+                height="1024"
+                fetchPriority="high"
+                decoding="async"
+                className="w-full rounded-[2rem] shadow-2xl border border-white/20"
+              />
+            </picture>
 
             {/* Floating Card */}
             <motion.div

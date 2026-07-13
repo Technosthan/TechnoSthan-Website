@@ -82,7 +82,7 @@ const Navbar = () => {
   const { theme, appSettings, language: currentLanguage, changeLanguage } =
     useTheme();
   const { t } = useTranslation();
-  const { settings, loading } = useSettings();
+  const { settings } = useSettings();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user") || "null"),
   );
@@ -161,21 +161,6 @@ const Navbar = () => {
     };
   }, [token]);
 
-  if (loading) {
-    return (
-      <nav
-        className={`sticky top-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 backdrop-blur-md ${theme.navbar} shadow-sm`}
-      >
-        <div className="h-12 w-44 rounded-xl bg-white/10 animate-pulse" />
-        <div className="hidden md:flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-white/10 animate-pulse" />
-          <div className="h-10 w-24 rounded-xl bg-white/10 animate-pulse" />
-          <div className="h-10 w-24 rounded-xl bg-white/10 animate-pulse" />
-        </div>
-      </nav>
-    );
-  }
-
   return (
     <motion.nav
       initial={{ y: -80, opacity: 0 }}
@@ -186,11 +171,38 @@ const Navbar = () => {
     >
       {/* Logo and Brand */}
       <Link to="/" className="flex items-center gap-3" onClick={handleNavClick}>
-        <img
-          src={getOptimizedImageUrl(appSettings.logoUrl || "/hero.png")}
-          className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 ${theme.border} shadow`}
-          alt={`${appSettings.appName || "TECHNOSTHAN AGRITECH"} Logo`}
-        />
+        <picture>
+          {!appSettings.logoUrl && (
+            <>
+              <source
+                srcSet="/optimized/hero-logo-64.avif 64w, /optimized/hero-logo-128.avif 128w"
+                sizes="48px"
+                type="image/avif"
+              />
+              <source
+                srcSet="/optimized/hero-logo-64.webp 64w, /optimized/hero-logo-128.webp 128w"
+                sizes="48px"
+                type="image/webp"
+              />
+              <source
+                srcSet="/optimized/hero-logo-64.jpg 64w, /optimized/hero-logo-128.jpg 128w"
+                sizes="48px"
+                type="image/jpeg"
+              />
+            </>
+          )}
+          <img
+            src={getOptimizedImageUrl(
+              appSettings.logoUrl || "/optimized/hero-logo-128.jpg",
+            )}
+            width="128"
+            height="128"
+            className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 ${theme.border} shadow object-cover`}
+            alt={`${appSettings.appName || "TECHNOSTHAN AGRITECH"} Logo`}
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
         <h1 className={`font-bold text-base md:text-lg ${theme.text}`}>
           {appSettings.appName || "TECHNOSTHAN AGRITECH"}
         </h1>
@@ -235,9 +247,7 @@ const Navbar = () => {
             theme={theme}
           />
         </div>
-        {loading ? (
-          <span className="inline-flex h-8 w-24 animate-pulse rounded-full bg-white/10" />
-        ) : token ? (
+        {token ? (
           <>
             {isAdmin && (
               <Link
@@ -393,9 +403,7 @@ const Navbar = () => {
 
               {/* Mobile Logout/Login */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-                {loading ? (
-                  <span className="inline-flex h-11 w-full animate-pulse rounded-xl bg-white/10" />
-                ) : token ? (
+                {token ? (
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

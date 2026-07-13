@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 import User from "../../features/auth/user.model.js";
-import Settings from "../../features/admin/settings.model.js";
+import { loadPublicAccessControlSnapshot } from "../cache/publicSettingsCache.js";
 
 const getPublicAccessEnabled = async () => {
   try {
-    const settings = await Settings.findOne().lean();
+    const settings = await loadPublicAccessControlSnapshot();
     if (!settings) {
       console.log(
         "[optionalAuthMiddleware] No settings found, defaulting to public enabled",

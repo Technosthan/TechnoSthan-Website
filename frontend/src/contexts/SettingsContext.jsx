@@ -4,12 +4,14 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import i18n from "../i18n/i18n.js";
 import { getPublicSettings } from "../shared/lib/settingsApi";
 import { resolveAssetUrl } from "../shared/lib/assetUrl";
+
+const SETTINGS_CACHE_KEY = "agritech.publicSettingsCache.v1";
+const SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const LANGUAGE_CODE_MAP = {
   en: "en",
@@ -99,9 +101,46 @@ const normalizeSettings = (input = {}, fallback = {}) => {
 
 const defaultSettings = normalizeSettings({});
 
+const isBrowser = typeof window !== "undefined";
+
+const readCachedSettings = () => {
+  if (!isBrowser) return null;
+
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const cachedAt = Number(parsed?.cachedAt || 0);
+    if (!cachedAt || Date.now() - cachedAt > SETTINGS_CACHE_TTL_MS) {
+      return null;
+    }
+
+    return normalizeSettings(parsed?.settings || {}, defaultSettings);
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedSettings = (settings) => {
+  if (!isBrowser) return;
+
+  try {
+    window.localStorage.setItem(
+      SETTINGS_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        settings,
+      }),
+    );
+  } catch {
+    // Ignore storage failures.
+  }
+};
+
 const SettingsContext = createContext({
   settings: defaultSettings,
-  loading: true,
+  loading: false,
   refreshSettings: async () => {},
   updateSettings: () => {},
 });
@@ -128,13 +167,16 @@ const applyLanguageFromSettings = (settings, source) => {
 };
 
 export const SettingsProvider = ({ children }) => {
-  const [settings, setSettings] = useState(defaultSettings);
-  const [loading, setLoading] = useState(true);
-  const hasHydratedRef = useRef(false);
+  const [settings, setSettings] = useState(() => {
+    return readCachedSettings() || defaultSettings;
+  });
+  const [loading] = useState(false);
+  const hasHydratedRef = React.useRef(Boolean(readCachedSettings()));
 
   const commitSettings = useCallback((nextSettings, source) => {
     const normalized = normalizeSettings(nextSettings, defaultSettings);
     setSettings(normalized);
+    writeCachedSettings(normalized);
 
     if (hasHydratedRef.current) {
       void applyLanguageFromSettings(normalized, source);
@@ -157,8 +199,6 @@ export const SettingsProvider = ({ children }) => {
   }, []);
 
   const refreshSettings = useCallback(async () => {
-    setLoading(true);
-
     try {
       const apiUrl =
         import.meta.env.VITE_API_URL ||
@@ -182,14 +222,20 @@ export const SettingsProvider = ({ children }) => {
 
       hasHydratedRef.current = true;
       commitSettings(defaultSettings, "fallback");
-    } finally {
-      setLoading(false);
     }
   }, [commitSettings]);
 
   useEffect(() => {
-    refreshSettings();
-  }, [refreshSettings]);
+    if (!hasHydratedRef.current) {
+      const cachedSettings = readCachedSettings();
+      if (cachedSettings) {
+        hasHydratedRef.current = true;
+        commitSettings(cachedSettings, "storage");
+      }
+    }
+
+    void refreshSettings();
+  }, [commitSettings, refreshSettings]);
 
   const updateSettings = useCallback(
     (nextSettings) => {

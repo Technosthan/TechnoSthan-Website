@@ -1,10 +1,9 @@
 import axiosInstance from "../../shared/lib/axiosInstance";
+import { resolveApiBaseUrl } from "../../shared/lib/apiConfig";
 
-const apiBaseURL =
-  axiosInstance.defaults.baseURL ||
-  import.meta.env.VITE_API_BASE_URL_PROD ||
-  import.meta.env.VITE_API_BASE_URL ||
-  window.location.origin;
+const apiBaseURL = resolveApiBaseUrl({
+  allowSameOriginProxy: false,
+});
 
 export const registerUser = (data) =>
   axiosInstance.post("/api/auth/register", data);

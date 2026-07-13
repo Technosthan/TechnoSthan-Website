@@ -1,4 +1,8 @@
-import Settings from "../admin/settings.model.js";
+import {
+  invalidatePublicSettingsCache,
+  loadPublicAccessControlSnapshot,
+  loadPublicSettingsSnapshot,
+} from "../../shared/cache/publicSettingsCache.js";
 
 const publicCacheHeaders = {
   "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -6,113 +10,9 @@ const publicCacheHeaders = {
   Expires: "0",
 };
 
-const languageCodeMap = {
-  english: "en",
-  hindi: "hi",
-  rajasthani: "rj",
-  en: "en",
-  hi: "hi",
-  rj: "rj",
-};
-
-const normalizeLanguageCode = (language) => {
-  if (!language) return "en";
-  return languageCodeMap[String(language).trim().toLowerCase()] || "en";
-};
-
 export const getPublicSettings = async (req, res) => {
   try {
-    const defaultSettings = {
-      appName: "Technosthan AgriTech",
-      language: "english",
-      logoUrl: "",
-      brandWebsiteUrl: "",
-      contactEmail: "",
-      contactPhone: "",
-      contactAddress: "",
-      facebookUrl: "",
-      instagramUrl: "",
-      linkedinUrl: "",
-      youtubeUrl: "",
-      whatsappUrl: "",
-      footerText: "",
-      featureFlags: {
-        aiChat: true,
-        quiz: true,
-        contentVisibility: true,
-      },
-      dashboardSettings: {
-        visibleCards: ["stats", "users", "content", "quiz", "activity"],
-        cardOrder: ["stats", "users", "content", "quiz", "activity"],
-      },
-      publicAccessEnabled: true,
-      publicWebsiteEnabled: true,
-      hideLoginButton: true,
-      publicRoutes: [
-        "/",
-        "/landing",
-        "/about",
-        "/contact",
-        "/login",
-        "/forgot-password",
-        "/reset-password",
-        "/verify-email",
-        "/verify-phone",
-        "/login/telegram",
-        "/login/whatsapp",
-        "/AgriTech Wiki",
-        "/chat",
-        "/quiz/:contentId",
-      ],
-    };
-
-    let settings = await Settings.findOne().lean();
-
-    if (!settings) {
-      settings = await Settings.create({});
-      settings = settings.toObject();
-    }
-
-    const publicAccessEnabledValue =
-      settings.publicWebsiteEnabled != null
-        ? settings.publicWebsiteEnabled
-        : settings.publicAccessEnabled;
-
-    settings = {
-      ...defaultSettings,
-      ...settings,
-      featureFlags: {
-        ...defaultSettings.featureFlags,
-        ...(settings.featureFlags || {}),
-      },
-      dashboardSettings: {
-        ...defaultSettings.dashboardSettings,
-        ...(settings.dashboardSettings || {}),
-      },
-      publicAccessEnabled:
-        settings.publicAccessEnabled != null
-          ? settings.publicAccessEnabled
-          : defaultSettings.publicAccessEnabled,
-      publicWebsiteEnabled:
-        settings.publicWebsiteEnabled != null
-          ? settings.publicWebsiteEnabled
-          : publicAccessEnabledValue != null
-            ? publicAccessEnabledValue
-            : defaultSettings.publicWebsiteEnabled,
-      hideLoginButton:
-        settings.hideLoginButton != null
-          ? settings.hideLoginButton
-          : settings.publicWebsiteEnabled != null
-            ? settings.publicWebsiteEnabled
-            : settings.publicAccessEnabled != null
-              ? settings.publicAccessEnabled
-              : defaultSettings.hideLoginButton,
-      publicRoutes:
-        settings.publicRoutes != null
-          ? settings.publicRoutes
-          : defaultSettings.publicRoutes,
-      websiteLanguage: normalizeLanguageCode(settings.language),
-    };
+    const settings = await loadPublicSettingsSnapshot();
 
     res.set(publicCacheHeaders);
     res.json({ success: true, data: settings });
@@ -127,48 +27,12 @@ export const getPublicSettings = async (req, res) => {
 
 export const getAccessControlSettings = async (req, res) => {
   try {
-    const settings = await Settings.findOne().lean();
-    const publicAccessEnabled =
-      settings?.publicAccessEnabled != null
-        ? settings.publicAccessEnabled
-        : true;
-    const publicWebsiteEnabled =
-      settings?.publicWebsiteEnabled != null
-        ? settings.publicWebsiteEnabled
-        : publicAccessEnabled;
-    const publicRoutes =
-      settings?.publicRoutes != null
-        ? settings.publicRoutes
-        : [
-            "/",
-            "/landing",
-            "/about",
-            "/contact",
-            "/login",
-            "/forgot-password",
-            "/reset-password",
-            "/verify-email",
-            "/verify-phone",
-            "/login/telegram",
-            "/login/whatsapp",
-            "/AgriTech Wiki",
-            "/chat",
-            "/quiz/:contentId",
-          ];
-    const hideLoginButton =
-      settings?.hideLoginButton != null
-        ? settings.hideLoginButton
-        : publicWebsiteEnabled;
+    const settings = await loadPublicAccessControlSnapshot();
 
     res.set(publicCacheHeaders);
     res.json({
       success: true,
-      data: {
-        publicAccessEnabled,
-        publicWebsiteEnabled,
-        hideLoginButton,
-        publicRoutes,
-      },
+      data: settings,
     });
   } catch (error) {
     console.error("Get access control settings error:", error);
@@ -246,6 +110,8 @@ export const updateAccessControlSettings = async (req, res) => {
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     ).lean();
+
+    invalidatePublicSettingsCache();
 
     res.json({
       success: true,

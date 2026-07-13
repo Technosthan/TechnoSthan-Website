@@ -169,7 +169,7 @@ const getVerificationStatus = (state = {}) => state.status || "idle";
 const PublicFormPage = () => {
   const { slug } = useParams();
   const { theme, appSettings } = useTheme();
-  const { loading: settingsLoading, settings: websiteSettings } = useSettings();
+  const { settings: websiteSettings } = useSettings();
   const [form, setForm] = useState(null);
   const [values, setValues] = useState({});
   const [files, setFiles] = useState({});
@@ -861,7 +861,7 @@ const PublicFormPage = () => {
     }
   };
 
-  const loadingState = loading || settingsLoading;
+  const loadingState = loading;
   const language = websiteSettings?.websiteLanguage || "en";
   const expiryCopy = getExpiryCopy(language);
   const expiresAt = form?.expiresAt ? new Date(form.expiresAt) : null;
