@@ -8,15 +8,69 @@ const parseDate = (value) => {
 };
 
 const normalizeEnum = (value, fallback) =>
-  String(value || fallback || "").trim().toUpperCase();
+  String(value || fallback || "")
+    .trim()
+    .toUpperCase();
 
 const normalizePage = (value = "") => {
-  const raw = String(value || "").trim().toLowerCase();
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase();
   if (!raw || /\ball\b/.test(raw)) return "ALL";
   if (raw === "/" || raw === "home") return "HOME";
   if (raw.includes("program")) return "PROGRAMS";
   if (raw.includes("contact")) return "CONTACT";
   return "ALL";
+};
+
+const validateRedirectUrl = (value) => {
+  if (!value) return null;
+
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return null;
+
+  // Check for unsafe protocols
+  const unsafeProtocols = [
+    "javascript:",
+    "data:",
+    "file:",
+    "vbscript:",
+    "about:",
+  ];
+  const lowerUrl = trimmed.toLowerCase();
+  for (const unsafe of unsafeProtocols) {
+    if (lowerUrl.startsWith(unsafe)) {
+      const error = new Error(
+        `Unsafe redirect URL protocol: "${unsafe}" is not allowed`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  // Accept internal routes (starting with /)
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+
+  // Accept external URLs with http:// or https://
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      new URL(trimmed); // Validate URL format
+      return trimmed;
+    } catch (_e) {
+      const error = new Error("Invalid external URL format");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  // If no protocol and doesn't start with /, treat as invalid
+  const error = new Error(
+    "Redirect URL must be an internal route (e.g., /contact) or external URL (e.g., https://example.com)",
+  );
+  error.statusCode = 400;
+  throw error;
 };
 
 const isCampaignVisibleForPage = (campaign, page) => {
@@ -31,7 +85,10 @@ const prepareCampaignData = (body = {}) => {
 
   const title = String(body.title || "").trim();
   const mediaType = normalizeEnum(body.mediaType, "");
-  const mediaUrl = normalizeMediaUrl(body.mediaUrl || body.media || "", mediaType === "VIDEO" ? "video" : "image");
+  const mediaUrl = normalizeMediaUrl(
+    body.mediaUrl || body.media || "",
+    mediaType === "VIDEO" ? "video" : "image",
+  );
 
   if (!title) {
     const error = new Error("Title is required");
@@ -57,11 +114,20 @@ const prepareCampaignData = (body = {}) => {
     throw error;
   }
 
+  const buttonText = String(body.buttonText || "").trim() || null;
+  const redirectUrl = validateRedirectUrl(body.redirectUrl);
+  const buttonText2 = String(body.buttonText2 || "").trim() || null;
+  const redirectUrl2 = validateRedirectUrl(body.redirectUrl2);
+
   return {
     title,
     mediaUrl,
     mediaType,
     ctaLink: String(body.ctaLink || "").trim() || null,
+    buttonText,
+    redirectUrl,
+    buttonText2,
+    redirectUrl2,
     startDate,
     endDate,
     isActive: body.isActive ?? true,
@@ -84,7 +150,10 @@ export const getActiveCampaign = async () => {
     orderBy: campaignOrder,
   });
 
-  return candidates.find((campaign) => isCampaignVisibleForPage(campaign, "ALL")) || null;
+  return (
+    candidates.find((campaign) => isCampaignVisibleForPage(campaign, "ALL")) ||
+    null
+  );
 };
 
 export const getActiveCampaignForPage = async (page = "") => {
@@ -94,7 +163,11 @@ export const getActiveCampaignForPage = async (page = "") => {
   });
 
   const normalizedPage = normalizePage(page);
-  return candidates.find((campaign) => isCampaignVisibleForPage(campaign, normalizedPage)) || null;
+  return (
+    candidates.find((campaign) =>
+      isCampaignVisibleForPage(campaign, normalizedPage),
+    ) || null
+  );
 };
 
 export const getActiveCampaignsForPage = async (page = "") => {
@@ -104,7 +177,9 @@ export const getActiveCampaignsForPage = async (page = "") => {
   });
 
   const normalizedPage = normalizePage(page);
-  return candidates.filter((campaign) => isCampaignVisibleForPage(campaign, normalizedPage));
+  return candidates.filter((campaign) =>
+    isCampaignVisibleForPage(campaign, normalizedPage),
+  );
 };
 
 export const listCampaigns = async () => {
@@ -129,6 +204,7 @@ export const activateCampaign = async (id) =>
 export const deactivateCampaign = async (id) =>
   prisma.campaign.update({ where: { id }, data: { isActive: false } });
 
-export const deleteCampaign = async (id) => prisma.campaign.delete({ where: { id } });
+export const deleteCampaign = async (id) =>
+  prisma.campaign.delete({ where: { id } });
 
 export { prepareCampaignData };

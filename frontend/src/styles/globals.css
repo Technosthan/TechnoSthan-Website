@@ -138,11 +138,11 @@ main {
   padding: 0.7rem 1rem;
   border-radius: 0.9rem;
 }
-.select{
-     width: 100%;
+.select {
+  width: 100%;
   padding: 0.9rem 1rem;
   border-radius: 0.9rem;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background: #121a2a;
   color: #ffffff;
   outline: none;
@@ -152,24 +152,23 @@ main {
   -webkit-appearance: none;
   -moz-appearance: none;
 
-  transition: .25s;
+  transition: 0.25s;
 }
 
-.select:hover{
-    border-color:#44d7ff;
+.select:hover {
+  border-color: #44d7ff;
 }
 
-.select:focus{
-    border-color:#44d7ff;
-    box-shadow:0 0 0 3px rgba(68,215,255,.18);
+.select:focus {
+  border-color: #44d7ff;
+  box-shadow: 0 0 0 3px rgba(68, 215, 255, 0.18);
 }
 
-.select option{
-    background:#121a2a;
-    color:#ffffff;
-    padding:12px;
+.select option {
+  background: #121a2a;
+  color: #ffffff;
+  padding: 12px;
 }
-
 
 .input,
 .textarea {
@@ -997,7 +996,11 @@ td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(94, 231, 255, 0.1), rgba(141, 91, 255, 0.15));
+  background: linear-gradient(
+    135deg,
+    rgba(94, 231, 255, 0.1),
+    rgba(141, 91, 255, 0.15)
+  );
   color: var(--cyan);
 }
 .muted-price {
@@ -1201,7 +1204,10 @@ td {
 }
 .dashboard-shell.is-collapsed .dashboard-sidebar h2,
 .dashboard-shell.is-collapsed .dashboard-sidebar .muted-copy,
-.dashboard-shell.is-collapsed .dashboard-sidebar .dashboard-group-toggle span:not(:first-child),
+.dashboard-shell.is-collapsed
+  .dashboard-sidebar
+  .dashboard-group-toggle
+  span:not(:first-child),
 .dashboard-shell.is-collapsed .dashboard-sidebar .dashboard-logout-text {
   display: none;
 }
@@ -1299,8 +1305,14 @@ td {
   padding: 1rem;
   border-radius: 1.75rem;
   border: 1px solid rgba(94, 231, 255, 0.14);
-  box-shadow: 0 0 0 1px rgba(94, 231, 255, 0.08), 0 28px 70px rgba(0, 0, 0, 0.52);
-  background: linear-gradient(180deg, rgba(7, 14, 28, 0.96), rgba(4, 8, 18, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(94, 231, 255, 0.08),
+    0 28px 70px rgba(0, 0, 0, 0.52);
+  background: linear-gradient(
+    180deg,
+    rgba(7, 14, 28, 0.96),
+    rgba(4, 8, 18, 0.98)
+  );
   position: relative;
   overflow: hidden;
 }
@@ -1349,9 +1361,59 @@ td {
   height: min(78vh, 860px);
   object-fit: contain;
   display: block;
-  background: linear-gradient(180deg, rgba(8, 16, 32, 0.96), rgba(3, 7, 18, 0.98));
+  background: linear-gradient(
+    180deg,
+    rgba(8, 16, 32, 0.96),
+    rgba(3, 7, 18, 0.98)
+  );
   border-radius: 1.15rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.campaign-cta-button-container {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.campaign-cta-button {
+  padding: 0.875rem 2rem;
+  border-radius: 0.75rem;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+  color: #000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.28);
+  white-space: nowrap;
+  flex-grow: 1;
+  max-width: 360px;
+}
+
+.campaign-cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.42);
+  background: linear-gradient(135deg, #00ffff 0%, #00b3ff 100%);
+}
+
+.campaign-cta-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+  .campaign-cta-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+  }
+  .campaign-cta-button-container {
+    padding: 0.75rem;
+  }
 }
 .campaign-library {
   display: grid;

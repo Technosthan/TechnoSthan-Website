@@ -300,6 +300,10 @@ model Campaign {
   mediaUrl     String
   mediaType    CampaignMediaType    @default(IMAGE)
   ctaLink      String?
+  buttonText   String?
+  redirectUrl  String?
+  buttonText2  String?
+  redirectUrl2 String?
   startDate    DateTime?
   endDate      DateTime?
   isActive     Boolean              @default(true)
