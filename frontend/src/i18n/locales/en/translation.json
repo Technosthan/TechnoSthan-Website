@@ -23,7 +23,6 @@
   },
   "home": {
     "hero": {
-      "badge": "AI Powered Farming Platform",
       "titleLine1": "Smart Agriculture",
       "titleLine2": "for India 🇮🇳",
       "subtitle": "Learn modern farming techniques, monitor farm performance, explore AgriTech innovations, and improve productivity using AI-powered tools.",
@@ -34,7 +33,6 @@
       "viewDashboard": "View Dashboard"
     },
     "features": {
-      "badge": "TECHNOSTHAN SERVICES",
       "title": "Our Services 🚀",
       "agriTechTitle": "AgriTech",
       "agriTechSubtitle": "Smart farming ecosystem",
@@ -47,7 +45,6 @@
       "otherServiceHospitality": "Hospitality"
     },
     "aboutSection": {
-      "badge": "Trusted AgriTech Platform",
       "titleLine1": "Empowering Farmers",
       "titleLine2": "& Students 🌾",
       "subtitle": "Connecting agriculture with modern technology to help Indian farmers and students grow smarter, faster, and more sustainably.",
@@ -56,7 +53,6 @@
       "learnMore": "Learn More"
     },
     "contactSection": {
-      "badge": "Start Smart Farming",
       "titleLine1": "Smart Farming",
       "titleLine2": "Starts Here 🌱",
       "description": "Learn AgriTech, explore AI tools, monitor farming progress, and improve agricultural productivity with TECHNOSTHAN AGRITECH.",

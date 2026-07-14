@@ -27,7 +27,7 @@ const HeroSection = () => {
           className="relative z-10"
         >
           {/* Badge */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -35,7 +35,7 @@ const HeroSection = () => {
           >
             <Sparkles size={16} />
             {t("home.hero.badge")}
-          </motion.div>
+          </motion.div> */}
 
           {/* Heading */}
           <motion.h1

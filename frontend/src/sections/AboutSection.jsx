@@ -66,7 +66,7 @@ const AboutSection = () => {
       >
         {/* Heading */}
         <div className="text-center mb-14">
-          <motion.div
+          {/* <motion.div
             initial={{
               opacity: 0,
               y: -20,
@@ -83,7 +83,7 @@ const AboutSection = () => {
           >
             <Leaf size={16} />
             Trusted AgriTech Platform
-          </motion.div>
+          </motion.div> */}
 
           <h2 className={`text-4xl md:text-5xl font-black mb-5 ${theme.text}`}>
             {t("home.aboutSection.titleLine1")}

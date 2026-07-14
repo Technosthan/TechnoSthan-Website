@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
@@ -39,6 +39,9 @@ const ICON_MAP = {
 
 const DEFAULT_ICON = Sparkles;
 
+const getServiceId = (service = {}, index = 0) =>
+  String(service.serviceKey || service.slug || service._id || service.id || index);
+
 const FeaturesSection = () => {
   const { language } = useTheme();
   const { t } = useTranslation();
@@ -47,7 +50,9 @@ const FeaturesSection = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
+
+  const cardRefs = useRef(new Map());
 
   const activeLanguage = normalizeServiceLanguage(language || "en");
 
@@ -64,13 +69,11 @@ const FeaturesSection = () => {
         if (cancelled) return;
 
         setServices(nextServices);
-        setSelectedId((current) => {
-          if (current && nextServices.some((service) => (service._id || service.id) === current)) {
+        setSelectedServiceId((current) => {
+          if (current && nextServices.some((service, index) => getServiceId(service, index) === current)) {
             return current;
           }
-
-          const firstExpandable = nextServices.find((service) => (service.innerServices || []).length > 0);
-          return firstExpandable?._id || firstExpandable?.id || null;
+          return null;
         });
       } catch (err) {
         if (cancelled) return;
@@ -93,32 +96,60 @@ const FeaturesSection = () => {
     [services],
   );
 
-  const selectedService = useMemo(
-    () => sortedServices.find((service) => (service._id || service.id) === selectedId) || null,
-    [selectedId, sortedServices],
-  );
+  const setCardRef = (serviceId) => (node) => {
+    if (node) {
+      cardRefs.current.set(serviceId, node);
+      return;
+    }
 
-  const expandedInnerServices = selectedService?.innerServices || [];
-  const hasExpandableServices = expandedInnerServices.length > 0;
-
-  const handleToggle = (serviceId, expandable) => {
-    if (!expandable) return;
-    setSelectedId((current) => (current === serviceId ? null : serviceId));
+    cardRefs.current.delete(serviceId);
   };
 
   const iconFor = (value = "") => ICON_MAP[value] || DEFAULT_ICON;
 
-  const panelMotion = reduceMotion
-    ? {}
-    : {
-        initial: { opacity: 0, y: 18 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -14 },
-        transition: { duration: 0.25 },
-      };
+  useEffect(() => {
+    if (!selectedServiceId) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setSelectedServiceId(null);
+      }
+    };
+
+    const handlePointerDown = (event) => {
+      const clickedCard = Array.from(cardRefs.current.values()).some((element) =>
+        element.contains(event.target),
+      );
+
+      if (!clickedCard) {
+        setSelectedServiceId(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [selectedServiceId]);
+
+  useEffect(() => {
+    if (!selectedServiceId) return;
+
+    const selectedExists = sortedServices.some((service, index) => getServiceId(service, index) === selectedServiceId);
+    if (!selectedExists) {
+      setSelectedServiceId(null);
+    }
+  }, [selectedServiceId, sortedServices]);
+
+  const handleServiceClick = (serviceId) => {
+    setSelectedServiceId((currentId) => (currentId === serviceId ? null : serviceId));
+  };
 
   return (
-    <section className="relative overflow-hidden bg-[#07111f] px-4 py-16 sm:px-6 lg:px-8">
+    <section className="relative bg-[#07111f] px-4 py-16 sm:px-6 lg:px-8">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-0 top-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
@@ -126,10 +157,10 @@ const FeaturesSection = () => {
 
       <div className="relative mx-auto max-w-7xl">
         <div className="mx-auto mb-10 max-w-3xl text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+          {/* <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
             <Sparkles size={15} />
             {t("home.features.badge")}
-          </div>
+          </div> */}
           <h2 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-5xl">
             {t("home.features.title")}
           </h2>
@@ -170,142 +201,167 @@ const FeaturesSection = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {sortedServices.map((service) => {
-                const id = service._id || service.id;
-                const expandable = (service.innerServices || []).length > 0;
-                const active = selectedId === id;
-                const Icon = iconFor(service.icon);
+          <div className="grid auto-rows-auto grid-cols-1 items-start gap-[22px] md:grid-cols-2">
+            {sortedServices.map((service, index) => {
+              const serviceId = getServiceId(service, index);
+              const isSelected = selectedServiceId === serviceId;
+              const ServiceIcon = iconFor(service.icon);
+              const innerServices = Array.isArray(service.innerServices) ? service.innerServices : [];
 
-                const card = (
-                  <>
-                    <div className="flex items-start justify-between gap-4">
-                      <div
-                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
-                        style={{ background: service.accentColor || "#16a34a" }}
-                      >
-                        <Icon className="h-7 w-7" />
-                      </div>
-                      {expandable ? (
-                        <ChevronDown
-                          className={`mt-1 h-5 w-5 transition ${active ? "rotate-180 text-emerald-300" : "text-slate-400"}`}
-                        />
-                      ) : null}
-                    </div>
-
-                    <h3 className="mt-5 text-xl font-bold text-white">
-                      {getLocalizedText(service.name, activeLanguage)}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">
-                      {getLocalizedText(service.description, activeLanguage)}
-                    </p>
-                  </>
-                );
-
-                if (!expandable) {
-                  return (
-                    <div
-                      key={id}
-                      className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
-                    >
-                      {card}
-                    </div>
-                  );
-                }
-
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-expanded={active}
-                    onClick={() => handleToggle(id, expandable)}
-                    className={`rounded-[2rem] border p-5 text-left shadow-2xl backdrop-blur transition duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 ${
-                      active
-                        ? "border-emerald-400/60 bg-slate-950 text-white"
-                        : "border-white/10 bg-white/5 text-white hover:border-emerald-300/40 hover:bg-white/10"
-                    }`}
-                    style={
-                      active
-                        ? { boxShadow: `0 28px 70px ${service.accentColor || "#16a34a"}22` }
-                        : {}
-                    }
-                  >
-                    {card}
-                  </button>
-                );
-              })}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {selectedService && hasExpandableServices ? (
-                <motion.div
-                  key={selectedService._id || selectedService.id}
-                  {...panelMotion}
-                  className="rounded-[2rem] border border-white/10 bg-slate-950/75 p-6 shadow-2xl backdrop-blur sm:p-8"
+              return (
+                <div
+                  key={serviceId}
+                  ref={setCardRef(serviceId)}
+                  className={`service-card h-auto w-full min-w-0 self-start overflow-hidden rounded-[28px] border shadow-2xl backdrop-blur transition-colors duration-200 ${
+                    isSelected
+                      ? "service-card--expanded border-emerald-400/60 bg-slate-950 text-white"
+                      : "border-white/10 bg-white/5 text-white"
+                  }`}
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                        {t("home.features.badge")}
-                      </div>
-                      <h3 className="mt-4 text-3xl font-black tracking-tight text-white">
-                        {getLocalizedText(selectedService.name, activeLanguage)}
-                      </h3>
+                  <button
+                    type="button"
+                    className="service-card-header flex w-full items-center gap-4 px-6 py-6 text-left sm:gap-4 sm:px-6 sm:py-6"
+                    aria-expanded={isSelected}
+                    onClick={() => handleServiceClick(serviceId)}
+                  >
+                    <div
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
+                      style={{ background: service.accentColor || "#16a34a" }}
+                    >
+                      <ServiceIcon className="h-7 w-7" />
                     </div>
-                  </div>
 
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                    {expandedInnerServices.map((inner, index) => {
-                      const title = getLocalizedText(inner.title, activeLanguage) || `Inner service ${index + 1}`;
-                      const description = getLocalizedText(inner.description, activeLanguage);
-                      const clickable = isSafeServiceUrl(inner.redirectUrl);
-                      const Icon = iconFor(inner.icon || selectedService.icon);
+                    <div className="service-card-header-content min-w-0 flex-1 text-left">
+                      <h3
+                        className="text-xl font-bold leading-tight text-white"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {getLocalizedText(service.name, activeLanguage)}
+                      </h3>
+                      <p
+                        className="mt-2 text-sm leading-6 text-slate-300"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {getLocalizedText(service.description, activeLanguage)}
+                      </p>
+                    </div>
 
-                      const innerCard = (
-                        <div className="group h-full rounded-[1.5rem] border border-white/10 bg-white/5 p-4 transition hover:border-emerald-300/40 hover:bg-white/10">
-                          <div className="flex items-start gap-4">
-                            <div
-                              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
-                              style={{ background: selectedService.accentColor || "#16a34a" }}
-                            >
-                              <Icon className="h-6 w-6" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <h4 className="font-semibold text-white">{title}</h4>
-                                {clickable ? (
-                                  <ExternalLink className="mt-0.5 h-4 w-4 text-slate-400 transition group-hover:text-emerald-300" />
-                                ) : null}
+                    <ChevronDown
+                      className={`service-card-chevron chevron ml-auto h-5 w-5 shrink-0 transition ${
+                        isSelected ? "rotate-180 text-emerald-300" : "text-slate-400"
+                      }`}
+                    />
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isSelected ? (
+                      <motion.div
+                        key={`sub-services-${serviceId}`}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{
+                          height: { duration: 0.28, ease: "easeInOut" },
+                          opacity: { duration: 0.18 },
+                        }}
+                        className="sub-services-animation-wrapper overflow-hidden w-full"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="sub-services-grid grid w-full grid-cols-2 gap-3 px-6 pb-6 pt-0 max-[480px]:grid-cols-1 sm:px-6 sm:pb-6 sm:pt-1">
+                          {innerServices.map((inner, innerIndex) => {
+                            const innerId = inner._id || inner.id || innerIndex;
+                            const title =
+                              getLocalizedText(inner.title, activeLanguage) || `Inner service ${innerIndex + 1}`;
+                            const description = getLocalizedText(inner.description, activeLanguage);
+                            const clickable = isSafeServiceUrl(inner.redirectUrl);
+                            const InnerIcon = iconFor(inner.icon || service.icon);
+
+                            const innerCard = (
+                              <div className="sub-service-card group flex min-h-[76px] w-full items-center gap-3 rounded-[15px] border border-white/10 bg-white/5 px-[15px] py-[13px] transition hover:border-emerald-300/40 hover:bg-white/10">
+                                <div
+                                  className="sub-service-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg transition group-hover:scale-[1.03]"
+                                  style={{ background: service.accentColor || "#16a34a" }}
+                                >
+                                  <InnerIcon className="h-5 w-5" />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <h4
+                                      className="sub-service-title text-[15px] font-semibold leading-[1.3] text-white"
+                                      style={{
+                                        display: "-webkit-box",
+                                        WebkitBoxOrient: "vertical",
+                                        WebkitLineClamp: 2,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      {title}
+                                    </h4>
+                                    {clickable ? (
+                                      <ExternalLink className="mt-0.5 h-4 w-4 text-slate-400 transition group-hover:text-emerald-300" />
+                                    ) : null}
+                                  </div>
+                                  {description ? (
+                                    <p
+                                      className="sub-service-description mt-[3px] text-xs leading-[1.35] text-slate-300"
+                                      style={{
+                                        display: "-webkit-box",
+                                        WebkitBoxOrient: "vertical",
+                                        WebkitLineClamp: 2,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      {description}
+                                    </p>
+                                  ) : null}
+                                </div>
                               </div>
-                              {description ? (
-                                <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
-                              ) : null}
-                            </div>
-                          </div>
+                            );
+
+                            if (!clickable) {
+                              return (
+                                <button
+                                  key={innerId}
+                                  type="button"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="w-full text-left"
+                                >
+                                  {innerCard}
+                                </button>
+                              );
+                            }
+
+                            return (
+                              <a
+                                key={innerId}
+                                href={inner.redirectUrl}
+                                target={inner.openInNewTab ? "_blank" : "_self"}
+                                rel={inner.openInNewTab ? "noreferrer" : undefined}
+                                className="block w-full"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                {innerCard}
+                              </a>
+                            );
+                          })}
                         </div>
-                      );
-
-                      if (!clickable) {
-                        return <div key={inner._id || inner.id || index}>{innerCard}</div>;
-                      }
-
-                      return (
-                        <a
-                          key={inner._id || inner.id || index}
-                          href={inner.redirectUrl}
-                          target={inner.openInNewTab ? "_blank" : "_self"}
-                          rel={inner.openInNewTab ? "noreferrer" : undefined}
-                          className="block h-full"
-                        >
-                          {innerCard}
-                        </a>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   getAllContent,
   getQuestionsByContentId,
@@ -22,19 +22,24 @@ import {
   Brain,
   Loader2,
 } from "lucide-react";
-import { getOptimizedImageUrl, resolveAssetUrl } from "../../shared/lib/assetUrl";
+import {
+  getOptimizedImageUrl,
+  resolveAssetUrl,
+} from "../../shared/lib/assetUrl";
 
 const ContentPage = () => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [contents, setContents] = useState([]);
   const [selectedContent, setSelectedContent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [hasQuiz, setHasQuiz] = useState(false);
   const [summary, setSummary] = useState(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
 
   // Icons for topics
   const getTopicIcon = (title) => {
@@ -61,7 +66,16 @@ const ContentPage = () => {
         }
       } catch (err) {
         console.error("API Error:", err);
-        setError("Please login to view content");
+
+        const status = err?.response?.status;
+
+        if (status === 401 || status === 403) {
+          setContents([]);
+          setSelectedContent(null);
+          setShowLoginAlert(true);
+        } else {
+          window.alert("Unable to load content. Please try again.");
+        }
       } finally {
         setLoading(false);
       }
@@ -88,12 +102,8 @@ const ContentPage = () => {
   const filteredContents = Array.isArray(contents)
     ? contents.filter(
         (content) =>
-          content.title
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          content.description
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()),
+          content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          content.description.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     : [];
 
@@ -109,8 +119,7 @@ const ContentPage = () => {
 
   const isPDF = (resource) => {
     return (
-      resource.type === "pdf" ||
-      resource.url.toLowerCase().includes(".pdf")
+      resource.type === "pdf" || resource.url.toLowerCase().includes(".pdf")
     );
   };
 
@@ -181,23 +190,67 @@ const ContentPage = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div
-        className={`min-h-screen ${theme.bg} flex items-center justify-center`}
-      >
-        <div className="text-xl text-red-600 dark:text-red-400">
-          Error: {error}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={`min-h-screen ${theme.bgGradient} ${theme.text}`}
-    >
+    <div className={`min-h-screen ${theme.bgGradient} ${theme.text}`}>
       <Navbar />
+
+      {showLoginAlert && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="login-alert-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowLoginAlert(false);
+            }
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-md rounded-2xl border border-green-500/30 bg-slate-900 p-6 text-center shadow-2xl"
+          >
+            <div className="mb-4 text-5xl" aria-hidden="true">
+              🔐
+            </div>
+
+            <h2
+              id="login-alert-title"
+              className="mb-2 text-2xl font-bold text-white"
+            >
+              Login Required
+            </h2>
+
+            <p className="mb-6 text-gray-300">
+              Please login to view this content.
+            </p>
+
+            <div className="flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLoginAlert(false)}
+                className="rounded-lg border border-gray-600 px-5 py-2.5 text-gray-200 transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/login", {
+                    state: { from: location.pathname },
+                  })
+                }
+                className="rounded-lg bg-green-600 px-6 py-2.5 font-semibold text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                Login
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0 }}
@@ -214,9 +267,7 @@ const ContentPage = () => {
             className={`text-3xl md:text-5xl font-bold mb-8 ${theme.accent} flex items-center justify-center text-center`}
           >
             <BookOpen className="mr-3" size={40} />
-
             AgriTech Wiki Center
-
             <motion.span
               animate={{ scale: [1, 1.1, 1] }}
               transition={{
@@ -245,9 +296,7 @@ const ContentPage = () => {
               type="text"
               placeholder="Search AgriTech topics..."
               value={searchTerm}
-              onChange={(e) =>
-                setSearchTerm(e.target.value)
-              }
+              onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-12 pr-4 py-4 rounded-2xl shadow-xl border ${theme.border} ${theme.card} focus:outline-none focus:ring-2 focus:ring-green-500`}
             />
           </motion.div>
@@ -277,8 +326,7 @@ const ContentPage = () => {
                   <div className="max-h-[650px] overflow-y-auto p-4 space-y-3 custom-scrollbar">
                     {filteredContents.length > 0 ? (
                       filteredContents.map((content, index) => {
-                        const isSelected =
-                          selectedContent?._id === content._id;
+                        const isSelected = selectedContent?._id === content._id;
 
                         return (
                           <motion.div
@@ -294,9 +342,7 @@ const ContentPage = () => {
                             transition={{
                               delay: index * 0.05,
                             }}
-                            onClick={() =>
-                              setSelectedContent(content)
-                            }
+                            onClick={() => setSelectedContent(content)}
                             whileTap={{ scale: 0.98 }}
                             className={`
                               relative
@@ -451,16 +497,8 @@ const ContentPage = () => {
                     <motion.button
                       onClick={handleSummarize}
                       disabled={summarizing}
-                      whileHover={
-                        !summarizing
-                          ? { scale: 1.05 }
-                          : {}
-                      }
-                      whileTap={
-                        !summarizing
-                          ? { scale: 0.95 }
-                          : {}
-                      }
+                      whileHover={!summarizing ? { scale: 1.05 } : {}}
+                      whileTap={!summarizing ? { scale: 0.95 } : {}}
                       className={`
                         inline-flex
                         items-center
@@ -478,20 +516,12 @@ const ContentPage = () => {
                       `}
                     >
                       {summarizing ? (
-                        <Loader2
-                          className="mr-2 animate-spin"
-                          size={20}
-                        />
+                        <Loader2 className="mr-2 animate-spin" size={20} />
                       ) : (
-                        <Brain
-                          className="mr-2"
-                          size={20}
-                        />
+                        <Brain className="mr-2" size={20} />
                       )}
 
-                      {summarizing
-                        ? "Summarizing..."
-                        : "Summarize with AI"}
+                      {summarizing ? "Summarizing..." : "Summarize with AI"}
                     </motion.button>
                   </div>
 
@@ -509,25 +539,17 @@ const ContentPage = () => {
                       className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-800 border border-blue-200 dark:border-gray-600"
                     >
                       <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400 mb-4 flex items-center">
-                        <Brain
-                          className="mr-2"
-                          size={20}
-                        />
+                        <Brain className="mr-2" size={20} />
                         AI Summary
                       </h3>
 
-                      {summary.keyPoints &&
-                        summary.keyPoints.length > 0 && (
-                          <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 mb-4">
-                            {summary.keyPoints.map(
-                              (point, idx) => (
-                                <li key={idx}>
-                                  {point}
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        )}
+                      {summary.keyPoints && summary.keyPoints.length > 0 && (
+                        <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 mb-4">
+                          {summary.keyPoints.map((point, idx) => (
+                            <li key={idx}>{point}</li>
+                          ))}
+                        </ul>
+                      )}
 
                       {summary.shortSummary && (
                         <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -544,18 +566,12 @@ const ContentPage = () => {
                         to={`/quiz/${selectedContent._id}`}
                         className={`inline-flex items-center ${theme.button} font-semibold py-3 px-6 rounded-full shadow-lg transition-all hover:scale-105`}
                       >
-                        <Target
-                          className="mr-2"
-                          size={20}
-                        />
+                        <Target className="mr-2" size={20} />
                         Take Knowledge Quiz
                       </Link>
                     ) : (
                       <div className="inline-flex items-center bg-gray-400 text-white font-semibold py-3 px-6 rounded-full cursor-not-allowed">
-                        <Target
-                          className="mr-2"
-                          size={20}
-                        />
+                        <Target className="mr-2" size={20} />
                         No Quiz Available
                       </div>
                     )}
@@ -563,136 +579,118 @@ const ContentPage = () => {
 
                   {/* Subtopics */}
                   {selectedContent.subtopics &&
-                    selectedContent.subtopics.map(
-                      (subtopic, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{
-                            opacity: 0,
-                            y: 20,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                          }}
-                          transition={{
-                            delay: idx * 0.05,
-                          }}
-                          className="mb-6 p-5 rounded-2xl bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 border border-gray-200 dark:border-gray-700"
-                        >
-                          <h3 className="text-xl font-semibold mb-3 text-yellow-600 dark:text-yellow-400 flex items-center">
-                            <Zap
-                              className="mr-2"
-                              size={18}
-                            />
-                            {subtopic.heading}
-                          </h3>
+                    selectedContent.subtopics.map((subtopic, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{
+                          opacity: 0,
+                          y: 20,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                        }}
+                        transition={{
+                          delay: idx * 0.05,
+                        }}
+                        className="mb-6 p-5 rounded-2xl bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 border border-gray-200 dark:border-gray-700"
+                      >
+                        <h3 className="text-xl font-semibold mb-3 text-yellow-600 dark:text-yellow-400 flex items-center">
+                          <Zap className="mr-2" size={18} />
+                          {subtopic.heading}
+                        </h3>
 
-                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {subtopic.body}
-                          </p>
-                        </motion.div>
-                      ),
-                    )}
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                          {subtopic.body}
+                        </p>
+                      </motion.div>
+                    ))}
 
                   {/* Resources */}
                   {selectedContent.resources &&
-                    selectedContent.resources.length >
-                      0 && (
+                    selectedContent.resources.length > 0 && (
                       <div className="mt-10">
                         <h3 className="text-2xl font-bold mb-5 text-green-600 dark:text-green-400 flex items-center">
-                          <Play
-                            className="mr-2"
-                            size={22}
-                          />
+                          <Play className="mr-2" size={22} />
                           Videos & Resources
                         </h3>
 
                         <div className="space-y-5">
-                          {selectedContent.resources.map(
-                            (resource, idx) => (
-                              <motion.div
-                                key={idx}
-                                initial={{
-                                  opacity: 0,
-                                  x: -20,
-                                }}
-                                animate={{
-                                  opacity: 1,
-                                  x: 0,
-                                }}
-                                transition={{
-                                  delay: idx * 0.05,
-                                }}
-                                className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-5 shadow-lg"
-                              >
-                                <h4 className="font-semibold mb-3 flex items-center">
-                                  {resource.type ===
-                                  "pdf" ? (
-                                    <BookOpen
-                                      className="mr-2 text-red-500"
-                                      size={18}
-                                    />
-                                  ) : resource.type ===
-                                    "image" ? (
-                                    <ImageIcon
-                                      className="mr-2 text-green-500"
-                                      size={18}
-                                    />
-                                  ) : resource.type ===
-                                    "link" ? (
-                                    <LinkIcon
-                                      className="mr-2 text-blue-500"
-                                      size={18}
-                                    />
-                                  ) : (
-                                    <Play
-                                      className="mr-2 text-red-500"
-                                      size={18}
-                                    />
-                                  )}
-
-                                  {resource.label}
-                                </h4>
-
-                                {isVideo(resource) ? (
-                                  <div className="aspect-video overflow-hidden rounded-xl">
-                                    <iframe
-                                      src={convertToEmbedUrl(
-                                        resource.url,
-                                      )}
-                                      title={
-                                        resource.label
-                                      }
-                                      className="w-full h-full"
-                                      allowFullScreen
-                                    />
-                                  </div>
-                                ) : isPDF(resource) ? (
-                                  <iframe
-                                    src={resolveAssetUrl(resource.url)}
-                                    title={resource.label}
-                                    className="w-full h-96 rounded-xl border-0"
+                          {selectedContent.resources.map((resource, idx) => (
+                            <motion.div
+                              key={idx}
+                              initial={{
+                                opacity: 0,
+                                x: -20,
+                              }}
+                              animate={{
+                                opacity: 1,
+                                x: 0,
+                              }}
+                              transition={{
+                                delay: idx * 0.05,
+                              }}
+                              className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-5 shadow-lg"
+                            >
+                              <h4 className="font-semibold mb-3 flex items-center">
+                                {resource.type === "pdf" ? (
+                                  <BookOpen
+                                    className="mr-2 text-red-500"
+                                    size={18}
                                   />
-                                ) : isImage(resource) ? (
-                                  <img
-                                    src={getOptimizedImageUrl(resource.url)}
-                                    alt={resource.label}
-                                    className="w-full rounded-xl max-h-96 object-contain"
+                                ) : resource.type === "image" ? (
+                                  <ImageIcon
+                                    className="mr-2 text-green-500"
+                                    size={18}
+                                  />
+                                ) : resource.type === "link" ? (
+                                  <LinkIcon
+                                    className="mr-2 text-blue-500"
+                                    size={18}
                                   />
                                 ) : (
-                                  <a
-                                    href={resolveAssetUrl(resource.url)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                                  >
-                                    Open Resource
-                                  </a>
+                                  <Play
+                                    className="mr-2 text-red-500"
+                                    size={18}
+                                  />
                                 )}
-                              </motion.div>
-                            ),
-                          )}
+
+                                {resource.label}
+                              </h4>
+
+                              {isVideo(resource) ? (
+                                <div className="aspect-video overflow-hidden rounded-xl">
+                                  <iframe
+                                    src={convertToEmbedUrl(resource.url)}
+                                    title={resource.label}
+                                    className="w-full h-full"
+                                    allowFullScreen
+                                  />
+                                </div>
+                              ) : isPDF(resource) ? (
+                                <iframe
+                                  src={resolveAssetUrl(resource.url)}
+                                  title={resource.label}
+                                  className="w-full h-96 rounded-xl border-0"
+                                />
+                              ) : isImage(resource) ? (
+                                <img
+                                  src={getOptimizedImageUrl(resource.url)}
+                                  alt={resource.label}
+                                  className="w-full rounded-xl max-h-96 object-contain"
+                                />
+                              ) : (
+                                <a
+                                  href={resolveAssetUrl(resource.url)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  Open Resource
+                                </a>
+                              )}
+                            </motion.div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -701,14 +699,11 @@ const ContentPage = () => {
                 <div
                   className={`${theme.card} rounded-3xl p-10 shadow-2xl flex flex-col items-center justify-center h-96`}
                 >
-                  <BookOpen
-                    className="text-gray-400 mb-4"
-                    size={70}
-                  />
+                  <BookOpen className="text-gray-400 mb-4" size={70} />
 
                   <p className="text-lg text-center text-gray-500 dark:text-gray-400">
-                    Select a topic from the left to
-                    start your AgriTech journey 🚀
+                    Select a topic from the left to start your AgriTech journey
+                    🚀
                   </p>
                 </div>
               )}

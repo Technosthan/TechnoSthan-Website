@@ -49,10 +49,10 @@ const ContactSection = () => {
           {/* LEFT */}
           <div>
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-400/20 text-green-400 text-sm font-medium mb-5">
+            {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-400/20 text-green-400 text-sm font-medium mb-5">
               <Sparkles size={14} />
               {t("home.contactSection.badge")}
-            </div>
+            </div> */}
 
             {/* HEADING */}
             <h2 className="text-4xl md:text-5xl font-black text-white leading-tight mb-5">
