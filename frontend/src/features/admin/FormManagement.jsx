@@ -184,6 +184,90 @@ const slugify = (value = "") =>
     .replace(/^-+|-+$/g, "")
     .replace(/-+/g, "-");
 
+const sanitizeFileNamePart = (value = "") =>
+  slugify(value) || "form";
+
+const normalizeExportNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeExportDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const normalizeExportValidation = (validation = {}) => ({
+  minValue: normalizeExportNumber(validation.minValue),
+  maxValue: normalizeExportNumber(validation.maxValue),
+  minDigits: normalizeExportNumber(validation.minDigits),
+  maxDigits: normalizeExportNumber(validation.maxDigits),
+  errorMessage: String(validation.errorMessage || "").trim(),
+});
+
+const createFormExportData = (form = {}) => {
+  const questions = Array.isArray(form.questions) ? form.questions : [];
+
+  return {
+    exportVersion: "1.0",
+    exportedAt: new Date().toISOString(),
+    form: {
+      title: String(form.title || "").trim(),
+      description: String(form.description || "").trim(),
+      slug: String(form.slug || form.publicSlug || "").trim(),
+      status: String(form.status || (form.active ? "live" : "draft")).trim(),
+      successMessage: String(form.successMessage || "").trim(),
+      expiresAt: normalizeExportDate(form.expiresAt),
+      allowFileUpload: form.allowFileUpload === true,
+      confirmationEmailEnabled: form.confirmationEmailEnabled === true,
+      theme: {
+        name: String(form.emailTemplate?.preset || "green-professional").trim(),
+        primaryColor:
+          String(form.themeColor || form.emailTemplate?.accentColor || "#16a34a").trim(),
+      },
+      questions: questions
+        .slice()
+        .sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
+        .map((question, index) => ({
+          type: String(question.type || "shortAnswer").trim(),
+          label: String(question.label || question.title || "").trim(),
+          helpText: String(question.helpText || "").trim(),
+          placeholder: String(question.placeholder || "").trim(),
+          required: question.required === true,
+          validationEnabled: question.validationEnabled === true,
+          options: Array.isArray(question.options)
+            ? question.options.map((option) => String(option || "").trim()).filter(Boolean)
+            : [],
+          validation: normalizeExportValidation(question.validation),
+          order: typeof question.order === "number" ? question.order : index,
+        })),
+    },
+  };
+};
+
+const downloadJsonFile = (filename, data) => {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {
+    type: "application/json;charset=utf-8",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(url);
+};
+
 const formatDateTimeLocal = (value) => {
   if (!value) return "";
   const date = new Date(value);
@@ -695,6 +779,7 @@ const FormManagement = () => {
   const importFileInputRef = useRef(null);
   const lastSavedFormRef = useRef(null);
   const sessionUploadedAssetsRef = useRef([]);
+  const [exportingFormId, setExportingFormId] = useState(null);
 
   const loadForms = async () => {
     setLoading(true);
@@ -1404,6 +1489,24 @@ const FormManagement = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportForm = async (formId) => {
+    if (!formId) return;
+
+    setExportingFormId(formId);
+    try {
+      const response = await getAdminFormById(formId);
+      const form = response.data?.data || {};
+      const exportData = createFormExportData(form);
+      const safeName = sanitizeFileNamePart(form.slug || form.title || "form");
+      downloadJsonFile(`${safeName}-form.json`, exportData);
+      toast.success("Form exported successfully.");
+    } catch (error) {
+      toast.error("Unable to export form. Please try again.");
+    } finally {
+      setExportingFormId(null);
+    }
+  };
+
   const openResponse = async (response) => {
     if (!selectedFormId || !response?._id) return;
     try {
@@ -1712,7 +1815,7 @@ const FormManagement = () => {
                     </div>
                   </button>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="form-actions mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => selectForm(form)}
@@ -1733,6 +1836,15 @@ const FormManagement = () => {
                       className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs"
                     >
                       <Copy size={14} /> Copy Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportForm(form._id || form.id)}
+                      disabled={exportingFormId === (form._id || form.id)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Download size={14} />
+                      {exportingFormId === (form._id || form.id) ? "Exporting..." : "Export Form"}
                     </button>
                     <button
                       type="button"
