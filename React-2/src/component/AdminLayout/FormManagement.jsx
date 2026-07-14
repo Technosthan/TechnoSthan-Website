@@ -29,6 +29,7 @@ import {
   deleteAdminForm,
   deleteAdminFormResponse,
   exportAdminFormResponses,
+  getAdminFormExport,
   getAdminFormById,
   getAdminForms,
   getAdminFormResponse,
@@ -182,6 +183,76 @@ const slugify = (value = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/-+/g, "-");
+
+const sanitizeExportQuestion = (question = {}, index = 0) => ({
+  type: question.type || "shortAnswer",
+  label: String(question.label || question.title || "").trim(),
+  description: String(question.description || question.helpText || "").trim(),
+  placeholder: String(question.placeholder || "").trim(),
+  required: question.required === true,
+  validationEnabled: question.validationEnabled === true,
+  options: Array.isArray(question.options)
+    ? question.options.map((option) => String(option).trim()).filter(Boolean)
+    : [],
+  validation:
+    question.validation && typeof question.validation === "object"
+      ? {
+          minValue:
+            question.validation.minValue === undefined
+              ? null
+              : question.validation.minValue,
+          maxValue:
+            question.validation.maxValue === undefined
+              ? null
+              : question.validation.maxValue,
+          minDigits:
+            question.validation.minDigits === undefined
+              ? null
+              : question.validation.minDigits,
+          maxDigits:
+            question.validation.maxDigits === undefined
+              ? null
+              : question.validation.maxDigits,
+          errorMessage: String(question.validation.errorMessage || "").trim(),
+        }
+      : {
+          minValue: null,
+          maxValue: null,
+          minDigits: null,
+          maxDigits: null,
+          errorMessage: "",
+        },
+  order: typeof question.order === "number" ? question.order : index,
+});
+
+const createFormExportData = (form = {}) => {
+  const questions = Array.isArray(form.questions) ? form.questions : [];
+  const safeQuestions = questions
+    .map((question, index) => sanitizeExportQuestion(question, index))
+    .sort((a, b) => a.order - b.order);
+
+  return {
+    exportVersion: "1.0",
+    exportedAt: new Date().toISOString(),
+    form: {
+      title: String(form.title || "").trim(),
+      description: String(form.description || "").trim(),
+      slug: String(form.slug || form.publicSlug || "").trim(),
+      status: String(form.status || "").trim(),
+      successMessage: String(form.successMessage || "").trim(),
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+      themeColor: String(form.themeColor || "").trim(),
+      bannerImage: String(form.bannerImage || form.bannerImageUrl || "").trim(),
+      questions: safeQuestions,
+    },
+  };
+};
+
+const createSafeExportFilename = (form = {}) => {
+  const baseName = form.slug || form.title || "form";
+  const safeName = slugify(baseName) || "form";
+  return `${safeName}-form.json`;
+};
 
 const formatDateTimeLocal = (value) => {
   if (!value) return "";
@@ -737,6 +808,7 @@ const FormManagement = () => {
   const [responseFilter, setResponseFilter] = useState("all");
   const [responseDateFrom, setResponseDateFrom] = useState("");
   const [responseDateTo, setResponseDateTo] = useState("");
+  const [exportingFormId, setExportingFormId] = useState(null);
   const [analysisLeadFilter, setAnalysisLeadFilter] = useState("all");
   const [analysisRatingFilter, setAnalysisRatingFilter] = useState("all");
   const [analysisInterestFilter, setAnalysisInterestFilter] = useState("all");
@@ -1557,6 +1629,42 @@ const FormManagement = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportForm = async (formId) => {
+    if (!formId) return;
+
+    setExportingFormId(formId);
+    try {
+      const response = await getAdminFormExport(formId);
+      const exportedForm = response.data?.data || response.data || {};
+      if (!Array.isArray(exportedForm.form?.questions)) {
+        throw new Error("Form export data is incomplete");
+      }
+
+      const exportData = createFormExportData(exportedForm.form || exportedForm);
+      const json = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([json], {
+        type: "application/json;charset=utf-8",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const filename = createSafeExportFilename(exportData.form);
+
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success("Form exported successfully.");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Unable to export form. Please try again.");
+    } finally {
+      setExportingFormId(null);
+    }
+  };
+
   const openResponse = async (response) => {
     if (!selectedFormId || !response?._id) return;
     Object.values(secretRevealTimersRef.current).forEach((timer) => {
@@ -1881,7 +1989,7 @@ const FormManagement = () => {
                     </div>
                   </button>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="form-actions mt-4 flex flex-wrap gap-[10px]">
                     <button
                       type="button"
                       onClick={() => selectForm(form)}
@@ -1902,6 +2010,17 @@ const FormManagement = () => {
                       className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs"
                     >
                       <Copy size={14} /> Copy Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportForm(form._id || form.id)}
+                      disabled={exportingFormId === (form._id || form.id)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Download size={14} />
+                      {exportingFormId === (form._id || form.id)
+                        ? "Exporting..."
+                        : "Export Form"}
                     </button>
                     <button
                       type="button"

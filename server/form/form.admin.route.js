@@ -4,6 +4,7 @@ const {
   createForm,
   getAdminForms,
   getAdminFormById,
+  getAdminFormExport,
   updateForm,
   deleteForm,
   getFormSubmissions,
@@ -144,6 +145,7 @@ router.get("/:formId/responses/analysis", getFormResponseAnalysis);
 router.get("/:formId/responses/:responseId", getFormSubmissionById);
 router.delete("/:formId/responses/:responseId", deleteFormSubmission);
 router.post("/:formId/responses/:responseId/reveal-secret", revealFormResponseSecret);
+router.get("/:formId/export-json", getAdminFormExport);
 router.get("/:formId/export", exportFormSubmissions);
 
 module.exports = router;

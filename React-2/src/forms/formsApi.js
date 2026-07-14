@@ -3,6 +3,8 @@ import axiosInstance from "../shared/lib/axiosInstance";
 export const getAdminForms = () => axiosInstance.get("/api/admin/forms");
 export const getAdminFormById = (formId) =>
   axiosInstance.get(`/api/admin/forms/${formId}`);
+export const getAdminFormExport = (formId) =>
+  axiosInstance.get(`/api/admin/forms/${formId}/export-json`);
 export const createAdminForm = (payload) =>
   axiosInstance.post("/api/admin/forms", payload);
 export const updateAdminForm = (formId, payload) =>

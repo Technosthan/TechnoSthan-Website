@@ -2,6 +2,7 @@ const {
   createForm: createFormService,
   getAdminForms: getAdminFormsService,
   getFormById: getFormByIdService,
+  getFormExportById: getFormExportByIdService,
   updateForm: updateFormService,
   deleteForm: deleteFormService,
   getFormResponses: getFormResponsesService,
@@ -43,6 +44,18 @@ const getAdminFormById = async (req, res) => {
       return res.status(404).json({ success: false, message: "Form not found" });
     }
     res.json({ success: true, data: form });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getAdminFormExport = async (req, res) => {
+  try {
+    const exportData = await getFormExportByIdService(req.params.formId);
+    if (!exportData) {
+      return res.status(404).json({ success: false, message: "Form not found" });
+    }
+    res.json({ success: true, data: exportData });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -277,6 +290,7 @@ module.exports = {
   createForm,
   getAdminForms,
   getAdminFormById,
+  getAdminFormExport,
   updateForm,
   deleteForm,
   getFormSubmissions,

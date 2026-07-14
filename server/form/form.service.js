@@ -1129,6 +1129,64 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
   };
 };
 
+const buildQuestionExportDto = (question, index = 0) => ({
+  type: question.type || "shortAnswer",
+  label: question.label || "",
+  description: question.helpText || "",
+  placeholder: question.placeholder || "",
+  required: question.required === true,
+  validationEnabled: question.validationEnabled === true,
+  options: Array.isArray(question.options) ? question.options : [],
+  validation: {
+    minValue:
+      question.validation?.minValue === undefined
+        ? null
+        : question.validation?.minValue,
+    maxValue:
+      question.validation?.maxValue === undefined
+        ? null
+        : question.validation?.maxValue,
+    minDigits:
+      question.validation?.minDigits === undefined
+        ? null
+        : question.validation?.minDigits,
+    maxDigits:
+      question.validation?.maxDigits === undefined
+        ? null
+        : question.validation?.maxDigits,
+    errorMessage: question.validation?.errorMessage || "",
+  },
+  order: typeof question.order === "number" ? question.order : index,
+});
+
+const buildFormExportDto = (form, questions = []) => {
+  const plainForm = form.toObject ? form.toObject({ virtuals: true }) : form;
+  const sortedQuestions = [...questions]
+    .map((question, index) =>
+      buildQuestionExportDto(
+        question.toObject ? question.toObject({ virtuals: true }) : question,
+        index,
+      ),
+    )
+    .sort((a, b) => a.order - b.order);
+
+  return {
+    exportVersion: "1.0",
+    exportedAt: new Date().toISOString(),
+    form: {
+      title: plainForm.title || "",
+      description: plainForm.description || "",
+      slug: plainForm.slug || plainForm.publicSlug || slugify(plainForm.title),
+      status: plainForm.status || (plainForm.active === true ? "live" : "draft"),
+      successMessage: plainForm.successMessage || "",
+      expiresAt: plainForm.expiresAt ? new Date(plainForm.expiresAt).toISOString() : null,
+      themeColor: plainForm.themeColor || "",
+      bannerImage: plainForm.bannerImage || plainForm.bannerImageUrl || "",
+      questions: sortedQuestions,
+    },
+  };
+};
+
 const getFormWithQuestions = async (filter = {}) => {
   const form = await Form.findOne(filter).lean();
   if (!form) return null;
@@ -1137,6 +1195,15 @@ const getFormWithQuestions = async (filter = {}) => {
     .lean();
   const responseCount = await FormResponse.countDocuments({ formId: form._id });
   return buildFormDto(form, questions, responseCount);
+};
+
+const getFormExportById = async (formId) => {
+  const form = await Form.findById(formId).lean();
+  if (!form) return null;
+  const questions = await FormQuestion.find({ formId })
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
+  return buildFormExportDto(form, questions);
 };
 
 const syncQuestions = async (formId, questions = []) => {
@@ -2723,6 +2790,7 @@ module.exports = {
   createForm,
   getAdminForms,
   getFormById,
+  getFormExportById,
   updateForm,
   deleteForm,
   getFormResponses,
