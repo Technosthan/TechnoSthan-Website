@@ -5,16 +5,15 @@ import {
   createCampaign,
   deactivateCampaign,
   deleteCampaign,
-  getActiveCampaignsForPage,
+  getActiveCampaign,
   listCampaigns,
   updateCampaign,
 } from "./campaign.service.js";
 
 export const getActiveCampaignController = asyncHandler(async (req, res) => {
-  const page = req.query.page || "";
-  const campaigns = await getActiveCampaignsForPage(page || "/");
-  const campaign = campaigns[0] || null;
-  return sendSuccess(res, 200, { campaign, campaigns });
+  const pathname = req.query.pathname || req.query.page || "/";
+  const campaign = await getActiveCampaign(pathname);
+  return sendSuccess(res, 200, { campaign });
 });
 
 export const getAdminCampaignsController = asyncHandler(async (_req, res) => {

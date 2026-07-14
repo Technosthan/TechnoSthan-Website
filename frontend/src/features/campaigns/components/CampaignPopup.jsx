@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { campaignService } from "../services/campaignService";
 import {
   getMediaUrl,
@@ -17,8 +17,14 @@ const CampaignPopup = () => {
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [visible, setVisible] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    requestIdRef.current += 1;
+    const requestId = requestIdRef.current;
+    setVisible(false);
+    setCampaign(null);
+
     const load = async () => {
       const hide = () => {
         setVisible(false);
@@ -32,8 +38,11 @@ const CampaignPopup = () => {
         }
 
         const response = await campaignService.getActive(location.pathname);
-        const activeCampaign =
-          (response.campaigns || [response.campaign]).find(Boolean) || null;
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        const activeCampaign = response.campaign || null;
         if (!activeCampaign) {
           hide();
           return;
@@ -48,6 +57,9 @@ const CampaignPopup = () => {
         });
         setVisible(true);
       } catch (_error) {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
         hide();
       }
     };
@@ -77,7 +89,10 @@ const CampaignPopup = () => {
   );
   const popupSizeClass = `campaign-${String(campaign?.popupSize || "MEDIUM").toLowerCase()}`;
 
-  const close = () => setVisible(false);
+  const closeAndReset = () => {
+    setVisible(false);
+    setCampaign(null);
+  };
 
   const openCampaign = () => {
     if (!ctaLink) return;
@@ -112,7 +127,7 @@ const CampaignPopup = () => {
       className="campaign-overlay"
       role="dialog"
       aria-modal="true"
-      onClick={close}
+      onClick={closeAndReset}
     >
       <div
         className={`campaign-modal ${popupSizeClass}`}
@@ -121,7 +136,7 @@ const CampaignPopup = () => {
         <button
           className="campaign-close"
           type="button"
-          onClick={close}
+          onClick={closeAndReset}
           aria-label="Close campaign"
         >
           <X size={18} />

@@ -299,6 +299,7 @@ model Campaign {
   title        String
   mediaUrl     String
   mediaType    CampaignMediaType    @default(IMAGE)
+  displayRoute String?              @db.Text
   ctaLink      String?
   buttonText   String?
   redirectUrl  String?
@@ -313,6 +314,8 @@ model Campaign {
   priority     Int                  @default(0)
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+
+  @@index([displayRoute])
 }
 
 model Enquiry {

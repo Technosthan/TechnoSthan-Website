@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pencil, Power, PowerOff, Trash2 } from "lucide-react";
 import MediaUploader from "../../../shared/components/MediaUploader";
 import { campaignService } from "../../campaigns/services/campaignService";
+import { normalizeCampaignDisplayRoute } from "../../campaigns/utils/campaignRoute";
 import {
   getMediaUrl,
   normalizeStoredMediaUrl,
@@ -13,6 +14,7 @@ const emptyCampaign = {
   mediaUrl: "",
   mediaType: "IMAGE",
   ctaLink: "/contact",
+  displayRoute: "/",
   buttonText: "",
   redirectUrl: "",
   buttonText2: "",
@@ -20,7 +22,6 @@ const emptyCampaign = {
   startDate: "",
   endDate: "",
   isActive: true,
-  displayPages: "ALL",
   frequency: "SESSION",
   popupSize: "MEDIUM",
   priority: 0,
@@ -83,16 +84,20 @@ const AdminCampaigns = () => {
     event.preventDefault();
     setMessage("");
 
-    const payload = {
-      ...form,
-      mediaUrl: normalizeStoredMediaUrl(
-        form.mediaUrl,
-        form.mediaType === "VIDEO" ? "video" : "image",
-      ),
-      priority: Number(form.priority || 0),
-    };
-
     try {
+      const displayRoute = normalizeCampaignDisplayRoute(form.displayRoute, {
+        required: true,
+      });
+      const payload = {
+        ...form,
+        displayRoute,
+        mediaUrl: normalizeStoredMediaUrl(
+          form.mediaUrl,
+          form.mediaType === "VIDEO" ? "video" : "image",
+        ),
+        priority: Number(form.priority || 0),
+      };
+
       if (selectedId) {
         await campaignService.update(selectedId, payload);
         setMessage("Campaign updated.");
@@ -118,6 +123,7 @@ const AdminCampaigns = () => {
       ),
       mediaType: campaign.mediaType || "IMAGE",
       ctaLink: campaign.ctaLink || "/contact",
+      displayRoute: campaign.displayRoute || "",
       buttonText: campaign.buttonText || "",
       redirectUrl: campaign.redirectUrl || "",
       buttonText2: campaign.buttonText2 || "",
@@ -127,7 +133,6 @@ const AdminCampaigns = () => {
         : "",
       endDate: campaign.endDate ? String(campaign.endDate).slice(0, 10) : "",
       isActive: Boolean(campaign.isActive),
-      displayPages: campaign.displayPages || "ALL",
       frequency: campaign.frequency || "SESSION",
       popupSize: campaign.popupSize || "MEDIUM",
       priority: campaign.priority ?? 0,
@@ -159,15 +164,18 @@ const AdminCampaigns = () => {
         <div>
           <h1>Campaign Manager</h1>
           <p className="muted-copy">
-            Create, schedule, and manage public campaigns without leaving the
-            dashboard.
+            Create, schedule, and manage public campaigns for different routes
+            without leaving the dashboard.
           </p>
         </div>
-        {selectedId ? (
-          <span className="badge">Editing</span>
-        ) : (
-          <span className="badge">Create Campaign</span>
-        )}
+        <div className="table-actions">
+          <button className="btn btn-primary" type="button" onClick={resetForm}>
+            Add Campaign
+          </button>
+          <span className="badge">
+            {selectedId ? "Editing Campaign" : "Create Campaign"}
+          </span>
+        </div>
       </div>
 
       <div className="admin-two-col">
@@ -178,8 +186,8 @@ const AdminCampaigns = () => {
           <div className="section-heading">
             <h2>{selectedId ? "Edit Campaign" : "Create Campaign"}</h2>
             <p>
-              Use Cloudinary media, page targeting, and schedule controls for
-              every campaign.
+              Use Cloudinary media, route targeting, and schedule controls for
+              every campaign. Add as many route-specific campaigns as you need.
             </p>
           </div>
 
@@ -202,6 +210,20 @@ const AdminCampaigns = () => {
                 value={form.ctaLink}
                 onChange={handleChange}
               />
+            </label>
+            <label className="field">
+              <span>Display Route</span>
+              <input
+                className="input"
+                name="displayRoute"
+                value={form.displayRoute}
+                onChange={handleChange}
+                placeholder="Example: /contact or /programs/:slug"
+                required
+              />
+              <small className="muted-copy">
+                Store the exact internal route that should trigger the popup.
+              </small>
             </label>
             <label className="field">
               <span>Button text</span>
@@ -262,20 +284,6 @@ const AdminCampaigns = () => {
                 value={form.endDate}
                 onChange={handleChange}
               />
-            </label>
-            <label className="field">
-              <span>Display pages</span>
-              <select
-                className="select"
-                name="displayPages"
-                value={form.displayPages}
-                onChange={handleChange}
-              >
-                <option value="ALL">All pages</option>
-                <option value="HOME">Home only</option>
-                <option value="PROGRAMS">Programs only</option>
-                <option value="CONTACT">Contact only</option>
-              </select>
             </label>
             <label className="field">
               <span>Frequency</span>
@@ -419,7 +427,7 @@ const AdminCampaigns = () => {
                           className="muted-copy"
                           style={{ fontSize: "0.85em", marginTop: "0.25rem" }}
                         >
-                          Button: "{campaign.buttonText}" →{" "}
+                          Button: "{campaign.buttonText}" {"->"}{" "}
                           {campaign.redirectUrl}
                         </p>
                       )}
@@ -428,7 +436,7 @@ const AdminCampaigns = () => {
                           className="muted-copy"
                           style={{ fontSize: "0.85em", marginTop: "0.25rem" }}
                         >
-                          Button 2: "{campaign.buttonText2}" →{" "}
+                          Button 2: "{campaign.buttonText2}" {"->"}{" "}
                           {campaign.redirectUrl2}
                         </p>
                       )}
@@ -442,7 +450,9 @@ const AdminCampaigns = () => {
 
                   <div className="campaign-card-meta">
                     <span className="meta-pill">{campaign.mediaType}</span>
-                    <span className="meta-pill">{campaign.displayPages}</span>
+                    <span className="meta-pill">
+                      Route: {campaign.displayRoute || "Unassigned"}
+                    </span>
                     <span className="meta-pill">
                       {formatDate(campaign.startDate)} -{" "}
                       {formatDate(campaign.endDate)}

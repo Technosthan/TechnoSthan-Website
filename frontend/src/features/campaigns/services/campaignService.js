@@ -1,11 +1,14 @@
 import { apiClient } from "../../../shared/services/apiClient";
 
 export const campaignService = {
-  getActive: (page = "") =>
-    apiClient.get(`/campaigns/active${page ? `?page=${encodeURIComponent(page)}` : ""}`, {
-      skipAuth: true,
-      credentials: "omit",
-    }),
+  getActive: (pathname = "") =>
+    apiClient.get(
+      `/campaigns/active${pathname ? `?pathname=${encodeURIComponent(pathname)}` : ""}`,
+      {
+        skipAuth: true,
+        credentials: "omit",
+      },
+    ),
   getAll: () => apiClient.get("/admin/campaigns"),
   create: (payload) => apiClient.post("/admin/campaigns", payload),
   update: (id, payload) => apiClient.put(`/admin/campaigns/${id}`, payload),

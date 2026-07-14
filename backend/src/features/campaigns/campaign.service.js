@@ -1,5 +1,11 @@
 import { prisma } from "../../config/db.js";
 import { normalizeMediaUrl } from "../../shared/utils/media.js";
+import {
+  getCampaignRouteMatchScore,
+  isCampaignEligibleForDisplay,
+  normalizeCampaignRoute,
+  normalizeRequestPathname,
+} from "./campaign.utils.js";
 
 const parseDate = (value) => {
   if (!value) return null;
@@ -12,24 +18,12 @@ const normalizeEnum = (value, fallback) =>
     .trim()
     .toUpperCase();
 
-const normalizePage = (value = "") => {
-  const raw = String(value || "")
-    .trim()
-    .toLowerCase();
-  if (!raw || /\ball\b/.test(raw)) return "ALL";
-  if (raw === "/" || raw === "home") return "HOME";
-  if (raw.includes("program")) return "PROGRAMS";
-  if (raw.includes("contact")) return "CONTACT";
-  return "ALL";
-};
-
 const validateRedirectUrl = (value) => {
   if (!value) return null;
 
   const trimmed = String(value || "").trim();
   if (!trimmed) return null;
 
-  // Check for unsafe protocols
   const unsafeProtocols = [
     "javascript:",
     "data:",
@@ -37,6 +31,7 @@ const validateRedirectUrl = (value) => {
     "vbscript:",
     "about:",
   ];
+
   const lowerUrl = trimmed.toLowerCase();
   for (const unsafe of unsafeProtocols) {
     if (lowerUrl.startsWith(unsafe)) {
@@ -48,35 +43,26 @@ const validateRedirectUrl = (value) => {
     }
   }
 
-  // Accept internal routes (starting with /)
   if (trimmed.startsWith("/")) {
     return trimmed;
   }
 
-  // Accept external URLs with http:// or https://
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     try {
-      new URL(trimmed); // Validate URL format
+      new URL(trimmed);
       return trimmed;
-    } catch (_e) {
+    } catch (_error) {
       const error = new Error("Invalid external URL format");
       error.statusCode = 400;
       throw error;
     }
   }
 
-  // If no protocol and doesn't start with /, treat as invalid
   const error = new Error(
     "Redirect URL must be an internal route (e.g., /contact) or external URL (e.g., https://example.com)",
   );
   error.statusCode = 400;
   throw error;
-};
-
-const isCampaignVisibleForPage = (campaign, page) => {
-  const scope = normalizePage(campaign.displayPages);
-  if (scope === "ALL") return true;
-  return scope === normalizePage(page);
 };
 
 const prepareCampaignData = (body = {}) => {
@@ -89,6 +75,9 @@ const prepareCampaignData = (body = {}) => {
     body.mediaUrl || body.media || "",
     mediaType === "VIDEO" ? "video" : "image",
   );
+  const displayRoute = normalizeCampaignRoute(body.displayRoute, {
+    required: true,
+  });
 
   if (!title) {
     const error = new Error("Title is required");
@@ -123,6 +112,7 @@ const prepareCampaignData = (body = {}) => {
     title,
     mediaUrl,
     mediaType,
+    displayRoute,
     ctaLink: String(body.ctaLink || "").trim() || null,
     buttonText,
     redirectUrl,
@@ -144,42 +134,87 @@ const campaignOrder = [
   { createdAt: "desc" },
 ];
 
-export const getActiveCampaign = async () => {
+const rethrowCampaignConflict = (error, displayRoute = "") => {
+  if (error?.code === "P2002") {
+    const conflictError = new Error(
+      displayRoute
+        ? `An active campaign already exists for ${displayRoute}`
+        : "An active campaign already exists for this route",
+    );
+    conflictError.statusCode = 409;
+    throw conflictError;
+  }
+
+  throw error;
+};
+
+const getActiveCampaignCandidates = async () => {
+  const now = new Date();
+
   const candidates = await prisma.campaign.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+    },
     orderBy: campaignOrder,
   });
 
+  return candidates.filter((campaign) => isCampaignEligibleForDisplay(campaign, now));
+};
+
+const selectBestCampaignMatch = (campaigns, pathname = "/") => {
+  const normalizedPathname = normalizeRequestPathname(pathname);
+  const scoredCampaigns = campaigns
+    .map((campaign) => {
+      const score = getCampaignRouteMatchScore(campaign.displayRoute, normalizedPathname);
+      return { campaign, score };
+    })
+    .filter(({ score }) => score.matches);
+
+  const routeScopedCampaigns = scoredCampaigns.filter(
+    ({ score }) => score.routeType !== "legacy",
+  );
+  const candidates =
+    routeScopedCampaigns.length > 0 ? routeScopedCampaigns : scoredCampaigns;
+
   return (
-    candidates.find((campaign) => isCampaignVisibleForPage(campaign, "ALL")) ||
-    null
+    candidates
+      .sort((left, right) => {
+        const routeRank = (score) => {
+          if (score.routeType === "exact") return 3;
+          if (score.routeType === "parameterized") return 2;
+          return 1;
+        };
+
+        const leftScore = left.score;
+        const rightScore = right.score;
+
+        const routeDiff = routeRank(rightScore) - routeRank(leftScore);
+        if (routeDiff !== 0) return routeDiff;
+
+        const specificityDiff = rightScore.specificity - leftScore.specificity;
+        if (specificityDiff !== 0) return specificityDiff;
+
+        const priorityDiff = (right.campaign.priority || 0) - (left.campaign.priority || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+
+        const updatedDiff =
+          new Date(right.campaign.updatedAt).getTime() -
+          new Date(left.campaign.updatedAt).getTime();
+        if (updatedDiff !== 0) return updatedDiff;
+
+        return new Date(right.campaign.createdAt).getTime() - new Date(left.campaign.createdAt).getTime();
+      })[0]?.campaign || null
   );
 };
 
-export const getActiveCampaignForPage = async (page = "") => {
-  const candidates = await prisma.campaign.findMany({
-    where: { isActive: true },
-    orderBy: campaignOrder,
-  });
-
-  const normalizedPage = normalizePage(page);
-  return (
-    candidates.find((campaign) =>
-      isCampaignVisibleForPage(campaign, normalizedPage),
-    ) || null
-  );
+export const getActiveCampaign = async (pathname = "/") => {
+  const candidates = await getActiveCampaignCandidates();
+  return selectBestCampaignMatch(candidates, pathname);
 };
 
-export const getActiveCampaignsForPage = async (page = "") => {
-  const candidates = await prisma.campaign.findMany({
-    where: { isActive: true },
-    orderBy: campaignOrder,
-  });
-
-  const normalizedPage = normalizePage(page);
-  return candidates.filter((campaign) =>
-    isCampaignVisibleForPage(campaign, normalizedPage),
-  );
+export const getActiveCampaignsForPage = async (pathname = "/") => {
+  const campaign = await getActiveCampaign(pathname);
+  return campaign ? [campaign] : [];
 };
 
 export const listCampaigns = async () => {
@@ -188,18 +223,81 @@ export const listCampaigns = async () => {
   });
 };
 
-export const createCampaign = async (body) => {
-  const data = prepareCampaignData(body);
-  return prisma.campaign.create({ data });
+const deactivateConflictingCampaigns = async (transaction, displayRoute, campaignId = null) => {
+  if (!displayRoute) {
+    return;
+  }
+
+  await transaction.campaign.updateMany({
+    where: {
+      isActive: true,
+      displayRoute,
+      ...(campaignId ? { NOT: { id: campaignId } } : {}),
+    },
+    data: {
+      isActive: false,
+    },
+  });
 };
 
-export const updateCampaign = async (id, body) => {
+const saveCampaignRecord = async (body, campaignId = null) => {
   const data = prepareCampaignData(body);
-  return prisma.campaign.update({ where: { id }, data });
+
+  try {
+    return await prisma.$transaction(async (transaction) => {
+      if (data.isActive) {
+        await deactivateConflictingCampaigns(transaction, data.displayRoute, campaignId);
+      }
+
+      if (campaignId) {
+        return transaction.campaign.update({
+          where: { id: campaignId },
+          data,
+        });
+      }
+
+      return transaction.campaign.create({ data });
+    });
+  } catch (error) {
+    rethrowCampaignConflict(error, data.displayRoute);
+  }
 };
+
+export const createCampaign = async (body) => saveCampaignRecord(body);
+
+export const updateCampaign = async (id, body) => saveCampaignRecord(body, id);
 
 export const activateCampaign = async (id) =>
-  prisma.campaign.update({ where: { id }, data: { isActive: true } });
+  {
+    try {
+      return await prisma.$transaction(async (transaction) => {
+        const campaign = await transaction.campaign.findUnique({
+          where: { id },
+        });
+
+        if (!campaign) {
+          const error = new Error("Campaign not found");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const displayRoute = campaign.displayRoute
+          ? normalizeCampaignRoute(campaign.displayRoute, {
+              required: true,
+            })
+          : null;
+
+        await deactivateConflictingCampaigns(transaction, displayRoute, id);
+
+        return transaction.campaign.update({
+          where: { id },
+          data: { isActive: true, displayRoute },
+        });
+      });
+    } catch (error) {
+      rethrowCampaignConflict(error);
+    }
+  };
 
 export const deactivateCampaign = async (id) =>
   prisma.campaign.update({ where: { id }, data: { isActive: false } });
@@ -207,4 +305,4 @@ export const deactivateCampaign = async (id) =>
 export const deleteCampaign = async (id) =>
   prisma.campaign.delete({ where: { id } });
 
-export { prepareCampaignData };
+export { prepareCampaignData, selectBestCampaignMatch };
