@@ -320,6 +320,28 @@
   font-size: 0.9rem;
 }
 
+.campaign-route {
+  margin: 0.25rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.campaign-button-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.campaign-button-row {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
 .campaign-card__actions {
   display: flex;
   flex-wrap: wrap;

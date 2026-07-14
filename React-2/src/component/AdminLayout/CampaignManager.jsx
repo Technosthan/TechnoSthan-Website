@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, ArrowUpDown } from "lucide-react";
 import api from "../../lib/api";
+import {
+  formatCampaignRoute,
+  normalizeCampaignRouteInput,
+} from "../../lib/campaignRoutes";
 import { useToast } from "../Toast/ToastProvider";
 import AdminLayout from "./AdminLayout";
 import "./CampaignManager.css";
@@ -21,6 +25,40 @@ const normalizeRedirectUrl = (value) => {
   }
   return parsed.toString();
 };
+
+const normalizeCampaignButtonUrl = (value, index) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) {
+    throw new Error(`Campaign button ${index} URL is required.`);
+  }
+  if (trimmed.startsWith("/")) return trimmed;
+  const parsed = new URL(trimmed);
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error(`Campaign button ${index} URL must use http or https.`);
+  }
+  return parsed.toString();
+};
+
+const normalizeCampaignButtons = (buttons = []) =>
+  buttons
+    .map((button, index) => {
+      const text = String(button?.text || "").trim();
+      const url = String(button?.url || "").trim();
+
+      if (!text && !url) {
+        return null;
+      }
+
+      if (!text) {
+        throw new Error(`Campaign button ${index + 1} text is required.`);
+      }
+
+      return {
+        text,
+        url: normalizeCampaignButtonUrl(url, index + 1),
+      };
+    })
+    .filter(Boolean);
 
 const getCampaignState = (campaign, now) => {
   const startAt = campaign.startAt
@@ -53,13 +91,14 @@ const CampaignManager = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [displayRoute, setDisplayRoute] = useState("");
   const [startAt, setStartAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [redirectUrl, setRedirectUrl] = useState("");
-  const [button1Text, setButton1Text] = useState("");
-  const [button1Url, setButton1Url] = useState("");
-  const [button2Text, setButton2Text] = useState("");
-  const [button2Url, setButton2Url] = useState("");
+  const [campaignButtons, setCampaignButtons] = useState([
+    { text: "", url: "" },
+    { text: "", url: "" },
+  ]);
   const [isActive, setIsActive] = useState(true);
   const [activeOnly, setActiveOnly] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -111,13 +150,14 @@ const CampaignManager = () => {
   const resetForm = () => {
     setFile(null);
     setPreview(null);
+    setDisplayRoute("");
     setStartAt("");
     setExpiresAt("");
     setRedirectUrl("");
-    setButton1Text("");
-    setButton1Url("");
-    setButton2Text("");
-    setButton2Url("");
+    setCampaignButtons([
+      { text: "", url: "" },
+      { text: "", url: "" },
+    ]);
     setIsActive(true);
     setReplaceCampaign(null);
     setError(null);
@@ -148,6 +188,12 @@ const CampaignManager = () => {
   };
 
   const validateCampaignTiming = () => {
+    try {
+      normalizeCampaignRouteInput(displayRoute);
+    } catch (err) {
+      return err.message || "Please enter a valid display route.";
+    }
+
     const parsedStart = parseDateTimeValue(startAt);
     const parsedExpires = parseDateTimeValue(expiresAt);
     if (startAt && !parsedStart)
@@ -163,24 +209,19 @@ const CampaignManager = () => {
         return err.message || "Please enter a valid redirect URL.";
       }
     }
-    if (button1Url && button1Url.trim()) {
-      try {
-        if (!button1Url.startsWith("/")) new URL(button1Url);
-      } catch {
-        return "Button 1 URL is invalid.";
-      }
-    }
-    if (button2Url && button2Url.trim()) {
-      try {
-        if (!button2Url.startsWith("/")) new URL(button2Url);
-      } catch {
-        return "Button 2 URL is invalid.";
-      }
+    try {
+      normalizeCampaignButtons(campaignButtons);
+    } catch (err) {
+      return err.message || "Please enter valid campaign buttons.";
     }
     return null;
   };
 
   const appendCampaignFields = (formData) => {
+    formData.append(
+      "displayRoute",
+      normalizeCampaignRouteInput(displayRoute),
+    );
     if (startAt) formData.append("startAt", new Date(startAt).toISOString());
     if (expiresAt)
       formData.append("expiresAt", new Date(expiresAt).toISOString());
@@ -188,10 +229,10 @@ const CampaignManager = () => {
       ? normalizeRedirectUrl(redirectUrl)
       : "";
     if (normalized) formData.append("redirectUrl", normalized);
-    if (button1Text) formData.append("button1Text", button1Text);
-    if (button1Url) formData.append("button1Url", button1Url);
-    if (button2Text) formData.append("button2Text", button2Text);
-    if (button2Url) formData.append("button2Url", button2Url);
+    formData.append(
+      "campaignButtons",
+      JSON.stringify(normalizeCampaignButtons(campaignButtons)),
+    );
   };
 
   const submitCampaign = async () => {
@@ -220,7 +261,6 @@ const CampaignManager = () => {
           formData,
         );
         if (data.success) {
-          window.sessionStorage.removeItem("technosthan_campaign_closed_id");
           showToast({ title: "Campaign updated", type: "success" });
           resetForm();
           loadCampaigns();
@@ -228,7 +268,6 @@ const CampaignManager = () => {
       } else {
         const { data } = await api.post("/api/campaigns", formData);
         if (data.success) {
-          window.sessionStorage.removeItem("technosthan_campaign_closed_id");
           showToast({
             title: "Campaign uploaded",
             message: "New campaign has been added.",
@@ -318,7 +357,6 @@ const CampaignManager = () => {
       appendCampaignFields(formData);
       const createResponse = await api.post("/api/campaigns", formData);
       if (createResponse.data.success) {
-        window.sessionStorage.removeItem("technosthan_campaign_closed_id");
         await api.delete(`/api/campaigns/${replaceCampaign._id}`);
         showToast({
           title: "Campaign replaced",
@@ -344,6 +382,7 @@ const CampaignManager = () => {
     setEditingCampaign(campaign);
     setFile(null);
     setPreview(campaign.mediaUrl || null);
+    setDisplayRoute(formatCampaignRoute(campaign.displayRoute || "/"));
     setStartAt(
       campaign.startAt
         ? new Date(campaign.startAt).toISOString().slice(0, 16)
@@ -355,15 +394,32 @@ const CampaignManager = () => {
         : "",
     );
     setRedirectUrl(campaign.redirectUrl || "");
-    setButton1Text(campaign.button1Text || "");
-    setButton1Url(campaign.button1Url || "");
-    setButton2Text(campaign.button2Text || "");
-    setButton2Url(campaign.button2Url || "");
+    const restoredButtons =
+      Array.isArray(campaign.campaignButtons) && campaign.campaignButtons.length
+        ? campaign.campaignButtons
+        : [
+            campaign.button1Text && campaign.button1Url
+              ? { text: campaign.button1Text, url: campaign.button1Url }
+              : null,
+            campaign.button2Text && campaign.button2Url
+              ? { text: campaign.button2Text, url: campaign.button2Url }
+              : null,
+          ].filter(Boolean);
+    setCampaignButtons(
+      restoredButtons.length ? restoredButtons : [{ text: "", url: "" }],
+    );
     setIsActive(Boolean(campaign.isActive));
   };
 
   const cancelEdit = () => {
     resetForm();
+  };
+
+  const startNewCampaign = () => {
+    resetForm();
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   };
 
   const campaignCountLabel = useMemo(
@@ -390,7 +446,17 @@ const CampaignManager = () => {
                     : "New campaign media"}
                 </h2>
               </div>
-              <span className="status-chip">{campaignCountLabel}</span>
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                <span className="status-chip">{campaignCountLabel}</span>
+                <button
+                  type="button"
+                  onClick={startNewCampaign}
+                  disabled={saving}
+                  className="button button-secondary"
+                >
+                  Add Campaign
+                </button>
+              </div>
             </div>
 
             {error && <div className="alert alert-error">{error}</div>}
@@ -433,6 +499,47 @@ const CampaignManager = () => {
                 )}
               </div>
             )}
+
+            <div className="field-set">
+              <label className="field-label" htmlFor="campaign-display-route">
+                Display Route
+              </label>
+              <input
+                id="campaign-display-route"
+                type="text"
+                value={displayRoute}
+                onChange={(e) => setDisplayRoute(e.target.value)}
+                onBlur={() => {
+                  try {
+                    setDisplayRoute(normalizeCampaignRouteInput(displayRoute));
+                  } catch (err) {
+                    // Let submit-time validation surface the error.
+                  }
+                }}
+                className="select-control"
+                placeholder="/contact or /programs/:slug"
+                list="campaign-route-suggestions"
+                disabled={saving}
+                required
+              />
+              <datalist id="campaign-route-suggestions">
+                {Array.from(
+                  new Set(
+                    campaigns
+                      .map((campaign) =>
+                        formatCampaignRoute(campaign.displayRoute || "/"),
+                      )
+                      .filter(Boolean),
+                  ),
+                ).map((route) => (
+                  <option key={route} value={route} />
+                ))}
+              </datalist>
+              <p className="field-help">
+                Enter a website path only. Examples: /, /about, /contact,
+                /programs, /programs/:slug.
+              </p>
+            </div>
 
             <div className="field-set">
               <label className="field-label" htmlFor="campaign-start-at">
@@ -478,61 +585,98 @@ const CampaignManager = () => {
             </div>
 
             <div className="field-set">
-              <label className="field-label" htmlFor="campaign-button1-text">
-                Button 1 Text (optional)
-              </label>
-              <input
-                id="campaign-button1-text"
-                type="text"
-                value={button1Text}
-                onChange={(e) => setButton1Text(e.target.value)}
-                className="select-control"
-                placeholder="Learn more"
-                disabled={saving}
-              />
-            </div>
-            <div className="field-set">
-              <label className="field-label" htmlFor="campaign-button1-url">
-                Button 1 URL (optional)
-              </label>
-              <input
-                id="campaign-button1-url"
-                type="url"
-                value={button1Url}
-                onChange={(e) => setButton1Url(e.target.value)}
-                className="select-control"
-                placeholder="/pricing or https://example.com/pricing"
-                disabled={saving}
-              />
-            </div>
-
-            <div className="field-set">
-              <label className="field-label" htmlFor="campaign-button2-text">
-                Button 2 Text (optional)
-              </label>
-              <input
-                id="campaign-button2-text"
-                type="text"
-                value={button2Text}
-                onChange={(e) => setButton2Text(e.target.value)}
-                className="select-control"
-                placeholder="Sign up"
-                disabled={saving}
-              />
-            </div>
-            <div className="field-set">
-              <label className="field-label" htmlFor="campaign-button2-url">
-                Button 2 URL (optional)
-              </label>
-              <input
-                id="campaign-button2-url"
-                type="url"
-                value={button2Url}
-                onChange={(e) => setButton2Url(e.target.value)}
-                className="select-control"
-                placeholder="/signup or https://example.com/signup"
-                disabled={saving}
-              />
+              <div className="replace-note" style={{ alignItems: "center" }}>
+                <div>
+                  <label className="field-label">Campaign Buttons</label>
+                  <p className="field-help" style={{ margin: "0.25rem 0 0" }}>
+                    Add as many buttons as you need. The first two remain
+                    compatible with existing campaign data.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="button button-secondary button-sm"
+                  disabled={saving}
+                  onClick={() =>
+                    setCampaignButtons((prev) => [
+                      ...prev,
+                      { text: "", url: "" },
+                    ])
+                  }
+                >
+                  Add Campaign Button
+                </button>
+              </div>
+              <div className="campaign-button-list">
+                {campaignButtons.map((button, index) => (
+                  <div key={index} className="campaign-button-row">
+                    <div className="field-set" style={{ marginBottom: 0 }}>
+                      <label
+                        className="field-label"
+                        htmlFor={`campaign-button-text-${index}`}
+                      >
+                        Button {index + 1} Text
+                      </label>
+                      <input
+                        id={`campaign-button-text-${index}`}
+                        type="text"
+                        value={button.text}
+                        onChange={(e) =>
+                          setCampaignButtons((prev) =>
+                            prev.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, text: e.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        className="select-control"
+                        placeholder={`Button ${index + 1} label`}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="field-set" style={{ marginBottom: 0 }}>
+                      <label
+                        className="field-label"
+                        htmlFor={`campaign-button-url-${index}`}
+                      >
+                        Button {index + 1} URL
+                      </label>
+                      <input
+                        id={`campaign-button-url-${index}`}
+                        type="url"
+                        value={button.url}
+                        onChange={(e) =>
+                          setCampaignButtons((prev) =>
+                            prev.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, url: e.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        className="select-control"
+                        placeholder="/pricing or https://example.com/pricing"
+                        disabled={saving}
+                      />
+                    </div>
+                    {campaignButtons.length > 1 && (
+                      <button
+                        type="button"
+                        className="button button-secondary button-sm"
+                        disabled={saving}
+                        onClick={() =>
+                          setCampaignButtons((prev) =>
+                            prev.filter((_, itemIndex) => itemIndex !== index),
+                          )
+                        }
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="field-set">
@@ -560,10 +704,10 @@ const CampaignManager = () => {
                 {saving
                   ? editingCampaign
                     ? "Saving..."
-                    : "Uploading..."
+                    : "Adding..."
                   : editingCampaign
                     ? "Update Campaign"
-                    : "Upload Campaign"}
+                    : "Add Campaign"}
               </button>
               <button
                 type="button"
@@ -594,6 +738,11 @@ const CampaignManager = () => {
                   onChange={(e) => {
                     const sel = campaigns.find((c) => c._id === e.target.value);
                     setReplaceCampaign(sel || null);
+                    if (sel) {
+                      setDisplayRoute(
+                        formatCampaignRoute(sel.displayRoute || "/"),
+                      );
+                    }
                   }}
                   className="select-control"
                   disabled={saving || campaigns.length === 0}
@@ -674,6 +823,9 @@ const CampaignManager = () => {
                             {c.mediaType === "video" ? "Video" : "Image"}
                           </span>
                         </div>
+                        <p className="campaign-route">
+                          Route: {formatCampaignRoute(c.displayRoute || "/")}
+                        </p>
                         <p className="campaign-timestamp">
                           {new Date(c.createdAt).toLocaleString()}
                         </p>
@@ -696,6 +848,9 @@ const CampaignManager = () => {
                         <button
                           onClick={() => {
                             setReplaceCampaign(c);
+                            setDisplayRoute(
+                              formatCampaignRoute(c.displayRoute || "/"),
+                            );
                             setError(null);
                           }}
                           disabled={saving}

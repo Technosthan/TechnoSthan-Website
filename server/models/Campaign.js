@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { normalizeCampaignRoute } = require("../utils/campaignRoutes");
 
 const CampaignSchema = new mongoose.Schema(
   {
@@ -36,6 +37,13 @@ const CampaignSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    displayRoute: {
+      type: String,
+      required: true,
+      default: "/",
+      trim: true,
+      set: (value) => normalizeCampaignRoute(value),
+    },
     // Optional configurable campaign buttons
     button1Text: {
       type: String,
@@ -53,6 +61,23 @@ const CampaignSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    campaignButtons: {
+      type: [
+        {
+          text: {
+            type: String,
+            trim: true,
+            default: "",
+          },
+          url: {
+            type: String,
+            trim: true,
+            default: "",
+          },
+        },
+      ],
+      default: [],
+    },
     isActive: {
       type: Boolean,
       default: false,
@@ -60,6 +85,17 @@ const CampaignSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  },
+);
+
+CampaignSchema.index(
+  { displayRoute: 1, isActive: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      isActive: true,
+      displayRoute: { $type: "string" },
+    },
   },
 );
 

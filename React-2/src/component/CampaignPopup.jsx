@@ -1,16 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import api from "../lib/api";
 import "./CampaignPopup.css";
 
 const CampaignPopup = () => {
+  const { pathname } = useLocation();
   const [campaign, setCampaign] = useState(null);
   const [open, setOpen] = useState(false);
   const [muted, setMuted] = useState(true);
+  const requestIdRef = useRef(0);
 
-  const fetchCampaign = async () => {
+  const fetchCampaign = async (currentPathname, requestId) => {
     try {
-      const { data } = await api.get("/api/campaigns/active");
+      const { data } = await api.get("/api/campaigns/active", {
+        params: { pathname: currentPathname },
+      });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       if (data.success && data.data) {
         setCampaign(data.data);
       } else {
@@ -18,6 +28,10 @@ const CampaignPopup = () => {
         setOpen(false);
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       console.error("Failed to load campaign popup", err);
       setCampaign(null);
       setOpen(false);
@@ -25,8 +39,17 @@ const CampaignPopup = () => {
   };
 
   useEffect(() => {
-    fetchCampaign();
-  }, []);
+    requestIdRef.current += 1;
+    const currentRequestId = requestIdRef.current;
+
+    setOpen(false);
+    setCampaign(null);
+    fetchCampaign(pathname, currentRequestId);
+
+    return () => {
+      requestIdRef.current += 1;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     if (!campaign) {
@@ -53,7 +76,7 @@ const CampaignPopup = () => {
       if (expiresAt && expiresAt > startAt) {
         expireTimer = window.setTimeout(() => {
           setOpen(false);
-          fetchCampaign();
+          fetchCampaign(pathname, requestIdRef.current);
         }, expiresAt - now);
       }
     } else {
@@ -62,7 +85,7 @@ const CampaignPopup = () => {
       if (expiresAt && expiresAt > now) {
         expireTimer = window.setTimeout(() => {
           setOpen(false);
-          fetchCampaign();
+          fetchCampaign(pathname, requestIdRef.current);
         }, expiresAt - now);
       }
     }
@@ -75,7 +98,7 @@ const CampaignPopup = () => {
         window.clearTimeout(expireTimer);
       }
     };
-  }, [campaign]);
+  }, [campaign, pathname]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -111,6 +134,23 @@ const CampaignPopup = () => {
     link.click();
     link.remove();
   };
+
+  const campaignButtons =
+    Array.isArray(campaign?.campaignButtons) && campaign.campaignButtons.length
+      ? campaign.campaignButtons
+          .map((button) => ({
+            text: String(button?.text || "").trim(),
+            url: String(button?.url || "").trim(),
+          }))
+          .filter((button) => button.text && button.url)
+      : [
+          campaign?.button1Text && campaign?.button1Url
+            ? { text: campaign.button1Text, url: campaign.button1Url }
+            : null,
+          campaign?.button2Text && campaign?.button2Url
+            ? { text: campaign.button2Text, url: campaign.button2Url }
+            : null,
+        ].filter(Boolean);
 
   if (!campaign || !open) {
     return null;
@@ -168,43 +208,21 @@ const CampaignPopup = () => {
             )}
           </div>
           <div className="campaign-popup__actions">
-            {campaign.button1Text && campaign.button1Url && (
+            {campaignButtons.map((button, index) => (
               <button
-                className="campaign-popup__button"
+                key={`${button.text}-${index}`}
+                className={`campaign-popup__button ${index > 0 ? "campaign-popup__button--secondary" : ""}`}
                 onClick={() => {
-                  if (campaign.button1Url.startsWith("/")) {
-                    window.location.href = campaign.button1Url;
+                  if (button.url.startsWith("/")) {
+                    window.location.href = button.url;
                   } else {
-                    window.open(
-                      campaign.button1Url,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
+                    window.open(button.url, "_blank", "noopener,noreferrer");
                   }
                 }}
               >
-                {campaign.button1Text}
+                {button.text}
               </button>
-            )}
-
-            {campaign.button2Text && campaign.button2Url && (
-              <button
-                className="campaign-popup__button campaign-popup__button--secondary"
-                onClick={() => {
-                  if (campaign.button2Url.startsWith("/")) {
-                    window.location.href = campaign.button2Url;
-                  } else {
-                    window.open(
-                      campaign.button2Url,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  }
-                }}
-              >
-                {campaign.button2Text}
-              </button>
-            )}
+            ))}
           </div>
         </div>
       </div>

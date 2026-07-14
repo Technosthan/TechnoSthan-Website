@@ -1,5 +1,10 @@
 const cloudinary = require("cloudinary").v2;
 const Campaign = require("../models/Campaign");
+const {
+  findBestMatchingCampaign,
+  normalizeCampaignRoute,
+  normalizePathname,
+} = require("../utils/campaignRoutes");
 
 const parseOptionalDateTime = (value, fieldName) => {
   if (value === undefined || value === null || value === "") {
@@ -48,6 +53,161 @@ const normalizeRedirectUrl = (value) => {
   return parsedUrl.toString();
 };
 
+const normalizeCampaignButtonUrl = (value, index) => {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    const error = new Error(`Campaign button ${index} URL is required`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const trimmed = String(value).trim();
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(trimmed);
+  } catch (err) {
+    const error = new Error(`Campaign button ${index} URL is invalid`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    const error = new Error(`Campaign button ${index} URL must use http or https`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return parsedUrl.toString();
+};
+
+const parseCampaignButtonsPayload = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      const error = new Error("campaignButtons must be valid JSON");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  return [];
+};
+
+const normalizeCampaignButtons = (value) => {
+  const buttons = parseCampaignButtonsPayload(value)
+    .map((button, index) => {
+      const text = String(button?.text || "").trim();
+      const url = String(button?.url || "").trim();
+
+      if (!text && !url) {
+        return null;
+      }
+
+      if (!text) {
+        const error = new Error(`Campaign button ${index + 1} text is required`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const normalizedUrl = normalizeCampaignButtonUrl(url, index + 1);
+      return { text, url: normalizedUrl };
+    })
+    .filter(Boolean);
+
+  return buttons;
+};
+
+const serializeCampaign = (campaign) => {
+  if (!campaign) {
+    return null;
+  }
+
+  const campaignButtons = Array.isArray(campaign.campaignButtons)
+    ? campaign.campaignButtons
+        .map((button) => ({
+          text: String(button?.text || "").trim(),
+          url: String(button?.url || "").trim(),
+        }))
+        .filter((button) => button.text && button.url)
+    : [];
+
+  const legacyButtons = [
+    campaign.button1Text && campaign.button1Url
+      ? { text: campaign.button1Text, url: campaign.button1Url }
+      : null,
+    campaign.button2Text && campaign.button2Url
+      ? { text: campaign.button2Text, url: campaign.button2Url }
+      : null,
+  ].filter(Boolean);
+
+  return {
+    ...campaign,
+    _id: campaign._id?.toString?.() || campaign.id,
+    id: campaign._id?.toString?.() || campaign.id,
+    displayRoute: normalizeCampaignRoute(campaign.displayRoute || "/"),
+    isActive: Boolean(campaign.isActive),
+    campaignButtons: campaignButtons.length ? campaignButtons : legacyButtons,
+  };
+};
+
+const normalizeCampaignBodyRoute = (value) => {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    const error = new Error("Display Route is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return normalizeCampaignRoute(value);
+};
+
+const deactivateConflictingCampaigns = async (displayRoute, excludeId = null) => {
+  const candidates = await Campaign.find({
+    isActive: true,
+  })
+    .select("_id displayRoute")
+    .lean();
+
+  const conflictingIds = candidates
+    .filter((campaign) => {
+      if (excludeId && campaign._id?.toString?.() === String(excludeId)) {
+        return false;
+      }
+
+      return normalizeCampaignRoute(campaign.displayRoute || "/") === displayRoute;
+    })
+    .map((campaign) => campaign._id);
+
+  if (!conflictingIds.length) {
+    return;
+  }
+
+  await Campaign.updateMany(
+    { _id: { $in: conflictingIds } },
+    { $set: { isActive: false } },
+  );
+};
+
+const applyCampaignRouteSafety = async (campaign, displayRoute) => {
+  if (!campaign.isActive) {
+    return;
+  }
+
+  await deactivateConflictingCampaigns(displayRoute, campaign._id);
+};
+
 const ensureCloudinaryConfigured = () => {
   if (
     !process.env.CLOUDINARY_CLOUD_NAME ||
@@ -69,48 +229,22 @@ cloudinary.config({
 const getActiveCampaign = async (req, res) => {
   try {
     const now = new Date();
+    const pathname = normalizePathname(
+      req.query.pathname || req.query.route || req.query.path || "/",
+    );
 
-    const campaign = await Campaign.findOne({
+    const campaigns = await Campaign.find({
       isActive: true,
-      $and: [
-        {
-          $or: [
-            { startAt: null },
-            { startAt: { $exists: false } },
-            { startAt: { $lte: now } },
-          ],
-        },
-        {
-          $or: [
-            { expiresAt: null },
-            { expiresAt: { $exists: false } },
-            { expiresAt: { $gt: now } },
-          ],
-        },
-      ],
     })
       .sort({ createdAt: -1 })
       .lean();
 
-    if (campaign) {
-      return res.status(200).json({ success: true, data: campaign });
-    }
+    const campaign = findBestMatchingCampaign(campaigns, pathname, now);
 
-    const scheduledCampaign = await Campaign.findOne({
-      isActive: true,
-      startAt: { $gt: now },
-      $or: [
-        { expiresAt: null },
-        { expiresAt: { $exists: false } },
-        { expiresAt: { $gt: now } },
-      ],
-    })
-      .sort({ startAt: 1, createdAt: -1 })
-      .lean();
-
-    return res
-      .status(200)
-      .json({ success: true, data: scheduledCampaign || null });
+    return res.status(200).json({
+      success: true,
+      data: serializeCampaign(campaign),
+    });
   } catch (err) {
     console.error("Get active campaign error:", err);
     return res
@@ -122,7 +256,10 @@ const getActiveCampaign = async (req, res) => {
 const getCampaigns = async (req, res) => {
   try {
     const campaigns = await Campaign.find({}).sort({ createdAt: -1 }).lean();
-    return res.status(200).json({ success: true, data: campaigns });
+    return res.status(200).json({
+      success: true,
+      data: campaigns.map(serializeCampaign),
+    });
   } catch (err) {
     console.error("Get campaigns error:", err);
     return res
@@ -158,6 +295,7 @@ const createCampaign = async (req, res) => {
     }
 
     const redirectUrl = normalizeRedirectUrl(req.body.redirectUrl);
+    const displayRoute = normalizeCampaignBodyRoute(req.body.displayRoute);
 
     ensureCloudinaryConfigured();
 
@@ -193,14 +331,7 @@ const createCampaign = async (req, res) => {
         ? req.body.isActive === "true" || req.body.isActive === true
         : false;
 
-    if (isActive) {
-      await Campaign.updateMany(
-        { isActive: true },
-        { $set: { isActive: false } },
-      );
-    }
-
-    const campaign = await Campaign.create({
+    const campaignPayload = {
       mediaType,
       mediaUrl: result.secure_url,
       publicId: result.public_id,
@@ -209,12 +340,34 @@ const createCampaign = async (req, res) => {
       startDateTime: startAt,
       expiryDateTime: expiresAt,
       redirectUrl,
+      displayRoute,
       isActive,
-      button1Text: req.body.button1Text || null,
-      button1Url: req.body.button1Url || null,
-      button2Text: req.body.button2Text || null,
-      button2Url: req.body.button2Url || null,
-    });
+    button1Text: req.body.button1Text || null,
+    button1Url: req.body.button1Url || null,
+    button2Text: req.body.button2Text || null,
+    button2Url: req.body.button2Url || null,
+    campaignButtons: normalizeCampaignButtons(req.body.campaignButtons),
+  };
+
+    let campaign;
+    try {
+      if (isActive) {
+        await applyCampaignRouteSafety(campaignPayload, displayRoute);
+      }
+
+      campaign = await Campaign.create(campaignPayload);
+    } catch (saveErr) {
+      if (
+        isActive &&
+        saveErr &&
+        (saveErr.code === 11000 || saveErr.code === 11001)
+      ) {
+        await deactivateConflictingCampaigns(displayRoute);
+        campaign = await Campaign.create(campaignPayload);
+      } else {
+        throw saveErr;
+      }
+    }
 
     try {
       if (req && typeof req.logActivity === "function") {
@@ -230,7 +383,7 @@ const createCampaign = async (req, res) => {
       console.error("Activity log failed:", err);
     }
 
-    return res.status(201).json({ success: true, data: campaign });
+    return res.status(201).json({ success: true, data: serializeCampaign(campaign.toObject()) });
   } catch (err) {
     console.error("Create campaign error:", err);
     const statusCode = err.statusCode || 500;
@@ -250,6 +403,11 @@ const updateCampaign = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Campaign not found" });
     }
+
+    const displayRoute =
+      req.body.displayRoute !== undefined
+        ? normalizeCampaignBodyRoute(req.body.displayRoute)
+        : normalizeCampaignRoute(campaign.displayRoute || "/");
 
     // Parse optional dates
     const startAt = parseOptionalDateTime(
@@ -324,9 +482,9 @@ const updateCampaign = async (req, res) => {
       const isActive =
         req.body.isActive === "true" || req.body.isActive === true;
       if (isActive) {
-        await Campaign.updateMany(
-          { isActive: true },
-          { $set: { isActive: false } },
+        await applyCampaignRouteSafety(
+          { ...campaign.toObject(), isActive: true },
+          displayRoute,
         );
       }
       campaign.isActive = isActive;
@@ -337,13 +495,28 @@ const updateCampaign = async (req, res) => {
     campaign.startDateTime = startAt;
     campaign.expiryDateTime = expiresAt;
     campaign.redirectUrl = redirectUrl;
+    campaign.displayRoute = displayRoute;
 
     campaign.button1Text = req.body.button1Text || null;
     campaign.button1Url = req.body.button1Url || null;
     campaign.button2Text = req.body.button2Text || null;
     campaign.button2Url = req.body.button2Url || null;
+    campaign.campaignButtons = normalizeCampaignButtons(req.body.campaignButtons);
 
-    await campaign.save();
+    let savedCampaign;
+    try {
+      savedCampaign = await campaign.save();
+    } catch (saveErr) {
+      if (
+        campaign.isActive &&
+        (saveErr.code === 11000 || saveErr.code === 11001)
+      ) {
+        await deactivateConflictingCampaigns(displayRoute, campaign._id);
+        savedCampaign = await campaign.save();
+      } else {
+        throw saveErr;
+      }
+    }
 
     try {
       if (req && typeof req.logActivity === "function") {
@@ -359,7 +532,10 @@ const updateCampaign = async (req, res) => {
       console.error("Activity log failed:", err);
     }
 
-    return res.status(200).json({ success: true, data: campaign });
+    return res.status(200).json({
+      success: true,
+      data: serializeCampaign(savedCampaign.toObject()),
+    });
   } catch (err) {
     console.error("Update campaign error:", err);
     const statusCode = err.statusCode || 500;
@@ -389,14 +565,27 @@ const toggleCampaign = async (req, res) => {
     }
 
     if (isActive) {
-      await Campaign.updateMany(
-        { isActive: true },
-        { $set: { isActive: false } },
+      await applyCampaignRouteSafety(
+        { ...campaign.toObject(), isActive: true },
+        normalizeCampaignRoute(campaign.displayRoute || "/"),
       );
     }
 
     campaign.isActive = isActive;
-    await campaign.save();
+    let savedCampaign;
+    try {
+      savedCampaign = await campaign.save();
+    } catch (saveErr) {
+      if (isActive && (saveErr.code === 11000 || saveErr.code === 11001)) {
+        await deactivateConflictingCampaigns(
+          normalizeCampaignRoute(campaign.displayRoute || "/"),
+          campaign._id,
+        );
+        savedCampaign = await campaign.save();
+      } else {
+        throw saveErr;
+      }
+    }
 
     try {
       if (req && typeof req.logActivity === "function") {
@@ -412,7 +601,10 @@ const toggleCampaign = async (req, res) => {
       console.error("Activity log failed:", err);
     }
 
-    return res.status(200).json({ success: true, data: campaign });
+    return res.status(200).json({
+      success: true,
+      data: serializeCampaign(savedCampaign.toObject()),
+    });
   } catch (err) {
     console.error("Toggle campaign error:", err);
     return res

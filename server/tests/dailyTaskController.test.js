@@ -45,6 +45,8 @@ test("createTaskTemplate generates today instances immediately", async () => {
       notificationTime: "09:00",
       priority: "medium",
       category: "general",
+      displayRoute: "/",
+      deliveryChannels: ["dashboard"],
       targetRoles: ["USER"],
       specificUsers: [],
       isActive: true,
@@ -73,7 +75,7 @@ test("createTaskTemplate generates today instances immediately", async () => {
     assert.equal(res.statusCode, 201);
     assert.equal(schedulerCalls.length, 1);
     assert.equal(schedulerCalls[0].workspaceId, "workspace-1");
-    assert.equal(schedulerCalls[0].options.ignoreNotificationTime, true);
+    assert.equal(schedulerCalls[0].app.ignoreNotificationTime, true);
     assert.equal(res.payload.success, true);
   } finally {
     DailyTaskTemplate.create = originalCreate;
