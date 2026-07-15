@@ -151,7 +151,7 @@ const getSuccessMessage = (form = {}, submitted = null) =>
 
 const PublicFormPage = () => {
   const { slug } = useParams();
-  const { theme, appSettings } = useTheme();
+  const { theme } = useTheme();
   const { loading: settingsLoading, settings: websiteSettings } = useSettings();
   const [form, setForm] = useState(null);
   const [values, setValues] = useState({});
@@ -906,23 +906,23 @@ const PublicFormPage = () => {
 
         <div className="mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl">
           {(form.bannerImage || form.bannerImageUrl) && (
-            <div className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/20">
+            <div className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/20 p-3 sm:p-4">
               <img
                 src={getOptimizedImageUrl(
                   form.bannerImageAsset || form.bannerImage || form.bannerImageUrl,
                 )}
                 alt={form.title ? `${form.title} banner` : "Form banner"}
-                className="h-52 w-full object-cover sm:h-64"
+                className="block h-auto w-full object-contain"
                 loading="lazy"
               />
             </div>
           )}
           <div className="flex items-center gap-4">
-            {appSettings.logoUrl ? (
+            {form.logoUrl ? (
               <img
-                src={getOptimizedImageUrl(appSettings.logoUrl)}
-                alt={appSettings.appName}
-                className="h-16 w-16 rounded-2xl object-cover"
+                src={getOptimizedImageUrl(form.logoAsset || form.logoUrl)}
+                alt={form.title ? `${form.title} logo` : "Form logo"}
+                className="h-16 w-16 rounded-2xl object-contain bg-white/5 p-2"
               />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-600 text-white">

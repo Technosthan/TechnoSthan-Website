@@ -38,7 +38,11 @@ import {
   revealAdminFormResponseSecret,
   updateAdminForm,
 } from "../../forms/formsApi";
-import { deleteCloudinaryAsset, uploadFormBannerImage } from "./adminApi";
+import {
+  deleteCloudinaryAsset,
+  uploadFormBannerImage,
+  uploadFormLogoImage,
+} from "./adminApi";
 import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
 import { normalizeHttpUrl } from "../../forms/formUtils";
 
@@ -149,6 +153,8 @@ const EMPTY_FORM = {
   slug: "",
   status: "draft",
   successMessage: "Thanks for your response.",
+  logoUrl: "",
+  logoAsset: null,
   bannerImage: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
@@ -242,6 +248,7 @@ const createFormExportData = (form = {}) => {
       successMessage: String(form.successMessage || "").trim(),
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
       themeColor: String(form.themeColor || "").trim(),
+      logoUrl: String(form.logoUrl || form.emailTemplate?.logoUrl || "").trim(),
       bannerImage: String(form.bannerImage || form.bannerImageUrl || "").trim(),
       questions: safeQuestions,
     },
@@ -350,8 +357,8 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
     borderRadius:
       source.borderRadius ?? legacy.emailTemplate?.borderRadius ?? DEFAULT_EMAIL_TEMPLATE.borderRadius,
     logoUrl:
-      source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? legacy.logoUrl ?? "",
-    logoAsset: source.logoAsset ?? legacy.emailTemplate?.logoAsset ?? legacy.logoAsset ?? null,
+      source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
+    logoAsset: source.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
     bannerImageUrl:
       source.bannerImageUrl ?? legacy.emailTemplate?.bannerImageUrl ?? legacy.bannerImageUrl ?? "",
     bannerImageAsset:
@@ -597,6 +604,18 @@ const normalizeForm = (form) => ({
     form?.bannerImageAsset?.secureUrl ||
     form?.bannerImageAsset?.url ||
     "",
+  logoUrl:
+    form?.logoUrl ||
+    form?.logoAsset?.secureUrl ||
+    form?.logoAsset?.url ||
+    form?.emailTemplate?.logoUrl ||
+    form?.emailTemplate?.logoAsset?.secureUrl ||
+    form?.emailTemplate?.logoAsset?.url ||
+    "",
+  logoAsset:
+    form?.logoAsset ||
+    form?.emailTemplate?.logoAsset ||
+    null,
   emailTemplate: normalizeEmailTemplate(form?.emailTemplate, form),
   notificationSettings: normalizeNotificationSettings(
     form?.notificationSettings,
@@ -819,13 +838,16 @@ const FormManagement = () => {
   const sessionUploadedAssetsRef = useRef([]);
   const secretRevealTimersRef = useRef({});
   const importFileInputRef = useRef(null);
+  const formLogoInputRef = useRef(null);
   const bannerImageInputRef = useRef(null);
+  const [uploadingFormLogoImage, setUploadingFormLogoImage] = useState(false);
   const [uploadingBannerImage, setUploadingBannerImage] = useState(false);
   const [importingFormFile, setImportingFormFile] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const emailLogoInputRef = useRef(null);
   const emailBannerInputRef = useRef(null);
   const [uploadingEmailTemplateField, setUploadingEmailTemplateField] = useState("");
+  const [formLogoPreviewFailed, setFormLogoPreviewFailed] = useState(false);
   const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
   const [bannerPreviewFailed, setBannerPreviewFailed] = useState(false);
   const [revealedSecrets, setRevealedSecrets] = useState({});
@@ -855,6 +877,8 @@ const FormManagement = () => {
     setImportPreview(null);
     sessionUploadedAssetsRef.current = [];
     setUploadingEmailTemplateField("");
+    setUploadingFormLogoImage(false);
+    setFormLogoPreviewFailed(false);
     setLogoPreviewFailed(false);
     setBannerPreviewFailed(false);
     try {
@@ -885,6 +909,8 @@ const FormManagement = () => {
     lastSavedFormRef.current = null;
     sessionUploadedAssetsRef.current = [];
     setUploadingEmailTemplateField("");
+    setUploadingFormLogoImage(false);
+    setFormLogoPreviewFailed(false);
     setLogoPreviewFailed(false);
     setBannerPreviewFailed(false);
     setResponses([]);
@@ -1011,6 +1037,99 @@ const FormManagement = () => {
           : question,
       ),
     }));
+  };
+
+  const handleFormLogoFile = (file) => {
+    if (!file) {
+      if (formLogoInputRef.current) {
+        formLogoInputRef.current.value = "";
+      }
+      updateDraft("logoUrl", "");
+      updateDraft("logoAsset", null);
+      setFormLogoPreviewFailed(false);
+      return;
+    }
+
+    const allowedTypes = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/svg+xml",
+    ]);
+    const maxLogoImageSizeBytes = 5 * 1024 * 1024;
+
+    if (!allowedTypes.has(file.type)) {
+      toast.error("Please choose a valid image file");
+      if (formLogoInputRef.current) {
+        formLogoInputRef.current.value = "";
+      }
+      return;
+    }
+
+    if (file.size > maxLogoImageSizeBytes) {
+      toast.error("Logo image must be 5 MB or smaller");
+      if (formLogoInputRef.current) {
+        formLogoInputRef.current.value = "";
+      }
+      return;
+    }
+
+    const upload = async () => {
+      setUploadingFormLogoImage(true);
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("folder", "forms/logos");
+        const response = await uploadFormLogoImage(formData);
+        const uploadData = response.data?.data || {};
+        const imageUrl =
+          uploadData.secureUrl ||
+          uploadData.url ||
+          uploadData.imageUrl ||
+          "";
+        if (!imageUrl) {
+          throw new Error("Image upload failed");
+        }
+
+        updateDraft("logoUrl", imageUrl);
+        updateDraft("logoAsset", {
+          url: uploadData.url || imageUrl,
+          secureUrl: uploadData.secureUrl || imageUrl,
+          publicId: uploadData.publicId || "",
+          resourceType: uploadData.resourceType || "image",
+          format: uploadData.format || "",
+          originalName: uploadData.originalName || file.name,
+          mimeType: uploadData.mimeType || file.type,
+          size: uploadData.size || file.size,
+          bytes: uploadData.size || file.size,
+          width: uploadData.asset?.width || null,
+          height: uploadData.asset?.height || null,
+          version: uploadData.asset?.version || null,
+          folder: uploadData.asset?.folder || "technosthan/forms/logos",
+        });
+        setFormLogoPreviewFailed(false);
+        registerSessionAsset(
+          uploadData.asset || {
+            publicId: uploadData.publicId || "",
+            resourceType: uploadData.resourceType || "image",
+            url: uploadData.url || imageUrl,
+            secureUrl: uploadData.secureUrl || imageUrl,
+          },
+        );
+        toast.success("Logo uploaded");
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || error.message || "Failed to upload image",
+        );
+      } finally {
+        setUploadingFormLogoImage(false);
+        if (formLogoInputRef.current) {
+          formLogoInputRef.current.value = "";
+        }
+      }
+    };
+
+    upload();
   };
 
   const handleBannerImageFile = (file) => {
@@ -1439,6 +1558,7 @@ const FormManagement = () => {
   const collectSavedAssetPublicIds = (form) =>
     new Set(
       [
+        form?.logoAsset,
         form?.bannerImageAsset,
         form?.emailTemplate?.logoAsset,
         form?.emailTemplate?.bannerImageAsset,
@@ -1472,6 +1592,8 @@ const FormManagement = () => {
   };
 
   const cleanupReplacedAssets = async (previousForm, nextForm) => {
+    const previousFormLogo = previousForm?.logoAsset || null;
+    const nextFormLogo = nextForm?.logoAsset || null;
     const previousBanner = previousForm?.bannerImageAsset || null;
     const nextBanner = nextForm?.bannerImageAsset || null;
     const previousLogo = previousForm?.emailTemplate?.logoAsset || null;
@@ -1481,6 +1603,10 @@ const FormManagement = () => {
     const nextTemplateBanner = nextForm?.emailTemplate?.bannerImageAsset || null;
 
     const assetsToDelete = [
+      {
+        previous: previousFormLogo,
+        current: nextFormLogo,
+      },
       {
         previous: previousBanner,
         current: nextBanner,
@@ -1520,16 +1646,21 @@ const FormManagement = () => {
     }
 
     const parsedExpiresAt = draft.expiresAt ? new Date(draft.expiresAt) : null;
+    const normalizedEmailTemplate = normalizeEmailTemplate(draft.emailTemplate, {
+      ...draft,
+      logoUrl: "",
+      logoAsset: null,
+    });
 
     const payload = {
       ...draft,
+      logoUrl: draft.logoUrl || "",
+      logoAsset: draft.logoAsset || null,
       bannerImage: draft.bannerImage || draft.bannerImageUrl || "",
       bannerImageUrl: draft.bannerImageUrl || draft.bannerImage || "",
       emailTemplate: {
-        ...normalizeEmailTemplate(draft.emailTemplate, draft),
-        logoUrl: draft.emailTemplate?.logoUrl || "",
-        bannerImageUrl: draft.emailTemplate?.bannerImageUrl || "",
-        footerButtons: normalizeEmailTemplate(draft.emailTemplate, draft).footerButtons || [],
+        ...normalizedEmailTemplate,
+        footerButtons: normalizedEmailTemplate.footerButtons || [],
       },
       status: nextStatus,
       slug: slugify(draft.slug || draft.title),
@@ -2427,6 +2558,64 @@ const FormManagement = () => {
                 <div className="space-y-4">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
                     <div>
+                      <label className="mb-2 block text-sm font-semibold">Form Logo</label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input
+                          ref={formLogoInputRef}
+                          type="file"
+                          hidden
+                          accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                          onChange={(e) => handleFormLogoFile(e.target.files?.[0] || null)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => formLogoInputRef.current?.click()}
+                          disabled={uploadingFormLogoImage}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Upload size={16} />
+                          {uploadingFormLogoImage
+                            ? "Uploading..."
+                            : draft.logoUrl
+                              ? "Change Logo"
+                              : "Upload Logo"}
+                        </button>
+                        {(draft.logoUrl || draft.logoAsset) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateDraft("logoUrl", "");
+                              updateDraft("logoAsset", null);
+                              setFormLogoPreviewFailed(false);
+                              if (formLogoInputRef.current) {
+                                formLogoInputRef.current.value = "";
+                              }
+                            }}
+                            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Remove Logo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-4">
+                      {draft.logoUrl && !formLogoPreviewFailed ? (
+                        <img
+                          src={getOptimizedImageUrl(draft.logoAsset || draft.logoUrl)}
+                          alt="Form logo preview"
+                          className="block max-h-24 w-auto max-w-full object-contain"
+                          onError={() => setFormLogoPreviewFailed(true)}
+                        />
+                      ) : draft.logoUrl ? (
+                        <div className="text-sm text-slate-400">Logo preview unavailable</div>
+                      ) : (
+                        <div className="text-sm text-slate-400">No logo selected</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                    <div>
                       <label className="mb-2 block text-sm font-semibold">Form Banner Image</label>
                       <input
                         value={draft.bannerImage || draft.bannerImageUrl}
@@ -2482,7 +2671,7 @@ const FormManagement = () => {
                               draft.bannerImageUrl,
                           )}
                           alt="Form banner preview"
-                          className="h-40 w-full object-cover"
+                          className="block w-full h-auto object-contain"
                         />
                       </div>
                     )}

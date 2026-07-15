@@ -910,6 +910,19 @@ const normalizeFormPayload = async (
     successMessage:
       String(payload.successMessage || "").trim() ||
       "Thanks for your response.",
+    logoUrl: String(
+      payload.logoUrl !== undefined
+        ? payload.logoUrl
+        : payload.emailTemplate?.logoUrl || "",
+    ).trim(),
+    logoAsset: toAssetPayload(
+      payload.logoAsset !== undefined
+        ? payload.logoAsset
+        : payload.emailTemplate?.logoAsset,
+      payload.logoUrl !== undefined
+        ? payload.logoUrl
+        : payload.emailTemplate?.logoUrl,
+    ),
     bannerImage: String(payload.bannerImage || payload.bannerImageUrl || "").trim(),
     bannerImageUrl: String(
       payload.bannerImageUrl || payload.bannerImage || "",
@@ -1022,10 +1035,10 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
     borderRadius:
       parseOptionalInteger(source.borderRadius ?? legacy.borderRadius) ??
       DEFAULT_EMAIL_TEMPLATE.borderRadius,
-    logoUrl: String(pick("logoUrl", legacy.logoUrl, "")).trim(),
+    logoUrl: String(pick("logoUrl", legacy.emailTemplate?.logoUrl, "")).trim(),
     logoAsset: toAssetPayload(
-      pick("logoAsset", legacy.logoAsset, null),
-      pick("logoUrl", legacy.logoUrl, ""),
+      pick("logoAsset", legacy.emailTemplate?.logoAsset, null),
+      pick("logoUrl", legacy.emailTemplate?.logoUrl, ""),
     ),
     bannerImageUrl: String(
       pick(
@@ -1119,6 +1132,20 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
     status: resolvedStatus,
     active: resolvedStatus === "live",
     isExpired: isExpired(plainForm.expiresAt),
+    logoUrl: resolveAssetUrl(
+      plainForm.logoAsset ||
+        plainForm.logoUrl ||
+        plainForm.emailTemplate?.logoAsset ||
+        plainForm.emailTemplate?.logoUrl ||
+        "",
+    ),
+    logoAsset:
+      normalizeStoredAsset(
+        plainForm.logoAsset ||
+          plainForm.emailTemplate?.logoAsset ||
+          null,
+        plainForm.logoUrl || plainForm.emailTemplate?.logoUrl || "",
+      ) || null,
     emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
     notificationSettings: normalizeNotificationSettings(
       plainForm.notificationSettings,
@@ -1181,6 +1208,7 @@ const buildFormExportDto = (form, questions = []) => {
       successMessage: plainForm.successMessage || "",
       expiresAt: plainForm.expiresAt ? new Date(plainForm.expiresAt).toISOString() : null,
       themeColor: plainForm.themeColor || "",
+      logoUrl: plainForm.logoUrl || plainForm.emailTemplate?.logoUrl || "",
       bannerImage: plainForm.bannerImage || plainForm.bannerImageUrl || "",
       questions: sortedQuestions,
     },
@@ -2314,6 +2342,8 @@ const updateForm = async (formId, payload) => {
   existing.slug = formPayload.slug;
   existing.status = formPayload.status;
   existing.successMessage = formPayload.successMessage;
+  existing.logoUrl = formPayload.logoUrl;
+  existing.logoAsset = formPayload.logoAsset;
   existing.bannerImage = formPayload.bannerImage;
   existing.bannerImageUrl = formPayload.bannerImageUrl;
   existing.bannerImageAsset = formPayload.bannerImageAsset;
