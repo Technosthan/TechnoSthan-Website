@@ -1,20 +1,23 @@
-import { motion } from "framer-motion";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
-  FiLinkedin,
-  FiTwitter,
-  FiGithub,
-  FiMail,
-  FiPhone,
-  FiMapPin,
   FiArrowRight,
+  FiGithub,
+  FiLinkedin,
+  FiMail,
+  FiMapPin,
+  FiPhone,
+  FiTwitter,
 } from "react-icons/fi";
-import "./footer.css";
 import toast from "react-hot-toast";
 import { subscribe } from "../../api/subscribers.api";
+import { PRODUCTS_ROUTE } from "../constants";
+import "./footer.css";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const footerSections = [
     {
@@ -29,7 +32,7 @@ const Footer = () => {
     },
     {
       title: "Company",
-      links: ["About Us", "Portfolio", "Blog", "Careers", "Contact"],
+      links: ["About Us", "Products", "Blog", "Careers", "Contact"],
     },
     {
       title: "Resources",
@@ -48,34 +51,17 @@ const Footer = () => {
       url: "https://twitter.com/technosthan",
       label: "Twitter",
     },
-    { icon: FiGithub, url: "https://github.com/technosthan", label: "GitHub" },
-    { icon: FiMail, url: "mailto:info@technosthan.com", label: "Email" },
+    {
+      icon: FiGithub,
+      url: "https://github.com/technosthan",
+      label: "GitHub",
+    },
+    {
+      icon: FiMail,
+      url: "mailto:info@technosthan.com",
+      label: "Email",
+    },
   ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-      },
-    },
-  };
-
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,12 +74,17 @@ const Footer = () => {
     setLoading(true);
     try {
       await subscribe({ email });
-      toast.success("Thank you for subscribing to Technosthan updates.");
+      toast.success(
+        "Thank you for subscribing to Technosthan updates."
+      );
       setEmail("");
     } catch (err) {
       const status = err?.response?.status;
       const msg = err?.response?.data?.message;
-      if (status === 409 || (msg && msg.toLowerCase().includes("already"))) {
+      if (
+        status === 409 ||
+        (msg && msg.toLowerCase().includes("already"))
+      ) {
         toast.error("This email is already subscribed.");
       } else {
         toast.error("Failed to subscribe. Please try again.");
@@ -105,17 +96,12 @@ const Footer = () => {
 
   return (
     <footer className="footer">
-      {/* Background Glow */}
-      <div className="footer-glow"></div>
-
-      {/* Main Footer Content */}
+      <div className="footer-glow" />
       <div className="footer-container">
-        {/* Logo & Newsletter Section */}
         <motion.div
           className="footer-brand"
-          variants={itemVariants}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
           <div className="footer-logo">
@@ -126,7 +112,6 @@ const Footer = () => {
             Enterprise IT solutions for the modern business
           </p>
 
-          {/* Newsletter Signup */}
           <div className="newsletter-form">
             <input
               type="email"
@@ -136,78 +121,76 @@ const Footer = () => {
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
             />
-            <motion.button
+            <button
               className="newsletter-btn"
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.95 }}
               onClick={handleSubscribe}
               disabled={loading}
+              type="button"
             >
               {loading ? "Subscribing..." : <FiArrowRight size={18} />}
-            </motion.button>
+            </button>
           </div>
           <p className="newsletter-text">
             Subscribe to get latest updates and offers
           </p>
         </motion.div>
 
-        {/* Footer Links Grid */}
         <motion.div
           className="footer-links-grid"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
           {footerSections.map((section) => (
-            <motion.div
-              key={section.title}
-              className="footer-section"
-              variants={itemVariants}
-            >
+            <div key={section.title} className="footer-section">
               <h4>{section.title}</h4>
               <ul>
                 {section.links.map((link) => (
                   <li key={link}>
-                    <a href="#" className="footer-link">
-                      <span className="link-dot"></span>
+                    <a
+                      href={
+                        link === "Products" ? PRODUCTS_ROUTE : "#"
+                      }
+                      className="footer-link"
+                    >
+                      <span className="link-dot" />
                       {link}
                     </a>
                   </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
           ))}
         </motion.div>
 
-        {/* Contact Info */}
         <motion.div
           className="footer-contact"
-          variants={itemVariants}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
           <h4>Get in Touch</h4>
           <div className="contact-item">
             <FiPhone size={18} />
-            <a href="tel:+1234567890">+91 9477-288-288</a>
+            <a href="tel:+919477288288">+91 9477-288-288</a>
           </div>
           <div className="contact-item">
             <FiMail size={18} />
-            <a href="mailto:info@technosthan.com">info@technosthan.com</a>
+            <a href="mailto:info@technosthan.com">
+              info@technosthan.com
+            </a>
           </div>
           <div className="contact-item">
             <FiMapPin size={18} />
-            <span>47/1 New Sanganer Road Sodala Jaipur Rajasthan</span>
+            <span>
+              47/1 New Sanganer Road Sodala Jaipur Rajasthan
+            </span>
           </div>
         </motion.div>
       </div>
 
-      {/* Divider */}
-      <div className="footer-divider"></div>
+      <div className="footer-divider" />
 
-      {/* Bottom Footer */}
       <div className="footer-bottom">
         <motion.p
           className="copyright"
@@ -218,37 +201,25 @@ const Footer = () => {
           © {currentYear} Technosthan IT Services. All rights reserved.
         </motion.p>
 
-        {/* Social Links */}
         <motion.div
           className="social-links"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
         >
           {socialLinks.map(({ icon: Icon, url, label }) => (
-            <motion.a
+            <a
               key={label}
               href={url}
               className="social-link"
               title={label}
-              variants={itemVariants}
-              whileHover={{ scale: 1.1, y: -4 }}
-              whileTap={{ scale: 0.95 }}
             >
               <Icon size={20} />
-            </motion.a>
+            </a>
           ))}
         </motion.div>
 
-        {/* Legal Links */}
-        <motion.div
-          className="legal-links"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-        >
+        <div className="legal-links">
           <a href="#" className="legal-link">
             Privacy Policy
           </a>
@@ -256,7 +227,7 @@ const Footer = () => {
           <a href="#" className="legal-link">
             Terms of Service
           </a>
-        </motion.div>
+        </div>
       </div>
     </footer>
   );

@@ -1,4 +1,4 @@
-export const validateProject = (
+export const validateProjectPayload = (
   req,
   res,
   next
@@ -6,13 +6,12 @@ export const validateProject = (
   const {
     title,
     description,
-  } = req.body;
+  } = req.body || {};
 
   if (!title || !description) {
     return res.status(400).json({
       success: false,
-      message:
-        "Title and description are required",
+      message: "Title and description are required",
     });
   }
 

@@ -1,28 +1,22 @@
-import './PortfolioHero.css';
+import "./PortfolioHero.css";
 
 const PortfolioHero = () => {
   return (
     <section className="portfolio-hero">
-
       <div className="about-container">
-
-        <span className="section-badge">
-          Our Portfolio
-        </span>
+        <span className="section-badge">Our Products</span>
 
         <h1>
-          Projects That
+          Products That
           <br />
           Deliver Results
         </h1>
 
         <p>
-          Explore our successful software, cloud and
-          digital transformation projects across industries.
+          Explore our successful software, cloud and digital transformation
+          products across industries.
         </p>
-
       </div>
-
     </section>
   );
 };

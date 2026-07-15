@@ -1,184 +1,257 @@
-import { motion } from "framer-motion";
-import herobanner from "../../../assets/images/hero/hero.png";
-import "./hero.css";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import herobanner from "../../../assets/images/hero/hero.png";
+import { getHeroVisual } from "../../../api/hero-visual.api";
+import {
+  DEFAULT_ICON_KEY,
+  PRODUCTS_ROUTE,
+} from "../../../shared/constants";
+import {
+  getIconComponent,
+  getSafeImageUrl,
+} from "../../../shared/utils";
+import "./hero.css";
+
+const fallbackFeatures = [
+  {
+    title: "Enterprise",
+    iconKey: "FiBriefcase",
+    iconPosition: "top-left",
+    displayOrder: 1,
+    transitionDuration: 3500,
+    isActive: true,
+  },
+  {
+    title: "Innovative",
+    iconKey: "FiCpu",
+    iconPosition: "bottom-right",
+    displayOrder: 2,
+    transitionDuration: 4200,
+    isActive: true,
+  },
+  {
+    title: "Fast & Secure",
+    iconKey: "FiShield",
+    iconPosition: "center-right",
+    displayOrder: 3,
+    transitionDuration: 3900,
+    isActive: true,
+  },
+];
+
+const fallbackHeadingLines = [
+  "Transforming Businesses",
+  "Through Modern",
+  "Technology",
+];
+
+const stats = [
+  { number: "50+", label: "Projects Delivered" },
+  { number: "20+", label: "Happy Clients" },
+  { number: "99%", label: "Client Satisfaction" },
+];
+
+const normalizeHeadingLine = (line) =>
+  String(line || "")
+    .replace(/\r/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+const getHeadingLines = (heroData) => {
+  const lines = Array.isArray(heroData?.heroHeadingLines)
+    ? heroData.heroHeadingLines.map(normalizeHeadingLine).filter(Boolean)
+    : [];
+
+  return lines.length > 0 ? lines.slice(0, 3) : fallbackHeadingLines;
+};
 
 const Hero = () => {
   const navigate = useNavigate();
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.2,
-      },
-    },
-  };
+  const [heroData, setHeroData] = useState(null);
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [mainImageFailed, setMainImageFailed] = useState(false);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.8,
-        ease: "easeOut",
-      },
-    },
-  };
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
+    const updatePreference = () => {
+      setReducedMotion(mediaQuery.matches);
+    };
 
-  const stats = [
-    { number: "50+", label: "Projects Delivered" },
-    { number: "20+", label: "Happy Clients" },
-    { number: "99%", label: "Client Satisfaction" },
-  ];
+    updatePreference();
+    mediaQuery.addEventListener("change", updatePreference);
+
+    return () =>
+      mediaQuery.removeEventListener("change", updatePreference);
+  }, []);
+
+  useEffect(() => {
+    const loadHero = async () => {
+      try {
+        const response = await getHeroVisual();
+        setHeroData(response.data?.data || null);
+      } catch {
+        setHeroData(null);
+      }
+    };
+
+    loadHero();
+  }, []);
+
+  const features = useMemo(() => {
+    const apiFeatures = heroData?.features || [];
+    return apiFeatures.length > 0
+      ? apiFeatures
+          .filter((feature) => feature.isActive)
+          .sort((a, b) => a.displayOrder - b.displayOrder)
+      : fallbackFeatures;
+  }, [heroData]);
+
+  const headingLines = useMemo(
+    () => getHeadingLines(heroData),
+    [heroData]
+  );
+
+  const mainImage = heroData?.mainImageUrl
+    ? getSafeImageUrl(heroData.mainImageUrl)
+    : herobanner;
+  const mainAlt =
+    heroData?.mainImageAlt || "Technosthan hero visual";
+
+  useEffect(() => {
+    if (features.length === 0) {
+      return undefined;
+    }
+
+    if (reducedMotion || features.length === 1) {
+      return undefined;
+    }
+
+    const interval =
+      Math.max(heroData?.autoTransitionInterval || 4000, 1000);
+
+    const timer = window.setInterval(() => {
+      setActiveFeature((current) =>
+        (current + 1) % features.length
+      );
+    }, interval);
+
+    return () => window.clearInterval(timer);
+  }, [features.length, heroData?.autoTransitionInterval, reducedMotion]);
+
+  const fallbackImage = mainImageFailed ? herobanner : mainImage;
+  const currentFeatureIndex =
+    features.length > 0 ? activeFeature % features.length : 0;
 
   return (
     <section className="hero">
-      {/* Background Glow Effects */}
-      <div className="glow-orb glow-orb-1"></div>
-      <div className="glow-orb glow-orb-2"></div>
-      <div className="glow-line"></div>
+      <div className="glow-orb glow-orb-1" />
+      <div className="glow-orb glow-orb-2" />
+      <div className="glow-line" />
 
       <div className="hero-container">
-        {/* Left Column */}
-        <motion.div
-          className="hero-left"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          {/* Badge */}
-          <motion.div className="hero-badge" variants={itemVariants}>
-            <span className="badge-dot"></span>
-            Trusted Technology Partner
-          </motion.div>
+        <div className="hero-left">
+          <h1 className="hero-title">
+            {headingLines.map((line, index) => (
+              <span
+                key={`${line}-${index}`}
+                className={`hero-title-line ${
+                  index === 0 ? "hero-title-first" : ""
+                }`}
+              >
+                {line}
+              </span>
+            ))}
+          </h1>
 
-          {/* Main Heading */}
-          <motion.h1 className="hero-title" variants={itemVariants}>
-            Transforming Businesses
-            <br />
-            Through Modern Technology
-          </motion.h1>
-
-          {/* Description */}
-          <motion.p className="hero-description" variants={itemVariants}>
+          <p className="hero-description">
             Technosthan delivers enterprise-grade web applications, cloud
             infrastructure, AI automation, cybersecurity solutions, and digital
             transformation services for modern businesses.
-          </motion.p>
+          </p>
 
-          {/* CTA Buttons */}
-          <motion.div className="hero-buttons" variants={itemVariants}>
-            <motion.button
+          <div className="hero-buttons">
+            <button
               className="btn-primary"
-               onClick={() => navigate("/contact")}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/contact")}
             >
               Book Free Consultation
-            </motion.button>
-            <motion.button
+            </button>
+            <button
               className="btn-secondary"
-              onClick={() => navigate("/services")}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate(PRODUCTS_ROUTE)}
             >
-              View Services
-            </motion.button>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div className="hero-stats" variants={itemVariants}>
-            {stats.map((stat, index) => (
-              <motion.div
-                key={index}
-                className="stat-item"
-                whileHover={{ scale: 1.05 }}
-              >
-                <motion.div
-                  className="stat-number"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  {stat.number}
-                </motion.div>
-                <span className="stat-label">{stat.label}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
-
-        {/* Right Column - Image */}
-        <motion.div
-          className="hero-right"
-          initial={{ opacity: 0, x: 50, scale: 0.9 }}
-          whileInView={{ opacity: 1, x: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          <div className="hero-image-wrapper">
-            {/* Image Glow Background */}
-            <div className="image-glow"></div>
-
-            {/* Animated Floating Cards */}
-            <motion.div
-              className="floating-card floating-card-1"
-              animate={{ y: [-10, 10, -10] }}
-              transition={{ duration: 4, repeat: Infinity }}
-            >
-              <div className="card-content">
-                <span className="card-icon">🚀</span>
-                <p>Enterprise</p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="floating-card floating-card-2"
-              animate={{ y: [10, -10, 10] }}
-              transition={{ duration: 4, repeat: Infinity, delay: 0.5 }}
-            >
-              <div className="card-content">
-                <span className="card-icon">⚡</span>
-                <p>Fast & Secure</p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="floating-card floating-card-3"
-              animate={{ x: [0, 15, 0] }}
-              transition={{ duration: 5, repeat: Infinity }}
-            >
-              <div className="card-content">
-                <span className="card-icon">💡</span>
-                <p>Innovative</p>
-              </div>
-            </motion.div>
-
-            {/* Main Hero Image */}
-            <motion.img
-              src={herobanner}
-              alt="Technosthan IT Services"
-              className="hero-image"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.5 }}
-            />
+              View Products
+            </button>
           </div>
-        </motion.div>
+
+          <div className="hero-stats">
+            {stats.map((stat) => (
+              <div key={stat.label} className="stat-item">
+                <div className="stat-number">{stat.number}</div>
+                <span className="stat-label">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="hero-right">
+          <div className="hero-image-wrapper">
+            <div className="image-glow" />
+
+            <div className="hero-features">
+              {features.map((feature, index) => {
+                const IconComponent = feature.iconImageUrl
+                  ? null
+                  : getIconComponent(feature.iconKey || DEFAULT_ICON_KEY);
+
+                return (
+                  <button
+                    key={`${feature.title}-${feature.id || index}`}
+                    type="button"
+                    className={`hero-feature-card ${feature.iconPosition} ${
+                      currentFeatureIndex === index ? "active" : ""
+                    }`}
+                    style={{
+                      transitionDuration: `${Math.max(
+                        feature.transitionDuration || 4000,
+                        1000
+                      )}ms`,
+                    }}
+                    onClick={() => setActiveFeature(index)}
+                  >
+                    <span className="hero-feature-icon">
+                      {feature.iconImageUrl ? (
+                        <img
+                          src={getSafeImageUrl(feature.iconImageUrl)}
+                          alt={feature.title}
+                        />
+                      ) : IconComponent ? (
+                        <IconComponent size={20} />
+                      ) : null}
+                    </span>
+                    <span>{feature.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="hero-image-frame">
+              <img
+                src={fallbackImage}
+                alt={mainAlt}
+                className="hero-image"
+                loading="eager"
+                onError={() => setMainImageFailed(true)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Scroll Indicator */}
-      <motion.div
-        className="scroll-indicator"
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        <span></span>
-      </motion.div>
+      <div className="scroll-indicator" />
     </section>
   );
 };

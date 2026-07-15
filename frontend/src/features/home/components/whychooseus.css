@@ -13,6 +13,10 @@
   margin-bottom: var(--spacing-3xl);
 }
 
+.why-header h2 {
+  font-size: 2.75rem;
+}
+
 /* ===== Why Grid ===== */
 .why-grid {
   display: grid;
@@ -33,33 +37,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  cursor: pointer;
-  transition: all 0.3s ease;
   overflow: hidden;
-}
-
-.why-card:hover {
-  background: rgba(15, 20, 54, 0.8);
-  border-color: var(--accent-primary);
-  box-shadow: 0 20px 60px rgba(0, 212, 255, 0.15);
-}
-
-/* ===== Card Background Glow ===== */
-.why-card-glow {
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(0, 212, 255, 0.1), transparent 70%);
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.why-card:hover .why-card-glow {
-  opacity: 1;
 }
 
 /* ===== Card Number ===== */
@@ -95,19 +73,8 @@
   border: 1px solid rgba(0, 212, 255, 0.3);
   border-radius: 12px;
   color: var(--accent-primary);
-  transition: all 0.3s ease;
   position: relative;
   z-index: 1;
-}
-
-.why-card:hover .why-icon {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 212, 255, 0.3),
-    rgba(124, 58, 237, 0.2)
-  );
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-  border-color: var(--accent-primary);
 }
 
 /* ===== Card Content ===== */
@@ -116,7 +83,6 @@
   z-index: 1;
   font-size: 1.3rem;
   color: var(--text-primary);
-  transition: color 0.3s ease;
 }
 
 .why-card p {
@@ -125,25 +91,6 @@
   font-size: 0.95rem;
   color: var(--text-secondary);
   line-height: 1.6;
-}
-
-.why-card:hover h3 {
-  color: var(--accent-primary);
-}
-
-/* ===== Card Bottom Line ===== */
-.card-bottom-line {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 3px;
-  background: var(--gradient-primary);
-  transition: width 0.3s ease;
-}
-
-.why-card:hover .card-bottom-line {
-  width: 100%;
 }
 
 /* ===== Why CTA ===== */
@@ -164,28 +111,6 @@
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-lg);
-  position: relative;
-}
-
-.why-cta::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  padding: 1px;
-  background: linear-gradient(135deg, var(--accent-primary), transparent);
-  -webkit-mask: linear-gradient(
-    #fff 0%,
-    #fff calc(100% - 1px),
-    transparent calc(100% - 1px)
-  );
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.why-cta:hover::before {
-  opacity: 0.3;
 }
 
 .why-cta h3 {
@@ -228,6 +153,10 @@
 
   .why-card {
     padding: var(--spacing-lg);
+  }
+
+  .why-header h2 {
+    font-size: 2.2rem;
   }
 
   .why-card h3 {

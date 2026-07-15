@@ -1,0 +1,134 @@
+.account-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.account-menu.align-left .account-menu-dropdown {
+  right: auto;
+  left: 0;
+}
+
+.account-menu-trigger {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 999px;
+  color: var(--text-primary);
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.14), rgba(124, 58, 237, 0.16)),
+    rgba(6, 10, 28, 0.92);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+
+.account-menu-trigger.compact {
+  width: 48px;
+  height: 48px;
+}
+
+.account-menu-trigger:hover {
+  border-color: rgba(0, 212, 255, 0.38);
+  transform: translateY(-1px);
+}
+
+.account-avatar {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-menu-caret {
+  display: none;
+}
+
+.account-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 1200;
+  min-width: 260px;
+  padding: 14px;
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  background: rgba(8, 12, 32, 0.98);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
+.account-menu-header {
+  padding: 6px 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.account-menu-name {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.account-menu-email {
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.account-menu-items {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.account-menu-item,
+.account-menu-logout {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--text-secondary);
+  background: transparent;
+  text-align: left;
+}
+
+.account-menu-item:hover,
+.account-menu-logout:hover {
+  color: var(--text-primary);
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.14);
+}
+
+.account-menu-logout {
+  justify-content: flex-start;
+  color: #ffd4d4;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.account-menu-logout svg {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .account-menu-dropdown {
+    min-width: 230px;
+  }
+}

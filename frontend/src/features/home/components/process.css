@@ -13,43 +13,17 @@
   margin-bottom: var(--spacing-3xl);
 }
 
-/* ===== Process Timeline ===== */
-.process-timeline {
+.process-header h2 {
+  font-size: 2.75rem;
+}
+
+/* ===== Process Grid ===== */
+.process-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--spacing-2xl);
   margin-bottom: var(--spacing-3xl);
   position: relative;
-}
-
-/* ===== Process Step ===== */
-.process-step {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ===== Timeline Connector ===== */
-.timeline-connector {
-  position: absolute;
-  top: 80px;
-  left: 100%;
-  width: calc(100% - var(--spacing-md));
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent-primary), transparent);
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.connector-progress {
-  height: 100%;
-  background: var(--gradient-primary);
-  origin: left;
-}
-
-/* Hide connector on last item */
-.process-step:last-child .timeline-connector {
-  display: none;
 }
 
 /* ===== Step Card ===== */
@@ -64,15 +38,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  cursor: pointer;
-  transition: all 0.3s ease;
   overflow: hidden;
-}
-
-.step-card:hover {
-  background: rgba(15, 20, 54, 0.8);
-  border-color: var(--accent-primary);
-  box-shadow: 0 20px 60px rgba(0, 212, 255, 0.15);
 }
 
 /* ===== Step Number ===== */
@@ -95,17 +61,6 @@
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--accent-primary);
-  transition: all 0.3s ease;
-}
-
-.step-card:hover .step-number {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 212, 255, 0.2),
-    rgba(124, 58, 237, 0.15)
-  );
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
 }
 
 /* ===== Step Icon ===== */
@@ -124,23 +79,12 @@
   border-radius: 12px;
   color: var(--accent-primary);
   font-size: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.step-card:hover .step-icon {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 212, 255, 0.3),
-    rgba(124, 58, 237, 0.2)
-  );
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
 }
 
 /* ===== Card Content ===== */
 .step-card h3 {
   font-size: 1.3rem;
   color: var(--text-primary);
-  transition: color 0.3s ease;
 }
 
 .step-card p {
@@ -148,10 +92,6 @@
   color: var(--text-secondary);
   line-height: 1.6;
   flex-grow: 1;
-}
-
-.step-card:hover h3 {
-  color: var(--accent-primary);
 }
 
 /* ===== Duration Badge ===== */
@@ -167,83 +107,13 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent-primary);
-  transition: all 0.3s ease;
-}
-
-.step-card:hover .duration-badge {
-  background: rgba(0, 212, 255, 0.2);
-  box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
-}
-
-/* ===== Card Accent Line ===== */
-.card-accent-line {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 3px;
-  background: var(--gradient-primary);
-  transition: width 0.3s ease;
-}
-
-.step-card:hover .card-accent-line {
-  width: 100%;
-}
-
-/* ===== Process Stats ===== */
-.process-stats {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xl);
-  padding: var(--spacing-2xl);
-  background: linear-gradient(
-    135deg,
-    rgba(0, 212, 255, 0.05),
-    rgba(124, 58, 237, 0.05)
-  );
-  border: 1px solid var(--border-primary);
-  border-radius: 16px;
-  flex-wrap: wrap;
-}
-
-.stat-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  text-align: center;
-}
-
-.stat-box h4 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.stat-box p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.stat-divider {
-  width: 1px;
-  height: 40px;
-  background: var(--border-primary);
 }
 
 /* ===== Tablet Responsive ===== */
 @media (max-width: 1024px) {
-  .process-timeline {
+  .process-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-xl);
-  }
-
-  .timeline-connector {
-    display: none;
   }
 
   .step-card {
@@ -273,7 +143,7 @@
     padding: var(--spacing-2xl) var(--spacing-md) !important;
   }
 
-  .process-timeline {
+  .process-grid {
     grid-template-columns: 1fr;
     gap: var(--spacing-xl);
   }
@@ -308,23 +178,8 @@
     height: 24px;
   }
 
-  .process-stats {
-    flex-direction: column;
-    gap: var(--spacing-lg);
-    padding: var(--spacing-lg);
-  }
-
-  .stat-divider {
-    width: 40px;
-    height: 1px;
-  }
-
-  .stat-box h4 {
-    font-size: 1.25rem;
-  }
-
-  .stat-box p {
-    font-size: 0.85rem;
+  .process-header h2 {
+    font-size: 2.2rem;
   }
 }
 
@@ -361,17 +216,5 @@
   .duration-badge {
     font-size: 0.8rem;
     padding: var(--spacing-xs) var(--spacing-sm);
-  }
-
-  .process-stats {
-    padding: var(--spacing-lg);
-  }
-
-  .stat-box h4 {
-    font-size: 1.15rem;
-  }
-
-  .stat-divider {
-    width: 30px;
   }
 }

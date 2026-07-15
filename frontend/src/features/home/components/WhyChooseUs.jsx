@@ -1,17 +1,17 @@
-import { motion } from "framer-motion";
 import {
-  FiUsers,
-  FiTrendingUp,
-  FiZap,
+  FiAward,
   FiHeadphones,
   FiTarget,
-  FiAward,
+  FiTrendingUp,
+  FiUsers,
+  FiZap,
 } from "react-icons/fi";
-import "./whychooseus.css";
 import { useNavigate } from "react-router-dom";
+import "./whychooseus.css";
 
 const WhyChooseUs = () => {
   const navigate = useNavigate();
+
   const items = [
     {
       icon: FiUsers,
@@ -45,41 +45,11 @@ const WhyChooseUs = () => {
     },
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.12,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
-    },
-  };
-
   return (
     <section className="why-choose-us">
-      {/* Section Header */}
-      <motion.div
-        className="section-header"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-      >
+      <div className="section-header why-header">
         <span className="section-badge">
-          <span className="badge-dot"></span>
+          <span className="badge-dot" />
           Why Technosthan
         </span>
         <h2>Why Choose Technosthan</h2>
@@ -87,76 +57,36 @@ const WhyChooseUs = () => {
           We combine innovation, expertise, and dedication to deliver
           exceptional results that drive your business forward
         </p>
-      </motion.div>
+      </div>
 
-      {/* Items Grid */}
-      <motion.div
-        className="why-grid"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-      >
+      <div className="why-grid">
         {items.map((item, index) => {
           const IconComponent = item.icon;
           return (
-            <motion.div
-              key={index}
-              className="why-card"
-              variants={itemVariants}
-              whileHover={{
-                y: -8,
-                transition: { duration: 0.3 },
-              }}
-            >
-              {/* Card Background Glow */}
-              <div className="why-card-glow"></div>
-
-              {/* Number Badge */}
+            <article key={item.title} className="why-card">
               <div className="card-number">
                 {String(index + 1).padStart(2, "0")}
               </div>
-
-              {/* Icon Container */}
-              <motion.div
-                className="why-icon"
-                whileHover={{ rotate: 360, scale: 1.1 }}
-                transition={{ duration: 0.6 }}
-              >
+              <div className="why-icon">
                 <IconComponent size={40} />
-              </motion.div>
-
-              {/* Content */}
+              </div>
               <h3>{item.title}</h3>
               <p>{item.desc}</p>
-
-              {/* Bottom Line */}
-              <div className="card-bottom-line"></div>
-            </motion.div>
+            </article>
           );
         })}
-      </motion.div>
+      </div>
 
-      {/* Bottom CTA */}
-      <motion.div
-        className="why-cta"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-      >
+      <div className="why-cta">
         <h3>Ready to transform your business?</h3>
-        <motion.button
+        <button
           className="btn-primary"
           onClick={() => navigate("/contact")}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
         >
           Start Your Journey
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
     </section>
-    
   );
 };
 

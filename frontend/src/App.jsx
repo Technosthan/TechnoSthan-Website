@@ -1,7 +1,8 @@
 import "./App.css";
+import AppRoutes from "./app/AppRoutes";
 
 function App() {
-  return <>{/* App content will be rendered by router */}</>;
+  return <AppRoutes />;
 }
 
 export default App;

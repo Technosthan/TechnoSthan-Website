@@ -25,8 +25,8 @@ const ServicesHero = () => {
             Get Free Consultation
           </button>
 
-          <button onClick={() => navigate("/portfolio")} className="btn-secondary">
-            View Portfolio
+          <button onClick={() => navigate("/products")} className="btn-secondary">
+            View Products
           </button>
         </div>
       </div>

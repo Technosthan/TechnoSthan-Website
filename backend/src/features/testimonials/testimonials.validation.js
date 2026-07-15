@@ -1,4 +1,4 @@
-export const validateTestimonial = (
+export const validateTestimonialPayload = (
   req,
   res,
   next
@@ -6,13 +6,28 @@ export const validateTestimonial = (
   const {
     clientName,
     feedback,
-  } = req.body;
+  } = req.body || {};
 
   if (!clientName || !feedback) {
     return res.status(400).json({
       success: false,
       message:
-        "Client name and feedback are required",
+        "Client name and testimonial text are required",
+    });
+  }
+
+  next();
+};
+
+export const validateTestimonialStatus = (
+  req,
+  res,
+  next
+) => {
+  if (req.body?.isActive === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: "isActive is required",
     });
   }
 
