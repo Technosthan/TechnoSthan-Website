@@ -11,6 +11,7 @@ import { getLandingRouteForUser } from "../../../shared/utils";
 
 import "../styles/auth.css";
 
+
 const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
