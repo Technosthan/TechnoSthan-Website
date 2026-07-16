@@ -7,6 +7,14 @@ const FormResponse = require("./formResponse.model.js");
 const FormResponseAnswer = require("./formResponseAnswer.model.js");
 const FormVerification = require("./formVerification.model.js");
 const FormNotification = require("./formNotification.model.js");
+const {
+  DEFAULT_DESCRIPTION_STYLE,
+  DEFAULT_TITLE_STYLE,
+  normalizeTypographyStyle,
+} = require("./formTypography.js");
+const {
+  sanitizeRichTextHtml,
+} = require("./formHtml.js");
 const User = require("../auth/user.model.js");
 const Settings = require("../admin/settings.model.js");
 const { createLog } = require("../services/activityLogService.js");
@@ -164,6 +172,26 @@ const extractTextFromImportBuffer = async (file) => {
   }
 
   return buffer.toString("utf8");
+};
+
+const extractJsonImportPayload = (file) => {
+  const mimeType = String(file.mimetype || "").toLowerCase();
+  const originalName = String(file.originalname || "").toLowerCase();
+  const buffer = file.buffer || Buffer.alloc(0);
+
+  if (!buffer.length) {
+    return null;
+  }
+
+  if (mimeType !== "application/json" && !originalName.endsWith(".json")) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(buffer.toString("utf8"));
+  } catch (error) {
+    throw new Error("Invalid JSON import file");
+  }
 };
 
 const normalizeImportText = (value = "") =>
@@ -387,7 +415,7 @@ const importFormFile = async (file) => {
 
   const mimeType = String(file.mimetype || "").toLowerCase();
   const originalName = String(file.originalname || "").toLowerCase();
-  const allowedExtensions = [".pdf", ".doc", ".docx", ".txt"];
+  const allowedExtensions = [".pdf", ".doc", ".docx", ".txt", ".json"];
   const hasAllowedExtension = allowedExtensions.some((extension) =>
     originalName.endsWith(extension),
   );
@@ -396,10 +424,46 @@ const importFormFile = async (file) => {
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
+    "application/json",
   ]);
 
   if (!hasAllowedExtension || !allowedMimeTypes.has(mimeType)) {
-    throw new Error("Only PDF, DOC, DOCX, and TXT files are allowed");
+    throw new Error("Only PDF, DOC, DOCX, TXT, and JSON files are allowed");
+  }
+
+  const jsonPayload = extractJsonImportPayload(file);
+  if (jsonPayload) {
+    const importedForm = jsonPayload.form || jsonPayload;
+    const importedQuestions = Array.isArray(importedForm.questions)
+      ? importedForm.questions
+      : Array.isArray(jsonPayload.questions)
+        ? jsonPayload.questions
+        : [];
+
+    if (!importedForm.title && !importedForm.description && !importedQuestions.length) {
+      throw new Error("Could not detect form content from the uploaded file");
+    }
+
+    return {
+      title: String(importedForm.title || "").trim(),
+      description: String(importedForm.description || "").trim(),
+      titleStyle: normalizeTitleStyle(importedForm.titleStyle),
+      descriptionStyle: normalizeDescriptionStyle(importedForm.descriptionStyle),
+      sections: Array.isArray(importedForm.sections) ? importedForm.sections : [],
+      questions: importedQuestions.map((question, index) => ({
+        label: String(question.label || "").trim(),
+        type: question.type || "shortAnswer",
+        required: question.required === true,
+        placeholder: String(question.placeholder || "").trim(),
+        helpText: String(question.helpText || question.description || "").trim(),
+        options: Array.isArray(question.options)
+          ? question.options.map((item) => String(item).trim()).filter(Boolean)
+          : [],
+        validationEnabled: question.validationEnabled === true,
+        validation: question.validation || undefined,
+        order: typeof question.order === "number" ? question.order : index,
+      })),
+    };
   }
 
   const extractedText = await extractTextFromImportBuffer(file);
@@ -412,6 +476,8 @@ const importFormFile = async (file) => {
   return {
     title: parsed.title,
     description: parsed.description,
+    titleStyle: normalizeTitleStyle(),
+    descriptionStyle: normalizeDescriptionStyle(),
     sections: parsed.sections,
     questions: parsed.questions,
   };
@@ -551,6 +617,14 @@ const normalizeHttpUrl = (value = "") => {
     return "";
   }
 };
+
+const normalizeDescriptionHtml = (value = "") => sanitizeRichTextHtml(value);
+
+const normalizeTitleStyle = (style = {}) =>
+  normalizeTypographyStyle(style, DEFAULT_TITLE_STYLE);
+
+const normalizeDescriptionStyle = (style = {}) =>
+  normalizeTypographyStyle(style, DEFAULT_DESCRIPTION_STYLE);
 
 const getSecretEncryptionKey = () => {
   const secret = String(process.env.FORM_SECRET_ENCRYPTION_KEY || "").trim();
@@ -904,7 +978,9 @@ const normalizeFormPayload = async (
 
   return {
     title,
-    description: String(payload.description || "").trim(),
+    description: normalizeDescriptionHtml(payload.description || ""),
+    titleStyle: normalizeTitleStyle(payload.titleStyle),
+    descriptionStyle: normalizeDescriptionStyle(payload.descriptionStyle),
     slug,
     status,
     successMessage:
@@ -1132,6 +1208,9 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
     status: resolvedStatus,
     active: resolvedStatus === "live",
     isExpired: isExpired(plainForm.expiresAt),
+    titleStyle: normalizeTitleStyle(plainForm.titleStyle),
+    description: normalizeDescriptionHtml(plainForm.description || ""),
+    descriptionStyle: normalizeDescriptionStyle(plainForm.descriptionStyle),
     logoUrl: resolveAssetUrl(
       plainForm.logoAsset ||
         plainForm.logoUrl ||
@@ -1202,7 +1281,9 @@ const buildFormExportDto = (form, questions = []) => {
     exportedAt: new Date().toISOString(),
     form: {
       title: plainForm.title || "",
-      description: plainForm.description || "",
+      description: normalizeDescriptionHtml(plainForm.description || ""),
+      titleStyle: normalizeTitleStyle(plainForm.titleStyle),
+      descriptionStyle: normalizeDescriptionStyle(plainForm.descriptionStyle),
       slug: plainForm.slug || plainForm.publicSlug || slugify(plainForm.title),
       status: plainForm.status || (plainForm.active === true ? "live" : "draft"),
       successMessage: plainForm.successMessage || "",
@@ -2316,6 +2397,9 @@ const getAdminForms = async () => {
     status: form.status || (form.active ? "live" : "draft"),
     active:
       (form.status || (form.active ? "live" : "draft")) === "live",
+    titleStyle: normalizeTitleStyle(form.titleStyle),
+    description: normalizeDescriptionHtml(form.description || ""),
+    descriptionStyle: normalizeDescriptionStyle(form.descriptionStyle),
     emailTemplate: normalizeEmailTemplate(form.emailTemplate, form),
     responseCount: countMap.get(String(form._id)) || 0,
     questionCount: questionCountMap.get(String(form._id)) || 0,
@@ -2339,6 +2423,8 @@ const updateForm = async (formId, payload) => {
   );
   existing.title = formPayload.title;
   existing.description = formPayload.description;
+  existing.titleStyle = formPayload.titleStyle;
+  existing.descriptionStyle = formPayload.descriptionStyle;
   existing.slug = formPayload.slug;
   existing.status = formPayload.status;
   existing.successMessage = formPayload.successMessage;

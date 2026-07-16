@@ -1,5 +1,23 @@
 const mongoose = require("mongoose");
 
+const typographyStyleSchema = new mongoose.Schema(
+  {
+    fontFamily: { type: String, default: "", trim: true },
+    fontSize: { type: String, default: "", trim: true },
+    fontWeight: { type: String, default: "", trim: true },
+    color: { type: String, default: "", trim: true },
+    backgroundColor: { type: String, default: "", trim: true },
+    textAlign: { type: String, default: "left", trim: true },
+    fontStyle: { type: String, default: "", trim: true },
+    textDecoration: { type: String, default: "", trim: true },
+    lineHeight: { type: String, default: "", trim: true },
+    letterSpacing: { type: String, default: "", trim: true },
+    margin: { type: String, default: "", trim: true },
+    padding: { type: String, default: "", trim: true },
+  },
+  { _id: false },
+);
+
 const formSchema = new mongoose.Schema(
   {
     title: {
@@ -11,6 +29,35 @@ const formSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    titleStyle: {
+      type: typographyStyleSchema,
+      default: () => ({
+        fontFamily: "Poppins",
+        fontSize: "36px",
+        fontWeight: "700",
+        color: "#111827",
+        textAlign: "left",
+        fontStyle: "normal",
+        textDecoration: "none",
+      }),
+    },
+    descriptionStyle: {
+      type: typographyStyleSchema,
+      default: () => ({
+        fontFamily: "",
+        fontSize: "",
+        fontWeight: "",
+        color: "",
+        backgroundColor: "",
+        textAlign: "left",
+        fontStyle: "",
+        textDecoration: "",
+        lineHeight: "",
+        letterSpacing: "",
+        margin: "",
+        padding: "",
+      }),
     },
     slug: {
       type: String,

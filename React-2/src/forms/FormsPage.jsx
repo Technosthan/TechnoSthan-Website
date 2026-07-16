@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Send,
 } from "lucide-react";
+import { richTextToPlainText } from "./richTextUtils";
 
 const FormsPage = () => {
   const navigate = useNavigate();
@@ -157,7 +158,9 @@ const FormsPage = () => {
                           {form.title}
                         </div>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {form.description || "No description"}
+                          {form.description
+                            ? richTextToPlainText(form.description) || "No description"
+                            : "No description"}
                         </p>
                       </div>
                       <ExternalLink size={18} />
@@ -195,8 +198,10 @@ const FormsPage = () => {
                         {selectedForm.title}
                       </h2>
                       <p className={`mt-2 text-sm ${theme.textSecondary}`}>
-                        {selectedForm.description ||
-                          "Fill out the fields below."}
+                        {selectedForm.description
+                          ? richTextToPlainText(selectedForm.description) ||
+                            "Fill out the fields below."
+                          : "Fill out the fields below."}
                       </p>
                     </div>
                     <div className="text-right text-xs text-slate-500 dark:text-slate-400">

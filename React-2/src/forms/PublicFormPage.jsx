@@ -3,6 +3,13 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
+import {
+  DEFAULT_DESCRIPTION_STYLE,
+  DEFAULT_TITLE_STYLE,
+  normalizeTypographyStyle,
+  resolveTypographyStyle,
+} from "./formTypography";
+import { sanitizeRichTextHtml } from "./richTextUtils";
 
 import {
   getPublicFormBySlug,
@@ -831,6 +838,11 @@ const PublicFormPage = () => {
       !Number.isNaN(expiresAt.getTime()) &&
       expiresAt.getTime() < now,
     );
+  const titleStyle = resolveTypographyStyle(form?.titleStyle, DEFAULT_TITLE_STYLE);
+  const descriptionStyle = normalizeTypographyStyle(
+    form?.descriptionStyle,
+    DEFAULT_DESCRIPTION_STYLE,
+  );
 
   if (loadingState) {
     return (
@@ -917,7 +929,7 @@ const PublicFormPage = () => {
               />
             </div>
           )}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {form.logoUrl ? (
               <img
                 src={getOptimizedImageUrl(form.logoAsset || form.logoUrl)}
@@ -929,12 +941,26 @@ const PublicFormPage = () => {
                 <CheckCircle2 size={28} />
               </div>
             )}
-            <div>
-              <h1 className="mt-1 text-4xl font-black">{form.title}</h1>
+            <div className="min-w-0 flex-1">
+              <h1
+                className="mt-1 break-words"
+                style={titleStyle}
+              >
+                {form.title}
+              </h1>
               {form.description && (
-                <p className={`mt-2 max-w-2xl ${theme.textSecondary}`}>
-                  {form.description}
-                </p>
+                <div
+                  className={`public-form-description mt-2 max-w-3xl break-words ${theme.textSecondary}`}
+                  style={{
+                    ...descriptionStyle,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "normal",
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeRichTextHtml(form.description || ""),
+                  }}
+                />
               )}
             </div>
           </div>

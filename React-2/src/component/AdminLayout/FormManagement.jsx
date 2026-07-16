@@ -45,6 +45,21 @@ import {
 } from "./adminApi";
 import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
 import { normalizeHttpUrl } from "../../forms/formUtils";
+import RichTextEditor from "../../forms/RichTextEditor";
+import {
+  ALIGNMENT_OPTIONS,
+  DEFAULT_DESCRIPTION_STYLE,
+  DEFAULT_TITLE_STYLE,
+  FONT_FAMILY_OPTIONS,
+  FONT_SIZE_OPTIONS,
+  FONT_WEIGHT_OPTIONS,
+  normalizeTypographyStyle,
+  resolveTypographyStyle,
+} from "../../forms/formTypography";
+import {
+  normalizeRichTextValue,
+  sanitizeRichTextHtml,
+} from "../../forms/richTextUtils";
 
 const QUESTION_TYPES = [
   { value: "shortAnswer", label: "One Line Text" },
@@ -150,6 +165,8 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 const EMPTY_FORM = {
   title: "",
   description: "",
+  titleStyle: { ...DEFAULT_TITLE_STYLE },
+  descriptionStyle: { ...DEFAULT_DESCRIPTION_STYLE },
   slug: "",
   status: "draft",
   successMessage: "Thanks for your response.",
@@ -236,13 +253,20 @@ const createFormExportData = (form = {}) => {
   const safeQuestions = questions
     .map((question, index) => sanitizeExportQuestion(question, index))
     .sort((a, b) => a.order - b.order);
+  const titleStyle = normalizeTypographyStyle(form.titleStyle, DEFAULT_TITLE_STYLE);
+  const descriptionStyle = normalizeTypographyStyle(
+    form.descriptionStyle,
+    DEFAULT_DESCRIPTION_STYLE,
+  );
 
   return {
     exportVersion: "1.0",
     exportedAt: new Date().toISOString(),
     form: {
       title: String(form.title || "").trim(),
-      description: String(form.description || "").trim(),
+      description: String(form.description || ""),
+      titleStyle,
+      descriptionStyle,
       slug: String(form.slug || form.publicSlug || "").trim(),
       status: String(form.status || "").trim(),
       successMessage: String(form.successMessage || "").trim(),
@@ -591,6 +615,11 @@ const normalizeForm = (form) => ({
   ...form,
   status: form?.status || (form?.active ? "live" : "draft"),
   slug: form?.slug || form?.publicSlug || "",
+  titleStyle: normalizeTypographyStyle(form?.titleStyle, DEFAULT_TITLE_STYLE),
+  descriptionStyle: normalizeTypographyStyle(
+    form?.descriptionStyle,
+    DEFAULT_DESCRIPTION_STYLE,
+  ),
   expiresAt: formatDateTimeLocal(form?.expiresAt),
   bannerImage:
     form?.bannerImage ||
@@ -925,6 +954,19 @@ const FormManagement = () => {
       }
       return next;
     });
+  };
+
+  const updateTitleStyle = (field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      titleStyle: normalizeTypographyStyle(
+        {
+          ...(prev.titleStyle || {}),
+          [field]: value,
+        },
+        DEFAULT_TITLE_STYLE,
+      ),
+    }));
   };
 
   const updateEmailTemplate = (field, value) => {
@@ -1360,14 +1402,14 @@ const FormManagement = () => {
     if (!file) return;
 
     const maxSizeBytes = 10 * 1024 * 1024;
-    const allowedExtensions = [".pdf", ".doc", ".docx", ".txt"];
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".txt", ".json"];
     const fileName = String(file.name || "").toLowerCase();
     const isAllowedExtension = allowedExtensions.some((extension) =>
       fileName.endsWith(extension),
     );
 
     if (!isAllowedExtension) {
-      toast.error("Please upload a PDF, DOC, DOCX, or TXT file.");
+      toast.error("Please upload a PDF, DOC, DOCX, TXT, or JSON file.");
       if (importFileInputRef.current) importFileInputRef.current.value = "";
       return;
     }
@@ -1386,7 +1428,13 @@ const FormManagement = () => {
       const data = response.data?.data || {};
       setImportPreview({
         title: data.title || "",
-        description: data.description || "",
+        description: normalizeRichTextValue(data.description || ""),
+        titleStyle: normalizeTypographyStyle(data.titleStyle, DEFAULT_TITLE_STYLE),
+        descriptionStyle: normalizeTypographyStyle(
+          data.descriptionStyle,
+          DEFAULT_DESCRIPTION_STYLE,
+        ),
+        hasTypographySettings: fileName.endsWith(".json"),
         sections: Array.isArray(data.sections) ? data.sections : [],
         questions: Array.isArray(data.questions)
           ? data.questions.map((question, index) => ({
@@ -1493,7 +1541,18 @@ const FormManagement = () => {
       return {
         ...prev,
         title: String(prev.title || "").trim() ? prev.title : importPreview.title || prev.title,
-        description: String(prev.description || "").trim() ? prev.description : importPreview.description || prev.description,
+        description: String(prev.description || "").trim()
+          ? prev.description
+          : normalizeRichTextValue(importPreview.description || prev.description),
+        titleStyle: importPreview.hasTypographySettings
+          ? normalizeTypographyStyle(importPreview.titleStyle, DEFAULT_TITLE_STYLE)
+          : normalizeTypographyStyle(prev.titleStyle, DEFAULT_TITLE_STYLE),
+        descriptionStyle: importPreview.hasTypographySettings
+          ? normalizeTypographyStyle(
+              importPreview.descriptionStyle,
+              DEFAULT_DESCRIPTION_STYLE,
+            )
+          : normalizeTypographyStyle(prev.descriptionStyle, DEFAULT_DESCRIPTION_STYLE),
         questions: merged.map((question, order) => ({ ...question, order })),
       };
     });
@@ -1658,6 +1717,12 @@ const FormManagement = () => {
       logoAsset: draft.logoAsset || null,
       bannerImage: draft.bannerImage || draft.bannerImageUrl || "",
       bannerImageUrl: draft.bannerImageUrl || draft.bannerImage || "",
+      description: sanitizeRichTextHtml(draft.description || ""),
+      titleStyle: normalizeTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE),
+      descriptionStyle: normalizeTypographyStyle(
+        draft.descriptionStyle,
+        DEFAULT_DESCRIPTION_STYLE,
+      ),
       emailTemplate: {
         ...normalizedEmailTemplate,
         footerButtons: normalizedEmailTemplate.footerButtons || [],
@@ -2268,15 +2333,177 @@ const FormManagement = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold">Description</label>
-                <textarea
-                  value={draft.description}
-                  onChange={(e) => updateDraft("description", e.target.value)}
-                  rows={3}
-                  className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
-                  placeholder="Describe the form..."
-                />
+              <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold">Title Font Family</label>
+                      <select
+                        value={draft.titleStyle?.fontFamily || ""}
+                        onChange={(e) => updateTitleStyle("fontFamily", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      >
+                        <option value="">Default</option>
+                        {FONT_FAMILY_OPTIONS.map((fontFamily) => (
+                          <option key={fontFamily} value={fontFamily}>
+                            {fontFamily}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold">Title Font Size</label>
+                      <select
+                        value={draft.titleStyle?.fontSize || ""}
+                        onChange={(e) => updateTitleStyle("fontSize", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      >
+                        <option value="">Default</option>
+                        {FONT_SIZE_OPTIONS.map((fontSize) => (
+                          <option key={fontSize} value={fontSize}>
+                            {fontSize}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold">Title Font Weight</label>
+                      <select
+                        value={draft.titleStyle?.fontWeight || ""}
+                        onChange={(e) => updateTitleStyle("fontWeight", e.target.value)}
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                      >
+                        <option value="">Default</option>
+                        {FONT_WEIGHT_OPTIONS.map((weight) => (
+                          <option key={weight.value} value={weight.value}>
+                            {weight.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold">Title Color</label>
+                      <input
+                        type="color"
+                        value={draft.titleStyle?.color || "#111827"}
+                        onChange={(e) => updateTitleStyle("color", e.target.value)}
+                        className="h-12 w-full rounded-2xl border border-white/10 bg-transparent px-2 py-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {ALIGNMENT_OPTIONS.map((alignment) => (
+                      <button
+                        key={alignment.value}
+                        type="button"
+                        onClick={() => updateTitleStyle("textAlign", alignment.value)}
+                        className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                          (draft.titleStyle?.textAlign || "left") === alignment.value
+                            ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
+                            : "border-white/10 bg-white/5 text-slate-200"
+                        }`}
+                      >
+                        {alignment.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateTitleStyle(
+                          "fontStyle",
+                          draft.titleStyle?.fontStyle === "italic" ? "normal" : "italic",
+                        )
+                      }
+                      className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                        draft.titleStyle?.fontStyle === "italic"
+                          ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/10 bg-white/5 text-slate-200"
+                      }`}
+                    >
+                      Italic
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateTitleStyle(
+                          "textDecoration",
+                          draft.titleStyle?.textDecoration === "underline" ? "none" : "underline",
+                        )
+                      }
+                      className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                        draft.titleStyle?.textDecoration === "underline"
+                          ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/10 bg-white/5 text-slate-200"
+                      }`}
+                    >
+                      Underline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((prev) => ({ ...prev, titleStyle: { ...DEFAULT_TITLE_STYLE } }))}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200"
+                    >
+                      Reset title style
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold">Description</label>
+                    <RichTextEditor
+                      value={draft.description}
+                      onChange={(html) => updateDraft("description", html)}
+                      placeholder="Describe the form..."
+                      minHeight="240px"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-cyan-400/20 bg-slate-950/45 p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-100">Live Preview</div>
+                      <div className="text-xs text-slate-400">Matches the public form typography</div>
+                    </div>
+                    <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
+                      Public preview
+                    </span>
+                  </div>
+                  <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5">
+                    <h1
+                      className="break-words"
+                      style={resolveTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE)}
+                    >
+                      {draft.title || "Form title preview"}
+                    </h1>
+                    <div
+                      className="public-form-description break-words"
+                      style={normalizeTypographyStyle(
+                        draft.descriptionStyle,
+                        DEFAULT_DESCRIPTION_STYLE,
+                      )}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeRichTextHtml(
+                          draft.description || "<p>Your form description will appear here.</p>",
+                        ),
+                      }}
+                    />
+                  </div>
+                  <div className="mt-4 grid gap-2 rounded-3xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 sm:grid-cols-2">
+                    <div>
+                      <div className="text-slate-400">Title font</div>
+                      <div className="mt-1 font-semibold text-slate-100">
+                        {draft.titleStyle?.fontFamily || DEFAULT_TITLE_STYLE.fontFamily}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400">Description font</div>
+                      <div className="mt-1 font-semibold text-slate-100">
+                        {draft.descriptionStyle?.fontFamily || "Inherited / pasted"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -2305,7 +2532,7 @@ const FormManagement = () => {
                     ref={importFileInputRef}
                     type="file"
                     hidden
-                    accept=".pdf,.doc,.docx,.txt"
+                    accept=".pdf,.doc,.docx,.txt,.json"
                     onChange={handleImportFormFile}
                   />
                 </div>
@@ -3773,12 +4000,11 @@ const FormManagement = () => {
               </div>
               <div className="lg:col-span-2">
                 <label className="mb-2 block text-sm font-semibold">Detected Description</label>
-                <textarea
+                <RichTextEditor
                   value={importPreview.description || ""}
-                  onChange={(e) => updateImportPreviewField("description", e.target.value)}
-                  rows={3}
-                  className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                  onChange={(html) => updateImportPreviewField("description", html)}
                   placeholder="Form description"
+                  minHeight="220px"
                 />
               </div>
             </div>
