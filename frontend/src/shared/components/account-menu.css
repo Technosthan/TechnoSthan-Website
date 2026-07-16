@@ -43,9 +43,20 @@
   place-items: center;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(0, 212, 255, 0.08);
-  color: var(--text-primary);
+
+  background: linear-gradient(
+    135deg,
+    #7c3aed 0%,
+    #4f46e5 50%,
+    #06b6d4 100%
+  );
+
+  color: #ffffff;
   font-weight: 800;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 6px 18px rgba(79, 70, 229, 0.22);
 }
 
 .account-avatar img {

@@ -6,6 +6,7 @@ import Sidebar from "../../features/admin/components/Sidebar";
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
 import AccountMenu from "../components/AccountMenu";
+import ThemeToggle from "../components/ThemeToggle";
 import { ADMIN_ROUTE } from "../constants";
 import "../../features/admin/styles/admin.css";
 
@@ -89,6 +90,8 @@ const AdminLayout = () => {
           </div>
 
           <div className="admin-topbar-actions">
+            <ThemeToggle compact className="admin-theme-toggle" />
+
             <AccountMenu
               user={user}
               items={accountItems}
