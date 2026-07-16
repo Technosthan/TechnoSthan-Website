@@ -162,6 +162,9 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   whatsappBusinessNumber: "",
 };
 
+const IMAGE_SIZE_LIMIT_MESSAGE =
+  "Image size is too large. Please upload a file 5 MB or smaller.";
+
 const EMPTY_FORM = {
   title: "",
   description: "",
@@ -1109,7 +1112,7 @@ const FormManagement = () => {
     }
 
     if (file.size > maxLogoImageSizeBytes) {
-      toast.error("Logo image must be 5 MB or smaller");
+      toast.error(IMAGE_SIZE_LIMIT_MESSAGE);
       if (formLogoInputRef.current) {
         formLogoInputRef.current.value = "";
       }
@@ -1160,8 +1163,12 @@ const FormManagement = () => {
         );
         toast.success("Logo uploaded");
       } catch (error) {
+        const uploadErrorMessage =
+          error.response?.status === 413
+            ? IMAGE_SIZE_LIMIT_MESSAGE
+            : error.response?.data?.message || error.message || "Failed to upload image";
         toast.error(
-          error.response?.data?.message || error.message || "Failed to upload image",
+          uploadErrorMessage,
         );
       } finally {
         setUploadingFormLogoImage(false);
@@ -1197,7 +1204,7 @@ const FormManagement = () => {
     }
 
     if (file.size > maxBannerImageSizeBytes) {
-      toast.error("Banner image must be 5 MB or smaller");
+      toast.error(IMAGE_SIZE_LIMIT_MESSAGE);
       if (bannerImageInputRef.current) {
         bannerImageInputRef.current.value = "";
       }
@@ -1247,8 +1254,12 @@ const FormManagement = () => {
         );
         toast.success("Image uploaded");
       } catch (error) {
+        const uploadErrorMessage =
+          error.response?.status === 413
+            ? IMAGE_SIZE_LIMIT_MESSAGE
+            : error.response?.data?.message || error.message || "Failed to upload image";
         toast.error(
-          error.response?.data?.message || error.message || "Failed to upload image",
+          uploadErrorMessage,
         );
       } finally {
         setUploadingBannerImage(false);
@@ -2465,29 +2476,48 @@ const FormManagement = () => {
                       <div className="text-sm font-semibold text-slate-100">Live Preview</div>
                       <div className="text-xs text-slate-400">Matches the public form typography</div>
                     </div>
-                    <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
+                    {/* <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
                       Public preview
-                    </span>
+                    </span> */}
                   </div>
                   <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5">
-                    <h1
-                      className="break-words"
-                      style={resolveTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE)}
-                    >
-                      {draft.title || "Form title preview"}
-                    </h1>
-                    <div
-                      className="public-form-description break-words"
-                      style={normalizeTypographyStyle(
-                        draft.descriptionStyle,
-                        DEFAULT_DESCRIPTION_STYLE,
+                    <div className="flex flex-row items-center gap-4">
+                      {draft.logoUrl ? (
+                        <img
+                          src={getOptimizedImageUrl(draft.logoAsset || draft.logoUrl)}
+                          alt="Form logo preview"
+                          className="h-16 w-16 shrink-0 rounded-2xl bg-white/5 object-contain p-2"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-white">
+                          <Eye size={20} />
+                        </div>
                       )}
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeRichTextHtml(
-                          draft.description || "<p>Your form description will appear here.</p>",
-                        ),
-                      }}
-                    />
+                      <div className="min-w-0 flex-1">
+                        <h1
+                          className="break-words"
+                          style={resolveTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE)}
+                        >
+                          {draft.title || "Form title preview"}
+                        </h1>
+                        {draft.description ? (
+                          <div
+                            className={`public-form-description mt-2 break-words ${theme.textSecondary}`}
+                            style={resolveTypographyStyle(
+                              draft.descriptionStyle,
+                              DEFAULT_DESCRIPTION_STYLE,
+                            )}
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeRichTextHtml(draft.description || ""),
+                            }}
+                          />
+                        ) : (
+                          <div className="mt-2 rounded-2xl border border-dashed border-white/10 px-4 py-3 text-sm text-slate-400">
+                            Your form description will appear here.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-4 grid gap-2 rounded-3xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 sm:grid-cols-2">
                     <div>
@@ -2789,16 +2819,25 @@ const FormManagement = () => {
                       <div className="flex flex-wrap items-center gap-3">
                         <input
                           ref={formLogoInputRef}
+                          id="form-logo-upload"
                           type="file"
-                          hidden
+                          className="sr-only"
                           accept="image/jpeg,image/png,image/webp,image/svg+xml"
                           onChange={(e) => handleFormLogoFile(e.target.files?.[0] || null)}
                         />
-                        <button
-                          type="button"
-                          onClick={() => formLogoInputRef.current?.click()}
-                          disabled={uploadingFormLogoImage}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                        <label
+                          htmlFor="form-logo-upload"
+                          aria-disabled={uploadingFormLogoImage}
+                          onClick={(event) => {
+                            if (uploadingFormLogoImage) {
+                              event.preventDefault();
+                            }
+                          }}
+                          className={`inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold ${
+                            uploadingFormLogoImage
+                              ? "cursor-not-allowed opacity-60"
+                              : "cursor-pointer hover:bg-white/10"
+                          }`}
                         >
                           <Upload size={16} />
                           {uploadingFormLogoImage
@@ -2806,7 +2845,7 @@ const FormManagement = () => {
                             : draft.logoUrl
                               ? "Change Logo"
                               : "Upload Logo"}
-                        </button>
+                        </label>
                         {(draft.logoUrl || draft.logoAsset) && (
                           <button
                             type="button"
@@ -2858,20 +2897,29 @@ const FormManagement = () => {
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         ref={bannerImageInputRef}
+                        id="form-banner-upload"
                         type="file"
-                        hidden
+                        className="sr-only"
                         accept="image/jpeg,image/png,image/webp"
                         onChange={(e) => handleBannerImageFile(e.target.files?.[0] || null)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => bannerImageInputRef.current?.click()}
-                        disabled={uploadingBannerImage}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                      <label
+                        htmlFor="form-banner-upload"
+                        aria-disabled={uploadingBannerImage}
+                        onClick={(event) => {
+                          if (uploadingBannerImage) {
+                            event.preventDefault();
+                          }
+                        }}
+                        className={`inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold ${
+                          uploadingBannerImage
+                            ? "cursor-not-allowed opacity-60"
+                            : "cursor-pointer hover:bg-white/10"
+                        }`}
                       >
                         <Upload size={16} />
                         {uploadingBannerImage ? "Uploading..." : "Upload Image"}
-                      </button>
+                      </label>
                       {(draft.bannerImage || draft.bannerImageUrl) && (
                         <button
                           type="button"

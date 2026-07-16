@@ -1,24 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Eraser,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Subscript,
+  Superscript,
+  Underline,
+} from "lucide-react";
+import {
   FONT_FAMILY_OPTIONS,
   FONT_SIZE_OPTIONS,
 } from "./formTypography";
 import { normalizeRichTextValue, sanitizeRichTextHtml } from "./richTextUtils";
-import {
-  Bold,
-  Italic,
-  Underline,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  List,
-  ListOrdered,
-  Eraser,
-  Link as LinkIcon,
-  Superscript,
-  Subscript,
-} from "lucide-react";
 
 const COMMANDS = {
   bold: "bold",
@@ -42,7 +42,7 @@ const ToolbarButton = ({ active = false, title, onClick, children }) => (
     aria-pressed={active}
     onMouseDown={(event) => event.preventDefault()}
     onClick={onClick}
-    className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${
+    className={`inline-flex h-10 shrink-0 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${
       active
         ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
         : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
@@ -51,18 +51,6 @@ const ToolbarButton = ({ active = false, title, onClick, children }) => (
     {children}
   </button>
 );
-
-const selectTarget = (editorRef) => {
-  const editor = editorRef.current;
-  if (!editor) return false;
-  editor.focus();
-  return true;
-};
-
-const applyCommand = (editorRef, command, value = null) => {
-  if (!selectTarget(editorRef)) return;
-  document.execCommand(command, false, value);
-};
 
 const RichTextEditor = ({
   value = "",
@@ -73,7 +61,9 @@ const RichTextEditor = ({
   autoFocus = false,
 }) => {
   const editorRef = useRef(null);
-  const [isFocused, setIsFocused] = useState(false);
+  const savedSelectionRef = useRef(null);
+  const hasInitializedRef = useRef(false);
+  const isEditingRef = useRef(false);
   const [currentState, setCurrentState] = useState({
     bold: false,
     italic: false,
@@ -89,9 +79,10 @@ const RichTextEditor = ({
   });
 
   const syncFromDom = () => {
-    if (!editorRef.current) return;
-    const doc = editorRef.current.ownerDocument;
-    const state = {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const doc = editor.ownerDocument;
+    setCurrentState({
       bold: doc.queryCommandState("bold"),
       italic: doc.queryCommandState("italic"),
       underline: doc.queryCommandState("underline"),
@@ -103,18 +94,160 @@ const RichTextEditor = ({
       insertOrderedList: doc.queryCommandState("insertOrderedList"),
       superscript: doc.queryCommandState("superscript"),
       subscript: doc.queryCommandState("subscript"),
-    };
-    setCurrentState(state);
+    });
+  };
+
+  const commitEditorHtml = (sanitize = false) => {
+    const editor = editorRef.current;
+    if (!editor) return "";
+
+    const rawHtml = editor.innerHTML;
+    const html = sanitize ? sanitizeRichTextHtml(rawHtml) : rawHtml;
+    if (sanitize && rawHtml !== html) {
+      editor.innerHTML = html;
+    }
+    onChange?.(html);
+    return html;
+  };
+
+  const saveEditorSelection = () => {
+    const selection = window.getSelection();
+    const editor = editorRef.current;
+
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      !editor ||
+      !editor.contains(selection.anchorNode)
+    ) {
+      return;
+    }
+
+    savedSelectionRef.current = selection.getRangeAt(0).cloneRange();
+  };
+
+  const restoreEditorSelection = () => {
+    const range = savedSelectionRef.current;
+    const editor = editorRef.current;
+
+    if (!range || !editor) return false;
+
+    editor.focus();
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  };
+
+  const focusEditor = () => {
+    editorRef.current?.focus();
+  };
+
+  const applyStyleToSelection = (style = {}) => {
+    if (!restoreEditorSelection()) return;
+
+    const selection = window.getSelection();
+    const editor = editorRef.current;
+    if (!selection || selection.rangeCount === 0 || !editor) return;
+
+    const range = selection.getRangeAt(0);
+    const span = document.createElement("span");
+
+    Object.entries(style).forEach(([key, nextValue]) => {
+      if (nextValue) {
+        span.style[key] = nextValue;
+      }
+    });
+
+    if (range.collapsed) {
+      span.appendChild(document.createTextNode("\u200b"));
+      range.insertNode(span);
+
+      const nextRange = document.createRange();
+      nextRange.setStart(span.firstChild, 1);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    } else {
+      try {
+        range.surroundContents(span);
+      } catch {
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        range.insertNode(span);
+      }
+
+      const nextRange = document.createRange();
+      nextRange.selectNodeContents(span);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+
+    commitEditorHtml(true);
+    syncFromDom();
+    saveEditorSelection();
+  };
+
+  const wrapSelectionWithStyle = (style = {}) => {
+    applyStyleToSelection(style);
+  };
+
+  const applyTextColor = (color) => {
+    if (!color) return;
+    wrapSelectionWithStyle({ color });
+  };
+
+  const applyBackgroundColor = (color) => {
+    if (!color) return;
+    wrapSelectionWithStyle({ backgroundColor: color });
+  };
+
+  const applyFontFamily = (family) => {
+    if (!family) return;
+    wrapSelectionWithStyle({ fontFamily: family });
+  };
+
+  const applyFontSize = (size) => {
+    if (!size) return;
+    wrapSelectionWithStyle({
+      fontSize: size,
+    });
+  };
+
+  const executeCommand = (command, value = null) => {
+    if (!restoreEditorSelection()) return;
+
+    focusEditor();
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand(command, false, value);
+    commitEditorHtml(true);
+    syncFromDom();
+    saveEditorSelection();
+  };
+
+  const insertLink = () => {
+    const link = window.prompt("Enter link URL");
+    if (!link) return;
+    executeCommand("createLink", link);
   };
 
   useEffect(() => {
     const node = editorRef.current;
     if (!node) return;
+
     const nextHtml = normalizeRichTextValue(value);
-    if (!isFocused && node.innerHTML !== nextHtml) {
+    if (!hasInitializedRef.current) {
+      node.innerHTML = nextHtml;
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    if (!isEditingRef.current && node.innerHTML !== nextHtml) {
       node.innerHTML = nextHtml;
     }
-  }, [isFocused, value]);
+  }, [value]);
 
   useEffect(() => {
     if (autoFocus) {
@@ -122,58 +255,22 @@ const RichTextEditor = ({
     }
   }, [autoFocus]);
 
-  const applyTextColor = (color) => {
-    if (!color) return;
-    applyCommand(editorRef, "foreColor", color);
-    onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-  };
-
-  const applyBackgroundColor = (color) => {
-    if (!color) return;
-    applyCommand(editorRef, "hiliteColor", color);
-    onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-  };
-
-  const insertLink = () => {
-    const link = window.prompt("Enter link URL");
-    if (!link) return;
-    applyCommand(editorRef, "createLink", link);
-    onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-  };
-
-  const handleInput = () => {
-    if (!editorRef.current) return;
-    const html = sanitizeRichTextHtml(editorRef.current.innerHTML);
-    if (editorRef.current.innerHTML !== html) {
-      editorRef.current.innerHTML = html;
-    }
-    onChange?.(html);
-    syncFromDom();
-  };
-
-  const handlePaste = (event) => {
-    event.preventDefault();
-    const clipboard = event.clipboardData || window.clipboardData;
-    const html = clipboard?.getData("text/html");
-    const text = clipboard?.getData("text/plain") || "";
-    const nextHtml = sanitizeRichTextHtml(html || text);
-    document.execCommand("insertHTML", false, nextHtml);
-    onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-  };
-
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+      <div
+        className="flex max-w-full flex-wrap items-center gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/50 p-3"
+        onMouseDownCapture={saveEditorSelection}
+        onPointerDownCapture={saveEditorSelection}
+      >
         <select
           defaultValue=""
+          onMouseDown={saveEditorSelection}
+          onFocus={saveEditorSelection}
           onChange={(event) => {
-            const family = event.target.value;
-            if (!family) return;
-            applyCommand(editorRef, "fontName", family);
-            onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
+            applyFontFamily(event.target.value);
             event.target.value = "";
           }}
-          className="h-9 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm text-slate-100"
+          className="h-10 w-full min-w-[11rem] rounded-xl border border-white/10 bg-slate-950 px-3 text-sm text-slate-100 outline-none sm:w-44"
         >
           <option value="">Font family</option>
           {FONT_FAMILY_OPTIONS.map((family) => (
@@ -185,35 +282,13 @@ const RichTextEditor = ({
 
         <select
           defaultValue=""
+          onMouseDown={saveEditorSelection}
+          onFocus={saveEditorSelection}
           onChange={(event) => {
-            const size = event.target.value;
-            if (!size) return;
-            applyCommand(editorRef, "fontSize", 7);
-            if (editorRef.current) {
-              const selection = window.getSelection();
-              if (selection && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                const span = document.createElement("span");
-                span.style.fontSize = size;
-                try {
-                  range.surroundContents(span);
-                } catch {
-                  const fragment = range.extractContents();
-                  span.appendChild(fragment);
-                  range.insertNode(span);
-                }
-              }
-              editorRef.current.querySelectorAll('font[size="7"]').forEach((node) => {
-                const span = document.createElement("span");
-                span.style.fontSize = size;
-                span.innerHTML = node.innerHTML;
-                node.replaceWith(span);
-              });
-            }
-            onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
+            applyFontSize(event.target.value);
             event.target.value = "";
           }}
-          className="h-9 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm text-slate-100"
+          className="h-10 w-full min-w-[8.5rem] rounded-xl border border-white/10 bg-slate-950 px-3 text-sm text-slate-100 outline-none sm:w-36"
         >
           <option value="">Font size</option>
           {FONT_SIZE_OPTIONS.map((size) => (
@@ -223,104 +298,164 @@ const RichTextEditor = ({
           ))}
         </select>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="sr-only" htmlFor="description-text-color">
+            Text color
+          </label>
           <input
+            id="description-text-color"
             type="color"
             title="Text color"
+            onMouseDown={saveEditorSelection}
+            onFocus={saveEditorSelection}
             onChange={(event) => applyTextColor(event.target.value)}
-            className="h-9 w-10 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1"
+            className="h-10 w-10 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1"
           />
+          <label className="sr-only" htmlFor="description-bg-color">
+            Background color
+          </label>
           <input
+            id="description-bg-color"
             type="color"
             title="Background color"
+            onMouseDown={saveEditorSelection}
+            onFocus={saveEditorSelection}
             onChange={(event) => applyBackgroundColor(event.target.value)}
-            className="h-9 w-10 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1"
+            className="h-10 w-10 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1"
           />
         </div>
 
-        <div className="h-8 w-px bg-white/10" />
+        <div className="h-8 w-px shrink-0 bg-white/10" />
 
         <ToolbarButton
           title="Bold"
           active={currentState.bold}
-          onClick={() => {
-            applyCommand(editorRef, COMMANDS.bold);
-            onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-          }}
+          onClick={() => executeCommand(COMMANDS.bold)}
         >
           <Bold size={15} />
         </ToolbarButton>
         <ToolbarButton
           title="Italic"
           active={currentState.italic}
-          onClick={() => {
-            applyCommand(editorRef, COMMANDS.italic);
-            onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-          }}
+          onClick={() => executeCommand(COMMANDS.italic)}
         >
           <Italic size={15} />
         </ToolbarButton>
         <ToolbarButton
           title="Underline"
           active={currentState.underline}
-          onClick={() => {
-            applyCommand(editorRef, COMMANDS.underline);
-            onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-          }}
+          onClick={() => executeCommand(COMMANDS.underline)}
         >
           <Underline size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Left" active={currentState.justifyLeft} onClick={() => applyCommand(editorRef, COMMANDS.justifyLeft)}>
+        <ToolbarButton
+          title="Left"
+          active={currentState.justifyLeft}
+          onClick={() => executeCommand(COMMANDS.justifyLeft)}
+        >
           <AlignLeft size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Center" active={currentState.justifyCenter} onClick={() => applyCommand(editorRef, COMMANDS.justifyCenter)}>
+        <ToolbarButton
+          title="Center"
+          active={currentState.justifyCenter}
+          onClick={() => executeCommand(COMMANDS.justifyCenter)}
+        >
           <AlignCenter size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Right" active={currentState.justifyRight} onClick={() => applyCommand(editorRef, COMMANDS.justifyRight)}>
+        <ToolbarButton
+          title="Right"
+          active={currentState.justifyRight}
+          onClick={() => executeCommand(COMMANDS.justifyRight)}
+        >
           <AlignRight size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Justify" active={currentState.justifyFull} onClick={() => applyCommand(editorRef, COMMANDS.justifyFull)}>
+        <ToolbarButton
+          title="Justify"
+          active={currentState.justifyFull}
+          onClick={() => executeCommand(COMMANDS.justifyFull)}
+        >
           <AlignJustify size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Bulleted list" active={currentState.insertUnorderedList} onClick={() => applyCommand(editorRef, COMMANDS.insertUnorderedList)}>
+        <ToolbarButton
+          title="Bulleted list"
+          active={currentState.insertUnorderedList}
+          onClick={() => executeCommand(COMMANDS.insertUnorderedList)}
+        >
           <List size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Numbered list" active={currentState.insertOrderedList} onClick={() => applyCommand(editorRef, COMMANDS.insertOrderedList)}>
+        <ToolbarButton
+          title="Numbered list"
+          active={currentState.insertOrderedList}
+          onClick={() => executeCommand(COMMANDS.insertOrderedList)}
+        >
           <ListOrdered size={15} />
         </ToolbarButton>
         <ToolbarButton title="Link" onClick={insertLink}>
           <LinkIcon size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Superscript" active={currentState.superscript} onClick={() => applyCommand(editorRef, COMMANDS.superscript)}>
+        <ToolbarButton
+          title="Superscript"
+          active={currentState.superscript}
+          onClick={() => executeCommand(COMMANDS.superscript)}
+        >
           <Superscript size={15} />
         </ToolbarButton>
-        <ToolbarButton title="Subscript" active={currentState.subscript} onClick={() => applyCommand(editorRef, COMMANDS.subscript)}>
+        <ToolbarButton
+          title="Subscript"
+          active={currentState.subscript}
+          onClick={() => executeCommand(COMMANDS.subscript)}
+        >
           <Subscript size={15} />
         </ToolbarButton>
         <ToolbarButton
           title="Clear formatting"
-          onClick={() => {
-            applyCommand(editorRef, COMMANDS.removeFormat);
-            onChange?.(sanitizeRichTextHtml(editorRef.current?.innerHTML || ""));
-          }}
+          onClick={() => executeCommand(COMMANDS.removeFormat)}
         >
           <Eraser size={15} />
         </ToolbarButton>
-
       </div>
 
       <div
         ref={editorRef}
         contentEditable
+        dir="ltr"
         suppressContentEditableWarning
-        onInput={handleInput}
-        onPaste={handlePaste}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onInput={() => {
+          commitEditorHtml(false);
+          syncFromDom();
+          saveEditorSelection();
+        }}
+        onPaste={(event) => {
+          event.preventDefault();
+          const clipboard = event.clipboardData || window.clipboardData;
+          const html = clipboard?.getData("text/html");
+          const text = clipboard?.getData("text/plain") || "";
+          const nextHtml = sanitizeRichTextHtml(html || text);
+          document.execCommand("insertHTML", false, nextHtml);
+          commitEditorHtml(true);
+          syncFromDom();
+          saveEditorSelection();
+        }}
+        onMouseUp={saveEditorSelection}
+        onKeyUp={saveEditorSelection}
+        onFocus={() => {
+          isEditingRef.current = true;
+          saveEditorSelection();
+          syncFromDom();
+        }}
+        onBlur={() => {
+          isEditingRef.current = false;
+          commitEditorHtml(true);
+          saveEditorSelection();
+        }}
         data-placeholder={placeholder}
-        className="public-rich-editor min-h-[220px] rounded-3xl border border-white/10 bg-slate-950/60 px-4 py-4 text-slate-100 outline-none"
-        style={{ minHeight }}
-        dangerouslySetInnerHTML={{ __html: normalizeRichTextValue(value) }}
+        className="public-rich-editor min-h-[220px] rounded-3xl border border-white/10 bg-slate-950/60 px-4 py-4 text-left text-slate-100 outline-none"
+        style={{
+          minHeight,
+          direction: "ltr",
+          unicodeBidi: "normal",
+          textAlign: "left",
+        }}
       />
     </div>
   );

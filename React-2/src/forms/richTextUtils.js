@@ -34,8 +34,13 @@ const ALLOWED_TAGS = [
 const ALLOWED_ATTRS = ["href", "target", "rel", "title", "style", "face", "size", "color"];
 const SAFE_URL_PATTERN = /^(?:https?:|mailto:|tel:|\/|#)/i;
 
-const normalizePlainTextToHtml = (value = "") =>
+const normalizeRichTextInput = (value = "") =>
   String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u00a0/g, " ");
+
+const normalizePlainTextToHtml = (value = "") =>
+  normalizeRichTextInput(value)
     .replace(/\r\n?/g, "\n")
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
@@ -231,7 +236,7 @@ const sanitizeNode = (node) => {
 };
 
 export const sanitizeRichTextHtml = (value = "") => {
-  const raw = String(value || "");
+  const raw = normalizeRichTextInput(value);
   if (!raw.trim()) return "";
 
   const source = /<\/?[a-z][\s\S]*>/i.test(raw)

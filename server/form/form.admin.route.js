@@ -43,7 +43,8 @@ router.post("/upload", (req, res, next) => {
       if (error.code === "LIMIT_FILE_SIZE") {
         return res.status(413).json({
           success: false,
-          message: "Maximum file size allowed is 5 MB.",
+          message:
+            "Image size is too large. Please upload a file 5 MB or smaller.",
         });
       }
 

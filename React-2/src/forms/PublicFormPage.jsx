@@ -6,7 +6,6 @@ import { useSettings } from "../contexts/SettingsContext";
 import {
   DEFAULT_DESCRIPTION_STYLE,
   DEFAULT_TITLE_STYLE,
-  normalizeTypographyStyle,
   resolveTypographyStyle,
 } from "./formTypography";
 import { sanitizeRichTextHtml } from "./richTextUtils";
@@ -839,7 +838,7 @@ const PublicFormPage = () => {
       expiresAt.getTime() < now,
     );
   const titleStyle = resolveTypographyStyle(form?.titleStyle, DEFAULT_TITLE_STYLE);
-  const descriptionStyle = normalizeTypographyStyle(
+  const descriptionStyle = resolveTypographyStyle(
     form?.descriptionStyle,
     DEFAULT_DESCRIPTION_STYLE,
   );
@@ -929,15 +928,15 @@ const PublicFormPage = () => {
               />
             </div>
           )}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-row items-center gap-4">
             {form.logoUrl ? (
               <img
                 src={getOptimizedImageUrl(form.logoAsset || form.logoUrl)}
                 alt={form.title ? `${form.title} logo` : "Form logo"}
-                className="h-16 w-16 rounded-2xl object-contain bg-white/5 p-2"
+                className="h-16 w-16 shrink-0 rounded-2xl bg-white/5 object-contain p-2"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-600 text-white">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-white">
                 <CheckCircle2 size={28} />
               </div>
             )}
