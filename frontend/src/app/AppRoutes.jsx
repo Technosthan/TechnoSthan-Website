@@ -17,6 +17,7 @@ import LoginPage from "../features/auth/pages/LoginPage";
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import AdminDashboard from "../features/admin/pages/Dashboard";
 import ProductsAdminPage from "../features/admin/pages/ProductsPage";
+import ServicesAdminPage from "../features/admin/pages/ServicesPage";
 import TestimonialsPage from "../features/admin/pages/TestimonialsPage";
 import HeroVisualPage from "../features/admin/pages/HeroVisualPage";
 import DashboardPage from "../features/account/pages/DashboardPage";
@@ -81,6 +82,7 @@ const AppRoutes = () => {
         >
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<ProductsAdminPage />} />
+          <Route path="services" element={<ServicesAdminPage />} />
           <Route
             path="testimonials"
             element={<TestimonialsPage />}

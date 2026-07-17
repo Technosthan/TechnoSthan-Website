@@ -1,78 +1,92 @@
+import {
+  FiCloud,
+  FiCode,
+  FiCpu,
+  FiDatabase,
+  FiGlobe,
+  FiLayers,
+  FiServer,
+  FiShield,
+  FiSmartphone,
+  FiTrendingUp,
+  FiTool,
+  FiZap,
+} from "react-icons/fi";
 import "./techstack.css";
 
 const TechStack = () => {
   const techs = [
     {
       name: "React",
-      icon: "⚛️",
+      icon: FiLayers,
       category: "Frontend",
-      description: "UI library",
+      description: "Modern UI delivery",
     },
     {
       name: "Node.js",
-      icon: "🟢",
+      icon: FiServer,
       category: "Backend",
-      description: "Runtime",
+      description: "Scalable runtime",
     },
     {
       name: "PostgreSQL",
-      icon: "🐘",
+      icon: FiDatabase,
       category: "Database",
-      description: "SQL Database",
+      description: "Reliable SQL storage",
     },
     {
       name: "AWS",
-      icon: "☁️",
+      icon: FiCloud,
       category: "Cloud",
-      description: "Infrastructure",
+      description: "Cloud infrastructure",
     },
     {
       name: "Docker",
-      icon: "🐳",
+      icon: FiTool,
       category: "DevOps",
-      description: "Containerization",
+      description: "Container workflows",
     },
     {
       name: "AI/ML",
-      icon: "🤖",
+      icon: FiCpu,
       category: "Advanced",
-      description: "Machine Learning",
+      description: "Automated intelligence",
     },
     {
       name: "TypeScript",
-      icon: "📘",
+      icon: FiCode,
       category: "Frontend",
-      description: "Type Safety",
+      description: "Type-safe delivery",
     },
     {
       name: "MongoDB",
-      icon: "🍃",
+      icon: FiDatabase,
       category: "Database",
-      description: "NoSQL",
+      description: "Flexible data layer",
     },
     {
       name: "Kubernetes",
-      icon: "☸️",
+      icon: FiGlobe,
       category: "DevOps",
-      description: "Orchestration",
+      description: "Scaling orchestration",
     },
     {
       name: "Redis",
-      icon: "🔴",
+      icon: FiZap,
       category: "Cache",
-      description: "Caching",
+      description: "Fast response layer",
     },
     {
       name: "GraphQL",
-      icon: "📊",
+      icon: FiTrendingUp,
       category: "API",
-      description: "Query Language",
+      description: "Composed data access",
     },
     {
       name: "Jenkins",
-      icon: "🔧",
+      icon: FiShield,
       category: "CI/CD",
-      description: "Automation",
+      description: "Automated delivery",
     },
   ];
 
@@ -88,20 +102,26 @@ const TechStack = () => {
         </span>
         <h2>Cutting-Edge Technologies</h2>
         <p>
-          We leverage the most advanced and reliable technologies to build
-          scalable, secure solutions
+          We leverage trusted, modern technologies to build scalable and
+          secure solutions that can grow with your business.
         </p>
       </div>
 
       <div className="tech-grid">
-        {techs.map((tech) => (
-          <article key={tech.name} className="tech-card">
-            <div className="tech-icon">{tech.icon}</div>
-            <h3>{tech.name}</h3>
-            <span className="tech-category">{tech.category}</span>
-            <p className="tech-description">{tech.description}</p>
-          </article>
-        ))}
+        {techs.map((tech) => {
+          const Icon = tech.icon;
+
+          return (
+            <article key={tech.name} className="tech-card">
+              <div className="tech-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{tech.name}</h3>
+              <span className="tech-category">{tech.category}</span>
+              <p className="tech-description">{tech.description}</p>
+            </article>
+          );
+        })}
       </div>
 
       <div className="tech-stats">

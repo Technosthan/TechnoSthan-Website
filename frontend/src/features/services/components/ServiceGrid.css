@@ -40,7 +40,7 @@
 }
 
 .service-btn:hover {
-  color: white;
+  color: var(--text-primary);
 }
 
 @media (max-width: 1024px) {

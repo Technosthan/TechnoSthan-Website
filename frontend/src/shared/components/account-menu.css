@@ -22,8 +22,8 @@
   color: var(--text-primary);
   background:
     linear-gradient(135deg, rgba(0, 212, 255, 0.14), rgba(124, 58, 237, 0.16)),
-    rgba(6, 10, 28, 0.92);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+    var(--surface-tertiary);
+  box-shadow: var(--shadow-soft);
 }
 
 .account-menu-trigger.compact {
@@ -78,13 +78,13 @@
   padding: 14px;
   border: 1px solid var(--border-primary);
   border-radius: 20px;
-  background: rgba(8, 12, 32, 0.98);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  background: var(--surface-secondary);
+  box-shadow: var(--shadow-elevated);
 }
 
 .account-menu-header {
   padding: 6px 6px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .account-menu-name {
@@ -124,14 +124,14 @@
 .account-menu-item:hover,
 .account-menu-logout:hover {
   color: var(--text-primary);
-  background: rgba(0, 212, 255, 0.08);
-  border-color: rgba(0, 212, 255, 0.14);
+  background: var(--surface-soft);
+  border-color: var(--border-strong);
 }
 
 .account-menu-logout {
   justify-content: flex-start;
-  color: #ffd4d4;
-  background: rgba(255, 255, 255, 0.02);
+  color: var(--danger-text);
+  background: var(--surface-muted);
 }
 
 .account-menu-logout svg {

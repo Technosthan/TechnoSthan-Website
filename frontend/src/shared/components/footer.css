@@ -55,7 +55,15 @@
 }
 
 .footer-logo .logo-icon {
-  font-size: 1.75rem;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gradient-panel);
+  color: var(--accent-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-soft);
 }
 
 .footer-logo h3 {
@@ -77,7 +85,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  background: rgba(15, 20, 54, 0.6);
+  background: var(--surface-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 12px;
   padding: var(--spacing-sm);
@@ -88,7 +96,7 @@
 
 .newsletter-form:focus-within {
   border-color: var(--accent-primary);
-  background: rgba(15, 20, 54, 0.8);
+  background: var(--surface-primary);
   box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
 }
 
@@ -110,7 +118,7 @@
   background: var(--gradient-primary);
   border: none;
   border-radius: 8px;
-  color: var(--bg-primary);
+  color: var(--text-inverse);
   padding: var(--spacing-md);
   cursor: pointer;
   display: flex;
@@ -268,7 +276,7 @@
 
 .social-link:hover {
   background: var(--accent-primary);
-  color: var(--bg-primary);
+  color: #ffffff;
   box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
   border-color: var(--accent-primary);
 }

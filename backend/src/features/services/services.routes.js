@@ -1,22 +1,11 @@
 import { Router } from "express";
 
 import {
-  create,
-  getAll,
+  getPublic,
 } from "./services.controller.js";
-
-import {
-  validateService,
-} from "./services.validation.js";
 
 const router = Router();
 
-router.get("/", getAll);
-
-router.post(
-  "/",
-  validateService,
-  create
-);
+router.get("/", getPublic);
 
 export default router;

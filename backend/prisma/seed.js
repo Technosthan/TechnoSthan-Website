@@ -113,6 +113,145 @@ async function seed() {
       ],
     });
   }
+
+  const serviceCount = await prisma.service.count();
+
+  if (serviceCount === 0) {
+    await prisma.service.createMany({
+      data: [
+        {
+          title: "Web Development",
+          slug: "web-development",
+          shortDescription:
+            "Modern websites and web apps built for growth.",
+          iconKey: "FiCode",
+          category: "Development",
+          route: "/services",
+          displayOrder: 1,
+          isActive: true,
+          showInNavbar: true,
+          featured: true,
+        },
+        {
+          title: "Mobile App Development",
+          slug: "mobile-app-development",
+          shortDescription:
+            "Native and cross-platform apps for Android and iOS.",
+          iconKey: "FiSmartphone",
+          category: "Development",
+          route: "/services",
+          displayOrder: 2,
+          isActive: true,
+          showInNavbar: true,
+          featured: false,
+        },
+        {
+          title: "Cloud Solutions",
+          slug: "cloud-solutions",
+          shortDescription:
+            "Cloud architecture, migrations, and scalable hosting.",
+          iconKey: "FiCloud",
+          category: "Cloud & Infrastructure",
+          route: "/services",
+          displayOrder: 3,
+          isActive: true,
+          showInNavbar: true,
+          featured: true,
+        },
+        {
+          title: "DevOps",
+          slug: "devops",
+          shortDescription:
+            "Automation, pipelines, and release reliability.",
+          iconKey: "FiServer",
+          category: "Cloud & Infrastructure",
+          route: "/services",
+          displayOrder: 4,
+          isActive: true,
+          showInNavbar: true,
+          featured: false,
+        },
+        {
+          title: "AI Automation",
+          slug: "ai-automation",
+          shortDescription:
+            "Workflows powered by intelligent automation.",
+          iconKey: "FiZap",
+          category: "AI & Data",
+          route: "/services",
+          displayOrder: 5,
+          isActive: true,
+          showInNavbar: true,
+          featured: true,
+        },
+        {
+          title: "Data Analytics",
+          slug: "data-analytics",
+          shortDescription:
+            "Dashboards and decision support from your data.",
+          iconKey: "FiTrendingUp",
+          category: "AI & Data",
+          route: "/services",
+          displayOrder: 6,
+          isActive: true,
+          showInNavbar: true,
+          featured: false,
+        },
+        {
+          title: "Cybersecurity",
+          slug: "cybersecurity",
+          shortDescription:
+            "Threat protection, audits, and secure systems.",
+          iconKey: "FiShield",
+          category: "Security & Design",
+          route: "/services",
+          displayOrder: 7,
+          isActive: true,
+          showInNavbar: true,
+          featured: false,
+        },
+        {
+          title: "UI/UX Design",
+          slug: "ui-ux-design",
+          shortDescription:
+            "Elegant interfaces and product experiences.",
+          iconKey: "FiLayers",
+          category: "Security & Design",
+          route: "/services",
+          displayOrder: 8,
+          isActive: true,
+          showInNavbar: true,
+          featured: false,
+        },
+        {
+          title: "Education Technology",
+          slug: "education-technology",
+          shortDescription:
+            "Digital solutions for schools, platforms, and learning.",
+          iconKey: "FiMonitor",
+          category: "Industry Solutions",
+          route: "/services",
+          displayOrder: 9,
+          isActive: true,
+          showInNavbar: true,
+          featured: false,
+        },
+        {
+          title: "Retail & Ecommerce",
+          slug: "retail-ecommerce",
+          shortDescription:
+            "Commerce platforms with conversion-focused UX.",
+          iconKey: "FiShoppingCart",
+          category: "Industry Solutions",
+          route: "/services",
+          displayOrder: 10,
+          isActive: true,
+          showInNavbar: true,
+          featured: true,
+        },
+      ],
+    });
+  }
 }
 
 seed()

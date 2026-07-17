@@ -1,40 +1,48 @@
+import { useNavigate } from "react-router-dom";
 import "./ServicesCTA.css";
 
 const ServicesCTA = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="services-cta">
-
-      <div className="about-container">
-
-        <div className="services-cta-box">
-
-          <h2>
-            Ready To Build Your Next
-            Digital Product?
-          </h2>
-
+      <div className="services-cta-box">
+        <div className="services-cta-copy">
+          <span className="section-badge">
+            <span className="badge-dot" />
+            Consultation
+          </span>
+          <h2>Ready to build your next product?</h2>
           <p>
-            Let's discuss your project requirements
-            and create scalable solutions tailored
-            to your business needs.
+            Let&apos;s discuss your goals, scope the right approach, and create
+            a clear plan for delivery.
           </p>
-
-          <div className="services-cta-buttons">
-
-            <button className="btn-primary">
-              Schedule Consultation
-            </button>
-
-            <button className="btn-secondary">
-              Contact Us
-            </button>
-
-          </div>
-
         </div>
 
+        <div className="services-cta-buttons">
+          <button
+            className="btn-primary"
+            onClick={() => navigate("/contact")}
+            type="button"
+          >
+            Book Consultation
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => navigate("/contact")}
+            type="button"
+          >
+            Discuss Project
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => navigate("/contact")}
+            type="button"
+          >
+            Get Quote
+          </button>
+        </div>
       </div>
-
     </section>
   );
 };

@@ -1,25 +1,88 @@
 .industries-section {
   padding: 100px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
-.industries-section h2 {
-  text-align: center;
-  margin-bottom: 60px;
+.industries-section .section-header {
+  max-width: 760px;
+  margin-bottom: 56px;
 }
 
 .industry-grid {
   display: grid;
-  grid-template-columns: repeat(3,1fr);
-  gap: 25px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
 }
 
 .industry-card {
-  text-align: center;
-  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid var(--border-primary);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 100%),
+    var(--surface-secondary);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
-@media(max-width:768px){
-  .industry-grid{
-    grid-template-columns:1fr;
+.industry-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-elevated);
+}
+
+.industry-card-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--accent-primary);
+  background: var(--gradient-panel);
+  border: 1px solid rgba(20, 184, 255, 0.18);
+}
+
+.industry-card-copy h3 {
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+}
+
+.industry-card-copy p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.industry-card-cta {
+  margin-top: auto;
+  color: var(--accent-primary);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 1024px) {
+  .industry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .industries-section {
+    padding: var(--spacing-2xl) var(--spacing-md);
+  }
+
+  .industry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .industries-section .section-header {
+    margin-bottom: 32px;
   }
 }

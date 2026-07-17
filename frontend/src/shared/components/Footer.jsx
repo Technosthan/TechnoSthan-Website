@@ -8,6 +8,7 @@ import {
   FiMapPin,
   FiPhone,
   FiTwitter,
+  FiZap,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { subscribe } from "../../api/subscribers.api";
@@ -105,7 +106,9 @@ const Footer = () => {
           viewport={{ once: true }}
         >
           <div className="footer-logo">
-            <span className="logo-icon">⚡</span>
+            <span className="logo-icon" aria-hidden="true">
+              <FiZap size={18} />
+            </span>
             <h3>Technosthan</h3>
           </div>
           <p className="brand-description">
@@ -131,7 +134,7 @@ const Footer = () => {
             </button>
           </div>
           <p className="newsletter-text">
-            Subscribe to get latest updates and offers
+            Subscribe to get the latest updates and offers.
           </p>
         </motion.div>
 
@@ -182,9 +185,7 @@ const Footer = () => {
           </div>
           <div className="contact-item">
             <FiMapPin size={18} />
-            <span>
-              47/1 New Sanganer Road Sodala Jaipur Rajasthan
-            </span>
+            <span>47/1 New Sanganer Road, Sodala, Jaipur, Rajasthan</span>
           </div>
         </motion.div>
       </div>
@@ -223,7 +224,7 @@ const Footer = () => {
           <a href="#" className="legal-link">
             Privacy Policy
           </a>
-          <span className="link-separator">•</span>
+          <span className="link-separator">|</span>
           <a href="#" className="legal-link">
             Terms of Service
           </a>

@@ -5,14 +5,15 @@ export const validateService = (
 ) => {
   const {
     title,
-    description,
-  } = req.body;
+    shortDescription,
+    category,
+  } = req.body || {};
 
-  if (!title || !description) {
+  if (!title || !shortDescription || !category) {
     return res.status(400).json({
       success: false,
       message:
-        "Title and description are required",
+        "Title, short description, and category are required",
     });
   }
 

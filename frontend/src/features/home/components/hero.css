@@ -144,7 +144,8 @@
   padding: var(--spacing-lg);
   border: 1px solid var(--border-primary);
   border-radius: 18px;
-  background: rgba(15, 20, 54, 0.66);
+  background: var(--surface-secondary);
+  box-shadow: var(--shadow-soft);
 }
 
 .stat-number {
@@ -197,14 +198,10 @@
   width: min(100%, 700px);
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid rgba(0, 212, 255, 0.16);
+  border: 1px solid var(--border-primary);
   border-radius: 28px;
-  background: linear-gradient(
-    180deg,
-    rgba(15, 20, 54, 0.96),
-    rgba(10, 14, 39, 0.9)
-  );
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.32);
+  background: var(--gradient-surface);
+  box-shadow: var(--shadow-elevated);
 }
 
 .hero-image {
@@ -233,11 +230,11 @@
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid rgba(0, 212, 255, 0.18);
+  border: 1px solid var(--border-primary);
   border-radius: 18px;
   color: var(--text-primary);
-  background: rgba(10, 14, 39, 0.9);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.24);
+  background: var(--surface-secondary);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
   pointer-events: auto;
   transition:
@@ -248,11 +245,11 @@
 }
 
 .hero-feature-card.active {
-  border-color: rgba(0, 212, 255, 0.4);
-  background: rgba(10, 20, 54, 0.96);
+  border-color: var(--border-strong);
+  background: var(--surface-primary);
   box-shadow:
-    0 0 0 1px rgba(0, 212, 255, 0.2),
-    0 18px 44px rgba(0, 212, 255, 0.12);
+    0 0 0 1px rgba(0, 212, 255, 0.16),
+    var(--shadow-soft);
 }
 
 .hero-feature-icon {

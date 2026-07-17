@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   FiAlertCircle,
+  FiStar,
   FiUser,
+  FiMessageSquare,
 } from "react-icons/fi";
 import "./testimonials.css";
 import { getTestimonials } from "../../../api/testimonials.api";
@@ -40,59 +42,67 @@ const Testimonials = () => {
 
   return (
     <section className="testimonials-section">
-      <div className="about-container">
-        <div className="section-header testimonials-header">
-          <span className="section-badge">
-            <span className="badge-dot" />
-            Client Stories
-          </span>
-          <h2>What Our Clients Say</h2>
-          <p>
-            Real feedback from businesses that trust TechnoSthan to deliver
-            reliable digital solutions.
-          </p>
-        </div>
-
-        {loading ? (
-          <div className="testimonials-state">Loading testimonials...</div>
-        ) : error ? (
-          <div className="testimonials-state error">
-            <FiAlertCircle />
-            <span>{error}</span>
-          </div>
-        ) : (
-          <div className="testimonials-grid">
-            {testimonials.map((item) => (
-              <article key={item.id} className="testimonial-card">
-                <div className="testimonial-quote">“</div>
-                <p className="testimonial-copy">
-                  {item.feedback}
-                </p>
-                <div className="testimonial-footer">
-                  <div className="testimonial-avatar">
-                    {item.imageUrl ? (
-                      <img
-                        src={getSafeImageUrl(item.imageUrl)}
-                        alt={item.clientName}
-                      />
-                    ) : (
-                      <FiUser />
-                    )}
-                  </div>
-                  <div>
-                    <h3>{item.clientName}</h3>
-                    <span>
-                      {[item.designation, item.company]
-                        .filter(Boolean)
-                        .join(" • ")}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+      <div className="section-header testimonials-header">
+        <span className="section-badge">
+          <span className="badge-dot" />
+          Client Stories
+        </span>
+        <h2>What Our Clients Say</h2>
+        <p>
+          Real feedback from businesses that trust TechnoSthan to deliver
+          reliable digital solutions.
+        </p>
       </div>
+
+      {loading ? (
+        <div className="testimonials-state">Loading testimonials...</div>
+      ) : error ? (
+        <div className="testimonials-state error">
+          <FiAlertCircle />
+          <span>{error}</span>
+        </div>
+      ) : (
+        <div className="testimonials-grid">
+          {testimonials.map((item) => (
+            <article key={item.id} className="testimonial-card">
+              <div className="testimonial-top">
+                <div className="testimonial-badge">
+                  <FiMessageSquare size={16} />
+                  Client feedback
+                </div>
+                <div className="testimonial-rating" aria-label="5 star rating">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <FiStar key={index} size={14} />
+                  ))}
+                </div>
+              </div>
+
+              <p className="testimonial-copy">{item.feedback}</p>
+
+              <div className="testimonial-footer">
+                <div className="testimonial-avatar">
+                  {item.imageUrl ? (
+                    <img
+                      src={getSafeImageUrl(item.imageUrl)}
+                      alt={item.clientName}
+                    />
+                  ) : (
+                    <FiUser />
+                  )}
+                </div>
+                <div className="testimonial-meta">
+                  <h3>{item.clientName}</h3>
+                  <span>
+                    {[item.designation, item.company]
+                      .filter(Boolean)
+                      .join(" | ")}
+                  </span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

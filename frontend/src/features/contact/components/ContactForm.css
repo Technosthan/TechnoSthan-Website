@@ -53,8 +53,8 @@
 
 /* options */
 .contact-form option {
-  background: #111633;
-  color: white;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
 }
 
 @media (max-width:768px) {

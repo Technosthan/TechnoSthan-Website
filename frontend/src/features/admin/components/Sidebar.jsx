@@ -8,6 +8,10 @@ const navItems = [
     path: `${ADMIN_ROUTE}/products`,
   },
   {
+    label: "Services",
+    path: `${ADMIN_ROUTE}/services`,
+  },
+  {
     label: "Client Testimonials",
     path: `${ADMIN_ROUTE}/testimonials`,
   },
