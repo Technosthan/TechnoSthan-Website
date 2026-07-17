@@ -23,6 +23,12 @@ const dataWorkFileSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    fileHash: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
     storageUrl: {
       type: String,
       trim: true,
@@ -55,6 +61,54 @@ const dataWorkFileSchema = new mongoose.Schema(
       default: "",
     },
     sheetNames: {
+      type: [String],
+      default: [],
+    },
+    extractionMethod: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    pageCount: {
+      type: Number,
+      default: null,
+    },
+    imageWidth: {
+      type: Number,
+      default: null,
+    },
+    imageHeight: {
+      type: Number,
+      default: null,
+    },
+    selectedTable: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    selectedPage: {
+      type: Number,
+      default: null,
+      index: true,
+    },
+    ocrUsed: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    averageConfidence: {
+      type: Number,
+      default: null,
+    },
+    processingStatus: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    extractionWarnings: {
       type: [String],
       default: [],
     },
@@ -213,6 +267,54 @@ const dataWorkSchema = new mongoose.Schema(
       index: true,
     },
     sheetNames: {
+      type: [String],
+      default: [],
+    },
+    extractionMethod: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    pageCount: {
+      type: Number,
+      default: null,
+    },
+    imageWidth: {
+      type: Number,
+      default: null,
+    },
+    imageHeight: {
+      type: Number,
+      default: null,
+    },
+    selectedTable: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    selectedPage: {
+      type: Number,
+      default: null,
+      index: true,
+    },
+    ocrUsed: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    averageConfidence: {
+      type: Number,
+      default: null,
+    },
+    processingStatus: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    extractionWarnings: {
       type: [String],
       default: [],
     },

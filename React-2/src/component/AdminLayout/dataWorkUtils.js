@@ -55,6 +55,12 @@ export const formatCellValue = (value) => {
   return String(value);
 };
 
+export const formatPlainCellValue = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "boolean") return value ? "True" : "False";
+  return String(value);
+};
+
 export const getWorkStatusBadgeClass = (status = "") => {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "ready") {

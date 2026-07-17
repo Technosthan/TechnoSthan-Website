@@ -1,7 +1,8 @@
 import {
   ArrowLeft,
-  FileSpreadsheet,
+  FileImage,
   Upload,
+  Table2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +13,7 @@ import {
 import {
   FILE_SIZE_LIMIT_BYTES,
   formatBytes,
-  formatCellValue,
+  formatPlainCellValue,
 } from "./dataWorkUtils";
 
 const fieldClassName =
@@ -25,6 +26,18 @@ const previewColumns = (previewRows = []) => {
   const firstRow = previewRows[0]?.data || {};
   return Object.keys(firstRow);
 };
+
+const supportedExtensions = [
+  ".xlsx",
+  ".xls",
+  ".csv",
+  ".json",
+  ".pdf",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+];
 
 const DataWorkFormModal = ({
   open,
@@ -41,6 +54,7 @@ const DataWorkFormModal = ({
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
   const [selectedSheet, setSelectedSheet] = useState("");
+  const [selectedTableId, setSelectedTableId] = useState("");
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
@@ -63,6 +77,7 @@ const DataWorkFormModal = ({
       setFormError("");
       setFile(null);
       setSelectedSheet("");
+      setSelectedTableId("");
       setName(work?.name || "");
       setDescription(work?.description || "");
       if (fileInputRef.current) {
@@ -77,6 +92,30 @@ const DataWorkFormModal = ({
     () => (Array.isArray(preview?.sheetNames) ? preview.sheetNames : []),
     [preview],
   );
+
+  const tableOptions = useMemo(
+    () => (Array.isArray(preview?.availableTables) ? preview.availableTables : []),
+    [preview],
+  );
+
+  const selectedPreviewTable = useMemo(() => {
+    const tableId = selectedTableId || preview?.selectedTableId || "";
+    if (!tableId) return null;
+    return (
+      (Array.isArray(preview?.tables) &&
+        preview.tables.find((table) => table.id === tableId)) ||
+      null
+    );
+  }, [preview, selectedTableId]);
+
+  const previewRows = selectedPreviewTable?.previewRows || preview?.previewRows || [];
+  const previewColumnsList =
+    selectedPreviewTable?.columns?.length
+      ? selectedPreviewTable.columns
+      : Array.isArray(preview?.columns)
+        ? preview.columns
+        : [];
+  const hasMultipleTables = tableOptions.length > 1;
 
   const loadPreview = useCallback(async (nextFile, nextSheet = "") => {
     if (!nextFile) {
@@ -100,11 +139,11 @@ const DataWorkFormModal = ({
       if (previewData?.selectedSheet) {
         setSelectedSheet(previewData.selectedSheet);
       }
+      setSelectedTableId(previewData?.selectedTableId || "");
       if ((previewData?.sheetNames || []).length > 1) {
         setStage("preview");
-      } else {
-        setStage(isReplaceMode || isCreateMode ? "preview" : "form");
       }
+      setStage(isReplaceMode || isCreateMode ? "preview" : "form");
     } catch (error) {
       const message =
         error.response?.data?.message ||
@@ -134,6 +173,7 @@ const DataWorkFormModal = ({
       setFile(null);
       setPreview(null);
       setSelectedSheet("");
+      setSelectedTableId("");
       setPreviewError("");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -145,8 +185,10 @@ const DataWorkFormModal = ({
       .split(".")
       .pop()
       .toLowerCase()}`;
-    if (![".xlsx", ".xls", ".csv", ".json"].includes(extension)) {
-      toast.error("Please select an Excel, CSV, or JSON file.");
+    if (!supportedExtensions.includes(extension)) {
+      toast.error(
+        "Supported files are XLSX, XLS, CSV, JSON, PDF, PNG, JPG, JPEG, and WEBP.",
+      );
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -163,6 +205,7 @@ const DataWorkFormModal = ({
 
     setFile(selected);
     setSelectedSheet("");
+    setSelectedTableId("");
   };
 
   const handleSubmit = async (event) => {
@@ -183,7 +226,14 @@ const DataWorkFormModal = ({
     }
 
     if (!isEditMode && requiresFile && !file) {
-      setFormError("Please select an Excel or CSV file.");
+      setFormError(
+        "Please select a supported file. Supported files are XLSX, XLS, CSV, JSON, PDF, PNG, JPG, JPEG, and WEBP.",
+      );
+      return;
+    }
+
+    if (!isEditMode && hasMultipleTables && !selectedTableId) {
+      setFormError("Multiple tables were detected. Please select one.");
       return;
     }
 
@@ -200,12 +250,19 @@ const DataWorkFormModal = ({
       description: trimmedDescription,
       file,
       selectedSheet: selectedSheet || preview?.selectedSheet || "",
+      selectedTableId: selectedTableId || preview?.selectedTableId || "",
     });
   };
 
   const handleConfirmPreview = () => {
     if (requiresFile && !file) {
-      setFormError("Please select an Excel or CSV file.");
+      setFormError(
+        "Please select a supported file. Supported files are XLSX, XLS, CSV, JSON, PDF, PNG, JPG, JPEG, and WEBP.",
+      );
+      return;
+    }
+    if (hasMultipleTables && !selectedTableId) {
+      setFormError("Multiple tables were detected. Please select one.");
       return;
     }
     setStage("preview");
@@ -346,8 +403,8 @@ const DataWorkFormModal = ({
                               Drag and drop your file here
                             </div>
                             <p className="text-xs leading-5 text-slate-500">
-                              Supported: XLSX, XLS, CSV, and optional JSON. Maximum
-                              size is 10 MB.
+                              Supported: XLSX, XLS, CSV, JSON, PDF, PNG, JPG, JPEG, and WEBP.
+                              Maximum size is 10 MB.
                             </p>
                           </div>
 
@@ -356,7 +413,7 @@ const DataWorkFormModal = ({
                             className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10"
                             onClick={() => fileInputRef.current?.click()}
                           >
-                            <FileSpreadsheet size={16} />
+                            <FileImage size={16} />
                             Browse
                           </button>
                         </div>
@@ -364,7 +421,7 @@ const DataWorkFormModal = ({
                         <input
                           ref={fileInputRef}
                           type="file"
-                          accept=".xlsx,.xls,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/json,text/plain"
+                          accept=".xlsx,.xls,.csv,.json,.pdf,.png,.jpg,.jpeg,.webp,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/json,text/plain,application/pdf,image/png,image/jpeg,image/jpg,image/webp"
                           className="hidden"
                           onChange={(event) => handleFile(event.target.files?.[0])}
                         />
@@ -393,7 +450,12 @@ const DataWorkFormModal = ({
 
                         {previewLoading ? (
                           <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-                            Reading file and detecting columns...
+                            <div className="space-y-1.5">
+                              <p className="font-semibold">Reading document...</p>
+                              <p className="text-xs text-cyan-100/80">Extracting text...</p>
+                              <p className="text-xs text-cyan-100/80">Detecting table...</p>
+                              <p className="text-xs text-cyan-100/80">Preparing preview...</p>
+                            </div>
                           </div>
                         ) : null}
 
@@ -431,6 +493,70 @@ const DataWorkFormModal = ({
 
                     {preview ? (
                       <div className="space-y-4">
+                        {(preview.extractionWarnings || []).length ? (
+                          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                            {preview.extractionWarnings.map((warning) => (
+                              <p key={warning} className="leading-6">
+                                {warning}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                              File
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {preview.originalFileName || file?.name || "-"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {preview.fileType || file?.type || "-"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                              Extraction Method
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {preview.extractionMethod || "-"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {preview.ocrUsed ? "OCR enabled" : "Direct text extraction"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                              Document Info
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {preview.pageCount ? `${preview.pageCount} page(s)` : "Single image"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {preview.imageWidth && preview.imageHeight
+                                ? `${preview.imageWidth} × ${preview.imageHeight}px`
+                                : preview.totalRows
+                                  ? `${preview.totalRows} detected rows`
+                                  : "-"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                              Confidence
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {preview.averageConfidence !== null &&
+                              preview.averageConfidence !== undefined
+                                ? `${Math.round(preview.averageConfidence)}%`
+                                : "N/A"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {preview.ocrUsed ? "OCR review recommended" : "Structured extraction"}
+                            </p>
+                          </div>
+                        </div>
+
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
                             <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
@@ -454,38 +580,67 @@ const DataWorkFormModal = ({
                               </p>
                             )}
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
-                              Detected Rows
-                            </p>
-                            <p className="mt-2 text-sm font-medium text-white">
-                              {preview.totalRows || 0}
-                            </p>
-                          </div>
+
+                          {hasMultipleTables ? (
+                            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                              <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                                Detected Table
+                              </p>
+                              <select
+                                className={`${fieldClassName} mt-2`}
+                                value={selectedTableId || preview.selectedTableId || ""}
+                                onChange={(event) => setSelectedTableId(event.target.value)}
+                              >
+                                <option value="">Select a table</option>
+                                {tableOptions.map((table) => (
+                                  <option key={table.id} value={table.id}>
+                                    {table.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                              <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                                Detected Table
+                              </p>
+                              <p className="mt-2 text-sm font-medium text-white">
+                                {selectedPreviewTable?.label ||
+                                  preview.selectedTable?.label ||
+                                  preview.tableName ||
+                                  "-"}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
-                            Detected Headers
-                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                                Detected Headers
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {selectedPreviewTable?.rowCount || preview.totalRows || 0} rows ready for import
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                              <Table2 size={12} />
+                              {selectedPreviewTable?.label || preview.tableName || "Table"}
+                            </span>
+                          </div>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {Array.isArray(preview.columns) && preview.columns.length
-                              ? preview.columns.map((column) => (
-                                  <span
-                                    key={column.normalizedKey}
-                                    className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-100"
-                                  >
-                                    {column.originalHeader}
-                                  </span>
-                                ))
-                              : previewColumns(preview.previewRows).map((header) => (
-                                  <span
-                                    key={header}
-                                    className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-100"
-                                  >
-                                    {header}
-                                  </span>
-                                ))}
+                            {(previewColumnsList.length
+                              ? previewColumnsList
+                              : previewColumns(previewRows)
+                            ).map((column) => (
+                              <span
+                                key={column.normalizedKey || column}
+                                className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-100"
+                              >
+                                {column.originalHeader || column}
+                              </span>
+                            ))}
                           </div>
                         </div>
 
@@ -495,29 +650,42 @@ const DataWorkFormModal = ({
                               <thead className="sticky top-0 bg-slate-950/95 text-slate-300">
                                 <tr className="border-b border-white/10">
                                   <th className="px-3 py-2">Row</th>
-                                  {(preview.columns || []).map((column) => (
-                                    <th key={column.normalizedKey} className="px-3 py-2">
-                                      {column.originalHeader}
+                                  {(previewColumnsList.length
+                                    ? previewColumnsList
+                                    : previewColumns(previewRows)
+                                  ).map((column) => (
+                                    <th key={column.normalizedKey || column} className="px-3 py-2">
+                                      {column.originalHeader || column}
                                     </th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-white/5 bg-slate-950/55">
-                                {(preview.previewRows || []).slice(0, 10).map((row) => (
+                                {previewRows.slice(0, 10).map((row) => (
                                   <tr key={row.rowNumber} className="hover:bg-white/[0.03]">
                                     <td className="px-3 py-2 align-top text-slate-500">
                                       {row.rowNumber}
                                     </td>
-                                    {(preview.columns || []).map((column) => (
-                                      <td
-                                        key={`${row.rowNumber}-${column.normalizedKey}`}
-                                        className="px-3 py-2 align-top"
-                                      >
-                                        <span className="block max-w-[220px] truncate" title={formatCellValue(row.data?.[column.normalizedKey])}>
-                                          {formatCellValue(row.data?.[column.normalizedKey])}
-                                        </span>
-                                      </td>
-                                    ))}
+                                    {(previewColumnsList.length
+                                      ? previewColumnsList
+                                      : previewColumns(previewRows)
+                                    ).map((column) => {
+                                      const key = column.normalizedKey || column;
+                                      const value = row.data?.[key];
+                                      return (
+                                        <td
+                                          key={`${row.rowNumber}-${key}`}
+                                          className="px-3 py-2 align-top"
+                                        >
+                                          <span
+                                            className="block max-w-[220px] truncate"
+                                            title={formatPlainCellValue(value)}
+                                          >
+                                            {formatPlainCellValue(value)}
+                                          </span>
+                                        </td>
+                                      );
+                                    })}
                                   </tr>
                                 ))}
                               </tbody>

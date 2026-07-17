@@ -8,12 +8,15 @@ import {
   Search,
   Table2,
   Upload,
+  Trash2,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import AdminLayout from "./AdminLayout";
 import DataWorkFormModal from "./DataWorkFormModal";
 import {
   exportAdminDataWork,
+  deleteAdminDataWork,
   getAdminDataWorkById,
   getAdminDataWorkRecords,
   replaceAdminDataWorkFile,
@@ -21,8 +24,8 @@ import {
 } from "./dataWorkApi";
 import {
   formatBytes,
-  formatCellValue,
   formatDateTime,
+  formatPlainCellValue,
 } from "./dataWorkUtils";
 
 const filterClassName =
@@ -32,6 +35,53 @@ const detailCardClass =
   "rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_44%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.88))] p-5 shadow-xl shadow-slate-950/25";
 
 const pageSizeOptions = [10, 25, 50, 100];
+
+const ConfirmationModal = ({ open, title, message, confirmLabel, onClose, onConfirm, loading }) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-950/80 px-3 py-6 backdrop-blur">
+      <div className="w-full max-w-lg rounded-[30px] border border-white/10 bg-slate-950/95 p-5 shadow-2xl shadow-slate-950/60">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300/80">
+              Confirm Action
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">{title}</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-400">{message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10"
+          >
+            <X size={16} />
+            <span className="sr-only">Close</span>
+          </button>
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            className="rounded-full border border-white/10 px-5 py-2.5 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/5"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-full bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? "Working..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DataWorkDetails = () => {
   const navigate = useNavigate();
@@ -51,6 +101,8 @@ const DataWorkDetails = () => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [pagination, setPagination] = useState(null);
   const [modalState, setModalState] = useState({ open: false, mode: "edit" });
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const loadWork = useCallback(async () => {
     try {
@@ -142,26 +194,48 @@ const DataWorkDetails = () => {
   const openEdit = () => setModalState({ open: true, mode: "edit" });
   const openReplace = () => setModalState({ open: true, mode: "replace" });
   const closeModal = () => setModalState({ open: false, mode: "edit" });
+  const openDelete = () => setDeleteOpen(true);
+  const closeDelete = () => {
+    if (deleteLoading) return;
+    setDeleteOpen(false);
+  };
 
   const handleSave = async (payload) => {
     try {
       if (modalState.mode === "edit") {
-        await updateAdminDataWork(workId, payload);
-        toast.success("Work updated successfully.");
+        const response = await updateAdminDataWork(workId, payload);
+        toast.success(response?.data?.message || "Work updated successfully.");
       } else {
         const formData = new FormData();
         formData.append("file", payload.file);
         if (payload.selectedSheet) {
           formData.append("selectedSheet", payload.selectedSheet);
         }
-        await replaceAdminDataWorkFile(workId, formData);
-        toast.success("File replaced successfully.");
+        if (payload.selectedTableId) {
+          formData.append("selectedTableId", payload.selectedTableId);
+        }
+        const response = await replaceAdminDataWorkFile(workId, formData);
+        toast.success(response?.data?.message || "File replaced successfully.");
       }
       closeModal();
       await loadWork();
       await loadRecords();
     } catch (err) {
       toast.error(err.response?.data?.message || "Unable to save work.");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setDeleteLoading(true);
+      const response = await deleteAdminDataWork(workId);
+      toast.success(response?.data?.message || "Work deleted successfully.");
+      setDeleteOpen(false);
+      navigate("/admin/data-work-manager");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Unable to delete this work.");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -224,6 +298,14 @@ const DataWorkDetails = () => {
               </button>
               <button
                 type="button"
+                className="inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100 transition hover:bg-rose-500/15"
+                onClick={openDelete}
+              >
+                <Trash2 size={15} />
+                Delete Work
+              </button>
+              <button
+                type="button"
                 className="inline-flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
                 onClick={handleExport}
               >
@@ -234,7 +316,7 @@ const DataWorkDetails = () => {
           </div>
 
           {work?.currentFile ? (
-            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-5">
               <div className={detailCardClass}>
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
                   Original File
@@ -267,6 +349,33 @@ const DataWorkDetails = () => {
                 </p>
                 <p className="mt-2 text-sm text-slate-400">
                   Last updated: {formatDateTime(work.updatedAt)}
+                </p>
+              </div>
+              <div className={detailCardClass}>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                  Preview Scope
+                </p>
+                <p className="mt-3 text-lg font-semibold text-white">
+                  {work.currentFile.pageCount || work.pageCount || 1} page(s)
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  {work.currentFile.selectedTable || work.selectedTable || "No table label"}
+                </p>
+              </div>
+              <div className={detailCardClass}>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                  Confidence
+                </p>
+                <p className="mt-3 text-lg font-semibold text-white">
+                  {work.currentFile.averageConfidence !== null &&
+                  work.currentFile.averageConfidence !== undefined
+                    ? `${Math.round(work.currentFile.averageConfidence)}%`
+                    : work.averageConfidence !== null && work.averageConfidence !== undefined
+                      ? `${Math.round(work.averageConfidence)}%`
+                      : "-"}
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  {work.currentFile.ocrUsed || work.ocrUsed ? "OCR enabled" : "Direct text extraction"}
                 </p>
               </div>
             </div>
@@ -411,9 +520,9 @@ const DataWorkDetails = () => {
                           <td key={`${record.rowNumber}-${column.normalizedKey}`} className="px-4 py-4 align-top">
                             <span
                               className="block max-w-[240px] truncate text-slate-200"
-                              title={formatCellValue(value)}
+                              title={formatPlainCellValue(value)}
                             >
-                              {formatCellValue(value)}
+                              {formatPlainCellValue(value)}
                             </span>
                           </td>
                         );
@@ -462,6 +571,16 @@ const DataWorkDetails = () => {
         saving={false}
         onClose={closeModal}
         onSubmit={handleSave}
+      />
+
+      <ConfirmationModal
+        open={deleteOpen}
+        title="Delete Work?"
+        message={`You are about to permanently delete "${work?.name || ""}". Its uploaded file, detected columns, imported records, and related metadata will also be removed. This action cannot be undone.`}
+        confirmLabel="Delete Permanently"
+        loading={deleteLoading}
+        onClose={closeDelete}
+        onConfirm={handleDelete}
       />
     </AdminLayout>
   );

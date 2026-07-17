@@ -263,16 +263,19 @@ const DataWorkManager = () => {
     try {
       setSaving(true);
       if (modalState.mode === "edit") {
-        await updateAdminDataWork(modalState.work._id || modalState.work.id, payload);
-        toast.success("Work updated successfully.");
+        const response = await updateAdminDataWork(modalState.work._id || modalState.work.id, payload);
+        toast.success(response?.data?.message || "Work updated successfully.");
       } else if (modalState.mode === "replace") {
         const formData = new FormData();
         formData.append("file", payload.file);
         if (payload.selectedSheet) {
           formData.append("selectedSheet", payload.selectedSheet);
         }
-        await replaceAdminDataWorkFile(modalState.work._id || modalState.work.id, formData);
-        toast.success("File replaced successfully.");
+        if (payload.selectedTableId) {
+          formData.append("selectedTableId", payload.selectedTableId);
+        }
+        const response = await replaceAdminDataWorkFile(modalState.work._id || modalState.work.id, formData);
+        toast.success(response?.data?.message || "File replaced successfully.");
       } else {
         const formData = new FormData();
         formData.append("name", payload.name);
@@ -281,8 +284,11 @@ const DataWorkManager = () => {
         if (payload.selectedSheet) {
           formData.append("selectedSheet", payload.selectedSheet);
         }
-        await createAdminDataWork(formData);
-        toast.success("Work created successfully.");
+        if (payload.selectedTableId) {
+          formData.append("selectedTableId", payload.selectedTableId);
+        }
+        const response = await createAdminDataWork(formData);
+        toast.success(response?.data?.message || "Work created successfully.");
       }
       setModalState(initialFormState);
       await fetchWorks({ pageNumber: 1, withLoading: true });
@@ -625,9 +631,9 @@ const DataWorkManager = () => {
 
       <ConfirmationModal
         open={Boolean(deleteTarget)}
-        title={`Delete ${deleteTarget?.name || "this work"}?`}
-        message={`This will permanently delete the work, imported columns, imported records, and the stored file for "${deleteTarget?.name || ""}".`}
-        confirmLabel="Delete Work"
+        title="Delete Work?"
+        message={`You are about to permanently delete "${deleteTarget?.name || ""}". Its uploaded file, detected columns, imported records, and related metadata will also be removed. This action cannot be undone.`}
+        confirmLabel="Delete Permanently"
         loading={saving}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}

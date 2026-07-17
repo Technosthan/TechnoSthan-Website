@@ -73,6 +73,53 @@ const buildImportEntities = ({ workId, columns, records, session }) => {
   return { columnDocs, recordDocs, session };
 };
 
+const buildWorkMetadata = (parsed = {}, fileValidation = {}) => ({
+  fileHash: fileValidation.fileHash || parsed.fileHash || "",
+  extractionMethod: parsed.extractionMethod || "",
+  pageCount: Number.isFinite(Number(parsed.pageCount)) ? Number(parsed.pageCount) : null,
+  imageWidth: Number.isFinite(Number(parsed.imageWidth)) ? Number(parsed.imageWidth) : null,
+  imageHeight: Number.isFinite(Number(parsed.imageHeight)) ? Number(parsed.imageHeight) : null,
+  selectedTable: parsed.selectedTable?.tableName || parsed.selectedTable?.label || "",
+  selectedPage: Number.isFinite(Number(parsed.selectedPage))
+    ? Number(parsed.selectedPage)
+    : Number.isFinite(Number(parsed.selectedTable?.pageNumber))
+      ? Number(parsed.selectedTable.pageNumber)
+      : null,
+  ocrUsed: Boolean(parsed.ocrUsed),
+  averageConfidence: Number.isFinite(Number(parsed.averageConfidence))
+    ? Number(parsed.averageConfidence)
+    : null,
+  processingStatus: parsed.processingStatus || "Ready",
+  extractionWarnings: Array.isArray(parsed.extractionWarnings)
+    ? parsed.extractionWarnings
+    : [],
+});
+
+const buildImportActivityMetadata = (work, file, parsed, fileValidation) => ({
+  adminId: work.createdBy?.toString?.() || null,
+  workId: work._id?.toString?.() || null,
+  workName: work.name,
+  fileName: file.originalname,
+  fileType: fileValidation.extension,
+  totalRecords: work.totalRecords,
+  totalColumns: work.totalColumns,
+  extractionMethod: parsed.extractionMethod || "",
+  pageCount: parsed.pageCount || null,
+  ocrUsed: Boolean(parsed.ocrUsed),
+  averageConfidence: Number.isFinite(Number(parsed.averageConfidence))
+    ? Number(parsed.averageConfidence)
+    : null,
+  selectedTable: parsed.selectedTable?.tableName || parsed.selectedTable?.label || "",
+  selectedPage: Number.isFinite(Number(parsed.selectedPage))
+    ? Number(parsed.selectedPage)
+    : Number.isFinite(Number(parsed.selectedTable?.pageNumber))
+      ? Number(parsed.selectedTable.pageNumber)
+      : null,
+  extractionWarnings: Array.isArray(parsed.extractionWarnings)
+    ? parsed.extractionWarnings
+    : [],
+});
+
 const buildSummary = async () => {
   const [totalWorks, totalFiles, totalRecords, recentlyUpdated] = await Promise.all(
     [
@@ -256,19 +303,27 @@ const getAdminDataWorkRecords = async (req, res) => {
 const previewUpload = async (req, res) => {
   try {
     const file = req.file;
-    validateDataWorkFile(file);
     const selectedSheet = String(req.body?.selectedSheet || "").trim() || undefined;
+    const selectedTableId = String(req.body?.selectedTableId || req.body?.selectedTable || "").trim() || undefined;
     const preview = await parseUploadedDataFile({
       file,
       selectedSheet,
+      selectedTableId,
     });
+
+    const hasMultipleSheets = Array.isArray(preview.sheetNames) && preview.sheetNames.length > 1;
+    const hasMultipleTables = Array.isArray(preview.availableTables) && preview.availableTables.length > 1;
 
     return res.status(200).json({
       success: true,
       data: preview,
       message:
-        preview.sheetNames.length > 1
+        hasMultipleSheets
           ? "This workbook contains multiple sheets. Please select a sheet."
+          : hasMultipleTables
+            ? "Multiple tables were detected. Please select one."
+            : preview.ocrUsed
+              ? "Preview ready using OCR."
           : "Preview ready",
     });
   } catch (error) {
@@ -287,6 +342,7 @@ const createDataWork = async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const description = String(req.body?.description || "").trim().slice(0, 500);
     const selectedSheet = String(req.body?.selectedSheet || "").trim() || undefined;
+    const selectedTableId = String(req.body?.selectedTableId || req.body?.selectedTable || "").trim() || undefined;
 
     if (name.length < 2) {
       return res.status(400).json({
@@ -303,9 +359,13 @@ const createDataWork = async (req, res) => {
     }
 
     const fileValidation = validateDataWorkFile(file);
-    const parsed = await parseUploadedDataFile({ file, selectedSheet });
+    const parsed = await parseUploadedDataFile({
+      file,
+      selectedSheet,
+      selectedTableId,
+    });
 
-    if (parsed.sheetNames.length > 1 && !selectedSheet) {
+    if (Array.isArray(parsed.sheetNames) && parsed.sheetNames.length > 1 && !selectedSheet) {
       return res.status(400).json({
         success: false,
         message: "This workbook contains multiple sheets. Please select a sheet.",
@@ -313,9 +373,18 @@ const createDataWork = async (req, res) => {
       });
     }
 
+    if (Array.isArray(parsed.availableTables) && parsed.availableTables.length > 1 && !selectedTableId) {
+      return res.status(400).json({
+        success: false,
+        message: "Multiple tables were detected. Please select one.",
+        data: parsed,
+      });
+    }
+
     savedFileInfo = await saveUploadedFile({ file, workName: name });
 
     const result = await runWithOptionalTransaction(async (session) => {
+      const workMetadata = buildWorkMetadata(parsed, fileValidation);
       const work = new DataWork({
         name,
         description,
@@ -323,6 +392,7 @@ const createDataWork = async (req, res) => {
         status: "Processing",
         originalFileName: file.originalname,
         storedFileName: savedFileInfo.storedFileName,
+        fileHash: workMetadata.fileHash,
         storageUrl: savedFileInfo.storageUrl,
         filePath: savedFileInfo.filePath,
         mimeType: fileValidation.mimeType,
@@ -330,6 +400,16 @@ const createDataWork = async (req, res) => {
         fileSize: file.size,
         selectedSheet: parsed.selectedSheet,
         sheetNames: parsed.sheetNames,
+        extractionMethod: workMetadata.extractionMethod,
+        pageCount: workMetadata.pageCount,
+        imageWidth: workMetadata.imageWidth,
+        imageHeight: workMetadata.imageHeight,
+        selectedTable: workMetadata.selectedTable,
+        selectedPage: workMetadata.selectedPage,
+        ocrUsed: workMetadata.ocrUsed,
+        averageConfidence: workMetadata.averageConfidence,
+        processingStatus: workMetadata.processingStatus,
+        extractionWarnings: workMetadata.extractionWarnings,
         totalColumns: parsed.totalColumns,
         totalRecords: parsed.totalRows,
         fileUploadedAt: new Date(),
@@ -347,6 +427,7 @@ const createDataWork = async (req, res) => {
             workId: savedWork._id,
             originalFileName: file.originalname,
             storedFileName: savedFileInfo.storedFileName,
+            fileHash: workMetadata.fileHash,
             storageUrl: savedFileInfo.storageUrl,
             filePath: savedFileInfo.filePath,
             mimeType: fileValidation.mimeType,
@@ -354,6 +435,16 @@ const createDataWork = async (req, res) => {
             fileSize: file.size,
             selectedSheet: parsed.selectedSheet,
             sheetNames: parsed.sheetNames,
+            extractionMethod: workMetadata.extractionMethod,
+            pageCount: workMetadata.pageCount,
+            imageWidth: workMetadata.imageWidth,
+            imageHeight: workMetadata.imageHeight,
+            selectedTable: workMetadata.selectedTable,
+            selectedPage: workMetadata.selectedPage,
+            ocrUsed: workMetadata.ocrUsed,
+            averageConfidence: workMetadata.averageConfidence,
+            processingStatus: workMetadata.processingStatus,
+            extractionWarnings: workMetadata.extractionWarnings,
             uploadedBy: req.user.id,
             uploadedAt: new Date(),
           },
@@ -373,9 +464,20 @@ const createDataWork = async (req, res) => {
 
       savedWork.currentFileId = fileDoc[0]._id;
       savedWork.status = "Ready";
+      savedWork.fileHash = workMetadata.fileHash;
       savedWork.totalColumns = parsed.totalColumns;
       savedWork.totalRecords = parsed.totalRows;
       savedWork.fileUploadedAt = new Date();
+      savedWork.extractionMethod = workMetadata.extractionMethod;
+      savedWork.pageCount = workMetadata.pageCount;
+      savedWork.imageWidth = workMetadata.imageWidth;
+      savedWork.imageHeight = workMetadata.imageHeight;
+      savedWork.selectedTable = workMetadata.selectedTable;
+      savedWork.selectedPage = workMetadata.selectedPage;
+      savedWork.ocrUsed = workMetadata.ocrUsed;
+      savedWork.averageConfidence = workMetadata.averageConfidence;
+      savedWork.processingStatus = workMetadata.processingStatus;
+      savedWork.extractionWarnings = workMetadata.extractionWarnings;
       await savedWork.save({ session });
 
       return savedWork;
@@ -388,12 +490,7 @@ const createDataWork = async (req, res) => {
         description: `Created data work ${result.name}`,
         entityId: result._id?.toString(),
         entityType: "DataWork",
-        metadata: {
-          workName: result.name,
-          fileName: file.originalname,
-          totalRows: result.totalRecords,
-          totalColumns: result.totalColumns,
-        },
+        metadata: buildImportActivityMetadata(result, file, parsed, fileValidation),
       });
     } catch (err) {
       console.error("Activity log failed:", err);
@@ -401,7 +498,9 @@ const createDataWork = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Work created successfully.",
+      message: parsed.ocrUsed
+        ? "File imported successfully using OCR."
+        : "Work created successfully.",
       data: {
         work: await DataWork.findById(result._id)
           .populate("createdBy", "name email role")
@@ -483,6 +582,7 @@ const updateDataWork = async (req, res) => {
 const replaceDataWorkFile = async (req, res) => {
   let savedFileInfo = null;
   let oldFilePath = "";
+  let cleanupWarning = "";
   try {
     const workId = toObjectId(req.params.workId);
     const work = await DataWork.findById(workId).populate("currentFileId");
@@ -495,13 +595,33 @@ const replaceDataWorkFile = async (req, res) => {
 
     const file = req.file;
     const selectedSheet = String(req.body?.selectedSheet || "").trim() || undefined;
+    const selectedTableId = String(req.body?.selectedTableId || req.body?.selectedTable || "").trim() || undefined;
     const fileValidation = validateDataWorkFile(file);
-    const parsed = await parseUploadedDataFile({ file, selectedSheet });
+    if (work.fileHash && work.fileHash === fileValidation.fileHash) {
+      return res.status(400).json({
+        success: false,
+        message: "This file has already been imported for this work.",
+      });
+    }
 
-    if (parsed.sheetNames.length > 1 && !selectedSheet) {
+    const parsed = await parseUploadedDataFile({
+      file,
+      selectedSheet,
+      selectedTableId,
+    });
+
+    if (Array.isArray(parsed.sheetNames) && parsed.sheetNames.length > 1 && !selectedSheet) {
       return res.status(400).json({
         success: false,
         message: "This workbook contains multiple sheets. Please select a sheet.",
+        data: parsed,
+      });
+    }
+
+    if (Array.isArray(parsed.availableTables) && parsed.availableTables.length > 1 && !selectedTableId) {
+      return res.status(400).json({
+        success: false,
+        message: "Multiple tables were detected. Please select one.",
         data: parsed,
       });
     }
@@ -514,8 +634,6 @@ const replaceDataWorkFile = async (req, res) => {
     oldFilePath = work.filePath || work.currentFileId?.filePath || "";
 
     const result = await runWithOptionalTransaction(async (session) => {
-      const oldFileId = work.currentFileId?._id || null;
-
       if (session) {
         work.$session(session);
       }
@@ -530,6 +648,7 @@ const replaceDataWorkFile = async (req, res) => {
             workId: work._id,
             originalFileName: file.originalname,
             storedFileName: savedFileInfo.storedFileName,
+            fileHash: fileValidation.fileHash,
             storageUrl: savedFileInfo.storageUrl,
             filePath: savedFileInfo.filePath,
             mimeType: fileValidation.mimeType,
@@ -537,6 +656,20 @@ const replaceDataWorkFile = async (req, res) => {
             fileSize: file.size,
             selectedSheet: parsed.selectedSheet,
             sheetNames: parsed.sheetNames,
+            extractionMethod: parsed.extractionMethod || "",
+            pageCount: parsed.pageCount ?? null,
+            imageWidth: parsed.imageWidth ?? null,
+            imageHeight: parsed.imageHeight ?? null,
+            selectedTable: parsed.selectedTable?.tableName || parsed.selectedTable?.label || "",
+            selectedPage: parsed.selectedPage ?? parsed.selectedTable?.pageNumber ?? null,
+            ocrUsed: Boolean(parsed.ocrUsed),
+            averageConfidence: Number.isFinite(Number(parsed.averageConfidence))
+              ? Number(parsed.averageConfidence)
+              : null,
+            processingStatus: parsed.processingStatus || "Ready",
+            extractionWarnings: Array.isArray(parsed.extractionWarnings)
+              ? parsed.extractionWarnings
+              : [],
             uploadedBy: req.user.id,
             uploadedAt: new Date(),
           },
@@ -557,6 +690,7 @@ const replaceDataWorkFile = async (req, res) => {
       work.currentFileId = newFileDoc[0]._id;
       work.originalFileName = file.originalname;
       work.storedFileName = savedFileInfo.storedFileName;
+      work.fileHash = fileValidation.fileHash;
       work.storageUrl = savedFileInfo.storageUrl;
       work.filePath = savedFileInfo.filePath;
       work.mimeType = fileValidation.mimeType;
@@ -564,6 +698,20 @@ const replaceDataWorkFile = async (req, res) => {
       work.fileSize = file.size;
       work.selectedSheet = parsed.selectedSheet;
       work.sheetNames = parsed.sheetNames;
+      work.extractionMethod = parsed.extractionMethod || "";
+      work.pageCount = parsed.pageCount ?? null;
+      work.imageWidth = parsed.imageWidth ?? null;
+      work.imageHeight = parsed.imageHeight ?? null;
+      work.selectedTable = parsed.selectedTable?.tableName || parsed.selectedTable?.label || "";
+      work.selectedPage = parsed.selectedPage ?? parsed.selectedTable?.pageNumber ?? null;
+      work.ocrUsed = Boolean(parsed.ocrUsed);
+      work.averageConfidence = Number.isFinite(Number(parsed.averageConfidence))
+        ? Number(parsed.averageConfidence)
+        : null;
+      work.processingStatus = parsed.processingStatus || "Ready";
+      work.extractionWarnings = Array.isArray(parsed.extractionWarnings)
+        ? parsed.extractionWarnings
+        : [];
       work.totalColumns = parsed.totalColumns;
       work.totalRecords = parsed.totalRows;
       work.fileUploadedAt = new Date();
@@ -574,7 +722,12 @@ const replaceDataWorkFile = async (req, res) => {
     });
 
     if (oldFilePath && oldFilePath !== savedFileInfo.filePath) {
-      await deleteStoredFile(oldFilePath);
+      try {
+        await deleteStoredFile(oldFilePath);
+      } catch (cleanupError) {
+        cleanupWarning = "The previous file could not be removed automatically.";
+        console.error("Cleanup file deletion failed:", cleanupError?.message || cleanupError);
+      }
     }
 
     try {
@@ -584,12 +737,7 @@ const replaceDataWorkFile = async (req, res) => {
         description: `Replaced file for data work ${result.name}`,
         entityId: result._id?.toString(),
         entityType: "DataWork",
-        metadata: {
-          workName: result.name,
-          fileName: file.originalname,
-          totalRows: result.totalRecords,
-          totalColumns: result.totalColumns,
-        },
+        metadata: buildImportActivityMetadata(result, file, parsed, fileValidation),
       });
     } catch (err) {
       console.error("Activity log failed:", err);
@@ -597,7 +745,10 @@ const replaceDataWorkFile = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "File replaced successfully.",
+      message: parsed.ocrUsed
+        ? "File imported successfully using OCR."
+        : "File replaced successfully.",
+      warning: cleanupWarning || undefined,
       data: await DataWork.findById(result._id)
         .populate("createdBy", "name email role")
         .populate("currentFileId")
@@ -627,6 +778,7 @@ const deleteDataWork = async (req, res) => {
     }
 
     const filePath = work.filePath || work.currentFileId?.filePath || "";
+    let cleanupWarning = "";
 
     await runWithOptionalTransaction(async (session) => {
       await DataWorkRecord.deleteMany({ workId: work._id }, session ? { session } : undefined);
@@ -636,7 +788,12 @@ const deleteDataWork = async (req, res) => {
     });
 
     if (filePath) {
-      await deleteStoredFile(filePath);
+      try {
+        await deleteStoredFile(filePath);
+      } catch (cleanupError) {
+        cleanupWarning = "Some stored files could not be removed automatically.";
+        console.error("Cleanup file deletion failed:", cleanupError?.message || cleanupError);
+      }
     }
 
     try {
@@ -647,10 +804,13 @@ const deleteDataWork = async (req, res) => {
         entityId: work._id?.toString(),
         entityType: "DataWork",
         metadata: {
+          adminId: req.user?.id || null,
+          workId: work._id?.toString() || null,
           workName: work.name,
           fileName: work.originalFileName,
-          totalRows: work.totalRecords,
-          totalColumns: work.totalColumns,
+          fileType: work.extension || work.currentFileId?.extension || "",
+          totalRecords: work.totalRecords,
+          deletedAt: new Date().toISOString(),
         },
       });
     } catch (err) {
@@ -660,6 +820,7 @@ const deleteDataWork = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Work deleted successfully.",
+      warning: cleanupWarning || undefined,
     });
   } catch (error) {
     console.error("Delete data work error:", error);
