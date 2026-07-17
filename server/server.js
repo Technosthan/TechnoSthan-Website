@@ -45,6 +45,7 @@ const hrRoutes = require("./routes/hrRoutes");
 const assignmentRoutes = require("./routes/assignmentRoutes");
 const userRoutes = require("./middleware/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const dataWorkRoutes = require("./routes/dataWorkRoutes");
 const loggingMiddleware = require("./middleware/loggingMiddleware");
 const settingsRoutes = require("./routes/settingsRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
@@ -491,6 +492,12 @@ app.use(
   "/api/admin",
 
   adminRoutes,
+);
+
+app.use(
+  "/api/admin/data-works",
+
+  dataWorkRoutes,
 );
 
 app.use(

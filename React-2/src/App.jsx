@@ -31,6 +31,8 @@ import AdminUsers from "./component/AdminLayout/AdminUsers";
 import ActivityLogs from "./component/AdminLayout/ActivityLogs";
 import WorkspaceServices from "./component/AdminLayout/WorkspaceServices";
 import DailyTasksManager from "./component/AdminLayout/DailyTasksManager";
+import DataWorkManager from "./component/AdminLayout/DataWorkManager";
+import DataWorkDetails from "./component/AdminLayout/DataWorkDetails";
 import MyAssignments from "./component/Assignments/MyAssignments";
 import HRDashboard from "./component/HRDashboard/HRDashboard";
 import UserDailyTasks from "./component/DailyTasks/UserDailyTasks";
@@ -338,6 +340,24 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <ActivityLogs />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/data-work-manager"
+          element={
+            <ProtectedAdminRoute>
+              <DataWorkManager />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/data-work-manager/:workId"
+          element={
+            <ProtectedAdminRoute>
+              <DataWorkDetails />
             </ProtectedAdminRoute>
           }
         />

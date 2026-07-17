@@ -2,6 +2,7 @@ import {
   BriefcaseBusiness,
   CalendarCheck,
   ChartNoAxesCombined,
+  Database,
   House,
   LogOut,
   Megaphone,
@@ -75,6 +76,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               label: "Form Builder",
               to: "/admin/forms",
               icon: Shapes,
+            },
+            {
+              label: "Data Work Manager",
+              to: "/admin/data-work-manager",
+              icon: Database,
             },
             {
               label: "Page Content Manager",
