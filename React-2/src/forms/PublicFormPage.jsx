@@ -440,15 +440,17 @@ const PublicFormPage = () => {
             {(question.options || []).map((option) => (
               <label
                 key={option}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 px-4 py-3"
+                dir="ltr"
+                className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 text-left"
               >
                 <input
                   type="radio"
+                  className="h-4 w-4 shrink-0 accent-cyan-500"
                   name={question._id}
                   checked={values[question._id] === option}
                   onChange={() => handleAnswer(question._id, option)}
                 />
-                {option}
+                <span className="min-w-0 flex-1 break-words">{option}</span>
               </label>
             ))}
           </div>
@@ -457,14 +459,16 @@ const PublicFormPage = () => {
             {(question.options || []).map((option) => (
               <label
                 key={option}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 px-4 py-3"
+                dir="ltr"
+                className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 text-left"
               >
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 accent-cyan-500"
                   checked={(values[question._id] || []).includes(option)}
                   onChange={() => handleCheckbox(question._id, option)}
                 />
-                {option}
+                <span className="min-w-0 flex-1 break-words">{option}</span>
               </label>
             ))}
           </div>
