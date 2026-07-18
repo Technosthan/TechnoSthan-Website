@@ -2,17 +2,25 @@ const {
   bootstrapEmailTransport,
   sendMailWithRetry,
   verifyTransport,
-} = require("./gmailTransport");
+} = require("./sendgridTransport");
 const {
   getEmailFromAddress,
   validateEmailEnvironment,
 } = require("./emailConfig");
 
-const sendEmail = async ({ to, subject, html, text = "", retries = 3 }) => {
+const sendEmail = async ({
+  to,
+  subject,
+  html,
+  text = "",
+  replyTo,
+  cc,
+  bcc,
+  attachments,
+  retries = 3,
+  }) => {
   validateEmailEnvironment();
-
-  const from = getEmailFromAddress();
-  if (!from) {
+  if (!getEmailFromAddress()) {
     const error = new Error("Email sender is not configured");
     error.code = "EMAIL_FROM_MISSING";
     error.statusCode = 500;
@@ -21,15 +29,17 @@ const sendEmail = async ({ to, subject, html, text = "", retries = 3 }) => {
 
   return sendMailWithRetry(
     {
-      from,
       to,
       subject,
       html,
       text: text || undefined,
+      replyTo,
+      cc,
+      bcc,
+      attachments,
     },
     {
       retries,
-      verifyBeforeSend: true,
     },
   );
 };

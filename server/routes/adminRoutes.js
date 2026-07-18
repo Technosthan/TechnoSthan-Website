@@ -12,7 +12,7 @@ const {
   updateUserPermissions,
   getPermissionInsights,
 } = require("../controllers/workspaceSettingsController");
-const { getUsers } = require("../controllers/adminController");
+const { getUsers, sendTestEmail } = require("../controllers/adminController");
 const { getActivityLogs } = require("../controllers/activityLogController");
 
 router.use(protect, admin);
@@ -29,6 +29,7 @@ router.patch("/workspace-services/roles/:role", updateRolePermissions);
 router.get("/workspace-services/users/:userId", getUserPermissions);
 router.patch("/workspace-services/users/:userId", updateUserPermissions);
 router.get("/workspace-services/insights", getPermissionInsights);
+router.post("/test-email", sendTestEmail);
 router.get("/users", getUsers);
 router.get("/activity-logs", getActivityLogs);
 

@@ -41,7 +41,7 @@ exports.createContact = async (req, res) => {
     await newContact.save();
 
     await sendEmail({
-      to: process.env.EMAIL_USER,
+      to: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       subject: "New Contact Form Submission",
       html: `
         <h2>New Client Message</h2>

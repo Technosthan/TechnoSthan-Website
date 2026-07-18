@@ -1,35 +1,39 @@
-const EMAIL_SERVICE_HOST = "smtp.gmail.com";
-const EMAIL_SERVICE_PORT = 587;
-let hasLoggedLegacyPasswordWarning = false;
-
 const getTrimmedEnv = (name) => String(process.env[name] || "").trim();
 
-const getEmailCredentials = () => {
-  const user = getTrimmedEnv("EMAIL_USER");
-  const appPassword = getTrimmedEnv("EMAIL_APP_PASSWORD") || getTrimmedEnv("EMAIL_PASS");
-
-  return {
-    user,
-    appPassword,
-    isLegacyPasswordEnv: !getTrimmedEnv("EMAIL_APP_PASSWORD") && Boolean(getTrimmedEnv("EMAIL_PASS")),
-  };
+const getEmailProvider = () => {
+  const provider = getTrimmedEnv("EMAIL_PROVIDER") || "sendgrid";
+  return provider.toLowerCase();
 };
 
 const getEmailFromAddress = () =>
-  getTrimmedEnv("EMAIL_FROM") ||
-  getTrimmedEnv("SMTP_FROM") ||
-  getEmailCredentials().user;
+  getTrimmedEnv("EMAIL_FROM");
+
+const getEmailFromName = () => getTrimmedEnv("EMAIL_FROM_NAME") || "TechnoSthan";
+
+const getEmailReplyToAddress = () => getTrimmedEnv("EMAIL_REPLY_TO");
+
+const getSendGridApiKey = () => getTrimmedEnv("SENDGRID_API_KEY");
 
 const validateEmailEnvironment = () => {
-  const { user, appPassword, isLegacyPasswordEnv } = getEmailCredentials();
+  const provider = getEmailProvider();
   const missing = [];
 
-  if (!user) {
-    missing.push("EMAIL_USER");
+  if (provider && provider !== "sendgrid") {
+    const error = new Error(`Unsupported EMAIL_PROVIDER: ${provider}`);
+    error.code = "EMAIL_PROVIDER_UNSUPPORTED";
+    error.statusCode = 500;
+    throw error;
   }
 
-  if (!appPassword) {
-    missing.push("EMAIL_APP_PASSWORD");
+  const sendgridApiKey = getSendGridApiKey();
+  const emailFrom = getEmailFromAddress();
+
+  if (!sendgridApiKey) {
+    missing.push("SENDGRID_API_KEY");
+  }
+
+  if (!emailFrom) {
+    missing.push("EMAIL_FROM");
   }
 
   if (missing.length > 0) {
@@ -41,27 +45,28 @@ const validateEmailEnvironment = () => {
     throw error;
   }
 
-  if (isLegacyPasswordEnv) {
-    if (!hasLoggedLegacyPasswordWarning) {
-      console.warn(
-        "[email] Using legacy EMAIL_PASS. Prefer EMAIL_APP_PASSWORD for Gmail App Password configuration.",
-      );
-      hasLoggedLegacyPasswordWarning = true;
-    }
+  const replyTo = getEmailReplyToAddress();
+  if (replyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo)) {
+    const error = new Error("EMAIL_REPLY_TO is not a valid email address");
+    error.code = "EMAIL_ENV_INVALID";
+    error.statusCode = 500;
+    throw error;
   }
 
   return {
-    user,
-    appPassword,
-    host: EMAIL_SERVICE_HOST,
-    port: EMAIL_SERVICE_PORT,
+    provider: "sendgrid",
+    sendgridApiKey,
+    from: emailFrom,
+    fromName: getEmailFromName(),
+    replyTo: replyTo || "",
   };
 };
 
 module.exports = {
-  EMAIL_SERVICE_HOST,
-  EMAIL_SERVICE_PORT,
-  getEmailCredentials,
+  getEmailFromName,
   getEmailFromAddress,
+  getEmailProvider,
+  getEmailReplyToAddress,
+  getSendGridApiKey,
   validateEmailEnvironment,
 };
