@@ -164,6 +164,7 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 
 const IMAGE_SIZE_LIMIT_MESSAGE =
   "Image size is too large. Please upload a file 5 MB or smaller.";
+const UPLOAD_REQUEST_TIMEOUT_MS = 90000;
 
 const EMPTY_FORM = {
   title: "",
@@ -982,6 +983,24 @@ const FormManagement = () => {
     }));
   };
 
+  const uploadWithTimeout = async (promise, timeoutMessage = "Upload timed out. Please try again.") => {
+    let timeoutId;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutId = window.setTimeout(() => {
+            reject(new Error(timeoutMessage));
+          }, UPLOAD_REQUEST_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    }
+  };
+
   const updateFooterButton = (index, field, value) => {
     setDraft((prev) => {
       const buttons = normalizeEditableFooterButtons(prev.emailTemplate, prev);
@@ -1125,7 +1144,7 @@ const FormManagement = () => {
         const formData = new FormData();
         formData.append("image", file);
         formData.append("folder", "forms/logos");
-        const response = await uploadFormLogoImage(formData);
+        const response = await uploadWithTimeout(uploadFormLogoImage(formData));
         const uploadData = response.data?.data || {};
         const imageUrl =
           uploadData.secureUrl ||
@@ -1161,7 +1180,7 @@ const FormManagement = () => {
             secureUrl: uploadData.secureUrl || imageUrl,
           },
         );
-        toast.success("Logo uploaded");
+        toast.success("Form logo uploaded successfully");
       } catch (error) {
         const uploadErrorMessage =
           error.response?.status === 413
@@ -1217,7 +1236,7 @@ const FormManagement = () => {
         const formData = new FormData();
         formData.append("image", file);
         formData.append("folder", "forms/banners");
-        const response = await uploadFormBannerImage(formData);
+        const response = await uploadWithTimeout(uploadFormBannerImage(formData));
         const uploadData = response.data?.data || {};
         const imageUrl =
           uploadData.secureUrl ||
@@ -1252,7 +1271,7 @@ const FormManagement = () => {
             secureUrl: uploadData.secureUrl || imageUrl,
           },
         );
-        toast.success("Image uploaded");
+        toast.success("Form image uploaded successfully");
       } catch (error) {
         const uploadErrorMessage =
           error.response?.status === 413
@@ -1324,7 +1343,7 @@ const FormManagement = () => {
         const formData = new FormData();
         formData.append("image", file);
         formData.append("folder", "forms/email-templates");
-        const response = await uploadFormBannerImage(formData);
+        const response = await uploadWithTimeout(uploadFormBannerImage(formData));
         const uploadData = response.data?.data || {};
         const imageUrl =
           uploadData.secureUrl ||
@@ -1363,7 +1382,11 @@ const FormManagement = () => {
             secureUrl: uploadData.secureUrl || imageUrl,
           },
         );
-        toast.success("Image uploaded");
+        toast.success(
+          field === "logoUrl"
+            ? "Email logo uploaded successfully"
+            : "Email banner uploaded successfully",
+        );
       } catch (error) {
         toast.error(
           error.response?.data?.message || error.message || "Failed to upload image",
