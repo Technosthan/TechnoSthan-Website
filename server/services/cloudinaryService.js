@@ -4,6 +4,8 @@ const multer = require("multer");
 const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } =
   process.env;
 
+let cloudinaryConfigLogged = false;
+
 if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
   console.warn(
     "Cloudinary environment variables not fully set. Cloud uploads will fail until CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are provided.",
@@ -17,6 +19,26 @@ cloudinary.config({
   secure: true,
 });
 
+const validateCloudinaryConfig = () => {
+  const isConfigured =
+    Boolean(CLOUDINARY_CLOUD_NAME) &&
+    Boolean(CLOUDINARY_API_KEY) &&
+    Boolean(CLOUDINARY_API_SECRET);
+
+  if (!cloudinaryConfigLogged) {
+    console.log(
+      isConfigured
+        ? "[cloudinary] Configuration loaded successfully."
+        : "[cloudinary] Missing required configuration.",
+    );
+    cloudinaryConfigLogged = true;
+  }
+
+  return isConfigured;
+};
+
+validateCloudinaryConfig();
+
 const uploadFromDataUri = async (dataUri, options = {}) => {
   // options: { folder, resource_type }
   const uploadOptions = Object.assign(
@@ -29,6 +51,68 @@ const uploadFromDataUri = async (dataUri, options = {}) => {
   );
   return cloudinary.uploader.upload(dataUri, uploadOptions);
 };
+
+const uploadBuffer = async ({
+  buffer,
+  originalName = "file",
+  mimeType = "",
+  size = 0,
+  folder = "forms",
+  resourceType = "auto",
+  publicId,
+  overwrite = false,
+} = {}) => {
+  const uploadResult = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+        public_id: publicId,
+        use_filename: !publicId,
+        unique_filename: !publicId,
+        overwrite,
+        filename_override: originalName,
+        tags: ["forms"],
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        return resolve(result);
+      },
+    );
+
+    stream.end(buffer);
+  });
+
+  return normalizeStoredAsset(
+    {
+      ...uploadResult,
+      originalName,
+      mimeType,
+      size,
+      bytes: size,
+      folder,
+    },
+    uploadResult?.secure_url || uploadResult?.url || "",
+  );
+};
+
+const uploadImage = (options = {}) =>
+  uploadBuffer({
+    ...options,
+    resourceType: "image",
+  });
+
+const uploadPdf = (options = {}) =>
+  uploadBuffer({
+    ...options,
+    resourceType: "raw",
+  });
+
+const uploadFile = (options = {}) =>
+  uploadBuffer({
+    ...options,
+    resourceType: options.resourceType || "auto",
+  });
 
 const resolveCloudinaryFormat = (publicId, format) => {
   const trimmedFormat = String(format || "").trim();
@@ -216,10 +300,32 @@ const resolveStoredAssetUrl = (assetOrUrl = "") => {
       ? assetOrUrl.secureUrl || assetOrUrl.url || assetOrUrl.fileUrl || ""
       : assetOrUrl;
   if (!candidate) return "";
+  if (/^https?:\/\//i.test(candidate)) {
+    return candidate;
+  }
   if (candidate.startsWith("/uploads/")) {
     return candidate;
   }
   return candidate;
+};
+
+const getPublicAssetUrl = (assetOrUrl = "", options = {}) => {
+  const normalized = normalizeStoredAsset(assetOrUrl);
+  if (!normalized) return "";
+  if (normalized.secureUrl && /^https?:\/\//i.test(normalized.secureUrl)) {
+    return normalized.secureUrl;
+  }
+
+  if (!normalized.publicId) {
+    return resolveStoredAssetUrl(normalized.url || normalized.secureUrl || "");
+  }
+
+  return cloudinary.url(normalized.publicId, {
+    secure: true,
+    type: options.type || "upload",
+    resource_type: normalized.resourceType || options.resourceType || "image",
+    format: normalized.format || options.format,
+  });
 };
 
 const uploadBufferToCloudinary = async ({
@@ -230,51 +336,33 @@ const uploadBufferToCloudinary = async ({
   folder = "forms",
   resourceType = "auto",
 }) => {
-  const uploadResult = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: resourceType,
-        public_id: undefined,
-        use_filename: true,
-        unique_filename: true,
-        overwrite: false,
-        filename_override: originalName,
-        tags: ["forms"],
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        return resolve(result);
-      },
-    );
-
-    stream.end(buffer);
+  return uploadBuffer({
+    buffer,
+    originalName,
+    mimeType,
+    size,
+    folder,
+    resourceType,
   });
-
-  return normalizeStoredAsset(
-    {
-      ...uploadResult,
-      originalName,
-      mimeType,
-      size,
-      bytes: size,
-      resourceType,
-      folder,
-    },
-    uploadResult?.secure_url || uploadResult?.url || "",
-  );
 };
 
 module.exports = {
   uploadFromDataUri,
+  uploadBuffer,
+  uploadImage,
+  uploadPdf,
+  uploadFile,
   deleteAsset,
   generateSignedUrl,
   cloudinaryClient: cloudinary,
   createMemoryUpload,
   getCloudinaryFolder,
   getCloudinaryResourceType,
+  validateCloudinaryConfig,
   normalizeStoredAsset,
+  normalizeCloudinaryAsset: normalizeStoredAsset,
   resolveStoredAssetUrl,
+  getPublicAssetUrl,
   uploadBufferToCloudinary,
   deleteCloudinaryAsset: deleteAsset,
 };

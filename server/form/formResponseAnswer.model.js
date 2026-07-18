@@ -84,6 +84,53 @@ const formResponseAnswerSchema = new mongoose.Schema(
         default: "",
       },
     },
+    fieldId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    fieldLabel: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    fieldType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    parentQuestionId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    parentOptionId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    parentOptionLabel: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    conditionalPath: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    conditionalDepth: {
+      type: Number,
+      default: 0,
+    },
+    conditionalOrder: {
+      type: Number,
+      default: 0,
+    },
+    conditionalMeta: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     secretCiphertext: {
       type: String,
       default: "",

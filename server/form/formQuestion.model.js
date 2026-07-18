@@ -54,8 +54,16 @@ const formQuestionSchema = new mongoose.Schema(
       default: false,
     },
     options: {
-      type: [String],
+      type: [mongoose.Schema.Types.Mixed],
       default: [],
+    },
+    conditionalLogicVersion: {
+      type: Number,
+      default: 1,
+    },
+    maxConditionalDepth: {
+      type: Number,
+      default: 1,
     },
     validation: {
       minValue: {

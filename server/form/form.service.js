@@ -33,6 +33,265 @@ const {
   uploadBufferToCloudinary,
 } = require("../shared/services/cloudinary.service.js");
 
+const CONDITIONAL_FIELD_TYPES = new Set([
+  "shortAnswer",
+  "paragraph",
+  "email",
+  "phone",
+  "number",
+  "date",
+  "time",
+  "link",
+  "dropdown",
+  "radio",
+  "checkbox",
+  "multipleSelect",
+  "fileUpload",
+  "imageUpload",
+  "pdfUpload",
+  "heading",
+  "information",
+  "sectionHeading",
+]);
+
+const MAX_CONDITIONAL_DEPTH = 1;
+
+const createConditionalId = (prefix = "cond") =>
+  `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+
+const normalizeConditionalValidation = (validation = {}) => ({
+  minValue:
+    validation.minValue === undefined || validation.minValue === null || validation.minValue === ""
+      ? null
+      : Number(validation.minValue),
+  maxValue:
+    validation.maxValue === undefined || validation.maxValue === null || validation.maxValue === ""
+      ? null
+      : Number(validation.maxValue),
+  minDigits:
+    validation.minDigits === undefined || validation.minDigits === null || validation.minDigits === ""
+      ? null
+      : Number.parseInt(validation.minDigits, 10),
+  maxDigits:
+    validation.maxDigits === undefined || validation.maxDigits === null || validation.maxDigits === ""
+      ? null
+      : Number.parseInt(validation.maxDigits, 10),
+  errorMessage: String(validation.errorMessage || "").trim(),
+});
+
+const normalizeConditionalOptions = (options = []) =>
+  (Array.isArray(options) ? options : [])
+    .map((option, index) => normalizeQuestionOption(option, index))
+    .filter(Boolean);
+
+function normalizeQuestionOption(option, index = 0) {
+  if (option === null || option === undefined) {
+    return null;
+  }
+
+  if (typeof option === "string") {
+    const value = String(option).trim();
+    if (!value) return null;
+    return {
+      id: createConditionalId(`option-${index}`),
+      label: value,
+      value,
+      order: index,
+      conditionalLogic: {
+        enabled: false,
+        resetOnHide: true,
+        fields: [],
+      },
+    };
+  }
+
+  const source = option && typeof option === "object" ? option : {};
+  const label = String(source.label || source.title || source.value || "").trim();
+  const value = String(source.value || label || "").trim();
+  const id =
+    String(source.id || source.optionId || source.valueId || "").trim() ||
+    createConditionalId(`option-${index}`);
+  const conditionalSource =
+    source.conditionalLogic && typeof source.conditionalLogic === "object"
+      ? source.conditionalLogic
+      : {};
+  return {
+    id,
+    label: label || value || `Option ${index + 1}`,
+    value: value || label || id,
+    order: typeof source.order === "number" ? source.order : index,
+    conditionalLogic: {
+      enabled: conditionalSource.enabled === true,
+      resetOnHide: conditionalSource.resetOnHide !== false,
+      fields: normalizeConditionalFields(
+        conditionalSource.fields || source.fields || [],
+        1,
+      ),
+    },
+  };
+}
+
+function normalizeConditionalField(field, index = 0, depth = 1) {
+  if (!field || typeof field !== "object") {
+    return null;
+  }
+
+  const fieldType = String(field.type || field.fieldType || "shortAnswer").trim();
+  const id =
+    String(field.id || field.fieldId || "").trim() ||
+    createConditionalId(`field-${index}`);
+  const label = String(field.label || field.title || "").trim() || "Untitled field";
+  const options = normalizeConditionalOptions(field.options || []);
+  const nestedDepth = Number.isInteger(depth) ? depth : 1;
+
+  return {
+    id,
+    label,
+    type: CONDITIONAL_FIELD_TYPES.has(fieldType) ? fieldType : "shortAnswer",
+    placeholder: String(field.placeholder || "").trim(),
+    helpText: String(field.helpText || field.description || "").trim(),
+    required: field.required === true,
+    validationEnabled: field.validationEnabled === true,
+    validation: normalizeConditionalValidation(field.validation || {}),
+    options,
+    uploadConfig: {
+      uploadType: String(field.uploadConfig?.uploadType || "").trim(),
+      required: field.uploadConfig?.required === true,
+      multiple: field.uploadConfig?.multiple === true,
+      maxFiles:
+        Number.isInteger(field.uploadConfig?.maxFiles) &&
+        field.uploadConfig.maxFiles > 0
+          ? field.uploadConfig.maxFiles
+          : 1,
+      maxFileSize:
+        Number.isFinite(Number(field.uploadConfig?.maxFileSize))
+          ? Number(field.uploadConfig.maxFileSize)
+          : null,
+      allowedExtensions: Array.isArray(field.uploadConfig?.allowedExtensions)
+        ? field.uploadConfig.allowedExtensions.map((item) => String(item).trim()).filter(Boolean)
+        : [],
+      allowedMimeTypes: Array.isArray(field.uploadConfig?.allowedMimeTypes)
+        ? field.uploadConfig.allowedMimeTypes.map((item) => String(item).trim()).filter(Boolean)
+        : [],
+      previewEnabled: field.uploadConfig?.previewEnabled !== false,
+      downloadEnabled: field.uploadConfig?.downloadEnabled !== false,
+      label: String(field.uploadConfig?.label || "").trim(),
+      helpText: String(field.uploadConfig?.helpText || "").trim(),
+      errorText: String(field.uploadConfig?.errorText || "").trim(),
+    },
+    order: typeof field.order === "number" ? field.order : index,
+    isActive: field.isActive !== false,
+    nestedDepth,
+    conditionalLogic: {
+      enabled: field.conditionalLogic?.enabled === true,
+      resetOnHide: field.conditionalLogic?.resetOnHide !== false,
+      fields: normalizeConditionalFields(field.conditionalLogic?.fields || [], nestedDepth + 1),
+    },
+  };
+}
+
+function normalizeConditionalFields(fields = [], depth = 1) {
+  const normalizedDepth = Number.isInteger(depth) ? depth : 1;
+  if (normalizedDepth > MAX_CONDITIONAL_DEPTH) {
+    return [];
+  }
+
+  return (Array.isArray(fields) ? fields : [])
+    .map((field, index) => normalizeConditionalField(field, index, normalizedDepth))
+    .filter(Boolean)
+    .map((field, index) => ({
+      ...field,
+      order: typeof field.order === "number" ? field.order : index,
+      conditionalLogic: {
+        ...(field.conditionalLogic || {}),
+        fields:
+          normalizedDepth >= MAX_CONDITIONAL_DEPTH
+            ? []
+            : normalizeConditionalFields(field.conditionalLogic?.fields || [], normalizedDepth + 1),
+      },
+    }));
+}
+
+const normalizeQuestionOptions = (question = {}) =>
+  (Array.isArray(question.options) ? question.options : [])
+    .map((option, index) => normalizeQuestionOption(option, index))
+    .filter(Boolean)
+    .map((option, index) => ({
+      ...option,
+      order: typeof option.order === "number" ? option.order : index,
+    }));
+
+const normalizeQuestionConditionalFields = (question = {}) =>
+  normalizeConditionalFields(question.conditionalFields || question.followUpFields || [], 1);
+
+const getQuestionSelectedOptionIds = (question = {}, submittedValue) => {
+  const options = normalizeQuestionOptions(question);
+  if (!options.length) return [];
+
+  const values = Array.isArray(submittedValue)
+    ? submittedValue.map((item) => String(item).trim()).filter(Boolean)
+    : submittedValue === undefined || submittedValue === null || submittedValue === ""
+      ? []
+      : [String(submittedValue).trim()];
+
+  if (!values.length) return [];
+
+  const valueLookup = new Map();
+  const labelLookup = new Map();
+  options.forEach((option) => {
+    valueLookup.set(String(option.value || "").trim().toLowerCase(), option.id);
+    labelLookup.set(String(option.label || "").trim().toLowerCase(), option.id);
+    valueLookup.set(String(option.id || "").trim().toLowerCase(), option.id);
+  });
+
+  return [...new Set(values.flatMap((value) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    const matchedId = valueLookup.get(normalized) || labelLookup.get(normalized);
+    return matchedId ? [matchedId] : [];
+  }))];
+};
+
+const normalizeConditionalPayload = (payload = {}) => {
+  if (typeof payload === "string") {
+    try {
+      return JSON.parse(payload);
+    } catch {
+      return {};
+    }
+  }
+
+  return payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload
+    : {};
+};
+
+const buildConditionalFieldPath = ({
+  questionId,
+  optionId,
+  fieldId,
+}) => `${questionId}::${optionId}::${fieldId}`;
+
+const resolveConditionalPayloadEntry = (
+  conditionalAnswers = {},
+  questionId,
+  optionId,
+  fieldId,
+) => {
+  const questionBucket = conditionalAnswers[String(questionId)] || {};
+  const optionBucket = questionBucket[String(optionId)] || {};
+  return optionBucket[String(fieldId)] || null;
+};
+
+const getConditionalFileEntriesByKey = (files = []) => {
+  const map = new Map();
+  for (const file of files) {
+    const key = String(file.fieldname || "");
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(file);
+  }
+  return map;
+};
+
 const importZipEntry = async (buffer, entryName) => {
   const LOCAL_FILE_SIGNATURE = 0x04034b50;
   let offset = 0;
@@ -939,15 +1198,16 @@ const normalizeQuestion = (question, index) => {
         }
       : undefined;
   return {
+    _id: String(question._id || question.id || ""),
+    id: String(question._id || question.id || ""),
     label: String(question.label || "").trim() || "Untitled question",
     type,
     placeholder: String(question.placeholder || "").trim(),
     helpText: String(question.helpText || "").trim(),
     required: question.required === true,
     validationEnabled: question.validationEnabled === true,
-    options: Array.isArray(question.options)
-      ? question.options.map((item) => String(item).trim()).filter(Boolean)
-      : [],
+    options: normalizeQuestionOptions(question),
+    conditionalFields: normalizeQuestionConditionalFields(question),
     ...(validation ? { validation } : {}),
     order: typeof question.order === "number" ? question.order : index,
   };
@@ -1196,8 +1456,11 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
   const resolvedStatus =
     plainForm.status || (plainForm.active === true ? "live" : "draft");
   const sortedQuestions = [...questions]
-    .map((question) =>
-      question.toObject ? question.toObject({ virtuals: true }) : question,
+    .map((question, index) =>
+      normalizeQuestion(
+        question.toObject ? question.toObject({ virtuals: true }) : question,
+        index,
+      ),
     )
     .sort((a, b) => a.order - b.order);
 
@@ -1236,13 +1499,18 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
 };
 
 const buildQuestionExportDto = (question, index = 0) => ({
+  id: String(question._id || question.id || ""),
   type: question.type || "shortAnswer",
   label: question.label || "",
   description: question.helpText || "",
   placeholder: question.placeholder || "",
   required: question.required === true,
   validationEnabled: question.validationEnabled === true,
-  options: Array.isArray(question.options) ? question.options : [],
+  options: normalizeQuestionOptions(question),
+  conditionalFields: normalizeConditionalFields(
+    question.conditionalFields || question.followUpFields || [],
+    1,
+  ),
   validation: {
     minValue:
       question.validation?.minValue === undefined
@@ -1321,11 +1589,14 @@ const syncQuestions = async (formId, questions = []) => {
 
   const normalized = questions.map(normalizeQuestion);
   const created = await FormQuestion.insertMany(
-    normalized.map((question, index) => ({
-      ...question,
-      formId,
-      order: question.order ?? index,
-    })),
+    normalized.map((question, index) => {
+      const { _id, id, ...persistedQuestion } = question;
+      return {
+        ...persistedQuestion,
+        formId,
+        order: question.order ?? index,
+      };
+    }),
   );
 
   return created;
@@ -1618,6 +1889,21 @@ const escapeCsv = (value) =>
   `"${String(value ?? "").replace(/"/g, '""')}"`;
 
 const buildCsv = (form, questions, responses) => {
+  const conditionalColumns = [];
+  const conditionalColumnMap = new Map();
+  for (const response of responses) {
+    for (const answer of response.answers || []) {
+      if (!answer.fieldId && !answer.parentOptionId) continue;
+      const key = answer.conditionalPath || answer.fieldId || `${answer.parentOptionId}:${answer.fieldLabel}`;
+      if (conditionalColumnMap.has(key)) continue;
+      const header = answer.parentOptionLabel
+        ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional Field"}`
+        : answer.fieldLabel || answer.question?.label || "Conditional Field";
+      conditionalColumnMap.set(key, header);
+      conditionalColumns.push({ key, header });
+    }
+  }
+
   const headers = [
     "Reference ID",
     "Submitted At",
@@ -1625,6 +1911,7 @@ const buildCsv = (form, questions, responses) => {
     "Email",
     "Phone",
     ...questions.map((question) => question.label),
+    ...conditionalColumns.map((column) => column.header),
   ];
 
   const rows = [headers.map(escapeCsv).join(",")];
@@ -1634,6 +1921,13 @@ const buildCsv = (form, questions, responses) => {
     const answerMap = new Map();
     for (const answer of response.answers || []) {
       answerMap.set(String(answer.questionId), answer);
+    }
+    const conditionalMap = new Map();
+    for (const answer of response.answers || []) {
+      if (answer.fieldId || answer.parentOptionId) {
+        const key = answer.conditionalPath || answer.fieldId || `${answer.parentOptionId}:${answer.fieldLabel}`;
+        conditionalMap.set(key, answer);
+      }
     }
 
     const row = [
@@ -1648,6 +1942,17 @@ const buildCsv = (form, questions, responses) => {
         if (answer.question?.type === "password") {
           return "";
         }
+        if (answer.fileUrl) {
+          return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
+        }
+        if (Array.isArray(answer.value)) {
+          return answer.value.join(", ");
+        }
+        return answer.value ?? "";
+      }),
+      ...conditionalColumns.map((column) => {
+        const answer = conditionalMap.get(column.key);
+        if (!answer) return "";
         if (answer.fileUrl) {
           return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
         }
@@ -1686,6 +1991,11 @@ const parseAnswersPayload = (body = {}) => {
 
   return {};
 };
+
+const parseConditionalAnswersPayload = (body = {}) =>
+  normalizeConditionalPayload(
+    body.conditionalAnswers ?? body.conditionalValues ?? body.dependentAnswers ?? {},
+  );
 
 const parseVerificationTokensPayload = (body = {}) => {
   const raw =
@@ -1897,20 +2207,68 @@ const validateQuestionValue = (question, value, fileList = []) => {
 const validateUploadedFiles = (question, fileEntries = []) => {
   if (!fileEntries.length) return;
 
+  const uploadConfig = question?.uploadConfig || {};
+  const normalizeMaxSizeBytes = (value) => {
+    const raw = Number(value);
+    if (!Number.isFinite(raw) || raw <= 0) {
+      return MAX_UPLOAD_SIZE_BYTES;
+    }
+    return raw < 1024 * 1024 ? raw * 1024 * 1024 : raw;
+  };
+  const maxFileSize =
+    normalizeMaxSizeBytes(uploadConfig.maxFileSize);
+  const multipleAllowed = uploadConfig.multiple === true;
+  const maxFiles = Number.isInteger(uploadConfig.maxFiles) && uploadConfig.maxFiles > 0
+    ? uploadConfig.maxFiles
+    : multipleAllowed
+      ? fileEntries.length
+      : 1;
+
+  if (fileEntries.length > maxFiles) {
+    throw new Error(`Maximum ${maxFiles} files are allowed.`);
+  }
+
   for (const file of fileEntries) {
-    if (file.size && file.size > MAX_UPLOAD_SIZE_BYTES) {
-      throw new Error("Maximum file size allowed is 5 MB.");
+    if (file.size && file.size > maxFileSize) {
+      throw new Error(
+        `File size must not exceed ${Math.max(1, Math.round(maxFileSize / (1024 * 1024)))} MB.`,
+      );
     }
 
-    if (question.type === "imageUpload") {
-      if (!IMAGE_MIME_TYPES.has(file.mimetype)) {
+    const uploadType = String(uploadConfig.uploadType || question.type || "").toLowerCase();
+    const allowedMimeTypes = Array.isArray(uploadConfig.allowedMimeTypes) && uploadConfig.allowedMimeTypes.length
+      ? uploadConfig.allowedMimeTypes
+      : null;
+    const allowedExtensions = Array.isArray(uploadConfig.allowedExtensions) && uploadConfig.allowedExtensions.length
+      ? uploadConfig.allowedExtensions
+      : null;
+    const fileName = String(file.originalname || "").toLowerCase();
+
+    if (allowedMimeTypes && !allowedMimeTypes.includes(file.mimetype)) {
+      throw new Error(`"${file.originalname}" is not an allowed file type.`);
+    }
+
+    if (allowedExtensions && !allowedExtensions.some((extension) => fileName.endsWith(String(extension).toLowerCase()))) {
+      throw new Error(`"${file.originalname}" does not match an allowed extension.`);
+    }
+
+    if (uploadType === "image" || question.type === "imageUpload") {
+      if (!IMAGE_MIME_TYPES.has(file.mimetype) && !allowedMimeTypes) {
         throw new Error(
           `Question "${question.label}" only accepts JPG, PNG, or WEBP images`,
         );
       }
     }
 
-    if (question.type === "fileUpload") {
+    if (uploadType === "pdf" || question.type === "pdfUpload") {
+      if (file.mimetype !== "application/pdf" && !allowedMimeTypes) {
+        throw new Error(
+          `Question "${question.label}" only accepts PDF files`,
+        );
+      }
+    }
+
+    if (question.type === "fileUpload" && !allowedMimeTypes) {
       if (!FILE_MIME_TYPES.has(file.mimetype)) {
         throw new Error(
           `Question "${question.label}" only accepts PDF, DOC, DOCX, MP4, WEBM, MOV, JPG, JPEG, PNG, or WEBP files`,
@@ -1960,6 +2318,76 @@ const getFileEntriesByQuestion = (files = []) => {
     map.get(key).push(file);
   }
   return map;
+};
+
+const getConditionalFieldDescriptors = ({
+  question,
+  submittedValue,
+  conditionalAnswers = {},
+}) => {
+  const descriptors = [];
+  const selectedOptionIds = getQuestionSelectedOptionIds(question, submittedValue);
+  const optionMap = new Map(
+    normalizeQuestionOptions(question).map((option) => [String(option.id), option]),
+  );
+
+  for (const optionId of selectedOptionIds) {
+    const option = optionMap.get(String(optionId));
+    if (!option?.conditionalLogic?.enabled) {
+      continue;
+    }
+
+    const fields = Array.isArray(option.conditionalLogic.fields)
+      ? option.conditionalLogic.fields
+      : [];
+
+    for (const field of fields) {
+      if (!field || field.isActive === false) continue;
+      const payloadEntry = resolveConditionalPayloadEntry(
+        conditionalAnswers,
+        question._id,
+        option.id,
+        field.id,
+      );
+      descriptors.push({
+        parentQuestion: question,
+        parentQuestionId: String(question._id),
+        parentQuestionLabel: question.label,
+        parentQuestionType: question.type,
+        parentOption: option,
+        parentOptionId: option.id,
+        parentOptionLabel: option.label,
+        field,
+        fieldId: field.id,
+        fieldLabel: field.label,
+        fieldType: field.type,
+        fieldOrder: field.order || 0,
+        path: buildConditionalFieldPath({
+          questionId: question._id,
+          optionId: option.id,
+          fieldId: field.id,
+        }),
+        payloadEntry,
+      });
+    }
+  }
+
+  return descriptors.sort((a, b) => a.fieldOrder - b.fieldOrder);
+};
+
+const getConditionalFieldSubmissionValue = (
+  payloadEntry = null,
+  fieldPath = "",
+  answersPayload = {},
+) => {
+  const directValue = payloadEntry?.value ?? payloadEntry?.answer ?? payloadEntry?.response ?? null;
+  if (directValue !== null && directValue !== undefined) {
+    return directValue;
+  }
+  if (fieldPath && Object.prototype.hasOwnProperty.call(answersPayload, fieldPath)) {
+    return answersPayload[fieldPath];
+  }
+  return null;
 };
 
 const prepareAnswerRecord = async (
@@ -2030,6 +2458,87 @@ const prepareAnswerRecord = async (
         : Array.isArray(submittedValue)
           ? submittedValue.map((item) => String(item))
           : submittedValue,
+  };
+};
+
+const prepareConditionalAnswerRecord = async ({
+  parentQuestion,
+  parentOption,
+  field,
+  submittedValue,
+  fileEntries = [],
+  uploadContext = {},
+}) => {
+  const effectiveQuestion = {
+    ...field,
+    label: field.label || field.fieldLabel || "Conditional field",
+    type: field.type || field.fieldType || "shortAnswer",
+    required: field.required === true,
+    validationEnabled: field.validationEnabled === true,
+  };
+
+  if (fileEntries.length > 0) {
+    const file = fileEntries[0];
+    const folder = getCloudinaryFolder(
+      "forms",
+      "responses",
+      uploadContext.formSlug || uploadContext.formId || "general",
+      "conditional",
+    );
+    const resourceType = getCloudinaryResourceType(file);
+    const asset = await uploadBufferToCloudinary({
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      folder,
+      resourceType,
+    });
+
+    return {
+      value: submittedValue ?? file.originalname,
+      fileUrl: asset.secureUrl,
+      fileName: file.originalname,
+      fileType: file.mimetype,
+      fileAsset: asset,
+      fieldId: String(field.id || field.fieldId || ""),
+      fieldLabel: effectiveQuestion.label,
+      fieldType: effectiveQuestion.type,
+      parentQuestionId: String(parentQuestion._id),
+      parentOptionId: String(parentOption.id),
+      parentOptionLabel: parentOption.label,
+      conditionalPath: buildConditionalFieldPath({
+        questionId: parentQuestion._id,
+        optionId: parentOption.id,
+        fieldId: field.id,
+      }),
+      conditionalDepth: field.nestedDepth || 1,
+      conditionalOrder: field.order || 0,
+      conditionalMeta: {
+        uploadConfig: field.uploadConfig || null,
+      },
+    };
+  }
+
+  const prepared = await prepareAnswerRecord(effectiveQuestion, submittedValue, [], uploadContext);
+  return {
+    ...prepared,
+    fieldId: String(field.id || field.fieldId || ""),
+    fieldLabel: effectiveQuestion.label,
+    fieldType: effectiveQuestion.type,
+    parentQuestionId: String(parentQuestion._id),
+    parentOptionId: String(parentOption.id),
+    parentOptionLabel: parentOption.label,
+    conditionalPath: buildConditionalFieldPath({
+      questionId: parentQuestion._id,
+      optionId: parentOption.id,
+      fieldId: field.id,
+    }),
+    conditionalDepth: field.nestedDepth || 1,
+    conditionalOrder: field.order || 0,
+    conditionalMeta: {
+      uploadConfig: field.uploadConfig || null,
+    },
   };
 };
 
@@ -2750,8 +3259,9 @@ const submitForm = async ({
     .sort({ order: 1, createdAt: 1 })
     .lean();
   const answersPayload = parseAnswersPayload(body);
+  const conditionalAnswersPayload = parseConditionalAnswersPayload(body);
   const verificationTokens = parseVerificationTokensPayload(body);
-  const fileEntriesByKey = getFileEntriesByQuestion(files);
+  const fileEntriesByKey = getConditionalFileEntriesByKey(files);
   const contact = extractSubmissionContact(questions, answersPayload);
 
   if (!form.allowFileUpload && files.length > 0) {
@@ -2776,10 +3286,39 @@ const submitForm = async ({
     validateQuestionValue(question, submittedValue, fileEntries);
     validateQuestionVerification(question, submittedValue, verificationTokens, form);
     answersToInsert.push({
+      kind: "question",
       question,
       submittedValue,
       fileEntries,
     });
+
+    const conditionalDescriptors = getConditionalFieldDescriptors({
+      question,
+      submittedValue,
+      conditionalAnswers: conditionalAnswersPayload,
+    });
+
+    for (const descriptor of conditionalDescriptors) {
+      const conditionalValue = getConditionalFieldSubmissionValue(
+        descriptor.payloadEntry,
+        descriptor.path,
+        conditionalAnswersPayload,
+      );
+      const conditionalFileEntries = fileEntriesByKey.get(descriptor.path) || [];
+
+      validateUploadedFiles(descriptor.field, conditionalFileEntries);
+      validateQuestionValue(descriptor.field, conditionalValue, conditionalFileEntries);
+
+      answersToInsert.push({
+        kind: "conditional",
+        question,
+        parentOption: descriptor.parentOption,
+        field: descriptor.field,
+        submittedValue: conditionalValue,
+        fileEntries: conditionalFileEntries,
+        descriptor,
+      });
+    }
   }
 
   const duplicateSubmission = await findDuplicateFormResponse(form._id, contact);
@@ -2810,15 +3349,28 @@ const submitForm = async ({
 
     const insertedAnswers = [];
     for (const item of answersToInsert) {
-      const payload = await prepareAnswerRecord(
-        item.question,
-        item.submittedValue,
-        item.fileEntries,
-        {
-          formId: String(form._id),
-          formSlug: form.slug || form.publicSlug || slugify(form.title),
-        },
-      );
+      const payload =
+        item.kind === "conditional"
+          ? await prepareConditionalAnswerRecord({
+              parentQuestion: item.question,
+              parentOption: item.parentOption,
+              field: item.field,
+              submittedValue: item.submittedValue,
+              fileEntries: item.fileEntries,
+              uploadContext: {
+                formId: String(form._id),
+                formSlug: form.slug || form.publicSlug || slugify(form.title),
+              },
+            })
+          : await prepareAnswerRecord(
+              item.question,
+              item.submittedValue,
+              item.fileEntries,
+              {
+                formId: String(form._id),
+                formSlug: form.slug || form.publicSlug || slugify(form.title),
+              },
+            );
 
       if (payload.fileAsset?.publicId) {
         uploadedAssets.push(payload.fileAsset);

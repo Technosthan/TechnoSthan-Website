@@ -1,5 +1,5 @@
-const cloudinary = require("cloudinary").v2;
 const Campaign = require("../models/Campaign");
+const cloudinaryService = require("../services/cloudinaryService");
 const {
   findBestMatchingCampaign,
   normalizeCampaignRoute,
@@ -208,24 +208,6 @@ const applyCampaignRouteSafety = async (campaign, displayRoute) => {
   await deactivateConflictingCampaigns(displayRoute, campaign._id);
 };
 
-const ensureCloudinaryConfigured = () => {
-  if (
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
-    throw new Error(
-      "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.",
-    );
-  }
-};
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 const getActiveCampaign = async (req, res) => {
   try {
     const now = new Date();
@@ -297,7 +279,13 @@ const createCampaign = async (req, res) => {
     const redirectUrl = normalizeRedirectUrl(req.body.redirectUrl);
     const displayRoute = normalizeCampaignBodyRoute(req.body.displayRoute);
 
-    ensureCloudinaryConfigured();
+    if (!cloudinaryService.validateCloudinaryConfig()) {
+      return res.status(503).json({
+        success: false,
+        message:
+          "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.",
+      });
+    }
 
     const mimeType = String(file.mimetype || "").toLowerCase();
     const isImage = mimeType.startsWith("image/");
@@ -320,7 +308,7 @@ const createCampaign = async (req, res) => {
       overwrite: false,
     };
 
-    const result = await cloudinary.uploader.upload(dataUri, uploadOptions);
+    const result = await cloudinaryService.cloudinaryClient.uploader.upload(dataUri, uploadOptions);
 
     if (!result || !result.secure_url || !result.public_id) {
       return res.status(500).json({ success: false, message: "Upload failed" });
@@ -453,7 +441,7 @@ const updateCampaign = async (req, res) => {
         overwrite: false,
       };
 
-      const result = await cloudinary.uploader.upload(dataUri, uploadOptions);
+      const result = await cloudinaryService.cloudinaryClient.uploader.upload(dataUri, uploadOptions);
       if (!result || !result.secure_url || !result.public_id) {
         return res
           .status(500)
@@ -463,7 +451,7 @@ const updateCampaign = async (req, res) => {
       // Try to remove old asset
       if (campaign.publicId) {
         try {
-          await cloudinary.uploader.destroy(campaign.publicId, {
+          await cloudinaryService.cloudinaryClient.uploader.destroy(campaign.publicId, {
             resource_type: campaign.mediaType === "video" ? "video" : "image",
             invalidate: true,
           });
@@ -625,7 +613,7 @@ const deleteCampaign = async (req, res) => {
 
     if (campaign.publicId) {
       try {
-        await cloudinary.uploader.destroy(campaign.publicId, {
+        await cloudinaryService.cloudinaryClient.uploader.destroy(campaign.publicId, {
           resource_type: campaign.mediaType === "video" ? "video" : "image",
           invalidate: true,
         });

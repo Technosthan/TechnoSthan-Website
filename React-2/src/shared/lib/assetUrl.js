@@ -10,6 +10,7 @@ const resolveAssetCandidate = (asset) => {
       asset.url ||
       asset.fileUrl ||
       asset.publicUrl ||
+      asset.mediaUrl ||
       ""
     );
   }
@@ -27,9 +28,35 @@ const optimizeCloudinaryUrl = (url) => {
   );
 };
 
-export const getOptimizedImageUrl = (asset) => {
-  const resolved = resolveAssetCandidate(asset);
-  return optimizeCloudinaryUrl(resolved);
+const isAbsoluteUrl = (value = "") => /^https?:\/\//i.test(String(value || "").trim());
+
+const isCloudinaryUrl = (value = "") => /cloudinary\.com/i.test(String(value || ""));
+
+const normalizeRelativeAssetUrl = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (isAbsoluteUrl(raw)) return raw;
+  if (raw.startsWith("/")) return raw;
+  const baseUrl =
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+    (typeof window !== "undefined" && window.__API_BASE_URL__) ||
+    "";
+  if (!baseUrl) return raw;
+  return `${String(baseUrl).replace(/\/+$/, "")}/${raw.replace(/^\/+/, "")}`;
 };
 
-export const resolveStoredAssetUrl = getOptimizedImageUrl;
+export const getMediaUrl = (asset) => {
+  const resolved = resolveAssetCandidate(asset);
+  if (!resolved) return "";
+  if (isAbsoluteUrl(resolved)) {
+    return isCloudinaryUrl(resolved) ? resolved : resolved;
+  }
+  return normalizeRelativeAssetUrl(resolved);
+};
+
+export const getOptimizedImageUrl = (asset) => {
+  const resolved = getMediaUrl(asset);
+  return isCloudinaryUrl(resolved) ? optimizeCloudinaryUrl(resolved) : resolved;
+};
+
+export const resolveStoredAssetUrl = getMediaUrl;

@@ -198,9 +198,54 @@ const createQuestion = () => ({
   required: false,
   validationEnabled: false,
   options: [],
-  optionsText: "",
+  conditionalFields: [],
   validation: normalizeNumberValidation(),
   order: 0,
+});
+
+const createQuestionOption = (label = "Option 1", order = 0) => ({
+  id: crypto.randomUUID(),
+  label,
+  value: label,
+  order,
+  conditionalLogic: {
+    enabled: false,
+    resetOnHide: true,
+    fields: [],
+  },
+});
+
+const createConditionalField = (order = 0) => ({
+  id: crypto.randomUUID(),
+  label: "Untitled field",
+  type: "shortAnswer",
+  placeholder: "",
+  helpText: "",
+  required: false,
+  validationEnabled: false,
+  validation: normalizeNumberValidation(),
+  options: [],
+  uploadConfig: {
+    uploadType: "",
+    required: false,
+    multiple: false,
+    maxFiles: 1,
+    maxFileSize: 5,
+    allowedExtensions: [],
+    allowedMimeTypes: [],
+    previewEnabled: true,
+    downloadEnabled: true,
+    label: "",
+    helpText: "",
+    errorText: "",
+  },
+  order,
+  isActive: true,
+  conditionalLogic: {
+    enabled: false,
+    resetOnHide: true,
+    fields: [],
+  },
 });
 
 const slugify = (value = "") =>
@@ -218,8 +263,11 @@ const sanitizeExportQuestion = (question = {}, index = 0) => ({
   placeholder: String(question.placeholder || "").trim(),
   required: question.required === true,
   validationEnabled: question.validationEnabled === true,
-  options: Array.isArray(question.options)
-    ? question.options.map((option) => String(option).trim()).filter(Boolean)
+  options: normalizeQuestionOptions(question),
+  conditionalFields: Array.isArray(question.conditionalFields)
+    ? question.conditionalFields.map((field, fieldIndex) =>
+        normalizeConditionalField(field, fieldIndex),
+      )
     : [],
   validation:
     question.validation && typeof question.validation === "object"
@@ -324,6 +372,114 @@ const parseOptionsText = (value = "") =>
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+
+const normalizeConditionalValidation = (validation = {}) => ({
+  minValue:
+    validation.minValue === null || validation.minValue === undefined
+      ? ""
+      : String(validation.minValue),
+  maxValue:
+    validation.maxValue === null || validation.maxValue === undefined
+      ? ""
+      : String(validation.maxValue),
+  minDigits:
+    validation.minDigits === null || validation.minDigits === undefined
+      ? ""
+      : String(validation.minDigits),
+  maxDigits:
+    validation.maxDigits === null || validation.maxDigits === undefined
+      ? ""
+      : String(validation.maxDigits),
+  errorMessage: validation.errorMessage || "",
+});
+
+const normalizeConditionalField = (field = {}, index = 0) => ({
+  id: String(field.id || field.fieldId || crypto.randomUUID()),
+  label: String(field.label || field.title || "Untitled field"),
+  type: String(field.type || "shortAnswer"),
+  placeholder: String(field.placeholder || ""),
+  helpText: String(field.helpText || field.description || ""),
+  required: field.required === true,
+  validationEnabled: field.validationEnabled === true,
+  validation: normalizeConditionalValidation(field.validation),
+  options: Array.isArray(field.options)
+    ? field.options.map((option, optionIndex) =>
+        typeof option === "string"
+          ? createQuestionOption(option, optionIndex)
+          : {
+              id: String(option.id || crypto.randomUUID()),
+              label: String(option.label || option.value || ""),
+              value: String(option.value || option.label || ""),
+              order: typeof option.order === "number" ? option.order : optionIndex,
+              conditionalLogic: {
+                enabled: option.conditionalLogic?.enabled === true,
+                resetOnHide: option.conditionalLogic?.resetOnHide !== false,
+                fields: Array.isArray(option.conditionalLogic?.fields)
+                  ? option.conditionalLogic.fields.map((fieldItem, fieldIndex) =>
+                      normalizeConditionalField(fieldItem, fieldIndex),
+                    )
+                  : [],
+              },
+            },
+      )
+    : [],
+  uploadConfig: {
+    uploadType: String(field.uploadConfig?.uploadType || ""),
+    required: field.uploadConfig?.required === true,
+    multiple: field.uploadConfig?.multiple === true,
+    maxFiles:
+      Number.isInteger(field.uploadConfig?.maxFiles) && field.uploadConfig.maxFiles > 0
+        ? field.uploadConfig.maxFiles
+        : 1,
+    maxFileSize:
+      Number.isFinite(Number(field.uploadConfig?.maxFileSize))
+        ? Number(field.uploadConfig.maxFileSize)
+        : 5,
+    allowedExtensions: Array.isArray(field.uploadConfig?.allowedExtensions)
+      ? field.uploadConfig.allowedExtensions
+      : [],
+    allowedMimeTypes: Array.isArray(field.uploadConfig?.allowedMimeTypes)
+      ? field.uploadConfig.allowedMimeTypes
+      : [],
+    previewEnabled: field.uploadConfig?.previewEnabled !== false,
+    downloadEnabled: field.uploadConfig?.downloadEnabled !== false,
+    label: String(field.uploadConfig?.label || ""),
+    helpText: String(field.uploadConfig?.helpText || ""),
+    errorText: String(field.uploadConfig?.errorText || ""),
+  },
+  order: typeof field.order === "number" ? field.order : index,
+  isActive: field.isActive !== false,
+  conditionalLogic: {
+    enabled: field.conditionalLogic?.enabled === true,
+    resetOnHide: field.conditionalLogic?.resetOnHide !== false,
+    fields: Array.isArray(field.conditionalLogic?.fields)
+      ? field.conditionalLogic.fields.map((fieldItem, fieldIndex) =>
+          normalizeConditionalField(fieldItem, fieldIndex),
+        )
+      : [],
+  },
+});
+
+const normalizeQuestionOptions = (question = {}) =>
+  (Array.isArray(question.options) ? question.options : []).map((option, index) =>
+    typeof option === "string"
+      ? createQuestionOption(option, index)
+      : {
+          id: String(option.id || option.optionId || crypto.randomUUID()),
+          label: String(option.label || option.value || `Option ${index + 1}`),
+          value: String(option.value || option.label || `option-${index + 1}`),
+          order: typeof option.order === "number" ? option.order : index,
+          conditionalLogic: {
+            enabled: option.conditionalLogic?.enabled === true,
+            resetOnHide: option.conditionalLogic?.resetOnHide !== false,
+            fields: Array.isArray(option.conditionalLogic?.fields)
+              ? option.conditionalLogic.fields.map((field, fieldIndex) =>
+                  normalizeConditionalField(field, fieldIndex),
+                )
+              : [],
+          },
+        },
+  );
 
 const normalizeNumberValidation = (validation = {}) => ({
   minValue:
@@ -600,16 +756,15 @@ const normalizeQuestion = (question, index) => ({
   helpText: question.helpText || "",
   required: question.required === true,
   validationEnabled: question.validationEnabled === true,
-  options: Array.isArray(question.options)
-    ? question.options
-    : typeof question.options === "string"
-      ? parseOptionsText(question.options)
-      : [],
-  optionsText: Array.isArray(question.options)
-    ? question.options.join("\n")
-    : typeof question.options === "string"
-      ? question.options
-      : "",
+  options: normalizeQuestionOptions(question),
+  optionsText: normalizeQuestionOptions(question)
+    .map((option) => option.label)
+    .join("\n"),
+  conditionalFields: Array.isArray(question.conditionalFields)
+    ? question.conditionalFields.map((field, fieldIndex) =>
+        normalizeConditionalField(field, fieldIndex),
+      )
+    : [],
   validation: normalizeNumberValidation(question.validation),
   order: typeof question.order === "number" ? question.order : index,
 });
@@ -1081,7 +1236,17 @@ const FormManagement = () => {
     setDraft((prev) => ({
       ...prev,
       questions: prev.questions.map((question, currentIndex) =>
-        currentIndex === index ? { ...question, [field]: value } : question,
+        currentIndex === index
+          ? {
+              ...question,
+              [field]: value,
+              ...(field === "type" && ["dropdown", "radio", "checkbox"].includes(value) && !(question.options || []).length
+                ? {
+                    options: [createQuestionOption("Option 1", 0), createQuestionOption("Option 2", 1)],
+                  }
+                : {}),
+            }
+          : question,
       ),
     }));
   };
@@ -1100,6 +1265,123 @@ const FormManagement = () => {
             }
           : question,
       ),
+    }));
+  };
+
+  const addQuestionOption = (index) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...question,
+              options: [
+                ...(question.options || []),
+                createQuestionOption(`Option ${(question.options || []).length + 1}`),
+              ],
+            }
+          : question,
+      ),
+    }));
+  };
+
+  const updateQuestionOption = (questionIndex, optionId, field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        const options = (question.options || []).map((option) =>
+          option.id === optionId ? { ...option, [field]: value } : option,
+        );
+        return {
+          ...question,
+          options,
+          optionsText: options.map((option) => option.label).join("\n"),
+        };
+      }),
+    }));
+  };
+
+  const removeQuestionOption = (questionIndex, optionId) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        const options = (question.options || []).filter((option) => option.id !== optionId);
+        return {
+          ...question,
+          options,
+          optionsText: options.map((option) => option.label).join("\n"),
+        };
+      }),
+    }));
+  };
+
+  const addConditionalFieldToOption = (questionIndex, optionId) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        const options = (question.options || []).map((option) => {
+          if (option.id !== optionId) return option;
+          const fields = option.conditionalLogic?.fields || [];
+          return {
+            ...option,
+            conditionalLogic: {
+              ...(option.conditionalLogic || {}),
+              enabled: true,
+              fields: [...fields, createConditionalField(fields.length)],
+            },
+          };
+        });
+        return { ...question, options };
+      }),
+    }));
+  };
+
+  const updateConditionalField = (questionIndex, optionId, fieldId, key, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        const options = (question.options || []).map((option) => {
+          if (option.id !== optionId) return option;
+          const fields = (option.conditionalLogic?.fields || []).map((field) =>
+            field.id === fieldId ? { ...field, [key]: value } : field,
+          );
+          return {
+            ...option,
+            conditionalLogic: {
+              ...(option.conditionalLogic || {}),
+              enabled: true,
+              fields,
+            },
+          };
+        });
+        return { ...question, options };
+      }),
+    }));
+  };
+
+  const removeConditionalField = (questionIndex, optionId, fieldId) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        const options = (question.options || []).map((option) => {
+          if (option.id !== optionId) return option;
+          const fields = (option.conditionalLogic?.fields || []).filter((field) => field.id !== fieldId);
+          return {
+            ...option,
+            conditionalLogic: {
+              ...(option.conditionalLogic || {}),
+              enabled: fields.length > 0,
+              fields,
+            },
+          };
+        });
+        return { ...question, options };
+      }),
     }));
   };
 
@@ -1479,8 +1761,14 @@ const FormManagement = () => {
               required: question.required === true,
               placeholder: question.placeholder || "",
               helpText: question.helpText || "",
+              options: Array.isArray(question.options) ? question.options : [],
+              conditionalFields: Array.isArray(question.conditionalFields)
+                ? question.conditionalFields
+                : [],
               optionsText: Array.isArray(question.options)
-                ? question.options.join("\n")
+                ? question.options
+                    .map((option) => String(option.label || option.value || option))
+                    .join("\n")
                 : String(question.options || ""),
               order: typeof question.order === "number" ? question.order : index,
             }))
@@ -1548,8 +1836,30 @@ const FormManagement = () => {
         required: question.required === true,
         placeholder: question.placeholder || "",
         helpText: question.helpText || "",
-        optionsText: question.optionsText || "",
-        options: parseOptionsText(question.optionsText || ""),
+        options: Array.isArray(question.options) &&
+          question.options.some(
+            (option) => option && typeof option === "object" && (option.id || option.conditionalLogic),
+          )
+          ? question.options.map((option, optionIndex) =>
+              typeof option === "string"
+                ? createQuestionOption(option, optionIndex)
+                : {
+                    ...option,
+                    id: String(option.id || crypto.randomUUID()),
+                    label: String(option.label || option.value || "").trim(),
+                    value: String(option.value || option.label || "").trim(),
+                  },
+            )
+          : parseOptionsText(question.optionsText || "").map((option, optionIndex) =>
+              createQuestionOption(option, optionIndex),
+            ),
+        conditionalFields: Array.isArray(question.conditionalFields)
+          ? question.conditionalFields.map((field, fieldIndex) => ({
+              ...createConditionalField(fieldIndex),
+              ...field,
+              id: String(field.id || crypto.randomUUID()),
+            }))
+          : [],
         order: 0,
       }))
       .filter((question) => question.label.trim());
@@ -1608,6 +1918,30 @@ const FormManagement = () => {
         id: crypto.randomUUID(),
         label: `${source.label} copy`,
         order: prev.questions.length,
+        options: Array.isArray(source.options)
+          ? source.options.map((option, optionIndex) => ({
+              ...option,
+              id: crypto.randomUUID(),
+              order: optionIndex,
+              conditionalLogic: {
+                ...(option.conditionalLogic || {}),
+                fields: Array.isArray(option.conditionalLogic?.fields)
+                  ? option.conditionalLogic.fields.map((field, fieldIndex) => ({
+                      ...field,
+                      id: crypto.randomUUID(),
+                      order: fieldIndex,
+                    }))
+                  : [],
+              },
+            }))
+          : [],
+        conditionalFields: Array.isArray(source.conditionalFields)
+          ? source.conditionalFields.map((field, fieldIndex) => ({
+              ...field,
+              id: crypto.randomUUID(),
+              order: fieldIndex,
+            }))
+          : [],
       };
       return { ...prev, questions: [...prev.questions, copy] };
     });
@@ -1768,13 +2102,77 @@ const FormManagement = () => {
           ? parsedExpiresAt.toISOString()
           : null,
       questions: draft.questions.map((question, order) => ({
-        label: question.label,
+        id: question.id,
+        label: String(question.label || "").trim(),
         type: question.type,
-        placeholder: question.placeholder,
-        helpText: question.helpText,
-        required: question.required,
+        placeholder: String(question.placeholder || "").trim(),
+        helpText: String(question.helpText || "").trim(),
+        required: question.required === true,
         validationEnabled: question.validationEnabled === true,
-        options: parseOptionsText(question.optionsText ?? question.options),
+        options: Array.isArray(question.options)
+          ? question.options.map((option, optionIndex) => ({
+              id: String(option.id || crypto.randomUUID()),
+              label: String(option.label || option.value || "").trim(),
+              value: String(option.value || option.label || "").trim(),
+              order: typeof option.order === "number" ? option.order : optionIndex,
+              conditionalLogic: {
+                enabled: option.conditionalLogic?.enabled === true,
+                resetOnHide: option.conditionalLogic?.resetOnHide !== false,
+                fields: Array.isArray(option.conditionalLogic?.fields)
+                  ? option.conditionalLogic.fields.map((field, fieldIndex) => ({
+                      id: String(field.id || crypto.randomUUID()),
+                      label: String(field.label || "").trim(),
+                      type: String(field.type || "shortAnswer"),
+                      placeholder: String(field.placeholder || "").trim(),
+                      helpText: String(field.helpText || "").trim(),
+                      required: field.required === true,
+                      validationEnabled: field.validationEnabled === true,
+                      validation: normalizeNumberValidation(field.validation),
+                      options: Array.isArray(field.options)
+                        ? field.options.map((childOption, childIndex) => ({
+                            id: String(childOption.id || crypto.randomUUID()),
+                            label: String(childOption.label || childOption.value || "").trim(),
+                            value: String(childOption.value || childOption.label || "").trim(),
+                            order:
+                              typeof childOption.order === "number"
+                                ? childOption.order
+                                : childIndex,
+                          }))
+                        : [],
+                      uploadConfig: field.uploadConfig || null,
+                      order: typeof field.order === "number" ? field.order : fieldIndex,
+                      isActive: field.isActive !== false,
+                    }))
+                  : [],
+              },
+            }))
+          : [],
+        conditionalFields: Array.isArray(question.conditionalFields)
+          ? question.conditionalFields.map((field, fieldIndex) => ({
+              id: String(field.id || crypto.randomUUID()),
+              label: String(field.label || "").trim(),
+              type: String(field.type || "shortAnswer"),
+              placeholder: String(field.placeholder || "").trim(),
+              helpText: String(field.helpText || "").trim(),
+              required: field.required === true,
+              validationEnabled: field.validationEnabled === true,
+              validation: normalizeNumberValidation(field.validation),
+              options: Array.isArray(field.options)
+                ? field.options.map((childOption, childIndex) => ({
+                    id: String(childOption.id || crypto.randomUUID()),
+                    label: String(childOption.label || childOption.value || "").trim(),
+                    value: String(childOption.value || childOption.label || "").trim(),
+                    order:
+                      typeof childOption.order === "number"
+                        ? childOption.order
+                        : childIndex,
+                  }))
+                : [],
+              uploadConfig: field.uploadConfig || null,
+              order: typeof field.order === "number" ? field.order : fieldIndex,
+              isActive: field.isActive !== false,
+            }))
+          : [],
         validation: buildQuestionValidationPayload(question),
         order,
       })),
@@ -2758,21 +3156,169 @@ const FormManagement = () => {
                       )}
 
                       {isChoice && (
-                        <div className="mt-4">
-                          <label className="mb-2 block text-sm font-semibold">Options</label>
-                          <textarea
-                            value={question.optionsText ?? ""}
-                            onChange={(e) =>
-                              updateQuestion(
-                                index,
-                                "optionsText",
-                                e.target.value,
-                              )
-                            }
-                            rows={4}
-                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
-                            placeholder="One option per line"
-                          />
+                        <div className="mt-4 space-y-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <label className="block text-sm font-semibold">Options</label>
+                            <button
+                              type="button"
+                              onClick={() => addQuestionOption(index)}
+                              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                            >
+                              <Plus size={14} /> Add Option
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {(question.options || []).map((option, optionIndex) => (
+                              <div
+                                key={option.id}
+                                className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
+                              >
+                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                                  <div>
+                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                      Option Label
+                                    </label>
+                                    <input
+                                      value={option.label || ""}
+                                      onChange={(e) =>
+                                        updateQuestionOption(index, option.id, "label", e.target.value)
+                                      }
+                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                      placeholder={`Option ${optionIndex + 1}`}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                      Option Value
+                                    </label>
+                                    <input
+                                      value={option.value || ""}
+                                      onChange={(e) =>
+                                        updateQuestionOption(index, option.id, "value", e.target.value)
+                                      }
+                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                      placeholder="Stable internal value"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeQuestionOption(index, option.id)}
+                                    className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => addConditionalFieldToOption(index, option.id)}
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                  >
+                                    <ListPlus size={14} /> Configure conditional fields
+                                  </button>
+                                  <span className="text-xs text-slate-400">
+                                    Stable ID: {option.id}
+                                  </span>
+                                </div>
+
+                                {option.conditionalLogic?.fields?.length > 0 && (
+                                  <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                                      Follow-up Fields
+                                    </div>
+                                    {option.conditionalLogic.fields.map((field, fieldIndex) => (
+                                      <div
+                                        key={field.id}
+                                        className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 space-y-4"
+                                      >
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                          <div>
+                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Label</label>
+                                            <input
+                                              value={field.label || ""}
+                                              onChange={(e) =>
+                                                updateConditionalField(index, option.id, field.id, "label", e.target.value)
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Type</label>
+                                            <select
+                                              value={field.type || "shortAnswer"}
+                                              onChange={(e) =>
+                                                updateConditionalField(index, option.id, field.id, "type", e.target.value)
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                            >
+                                              {QUESTION_TYPES.map((typeOption) => (
+                                                <option key={typeOption.value} value={typeOption.value}>
+                                                  {typeOption.label}
+                                                </option>
+                                              ))}
+                                              <option value="heading">Heading / Information</option>
+                                            </select>
+                                          </div>
+                                          <div>
+                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Placeholder</label>
+                                            <input
+                                              value={field.placeholder || ""}
+                                              onChange={(e) =>
+                                                updateConditionalField(index, option.id, field.id, "placeholder", e.target.value)
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Help Text</label>
+                                            <input
+                                              value={field.helpText || ""}
+                                              onChange={(e) =>
+                                                updateConditionalField(index, option.id, field.id, "helpText", e.target.value)
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                            />
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-4 text-sm">
+                                          <label className="inline-flex items-center gap-2">
+                                            <input
+                                              type="checkbox"
+                                              checked={field.required === true}
+                                              onChange={(e) =>
+                                                updateConditionalField(index, option.id, field.id, "required", e.target.checked)
+                                              }
+                                            />
+                                            Required
+                                          </label>
+                                          <label className="inline-flex items-center gap-2">
+                                            <input
+                                              type="checkbox"
+                                              checked={field.validationEnabled === true}
+                                              onChange={(e) =>
+                                                updateConditionalField(index, option.id, field.id, "validationEnabled", e.target.checked)
+                                              }
+                                            />
+                                            Enable Validation
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => removeConditionalField(index, option.id, field.id)}
+                                            className="rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                                          >
+                                            Remove Field
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -4241,7 +4787,16 @@ const FormManagement = () => {
             <div className="space-y-4">
               {(selectedResponse.answers || []).map((answer) => (
                 <div key={answer._id || answer.questionId?._id || answer.questionId} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm font-semibold">{answer.question?.label || "Question"}</div>
+                  <div className="text-sm font-semibold">
+                    {answer.parentOptionLabel
+                      ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional field"}`
+                      : answer.fieldLabel || answer.question?.label || "Question"}
+                  </div>
+                  {answer.parentOptionLabel && (
+                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-200/80">
+                      Triggered by {answer.parentOptionLabel}
+                    </div>
+                  )}
                   <div className="mt-2 text-sm text-slate-300">
                     {(() => {
                       const questionId =
