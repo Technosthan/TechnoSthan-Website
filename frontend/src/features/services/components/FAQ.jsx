@@ -35,7 +35,7 @@ const FAQ = () => {
           <span className="badge-dot" />
           FAQs
         </span>
-        <h2>Frequently Asked Questions</h2>
+        <h2>Frequently asked questions</h2>
         <p>
           Quick answers to the questions businesses ask before starting a new
           product or platform engagement.

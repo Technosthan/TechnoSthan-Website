@@ -93,10 +93,10 @@ const ProcessSection = () => {
           <span className="badge-dot"></span>
           Our Process
         </span>
-        <h2>Our Proven Process</h2>
+        <h2>Enterprise Delivery Process</h2>
         <p>
-          We follow a structured, transparent process to ensure quality and
-          timely delivery
+          We follow a structured, transparent delivery framework that reduces
+          risk, improves clarity, and keeps business stakeholders aligned.
         </p>
       </motion.div>
 

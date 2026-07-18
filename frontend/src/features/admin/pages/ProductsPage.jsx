@@ -178,10 +178,13 @@ const ProductsPage = () => {
   return (
     <div className="admin-page">
       <section className="admin-card">
+        <span className="section-badge">
+          <span className="badge-dot" />
+          Product CMS
+        </span>
         <div className="admin-section-title">
           <div>
-            {/* <span className="section-badge">Products</span> */}
-            <h2>Manage public products</h2>
+            <h2>Manage enterprise products</h2>
           </div>
           <button
             type="button"

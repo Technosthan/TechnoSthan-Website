@@ -12,7 +12,7 @@ const ServicesCTA = () => {
             <span className="badge-dot" />
             Consultation
           </span>
-          <h2>Ready to build your next product?</h2>
+          <h2>Ready to plan your next enterprise initiative?</h2>
           <p>
             Let&apos;s discuss your goals, scope the right approach, and create
             a clear plan for delivery.

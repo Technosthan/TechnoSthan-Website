@@ -15,6 +15,13 @@ const pageTitles = {
   [`${ADMIN_ROUTE}/products`]: "Products",
   [`${ADMIN_ROUTE}/testimonials`]: "Client Testimonials",
   [`${ADMIN_ROUTE}/hero-visual`]: "Hero Visual",
+  [`${ADMIN_ROUTE}/services`]: "Services",
+  [`${ADMIN_ROUTE}/industries`]: "Industries",
+  [`${ADMIN_ROUTE}/case-studies`]: "Case Studies",
+  [`${ADMIN_ROUTE}/technology`]: "Technology",
+  [`${ADMIN_ROUTE}/leads`]: "Leads",
+  [`${ADMIN_ROUTE}/media-library`]: "Media Library",
+  [`${ADMIN_ROUTE}/seo`]: "SEO",
 };
 
 const AdminLayout = () => {

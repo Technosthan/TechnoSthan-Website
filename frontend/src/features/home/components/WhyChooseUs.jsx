@@ -15,33 +15,33 @@ const WhyChooseUs = () => {
   const items = [
     {
       icon: FiUsers,
-      title: "Expert Team",
-      desc: "Experienced developers, architects, and strategists with 10+ years in enterprise solutions",
+      title: "Senior Enterprise Team",
+      desc: "Architects, engineers, and strategists focused on delivery quality, governance, and long-term support.",
     },
     {
       icon: FiTrendingUp,
-      title: "Scalable Solutions",
-      desc: "Built for future growth with cloud-native architecture and microservices",
+      title: "Scalable Architecture",
+      desc: "Cloud-native systems designed for growth, resilience, and high-volume workloads.",
     },
     {
       icon: FiZap,
-      title: "Fast Delivery",
-      desc: "Rapid development cycles using agile methodologies and proven frameworks",
+      title: "Predictable Delivery",
+      desc: "Structured, transparent execution with clear milestones and stakeholder visibility.",
     },
     {
       icon: FiHeadphones,
-      title: "24/7 Support",
-      desc: "Round-the-clock technical assistance and dedicated support team",
+      title: "Enterprise Support",
+      desc: "Responsive communication, managed support, and dependable post-launch assistance.",
     },
     {
       icon: FiTarget,
-      title: "Goal-Oriented",
-      desc: "Aligned with your business objectives and measurable outcomes",
+      title: "Business Outcomes",
+      desc: "Technology decisions anchored to measurable business value and operational clarity.",
     },
     {
       icon: FiAward,
-      title: "Proven Track Record",
-      desc: "99% client satisfaction with 50+ successful projects delivered",
+      title: "Proven Delivery",
+      desc: "A track record of successful digital products, enterprise solutions, and client satisfaction.",
     },
   ];
 
@@ -52,10 +52,10 @@ const WhyChooseUs = () => {
           <span className="badge-dot" />
           Why Technosthan
         </span>
-        <h2>Why Choose Technosthan</h2>
+        <h2>Why Enterprises Choose Technosthan</h2>
         <p>
-          We combine innovation, expertise, and dedication to deliver
-          exceptional results that drive your business forward
+          We combine strategy, architecture, and delivery discipline to help
+          organizations modernize with confidence.
         </p>
       </div>
 
@@ -78,12 +78,12 @@ const WhyChooseUs = () => {
       </div>
 
       <div className="why-cta">
-        <h3>Ready to transform your business?</h3>
+        <h3>Ready to modernize your enterprise platform?</h3>
         <button
           className="btn-primary"
           onClick={() => navigate("/contact")}
         >
-          Start Your Journey
+          Start the Conversation
         </button>
       </div>
     </section>

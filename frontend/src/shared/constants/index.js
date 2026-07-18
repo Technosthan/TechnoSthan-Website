@@ -30,6 +30,9 @@ export const DASHBOARD_ROUTE = "/dashboard";
 export const PROFILE_ROUTE = "/profile";
 export const PRODUCTS_ROUTE = "/products";
 export const PORTFOLIO_ROUTE = "/portfolio";
+export const INDUSTRIES_ROUTE = "/industries";
+export const CASE_STUDIES_ROUTE = "/case-studies";
+export const TECHNOLOGY_ROUTE = "/technology";
 
 export const HERO_POSITION_OPTIONS = [
   { label: "Top Left", value: "top-left" },

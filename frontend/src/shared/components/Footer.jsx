@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiArrowRight,
@@ -12,7 +13,12 @@ import {
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { subscribe } from "../../api/subscribers.api";
-import { PRODUCTS_ROUTE } from "../constants";
+import {
+  CASE_STUDIES_ROUTE,
+  INDUSTRIES_ROUTE,
+  PRODUCTS_ROUTE,
+  TECHNOLOGY_ROUTE,
+} from "../constants";
 import "./footer.css";
 
 const Footer = () => {
@@ -24,20 +30,32 @@ const Footer = () => {
     {
       title: "Services",
       links: [
-        "Web Development",
-        "Mobile Apps",
-        "Cloud Solutions",
-        "AI Solutions",
-        "Cyber Security",
+        { label: "Enterprise Software", to: "/services" },
+        { label: "Web Development", to: "/services" },
+        { label: "Mobile Apps", to: "/services" },
+        { label: "Cloud Solutions", to: "/services" },
+        { label: "AI Solutions", to: "/services" },
       ],
     },
     {
       title: "Company",
-      links: ["About Us", "Products", "Blog", "Careers", "Contact"],
+      links: [
+        { label: "About Us", to: "/about" },
+        { label: "Products", to: PRODUCTS_ROUTE },
+        { label: "Case Studies", to: CASE_STUDIES_ROUTE },
+        { label: "Industries", to: INDUSTRIES_ROUTE },
+        { label: "Contact", to: "/contact" },
+      ],
     },
     {
       title: "Resources",
-      links: ["Documentation", "Guides", "API Docs", "Support", "Community"],
+      links: [
+        { label: "Documentation", to: TECHNOLOGY_ROUTE },
+        { label: "Whitepapers", to: "/contact" },
+        { label: "Downloads", to: "/contact" },
+        { label: "Support", to: "/contact" },
+        { label: "Insights", to: "/technology" },
+      ],
     },
   ];
 
@@ -75,17 +93,12 @@ const Footer = () => {
     setLoading(true);
     try {
       await subscribe({ email });
-      toast.success(
-        "Thank you for subscribing to Technosthan updates."
-      );
+      toast.success("Thank you for subscribing to Technosthan updates.");
       setEmail("");
     } catch (err) {
       const status = err?.response?.status;
       const msg = err?.response?.data?.message;
-      if (
-        status === 409 ||
-        (msg && msg.toLowerCase().includes("already"))
-      ) {
+      if (status === 409 || (msg && msg.toLowerCase().includes("already"))) {
         toast.error("This email is already subscribed.");
       } else {
         toast.error("Failed to subscribe. Please try again.");
@@ -112,7 +125,8 @@ const Footer = () => {
             <h3>Technosthan</h3>
           </div>
           <p className="brand-description">
-            Enterprise IT solutions for the modern business
+            Enterprise IT services, software engineering, and digital transformation
+            for organizations that need reliable delivery.
           </p>
 
           <div className="newsletter-form">
@@ -134,7 +148,7 @@ const Footer = () => {
             </button>
           </div>
           <p className="newsletter-text">
-            Subscribe to get the latest updates and offers.
+            Subscribe for product updates, insights, and enterprise announcements.
           </p>
         </motion.div>
 
@@ -149,16 +163,11 @@ const Footer = () => {
               <h4>{section.title}</h4>
               <ul>
                 {section.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href={
-                        link === "Products" ? PRODUCTS_ROUTE : "#"
-                      }
-                      className="footer-link"
-                    >
+                  <li key={link.label}>
+                    <Link to={link.to} className="footer-link">
                       <span className="link-dot" />
-                      {link}
-                    </a>
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -179,9 +188,7 @@ const Footer = () => {
           </div>
           <div className="contact-item">
             <FiMail size={18} />
-            <a href="mailto:info@technosthan.com">
-              info@technosthan.com
-            </a>
+            <a href="mailto:info@technosthan.com">info@technosthan.com</a>
           </div>
           <div className="contact-item">
             <FiMapPin size={18} />
@@ -209,23 +216,18 @@ const Footer = () => {
           viewport={{ once: true }}
         >
           {socialLinks.map(({ icon: Icon, url, label }) => (
-            <a
-              key={label}
-              href={url}
-              className="social-link"
-              title={label}
-            >
+            <a key={label} href={url} className="social-link" title={label}>
               <Icon size={20} />
             </a>
           ))}
         </motion.div>
 
         <div className="legal-links">
-          <a href="#" className="legal-link">
+          <a href="/privacy" className="legal-link">
             Privacy Policy
           </a>
           <span className="link-separator">|</span>
-          <a href="#" className="legal-link">
+          <a href="/terms" className="legal-link">
             Terms of Service
           </a>
         </div>

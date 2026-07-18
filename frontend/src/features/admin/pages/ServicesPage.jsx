@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   FiStar,
+  FiList,
+  FiCheckCircle,
+  FiMenu,
+  FiLayers,
 } from "react-icons/fi";
 
 import {
@@ -52,6 +56,19 @@ const ServicesPage = () => {
     const Icon = getIconComponent(formData.iconKey);
     return Icon;
   }, [formData.iconKey]);
+
+  const summary = useMemo(() => {
+    const activeCount = items.filter((item) => item.isActive).length;
+    const navbarCount = items.filter((item) => item.showInNavbar).length;
+    const featuredCount = items.filter((item) => item.featured).length;
+
+    return {
+      total: items.length,
+      activeCount,
+      navbarCount,
+      featuredCount,
+    };
+  }, [items]);
 
   useEffect(() => {
     const load = async () => {
@@ -219,9 +236,13 @@ const ServicesPage = () => {
   return (
     <div className="admin-page">
       <section className="admin-card">
+        <span className="section-badge">
+          <span className="badge-dot" />
+          Service CMS
+        </span>
         <div className="admin-section-title">
           <div>
-            <h2>Manage services</h2>
+            <h2>Manage enterprise services</h2>
           </div>
           <button
             type="button"
@@ -232,9 +253,31 @@ const ServicesPage = () => {
           </button>
         </div>
         <p className="admin-note">
-          These records power the public services page and the navbar mega
-          menu.
+          These records power the public services page, the navbar mega menu,
+          and the inquiry flow.
         </p>
+        <div className="admin-trust-grid" style={{ marginTop: "22px" }}>
+          <div className="admin-trust-card">
+            <FiList />
+            <strong>Total Services</strong>
+            <span>{summary.total}</span>
+          </div>
+          <div className="admin-trust-card">
+            <FiCheckCircle />
+            <strong>Active</strong>
+            <span>{summary.activeCount}</span>
+          </div>
+          <div className="admin-trust-card">
+            <FiMenu />
+            <strong>Navbar Visible</strong>
+            <span>{summary.navbarCount}</span>
+          </div>
+          <div className="admin-trust-card">
+            <FiLayers />
+            <strong>Featured</strong>
+            <span>{summary.featuredCount}</span>
+          </div>
+        </div>
       </section>
 
       <div className="admin-grid">
@@ -455,6 +498,9 @@ const ServicesPage = () => {
                 "A short description will appear here."}
             </p>
             <p className="admin-note">Route: {formData.route || "/services"}</p>
+            <p className="admin-note">
+              Slug: {formData.slug || "auto-generated from title"}
+            </p>
           </div>
         </section>
       </div>
@@ -475,6 +521,7 @@ const ServicesPage = () => {
               <tr>
                 <th>Service</th>
                 <th>Category</th>
+                <th>Route</th>
                 <th>Navbar</th>
                 <th>Order</th>
                 <th>Status</th>
@@ -500,6 +547,7 @@ const ServicesPage = () => {
                       </p>
                     </td>
                     <td>{item.category}</td>
+                    <td>{item.route || "/services"}</td>
                     <td>
                       <button
                         type="button"

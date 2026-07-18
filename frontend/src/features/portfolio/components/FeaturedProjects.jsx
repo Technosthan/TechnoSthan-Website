@@ -6,10 +6,11 @@ import { getSafeImageUrl } from "../../../shared/utils";
 
 const categoryLabels = [
   "Enterprise SaaS",
-  "AI Product",
-  "Cloud Platform",
-  "Custom App",
-  "Digital Transformation",
+  "AI Platform",
+  "Cloud Operations",
+  "Digital Experience",
+  "Business Automation",
+  "Industry Product",
 ];
 
 const FeaturedProjects = () => {
@@ -43,12 +44,12 @@ const FeaturedProjects = () => {
       <div className="section-header">
         <span className="section-badge">
           <span className="badge-dot" />
-          Featured Products
+          Featured Platforms
         </span>
-        <h2>Featured Products and Platforms</h2>
+        <h2>Featured products and platforms</h2>
         <p>
-          Selected products and digital platforms we&apos;ve built for teams
-          that need reliability, speed, and enterprise-grade polish.
+          Selected platforms we have built for teams that need reliability,
+          speed, and enterprise-grade polish.
         </p>
       </div>
 
@@ -61,11 +62,7 @@ const FeaturedProjects = () => {
             <article key={project.id} className="project-card">
               <div className="project-card-image">
                 {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={project.title}
-                    loading="lazy"
-                  />
+                  <img src={imageUrl} alt={project.title} loading="lazy" />
                 ) : (
                   <div className="project-card-placeholder">
                     <FiLayers size={26} />
@@ -78,10 +75,10 @@ const FeaturedProjects = () => {
                 <h3>{project.title}</h3>
                 <p>{project.description}</p>
                 <div className="project-card-actions">
-                  <span className="project-card-chip">Web</span>
-                  <span className="project-card-chip">Cloud</span>
+                  <span className="project-card-chip">Enterprise</span>
+                  <span className="project-card-chip">Scalable</span>
                   <button type="button" className="project-card-link">
-                    Explore
+                    View details
                     <FiArrowRight size={16} />
                   </button>
                 </div>

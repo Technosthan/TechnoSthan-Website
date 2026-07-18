@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  FiArrowRight,
+  FiGlobe,
+  FiLayers,
+  FiShield,
+} from "react-icons/fi";
 import herobanner from "../../../assets/images/hero/hero.png";
 import { getHeroVisual } from "../../../api/hero-visual.api";
 import {
@@ -46,9 +52,27 @@ const fallbackHeadingLines = [
 ];
 
 const stats = [
-  { number: "50+", label: "Projects Delivered" },
-  { number: "20+", label: "Happy Clients" },
+  { number: "50+", label: "Enterprise Projects" },
+  { number: "20+", label: "Clients Supported" },
   { number: "99%", label: "Client Satisfaction" },
+];
+
+const trustPoints = [
+  {
+    icon: FiGlobe,
+    label: "Global delivery",
+    value: "Scalable teams and delivery governance",
+  },
+  {
+    icon: FiShield,
+    label: "Security first",
+    value: "Secure-by-design applications and cloud",
+  },
+  {
+    icon: FiLayers,
+    label: "End-to-end",
+    value: "Strategy, engineering, and managed support",
+  },
 ];
 
 const normalizeHeadingLine = (line) =>
@@ -153,6 +177,9 @@ const Hero = () => {
 
       <div className="hero-container">
         <div className="hero-left">
+          <div className="hero-eyebrow">
+            Enterprise IT Services & Digital Transformation
+          </div>
           <h1 className="hero-title">
             {headingLines.map((line, index) => (
               <span
@@ -167,9 +194,9 @@ const Hero = () => {
           </h1>
 
           <p className="hero-description">
-            Technosthan delivers enterprise-grade web applications, cloud
-            infrastructure, AI automation, cybersecurity solutions, and digital
-            transformation services for modern businesses.
+            Technosthan designs enterprise software, cloud platforms,
+            AI solutions, cybersecurity programs, and digital transformation
+            systems for organizations that need reliable outcomes at scale.
           </p>
 
           <div className="hero-buttons">
@@ -177,14 +204,33 @@ const Hero = () => {
               className="btn-primary"
               onClick={() => navigate("/contact")}
             >
-              Book Free Consultation
+              <span>Book Enterprise Consultation</span>
+              <FiArrowRight size={18} />
             </button>
             <button
               className="btn-secondary"
               onClick={() => navigate(PRODUCTS_ROUTE)}
             >
-              View Products
+              Explore Products
             </button>
+          </div>
+
+          <div className="hero-trust-row">
+            {trustPoints.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <div key={item.label} className="hero-trust-card">
+                  <span className="hero-trust-icon">
+                    <Icon size={16} />
+                  </span>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.value}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="hero-stats">
@@ -194,6 +240,11 @@ const Hero = () => {
                 <span className="stat-label">{stat.label}</span>
               </div>
             ))}
+          </div>
+
+          <div className="hero-trust-banner">
+            <span>Trusted by businesses across software, cloud, and operations</span>
+            <span>Enterprise-ready delivery model</span>
           </div>
         </div>
 

@@ -117,10 +117,10 @@ const Industries = () => {
           <span className="badge-dot" />
           Industries
         </span>
-        <h2>Solutions Built for Real Business Sectors</h2>
+        <h2>Solutions built for real business sectors</h2>
         <p>
-          From healthcare and finance to startups and retail, we shape
-          systems around the operational realities of each market.
+          From healthcare and finance to manufacturing and public sector work,
+          we shape systems around the operational realities of each market.
         </p>
       </div>
 

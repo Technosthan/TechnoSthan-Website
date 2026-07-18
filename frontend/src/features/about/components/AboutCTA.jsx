@@ -6,22 +6,16 @@ const AboutCTA = () => {
 
   return (
     <section className="about-cta">
-
       <div className="about-container">
-
-        <h2>
-          Ready To Build Something Amazing?
-        </h2>
-
-        <button
-          className="primary-btn"
-          onClick={() => navigate("/login")}
-        >
-          Login
+        <h2>Ready to accelerate your roadmap?</h2>
+        <p>
+          Connect with the team, review the right capabilities, and move
+          confidently toward delivery.
+        </p>
+        <button className="primary-btn" onClick={() => navigate("/login")}>
+          Open Admin Login
         </button>
-
       </div>
-
     </section>
   );
 };

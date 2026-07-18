@@ -7,9 +7,9 @@ import { getSafeImageUrl } from "../../../shared/utils";
 const resultTemplates = [
   {
     tag: "Growth",
-    problem: "Manual operations were slowing momentum and visibility.",
+    problem: "Manual workflows were slowing visibility across teams.",
     solution:
-      "Built a product-first workflow that reduced friction across teams.",
+      "Built a product-first workflow that reduced friction and improved handoffs.",
     result: "Improved speed, consistency, and delivery confidence.",
     icon: FiBarChart2,
   },
@@ -17,13 +17,13 @@ const resultTemplates = [
     tag: "Scale",
     problem: "The business needed a platform that could scale with demand.",
     solution:
-      "Created a cloud-ready foundation with a cleaner interface and flow.",
-    result: "More capacity, stronger uptime, and better user adoption.",
+      "Created a cloud-ready foundation with clearer architecture and governance.",
+    result: "More capacity, stronger uptime, and better adoption.",
     icon: FiTool,
   },
   {
     tag: "Impact",
-    problem: "The existing experience did not match the ambition of the brand.",
+    problem: "The experience did not yet match the ambition of the brand.",
     solution:
       "Refined the digital experience with sharper messaging and conversion paths.",
     result: "Better trust, clearer journeys, and more qualified inquiries.",
@@ -68,10 +68,10 @@ const CaseStudies = () => {
           <span className="badge-dot" />
           Case Studies
         </span>
-        <h2>Selected Work That Shows How We Think</h2>
+        <h2>Selected work that shows how we think</h2>
         <p>
-          These are the kinds of outcomes we pursue: clear business impact,
-          strong UX, and a platform that feels built to last.
+          These outcomes show the balance we aim for: business impact, strong
+          user experience, and a platform built to last.
         </p>
       </div>
 
@@ -84,11 +84,7 @@ const CaseStudies = () => {
             <article key={study.id} className="case-card">
               <div className="case-card-media">
                 {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={study.title}
-                    loading="lazy"
-                  />
+                  <img src={imageUrl} alt={study.title} loading="lazy" />
                 ) : (
                   <div className="case-card-placeholder">
                     <Icon size={24} />

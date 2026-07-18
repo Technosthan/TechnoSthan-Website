@@ -53,8 +53,8 @@ const PortfolioStats = () => {
   const stats = useMemo(
     () => [
       { number: `${counts.projects}+`, label: "Projects Delivered" },
-      { number: `${counts.services}+`, label: "Active Services" },
-      { number: `${counts.testimonials}+`, label: "Client Testimonials" },
+      { number: `${counts.services}+`, label: "Live Services" },
+      { number: `${counts.testimonials}+`, label: "Client References" },
       { number: "99%", label: "Client Satisfaction" },
     ],
     [counts]
@@ -65,12 +65,12 @@ const PortfolioStats = () => {
       <div className="section-header">
         <span className="section-badge">
           <span className="badge-dot" />
-          Statistics
+          Enterprise Proof
         </span>
         <h2>Proof That Builds Trust Fast</h2>
         <p>
           Real numbers from the live site and CMS-backed content that show the
-          scale of the work behind the brand.
+          scale, reliability, and delivery maturity behind the brand.
         </p>
       </div>
 

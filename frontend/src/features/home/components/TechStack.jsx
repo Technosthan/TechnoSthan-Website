@@ -20,73 +20,73 @@ const TechStack = () => {
       name: "React",
       icon: FiLayers,
       category: "Frontend",
-      description: "Modern UI delivery",
+      description: "Modern enterprise interface delivery",
     },
     {
       name: "Node.js",
       icon: FiServer,
       category: "Backend",
-      description: "Scalable runtime",
+      description: "Scalable backend runtime",
     },
     {
       name: "PostgreSQL",
       icon: FiDatabase,
       category: "Database",
-      description: "Reliable SQL storage",
+      description: "Reliable enterprise-grade SQL storage",
     },
     {
       name: "AWS",
       icon: FiCloud,
       category: "Cloud",
-      description: "Cloud infrastructure",
+      description: "Cloud infrastructure and operations",
     },
     {
       name: "Docker",
       icon: FiTool,
       category: "DevOps",
-      description: "Container workflows",
+      description: "Containerized delivery workflows",
     },
     {
       name: "AI/ML",
       icon: FiCpu,
       category: "Advanced",
-      description: "Automated intelligence",
+      description: "Applied automation and intelligence",
     },
     {
       name: "TypeScript",
       icon: FiCode,
       category: "Frontend",
-      description: "Type-safe delivery",
+      description: "Type-safe application delivery",
     },
     {
       name: "MongoDB",
       icon: FiDatabase,
       category: "Database",
-      description: "Flexible data layer",
+      description: "Flexible data layer and analytics",
     },
     {
       name: "Kubernetes",
       icon: FiGlobe,
       category: "DevOps",
-      description: "Scaling orchestration",
+      description: "Scaling orchestration and policy",
     },
     {
       name: "Redis",
       icon: FiZap,
       category: "Cache",
-      description: "Fast response layer",
+      description: "Fast response and caching layer",
     },
     {
       name: "GraphQL",
       icon: FiTrendingUp,
       category: "API",
-      description: "Composed data access",
+      description: "Composed enterprise API access",
     },
     {
       name: "Jenkins",
       icon: FiShield,
       category: "CI/CD",
-      description: "Automated delivery",
+      description: "Automated delivery pipelines",
     },
   ];
 
@@ -100,10 +100,10 @@ const TechStack = () => {
           <span className="badge-dot" />
           Tech Stack
         </span>
-        <h2>Cutting-Edge Technologies</h2>
+        <h2>Technology Stack Built for Enterprise Scale</h2>
         <p>
-          We leverage trusted, modern technologies to build scalable and
-          secure solutions that can grow with your business.
+          We use proven enterprise technologies to build secure, scalable,
+          maintainable systems that can support long-term business growth.
         </p>
       </div>
 
@@ -127,15 +127,15 @@ const TechStack = () => {
       <div className="tech-stats">
         <div className="stat">
           <h4>12+</h4>
-          <p>Technologies</p>
+          <p>Core technologies</p>
         </div>
         <div className="stat">
           <h4>100%</h4>
-          <p>Scalable</p>
+          <p>Enterprise ready</p>
         </div>
         <div className="stat">
           <h4>24/7</h4>
-          <p>Support</p>
+          <p>Support posture</p>
         </div>
       </div>
     </section>

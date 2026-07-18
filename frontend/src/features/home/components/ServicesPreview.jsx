@@ -10,57 +10,57 @@ const fallbackServices = [
     iconKey: "FiCode",
     title: "Web Development",
     shortDescription:
-      "Custom business websites and scalable web applications built with modern technologies.",
+      "Enterprise websites and web platforms engineered for scale, security, and performance.",
     category: "Development",
   },
   {
     iconKey: "FiSmartphone",
-    title: "Mobile Apps",
+    title: "Mobile Applications",
     shortDescription:
-      "Native and cross-platform Android & iOS applications with seamless performance.",
+      "Native and cross-platform Android and iOS products for enterprise teams and customers.",
     category: "Development",
   },
   {
     iconKey: "FiCloud",
     title: "Cloud Solutions",
     shortDescription:
-      "AWS and scalable infrastructure for enterprise-grade applications.",
+      "Cloud architecture, migration, and operations designed for modern enterprises.",
     category: "Cloud & Infrastructure",
   },
   {
     iconKey: "FiCpu",
     title: "AI Solutions",
     shortDescription:
-      "Automation and intelligent systems powered by machine learning.",
+      "Applied AI, automation, and workflow intelligence that improves decision-making.",
     category: "AI & Data",
   },
   {
     iconKey: "FiShield",
     title: "Cyber Security",
     shortDescription:
-      "Enterprise-grade protection and vulnerability assessment.",
+      "Security assessments, hardening, and governance for business-critical systems.",
     category: "Security & Design",
   },
   {
     iconKey: "FiLayers",
     title: "UI/UX Design",
     shortDescription:
-      "Modern user experiences with premium design principles.",
+      "Enterprise interface design that improves usability and adoption.",
     category: "Security & Design",
   },
   {
     iconKey: "FiTrendingUp",
     title: "Data Analytics",
     shortDescription:
-      "Insights and reporting solutions for data-driven decisions.",
+      "Reporting and analytics that turn operational data into action.",
     category: "AI & Data",
   },
   {
     iconKey: "FiCheckCircle",
-    title: "Consulting",
+    title: "Technology Consulting",
     shortDescription:
-      "Digital strategy, delivery planning, and product guidance.",
-    category: "Strategy",
+      "Enterprise roadmaps, modernization planning, and delivery guidance.",
+    category: "Consulting",
   },
 ];
 
@@ -84,11 +84,11 @@ const ServicesPreview = () => {
           Our Services
         </span>
 
-        <h2>Enterprise Solutions for Every Challenge</h2>
+        <h2>Enterprise Services Built for Business Outcomes</h2>
 
         <p>
-          Comprehensive IT services tailored to transform your business and
-          drive growth with measurable outcomes.
+          Comprehensive IT services tailored for transformation, resilience,
+          and long-term enterprise growth.
         </p>
       </div>
 
@@ -140,9 +140,10 @@ const ServicesPreview = () => {
 
       <div className="services-cta">
         <div className="services-cta-copy">
-          <h3>Ready to get started?</h3>
+          <h3>Ready to scope an enterprise engagement?</h3>
           <p>
-            Let&apos;s discuss how our services can transform your business.
+            Let&apos;s discuss delivery goals, timelines, and the right engagement
+            model for your organization.
           </p>
         </div>
 

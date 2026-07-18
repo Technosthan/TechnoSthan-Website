@@ -1,9 +1,9 @@
 import "./CompanyStats.css";
 
 const stats = [
-  { number: "50+", label: "Projects Delivered" },
-  { number: "20+", label: "Happy Clients" },
-  { number: "5+", label: "Years Experience" },
+  { number: "50+", label: "Enterprise Projects" },
+  { number: "20+", label: "Business Clients" },
+  { number: "5+", label: "Years of Delivery" },
   { number: "99%", label: "Client Satisfaction" },
 ];
 
@@ -12,7 +12,7 @@ const CompanyStats = () => {
     <section className="stats-section">
       <div className="about-container">
 
-        <h2>Our Impact</h2>
+        <h2>Impact That Builds Confidence</h2>
 
         <div className="stats-grid">
           {stats.map((item) => (

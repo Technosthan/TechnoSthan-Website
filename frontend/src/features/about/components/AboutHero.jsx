@@ -4,23 +4,17 @@ const AboutHero = () => {
   return (
     <section className="about-hero">
       <div className="about-container">
-
-        <span className="section-badge">
-          About Us
-        </span>
-
+        <span className="section-badge">About Technosthan</span>
         <h1>
-          Building The Future
+          Building Enterprise Technology
           <br />
-          Through Technology
+          That Teams Can Trust
         </h1>
-
         <p>
-          Technosthan delivers enterprise-grade software,
-          cloud solutions, AI automation and digital
-          transformation services.
+          Technosthan partners with businesses to design and deliver
+          enterprise software, cloud platforms, and AI-enabled digital
+          transformation programs with a clear focus on outcomes.
         </p>
-
       </div>
     </section>
   );

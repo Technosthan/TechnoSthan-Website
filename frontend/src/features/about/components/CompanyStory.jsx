@@ -3,37 +3,28 @@ import "./CompanyStory.css";
 const CompanyStory = () => {
   return (
     <section className="company-story">
-
       <div className="about-container">
-
         <div className="story-content">
-
           <div>
-            <span className="section-badge">
-              Our Story
-            </span>
-
-            <h2>
-              Empowering Businesses
-              Through Innovation
-            </h2>
-
+            <span className="section-badge">Our Story</span>
+            <h2>From delivery partner to enterprise technology partner</h2>
             <p>
-              We help startups, enterprises and organizations
-              build scalable technology solutions that drive
-              growth and efficiency.
+              Technosthan partners with organizations that need dependable
+              software delivery, modern cloud architecture, and a practical
+              roadmap for digital transformation.
+            </p>
+            <p>
+              We help teams replace fragmented systems with resilient
+              platforms, aligned stakeholders, and measurable business
+              outcomes.
             </p>
           </div>
-
           <div className="story-card">
             <h3>50+</h3>
-            <p>Projects Delivered</p>
+            <p>Enterprise engagements delivered</p>
           </div>
-
         </div>
-
       </div>
-
     </section>
   );
 };

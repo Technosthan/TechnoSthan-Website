@@ -6,27 +6,27 @@ const ServicesHero = () => {
   return (
     <section className="services-hero">
       <div className="about-container">
-        <span className="section-badge">Our Services</span>
+        <span className="section-badge">Enterprise Services</span>
 
         <h1>
-          Transforming Ideas Into
+          Transforming Operations Into
           <br />
-          Scalable Digital Products
+          Scalable Enterprise Platforms
         </h1>
 
         <p>
-          We help startups, SMEs and enterprises build powerful software
-          solutions, cloud infrastructure, AI automation systems and modern
-          digital platforms.
+          We help organizations modernize software, cloud infrastructure,
+          AI, security, and digital operations with a delivery model built
+          for enterprise confidence.
         </p>
 
         <div className="services-hero-buttons">
           <button onClick={() => navigate("/contact")} className="btn-primary">
-            Get Free Consultation
+            Book Enterprise Consultation
           </button>
 
           <button onClick={() => navigate("/products")} className="btn-secondary">
-            View Products
+            Explore Products
           </button>
         </div>
       </div>

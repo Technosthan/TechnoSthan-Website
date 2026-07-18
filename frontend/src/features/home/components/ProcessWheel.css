@@ -1,7 +1,7 @@
 .process-wheel-section {
   padding: 60px 20px;
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-  color: var(--text-primary);
+  background: linear-gradient(180deg, var(--bg-dark) 0%, #07143a 100%);
+  color: #e6f7ff;
 }
 
 .process-wheel-container {
@@ -57,16 +57,18 @@
 .wheel-card {
   width: 170px;
   min-height: 72px;
-  background: var(--surface-secondary);
-  border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-card);
+  background: rgba(10, 14, 39, 0.88);
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  box-shadow:
+    0 18px 40px rgba(0, 212, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
   border-radius: 18px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary);
+  color: #e6f7ff;
   text-align: center;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -90,7 +92,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 212, 255, 0.12);
-  color: var(--accent-primary);
+  color: var(--neon);
   padding: 6px 12px;
   border-radius: 999px;
   font-weight: 700;
@@ -115,16 +117,24 @@
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 30% 20%, rgba(0, 212, 255, 0.06), transparent 25%),
-    var(--surface-secondary);
-  border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-card);
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(0, 212, 255, 0.06),
+      transparent 25%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.01)
+    );
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 212, 255, 0.06);
   z-index: 2;
 }
 
 .wheel-center-inner {
   text-align: center;
-  color: var(--text-primary);
+  color: #e9fbff;
 }
 
 .wheel-center-inner h3 {

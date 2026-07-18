@@ -1,26 +1,38 @@
-import './ProjectCategories.css';
+import "./ProjectCategories.css";
 
 const ProjectCategories = () => {
+  const industries = [
+    "Financial Services",
+    "Healthcare",
+    "Manufacturing",
+    "Retail & Commerce",
+    "Logistics",
+    "Public Sector",
+  ];
+
   return (
     <section className="project-categories">
-
       <div className="about-container">
-
-        <h2>Industries Served</h2>
-
-        <div className="categories-grid">
-
-          <div className="glass-card">Agriculture</div>
-          <div className="glass-card">Education</div>
-          <div className="glass-card">Healthcare</div>
-          <div className="glass-card">Retail</div>
-          <div className="glass-card">Finance</div>
-          <div className="glass-card">Logistics</div>
-
+        <div className="section-header">
+          <span className="section-badge">
+            <span className="badge-dot" />
+            Industries Served
+          </span>
+          <h2>Industries we support</h2>
+          <p>
+            Technosthan builds digital systems for businesses that need
+            operational clarity, compliance, and scale.
+          </p>
         </div>
 
+        <div className="categories-grid">
+          {industries.map((industry) => (
+            <div key={industry} className="glass-card">
+              {industry}
+            </div>
+          ))}
+        </div>
       </div>
-
     </section>
   );
 };

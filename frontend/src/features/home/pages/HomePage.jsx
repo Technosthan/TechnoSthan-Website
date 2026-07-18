@@ -15,15 +15,15 @@ const HomePage = () => {
   return (
     <>
       <Hero />
+      <PortfolioStats />
       <ServicesPreview />
       <Industries />
       <WhyChooseUs />
       <FeaturedProjects />
       <CaseStudies />
-      <Testimonials />
-      <ProcessSection />
       <TechStack />
-      <PortfolioStats />
+      <ProcessSection />
+      <Testimonials />
       <FAQ />
       <ServicesCTA />
     </>

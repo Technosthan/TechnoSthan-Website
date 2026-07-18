@@ -47,10 +47,10 @@ const Testimonials = () => {
           <span className="badge-dot" />
           Client Stories
         </span>
-        <h2>What Our Clients Say</h2>
+        <h2>Trusted by Leaders Who Need Reliable Delivery</h2>
         <p>
-          Real feedback from businesses that trust TechnoSthan to deliver
-          reliable digital solutions.
+          Real feedback from teams that rely on Technosthan for dependable
+          software delivery, cloud execution, and long-term technical support.
         </p>
       </div>
 
@@ -68,7 +68,7 @@ const Testimonials = () => {
               <div className="testimonial-top">
                 <div className="testimonial-badge">
                   <FiMessageSquare size={16} />
-                  Client feedback
+                  Enterprise feedback
                 </div>
                 <div className="testimonial-rating" aria-label="5 star rating">
                   {Array.from({ length: 5 }).map((_, index) => (

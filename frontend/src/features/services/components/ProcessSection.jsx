@@ -12,28 +12,28 @@ const process = [
 const ProcessSection = () => {
   return (
     <section className="process-section">
-
       <div className="about-container">
-
-        <h2>Our Development Process</h2>
+        <div className="section-header">
+          <span className="section-badge">
+            <span className="badge-dot" />
+            Delivery Method
+          </span>
+          <h2>Our enterprise delivery process</h2>
+          <p>
+            Structured discovery, clear milestones, and a delivery rhythm that
+            keeps business stakeholders informed at every stage.
+          </p>
+        </div>
 
         <div className="process-grid">
-
           {process.map((step, index) => (
-            <div
-              key={step}
-              className="glass-card process-card"
-            >
+            <div key={step} className="glass-card process-card">
               <span>0{index + 1}</span>
-
               <h3>{step}</h3>
             </div>
           ))}
-
         </div>
-
       </div>
-
     </section>
   );
 };

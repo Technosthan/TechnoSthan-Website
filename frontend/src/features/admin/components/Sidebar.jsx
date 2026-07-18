@@ -4,12 +4,24 @@ import { ADMIN_ROUTE } from "../../../shared/constants";
 const navItems = [
   { label: "Dashboard", path: ADMIN_ROUTE },
   {
-    label: "Products",
-    path: `${ADMIN_ROUTE}/products`,
-  },
-  {
     label: "Services",
     path: `${ADMIN_ROUTE}/services`,
+  },
+  {
+    label: "Industries",
+    path: `${ADMIN_ROUTE}/industries`,
+  },
+  {
+    label: "Case Studies",
+    path: `${ADMIN_ROUTE}/case-studies`,
+  },
+  {
+    label: "Technology",
+    path: `${ADMIN_ROUTE}/technology`,
+  },
+  {
+    label: "Products",
+    path: `${ADMIN_ROUTE}/products`,
   },
   {
     label: "Client Testimonials",
@@ -19,16 +31,28 @@ const navItems = [
     label: "Hero Visual",
     path: `${ADMIN_ROUTE}/hero-visual`,
   },
+  {
+    label: "Leads",
+    path: `${ADMIN_ROUTE}/leads`,
+  },
+  {
+    label: "Media Library",
+    path: `${ADMIN_ROUTE}/media-library`,
+  },
+  {
+    label: "SEO",
+    path: `${ADMIN_ROUTE}/seo`,
+  },
 ];
 
 const Sidebar = ({ onNavigate }) => {
   return (
     <aside className="admin-sidebar">
       <div className="admin-brand">
-        <span className="logo-icon">⚡</span>
+        <span className="logo-icon">TS</span>
         <div>
           <h1>TechnoSthan</h1>
-          <p>Admin workspace</p>
+          <p>Enterprise CMS workspace</p>
         </div>
       </div>
 
@@ -39,9 +63,7 @@ const Sidebar = ({ onNavigate }) => {
             to={item.path}
             end={item.path === ADMIN_ROUTE}
             className={({ isActive }) =>
-              `admin-nav-link ${
-                isActive ? "active" : ""
-              }`
+              `admin-nav-link ${isActive ? "active" : ""}`
             }
             onClick={onNavigate}
           >
