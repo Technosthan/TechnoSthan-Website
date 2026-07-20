@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Calendar,
@@ -15,6 +15,13 @@ import {
 import AdminLayout from "./AdminLayout";
 import api from "../../lib/api";
 import { useToast } from "../Toast/ToastProvider";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import {
+  buildDraftKey,
+  clearDraft,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 import {
   GlassPanel,
   StatCard,
@@ -131,6 +138,46 @@ const DailyTasksManager = () => {
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [viewTemplate, setViewTemplate] = useState(null);
+  const recoveryHandledRef = useRef(false);
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const draftKey = useMemo(
+    () =>
+      buildDraftKey({
+        module: "daily-task",
+        mode: editingId ? "edit" : "create",
+        recordId: editingId || "new",
+        userId: draftUserId,
+      }),
+    [draftUserId, editingId],
+  );
+  const draftData = useMemo(
+    () => ({
+      ...formData,
+      editingId,
+      showForm,
+    }),
+    [editingId, formData, showForm],
+  );
+  const {
+    draftSnapshot,
+    draftStatus,
+    draftError,
+    restoreDraft,
+    discardDraft,
+    markRecoveryHandled,
+  } = useAutoDraft({
+    key: draftKey,
+    data: draftData,
+    enabled: showForm,
+    module: "daily-task",
+    mode: editingId ? "edit" : "create",
+    recordId: editingId || "new",
+    userId: draftUserId,
+  });
+
+  useEffect(() => {
+    recoveryHandledRef.current = false;
+  }, [draftKey]);
 
   const filteredTemplates = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -245,6 +292,7 @@ const DailyTasksManager = () => {
           type: "success",
         });
 
+        clearDraft(draftKey);
         setShowForm(false);
         setEditingId(null);
         setFormData(getInitialFormData());
@@ -286,6 +334,7 @@ const DailyTasksManager = () => {
           ),
         );
 
+        clearDraft(draftKey);
         setEditingId(null);
         setShowForm(false);
         setFormData(getInitialFormData());
@@ -481,6 +530,7 @@ const DailyTasksManager = () => {
     setShowForm(true);
     setTargetUserSearch("");
     setUserSearchResults([]);
+    recoveryHandledRef.current = false;
   };
 
   const handleCloseForm = () => {
@@ -489,6 +539,7 @@ const DailyTasksManager = () => {
     setFormData(getInitialFormData());
     setTargetUserSearch("");
     setUserSearchResults([]);
+    recoveryHandledRef.current = false;
   };
 
   const summaryCards = useMemo(() => {
@@ -618,7 +669,11 @@ const DailyTasksManager = () => {
               onClick={() => {
                 setEditingId(null);
                 setFormData(getInitialFormData());
-                setShowForm((current) => !current);
+                setShowForm((current) => {
+                  const next = !current;
+                  recoveryHandledRef.current = false;
+                  return next;
+                });
               }}
               className="inline-flex h-10 items-center rounded-full bg-cyan-500 px-3 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400 sm:h-11 sm:px-5 sm:text-sm"
             >
@@ -918,13 +973,13 @@ const DailyTasksManager = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleCloseForm}
-                className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5"
-              >
-                Cancel
-              </button>
+            <button
+              type="button"
+              onClick={handleCloseForm}
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5"
+            >
+              Cancel
+            </button>
 
               <button
                 type="button"
@@ -940,6 +995,17 @@ const DailyTasksManager = () => {
                 <Save size={16} className="mr-2" />
                 {editingId ? "Update" : "Create"}
               </button>
+              <div className="ml-auto self-center text-xs text-slate-400">
+                {draftError
+                  ? draftError
+                  : draftStatus === "saved"
+                    ? "Draft saved"
+                    : draftStatus === "restored"
+                      ? "Draft restored"
+                      : draftStatus === "external-update"
+                        ? "This draft was updated in another tab."
+                        : ""}
+              </div>
             </div>
           </GlassPanel>
         )}

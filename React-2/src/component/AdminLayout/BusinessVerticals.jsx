@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   UploadCloud,
@@ -16,6 +16,13 @@ import {
   BUSINESS_VERTICALS_UPDATED_STORAGE_KEY,
   resolveBusinessVerticalImageSrc,
 } from "../../lib/businessVerticalUtils";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import {
+  buildDraftKey,
+  clearDraft,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 import "./BusinessVerticals.css";
 
 const ACCEPTED_IMAGE_TYPES = [
@@ -37,6 +44,54 @@ const BusinessVerticals = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const recoveryHandledRef = useRef(false);
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const draftKey = useMemo(
+    () =>
+      buildDraftKey({
+        module: "business-vertical",
+        mode: editingId ? "edit" : "create",
+        recordId: editingId || "new",
+        userId: draftUserId,
+      }),
+    [draftUserId, editingId],
+  );
+  const draftData = useMemo(
+    () => ({
+      title,
+      description,
+      editingId,
+      fileMeta: file
+        ? {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+          }
+        : null,
+    }),
+    [description, editingId, file, title],
+  );
+  const {
+    draftSnapshot,
+    draftStatus,
+    draftError,
+    restoreDraft,
+    discardDraft,
+    markRecoveryHandled,
+  } = useAutoDraft({
+    key: draftKey,
+    data: draftData,
+    enabled: true,
+    module: "business-vertical",
+    mode: editingId ? "edit" : "create",
+    recordId: editingId || "new",
+    userId: draftUserId,
+  });
+
+  useEffect(() => {
+    recoveryHandledRef.current = false;
+  }, [draftKey]);
 
   const loadVerticals = async () => {
     try {
@@ -93,6 +148,7 @@ const BusinessVerticals = () => {
     setFile(null);
     setPreview(null);
     setEditingId(null);
+    clearDraft(draftKey);
   };
 
   const handleFileChange = (event) => {
@@ -121,6 +177,7 @@ const BusinessVerticals = () => {
     setPreview(resolveImageUrl(vertical));
     setFile(null);
     setError("");
+    recoveryHandledRef.current = false;
   };
 
   const handleSubmit = async (event) => {
@@ -161,6 +218,7 @@ const BusinessVerticals = () => {
           title: editingId ? "Vertical updated" : "Vertical added",
           type: "success",
         });
+        clearDraft(draftKey);
         resetForm();
         await loadVerticals();
         triggerVerticalsRefresh();
@@ -383,6 +441,9 @@ const BusinessVerticals = () => {
 
             <form className="verticals-form" onSubmit={handleSubmit}>
               {error && <div className="error-banner">{error}</div>}
+              {!error && draftError && (
+                <div className="error-banner">{draftError}</div>
+              )}
 
               <div className="field-group">
                 <label htmlFor="vertical-title">Title</label>
@@ -446,6 +507,15 @@ const BusinessVerticals = () => {
                     <XCircle size={16} /> Cancel
                   </button>
                 )}
+                <div className="ml-auto self-center text-xs text-slate-400">
+                  {draftStatus === "saved"
+                    ? "Draft saved"
+                    : draftStatus === "restored"
+                      ? "Draft restored"
+                      : draftStatus === "external-update"
+                        ? "This draft was updated in another tab."
+                        : ""}
+                </div>
               </div>
             </form>
           </section>

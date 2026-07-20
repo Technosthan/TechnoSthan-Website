@@ -23,6 +23,17 @@ import {
   Bell,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import useModuleDrafts from "../../hooks/useModuleDrafts";
+import DraftsButton from "./drafts/DraftsButton";
+import DraftsPanel from "./drafts/DraftsPanel";
+import {
+  buildDraftKey,
+  clearDraft,
+  findLatestDraftKeyForModule,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 import {
   buildPublicFormUrl,
   createAdminForm,
@@ -1059,6 +1070,7 @@ const getFilterRange = (filter) => {
 const FormManagement = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1086,6 +1098,8 @@ const FormManagement = () => {
   const [analysisEmailFilter, setAnalysisEmailFilter] = useState("all");
   const [analysisPhoneFilter, setAnalysisPhoneFilter] = useState("all");
   const lastSavedFormRef = useRef(null);
+  const draftResolutionRef = useRef(null);
+  const [draftsOpen, setDraftsOpen] = useState(false);
   const sessionUploadedAssetsRef = useRef([]);
   const secretRevealTimersRef = useRef({});
   const importFileInputRef = useRef(null);
@@ -1102,6 +1116,47 @@ const FormManagement = () => {
   const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
   const [bannerPreviewFailed, setBannerPreviewFailed] = useState(false);
   const [revealedSecrets, setRevealedSecrets] = useState({});
+  const [draftKey, setDraftKey] = useState(() =>
+    findLatestDraftKeyForModule(draftUserId, "form-builder") ||
+    buildDraftKey({
+      module: "form-builder",
+      mode: "create",
+      recordId: "new",
+      userId: draftUserId,
+    }),
+  );
+  const recoveryHandledRef = useRef(false);
+  const draftState = useMemo(
+    () => ({
+      ...draft,
+      selectedFormId,
+    }),
+    [draft, selectedFormId],
+  );
+  const {
+    draftSnapshot,
+    draftStatus,
+    draftError,
+    restoreDraft,
+    discardDraft,
+    markRecoveryHandled,
+  } = useAutoDraft({
+    key: draftKey,
+    data: draftState,
+    enabled: true,
+    module: "form-builder",
+    mode: selectedFormId ? "edit" : "create",
+    recordId: selectedFormId || "new",
+    userId: draftUserId,
+  });
+  const { drafts, count, removeDraft } = useModuleDrafts({
+    module: "form-builder",
+    userId: getStoredUser(),
+  });
+
+  useEffect(() => {
+    recoveryHandledRef.current = false;
+  }, [draftKey]);
 
   const loadForms = async () => {
     setLoading(true);
@@ -1121,6 +1176,14 @@ const FormManagement = () => {
 
   const selectForm = async (form, nextTab = "questions") => {
     setSelectedFormId(form._id);
+    setDraftKey(
+      buildDraftKey({
+        module: "form-builder",
+        mode: "edit",
+        recordId: form._id,
+        userId: draftUserId,
+      }),
+    );
     setActiveTab(nextTab);
     setResponsesTab("list");
     setSlugTouched(true);
@@ -1139,7 +1202,10 @@ const FormManagement = () => {
       ]);
       const normalized = normalizeForm(detailRes.data?.data || form);
       lastSavedFormRef.current = normalized;
-      setDraft(normalized);
+      if (draftResolutionRef.current !== "restore") {
+        setDraft(normalized);
+      }
+      draftResolutionRef.current = null;
       setResponses(normalizeResponsesPayload(responseRes.data?.data));
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load form");
@@ -1148,10 +1214,19 @@ const FormManagement = () => {
 
   const startNewForm = () => {
     setSelectedFormId(null);
+    setDraftKey(
+      buildDraftKey({
+        module: "form-builder",
+        mode: "create",
+        recordId: "new",
+        userId: draftUserId,
+      }),
+    );
     setActiveTab("questions");
     setResponsesTab("list");
     setSlugTouched(false);
     setImportPreview(null);
+    draftResolutionRef.current = null;
     setDraft({
       ...EMPTY_FORM,
       emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
@@ -2236,6 +2311,7 @@ const FormManagement = () => {
         emailTemplate: saved?.emailTemplate || payload.emailTemplate,
       });
       lastSavedFormRef.current = normalizeForm(saved || payload);
+      clearDraft(draftKey);
       toast.success(selectedFormId ? "Form updated" : "Form created");
       await loadForms();
       if (saved?._id) {
@@ -2583,6 +2659,7 @@ const FormManagement = () => {
         </div>
 
         <div className="flex flex-wrap gap-3">
+          <DraftsButton count={count} onClick={() => setDraftsOpen(true)} />
           <button
             type="button"
             onClick={startNewForm}
@@ -2751,6 +2828,17 @@ const FormManagement = () => {
               >
                 <Send size={16} /> Publish
               </button>
+              <div className="w-full text-right text-xs text-slate-400">
+                {draftError
+                  ? draftError
+                  : draftStatus === "saved"
+                    ? "Draft saved"
+                    : draftStatus === "restored"
+                      ? "Draft restored"
+                      : draftStatus === "external-update"
+                        ? "This draft was updated in another tab."
+                        : ""}
+              </div>
             </div>
           </div>
 
@@ -4865,6 +4953,52 @@ const FormManagement = () => {
           </div>
         </div>
       )}
+
+      <DraftsPanel
+        open={draftsOpen}
+        onClose={() => setDraftsOpen(false)}
+        drafts={drafts}
+        moduleLabel="Form Builder"
+        hasUnsavedChanges={false}
+        titleResolver={(draftItem) =>
+          draftItem.data?.title || draftItem.data?.emailTemplate?.headerTitle || "Untitled Form Draft"
+        }
+        summaryResolver={(draftItem) => {
+          const questionCount = Array.isArray(draftItem.data?.questions)
+            ? draftItem.data.questions.length
+            : 0;
+          const conditionalCount = Array.isArray(draftItem.data?.questions)
+            ? draftItem.data.questions.reduce(
+                (total, question) =>
+                  total +
+                  (Array.isArray(question?.conditionalFields)
+                    ? question.conditionalFields.length
+                    : 0),
+                0,
+              )
+            : 0;
+          return [
+            draftItem.mode === "edit" ? "Editing form" : "New form",
+            `${questionCount} questions`,
+            `${conditionalCount} conditional fields`,
+          ].join(" • ");
+        }}
+        onRestore={(draftItem) => {
+          const nextData = {
+            ...EMPTY_FORM,
+            emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
+            notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
+            ...(draftItem.data || {}),
+          };
+          setSelectedFormId(nextData.selectedFormId || null);
+          setDraft(nextData);
+          setSlugTouched(Boolean(nextData.slug));
+          setDraftsOpen(false);
+        }}
+        onDelete={(draftItem) => {
+          removeDraft(draftItem.key);
+        }}
+      />
     </div>
   );
 };

@@ -33,6 +33,11 @@ import { getStoredUser, normalizeRole } from "../../utils/auth";
 import usePermissions from "../../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../../lib/permissionResolver";
 import {
+  buildDraftKey,
+  clearDraft,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import {
   DashboardActionLink,
   EmptyState,
   GlassPanel,
@@ -112,6 +117,12 @@ const AdminAssignments = () => {
     isAdmin ||
     currentRole === "HR" ||
     hasPermission(PERMISSION_KEYS.UPLOAD_FILES);
+  const assignmentDraftKey = buildDraftKey({
+    module: "assignment",
+    mode: editingAssignment ? "edit" : "create",
+    recordId: editingAssignment?._id || "new",
+    userId: getCurrentDraftUserId(getStoredUser()),
+  });
 
   // Get detailed permission reasons for UI display
   const submitWorkDetails = getPermissionDetails(PERMISSION_KEYS.SUBMIT_WORK);
@@ -498,6 +509,7 @@ const AdminAssignments = () => {
         message: response.message,
         type: "success",
       });
+      clearDraft(assignmentDraftKey);
       setModalOpen(false);
       setEditingAssignment(null);
       fetchAssignments();
@@ -907,6 +919,7 @@ const AdminAssignments = () => {
         assignment={editingAssignment}
         loading={saving}
         canManageAllRoles={isAdmin}
+        draftKey={assignmentDraftKey}
       />
 
       <AnimatePresence>

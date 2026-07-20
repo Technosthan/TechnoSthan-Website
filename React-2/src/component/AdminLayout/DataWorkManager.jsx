@@ -27,6 +27,12 @@ import {
   formatDateTime,
   getWorkStatusBadgeClass,
 } from "./dataWorkUtils";
+import {
+  buildDraftKey,
+  clearDraft,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 
 const cardClassName =
   "rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_44%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.88))] p-5 shadow-xl shadow-slate-950/25";
@@ -196,6 +202,13 @@ const DataWorkManager = () => {
   const [modalState, setModalState] = useState(initialFormState);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const draftKey = buildDraftKey({
+    module: "data-work",
+    mode: modalState.mode,
+    recordId: modalState.work?._id || modalState.work?.id || "new",
+    userId: draftUserId,
+  });
 
   const fetchWorks = useCallback(async ({ pageNumber = page, withLoading = true } = {}) => {
     try {
@@ -290,6 +303,7 @@ const DataWorkManager = () => {
         const response = await createAdminDataWork(formData);
         toast.success(response?.data?.message || "Work created successfully.");
       }
+      clearDraft(draftKey);
       setModalState(initialFormState);
       await fetchWorks({ pageNumber: 1, withLoading: true });
     } catch (err) {
@@ -627,6 +641,7 @@ const DataWorkManager = () => {
         saving={saving}
         onClose={closeModal}
         onSubmit={handleSaveModal}
+        draftKey={draftKey}
       />
 
       <ConfirmationModal

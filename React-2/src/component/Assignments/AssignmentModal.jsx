@@ -1,6 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, BriefcaseBusiness, Layers3, Link2, ListChecks, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { buildDraftKey, getCurrentDraftUserId } from "../../shared/lib/draftPersistence";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import useModuleDrafts from "../../hooks/useModuleDrafts";
+import DraftsButton from "../AdminLayout/drafts/DraftsButton";
+import DraftsPanel from "../AdminLayout/drafts/DraftsPanel";
+import { getStoredUser } from "../../utils/auth";
 import {
   ASSIGNMENT_TYPE_OPTIONS,
   PRIORITY_OPTIONS,
@@ -65,10 +71,42 @@ const AssignmentModal = ({
 }) => {
   const [form, setForm] = useState(getInitialForm(null, canManageAllRoles));
   const [errors, setErrors] = useState({});
+  const currentUser = getStoredUser();
+  const currentUserId = getCurrentDraftUserId(currentUser);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const generatedDraftKey = useMemo(
+    () =>
+      buildDraftKey({
+        module: "assignment",
+        mode: assignment ? "edit" : "create",
+        recordId: assignment?._id || "new",
+        userId: currentUserId,
+      }),
+    [assignment?._id, assignment, currentUserId],
+  );
+  const resolvedDraftKey = generatedDraftKey;
+  const { drafts, count, removeDraft } = useModuleDrafts({
+    module: "assignment",
+    userId: currentUser,
+  });
+  const {
+    draftStatus,
+    draftError,
+  } = useAutoDraft({
+    key: resolvedDraftKey,
+    data: form,
+    enabled: open,
+    module: "assignment",
+    mode: assignment ? "edit" : "create",
+    recordId: assignment?._id || "new",
+    userId: currentUserId,
+  });
 
   useEffect(() => {
     setForm(getInitialForm(assignment, canManageAllRoles));
     setErrors({});
+    setHasUnsavedChanges(false);
   }, [assignment, open, canManageAllRoles]);
 
   const roleOptions = useMemo(
@@ -104,6 +142,7 @@ const AssignmentModal = ({
   };
 
   const updateField = (field, value) => {
+    setHasUnsavedChanges(true);
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => {
       if (!current[field]) {
@@ -117,6 +156,7 @@ const AssignmentModal = ({
   };
 
   const handleAssignmentTypeChange = (value) => {
+    setHasUnsavedChanges(true);
     setForm((current) => ({
       ...current,
       assignmentType: value,
@@ -150,6 +190,7 @@ const AssignmentModal = ({
       submissionLink: form.submissionLink.trim(),
       attachments: textToAttachments(form.attachmentsText),
     });
+    setHasUnsavedChanges(false);
   };
 
   const helperText =
@@ -190,6 +231,13 @@ const AssignmentModal = ({
               >
                 Close
               </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <DraftsButton count={count} onClick={() => setDraftsOpen(true)} />
+              <p className="text-xs text-slate-500">
+                Auto-saved drafts stay in this browser until you restore or delete them.
+              </p>
             </div>
 
             <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
@@ -416,9 +464,20 @@ const AssignmentModal = ({
               </div>
 
               <div className="flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-500">
+                <div className="text-sm text-slate-500">
                   Only one assignment strategy is active at a time, so the payload stays unambiguous.
-                </p>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {draftError
+                      ? draftError
+                      : draftStatus === "saved"
+                        ? "Draft saved"
+                        : draftStatus === "restored"
+                          ? "Draft restored"
+                          : draftStatus === "external-update"
+                            ? "This draft was updated in another tab."
+                            : ""}
+                  </div>
+                </div>
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
@@ -437,6 +496,40 @@ const AssignmentModal = ({
                 </div>
               </div>
             </form>
+
+            <DraftsPanel
+              open={draftsOpen}
+              onClose={() => setDraftsOpen(false)}
+              drafts={drafts}
+              hasUnsavedChanges={hasUnsavedChanges}
+              moduleLabel="Assignments"
+              titleResolver={(draft) =>
+                draft.data?.title || "Untitled Assignment Draft"
+              }
+              summaryResolver={(draft) =>
+                [
+                  draft.mode === "edit" ? "Editing assignment" : "New assignment",
+                  draft.data?.priority ? `Priority: ${draft.data.priority}` : "",
+                  draft.data?.deadline
+                    ? `Due: ${new Date(draft.data.deadline).toLocaleString()}`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" • ")
+              }
+              onRestore={(draft) => {
+                setForm({
+                  ...getInitialForm(assignment, canManageAllRoles),
+                  ...(draft.data || {}),
+                });
+                setErrors({});
+                setHasUnsavedChanges(false);
+                setDraftsOpen(false);
+              }}
+              onDelete={(draft) => {
+                removeDraft(draft.key);
+              }}
+            />
           </motion.div>
         </motion.div>
       )}

@@ -1,7 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import api from "../../lib/api";
 import AdminLayout from "./AdminLayout";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import {
+  buildDraftKey,
+  clearDraft,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 
 const normalizeRoute = (value) => {
   if (typeof value !== "string") {
@@ -76,6 +83,45 @@ const PageContentManager = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const recoveryHandledRef = useRef(false);
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const draftKey = useMemo(
+    () =>
+      buildDraftKey({
+        module: "page-content",
+        mode: editingId ? "edit" : "create",
+        recordId: editingId || "new",
+        userId: draftUserId,
+      }),
+    [draftUserId, editingId],
+  );
+  const draftState = useMemo(
+    () => ({
+      ...form,
+      editingId,
+    }),
+    [form, editingId],
+  );
+  const {
+    draftSnapshot,
+    draftStatus,
+    draftError,
+    restoreDraft,
+    discardDraft,
+    markRecoveryHandled,
+  } = useAutoDraft({
+    key: draftKey,
+    data: draftState,
+    enabled: true,
+    module: "page-content",
+    mode: editingId ? "edit" : "create",
+    recordId: editingId || "new",
+    userId: draftUserId,
+  });
+
+  useEffect(() => {
+    recoveryHandledRef.current = false;
+  }, [draftKey]);
   const availablePositions = useMemo(
     () => getPositionOptions(form.route),
     [form.route],
@@ -154,6 +200,7 @@ const PageContentManager = () => {
         await api.post("/api/admin/page-content", payload);
       }
 
+      clearDraft(draftKey);
       resetForm();
       await loadSections();
       triggerPageContentRefresh();
@@ -310,7 +357,7 @@ const PageContentManager = () => {
             </label>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               onClick={saveSection}
               disabled={saving}
@@ -325,6 +372,17 @@ const PageContentManager = () => {
             >
               Reset
             </button>
+            <div className="text-xs text-slate-400">
+              {draftError
+                ? draftError
+                : draftStatus === "saved"
+                  ? "Draft saved"
+                  : draftStatus === "restored"
+                    ? "Draft restored"
+                    : draftStatus === "external-update"
+                      ? "This draft was updated in another tab."
+                      : ""}
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, Trash2, ArrowUpDown } from "lucide-react";
 import api from "../../lib/api";
 import {
@@ -7,6 +7,13 @@ import {
 } from "../../lib/campaignRoutes";
 import { useToast } from "../Toast/ToastProvider";
 import AdminLayout from "./AdminLayout";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import {
+  buildDraftKey,
+  clearDraft,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 import "./CampaignManager.css";
 
 const parseDateTimeValue = (value) => {
@@ -106,6 +113,73 @@ const CampaignManager = () => {
   const [error, setError] = useState(null);
   const [now, setNow] = useState(() => new Date());
   const [replaceCampaign, setReplaceCampaign] = useState(null);
+  const fileInputRef = useRef(null);
+  const recoveryHandledRef = useRef(false);
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const draftKey = useMemo(
+    () =>
+      buildDraftKey({
+        module: "campaign",
+        mode: editingCampaign ? "edit" : "create",
+        recordId: editingCampaign?._id || "new",
+        userId: draftUserId,
+      }),
+    [draftUserId, editingCampaign],
+  );
+  const draftData = useMemo(
+    () => ({
+      displayRoute,
+      startAt,
+      expiresAt,
+      redirectUrl,
+      campaignButtons,
+      isActive,
+      editingCampaignId: editingCampaign?._id || null,
+      editingCampaignMediaUrl: editingCampaign?.mediaUrl || "",
+      replaceCampaignId: replaceCampaign?._id || null,
+      replaceCampaignMediaUrl: replaceCampaign?.mediaUrl || "",
+      replaceCampaignIsActive: replaceCampaign?.isActive ?? null,
+      fileMeta: file
+        ? {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+          }
+        : null,
+    }),
+    [
+      campaignButtons,
+      displayRoute,
+      editingCampaign,
+      expiresAt,
+      file,
+      isActive,
+      redirectUrl,
+      replaceCampaign,
+      startAt,
+    ],
+  );
+  const {
+    draftSnapshot,
+    draftStatus,
+    draftError,
+    restoreDraft,
+    discardDraft,
+    markRecoveryHandled,
+  } = useAutoDraft({
+    key: draftKey,
+    data: draftData,
+    enabled: true,
+    module: "campaign",
+    mode: editingCampaign ? "edit" : "create",
+    recordId: editingCampaign?._id || "new",
+    userId: draftUserId,
+  });
+
+  useEffect(() => {
+    recoveryHandledRef.current = false;
+  }, [draftKey]);
 
   // editing mode uses same left form
   const [editingCampaign, setEditingCampaign] = useState(null);
@@ -162,6 +236,10 @@ const CampaignManager = () => {
     setReplaceCampaign(null);
     setError(null);
     setEditingCampaign(null);
+    clearDraft(draftKey);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleFileChange = (e) => {
@@ -185,6 +263,7 @@ const CampaignManager = () => {
       return;
     }
     setFile(selected);
+    recoveryHandledRef.current = false;
   };
 
   const validateCampaignTiming = () => {
@@ -262,6 +341,7 @@ const CampaignManager = () => {
         );
         if (data.success) {
           showToast({ title: "Campaign updated", type: "success" });
+          clearDraft(draftKey);
           resetForm();
           loadCampaigns();
         }
@@ -273,6 +353,7 @@ const CampaignManager = () => {
             message: "New campaign has been added.",
             type: "success",
           });
+          clearDraft(draftKey);
           resetForm();
           loadCampaigns();
         }
@@ -363,6 +444,7 @@ const CampaignManager = () => {
           message: "The campaign was swapped successfully.",
           type: "success",
         });
+        clearDraft(draftKey);
         resetForm();
         loadCampaigns();
       }
@@ -470,6 +552,7 @@ const CampaignManager = () => {
                 type="file"
                 accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
                 onChange={handleFileChange}
+                ref={fileInputRef}
                 className="file-input"
                 disabled={saving}
               />
@@ -717,6 +800,17 @@ const CampaignManager = () => {
               >
                 {editingCampaign ? "Cancel Edit" : "Clear"}
               </button>
+              <div className="ml-auto self-center text-xs text-slate-400">
+                {draftError
+                  ? draftError
+                  : draftStatus === "saved"
+                    ? "Draft saved"
+                    : draftStatus === "restored"
+                      ? "Draft restored"
+                      : draftStatus === "external-update"
+                        ? "This draft was updated in another tab."
+                        : ""}
+              </div>
             </div>
 
             <div className="replace-block">

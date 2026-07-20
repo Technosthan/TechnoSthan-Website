@@ -15,6 +15,12 @@ import {
   formatBytes,
   formatPlainCellValue,
 } from "./dataWorkUtils";
+import useAutoDraft from "../../hooks/useAutoDraft";
+import {
+  buildDraftKey,
+  getCurrentDraftUserId,
+} from "../../shared/lib/draftPersistence";
+import { getStoredUser } from "../../utils/auth";
 
 const fieldClassName =
   "w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60";
@@ -45,6 +51,7 @@ const DataWorkFormModal = ({
   work = null,
   onClose,
   onSubmit,
+  draftKey: draftKeyProp = "",
   saving = false,
 }) => {
   const fileInputRef = useRef(null);
@@ -59,6 +66,59 @@ const DataWorkFormModal = ({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
   const [formError, setFormError] = useState("");
+  const [draftNotice, setDraftNotice] = useState("");
+  const recoveryHandledRef = useRef(false);
+  const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const generatedDraftKey = useMemo(
+    () =>
+      buildDraftKey({
+        module: "data-work",
+        mode,
+        recordId: work?._id || work?.id || "new",
+        userId: draftUserId,
+      }),
+    [draftUserId, mode, work?._id, work?.id],
+  );
+  const draftKey = draftKeyProp || generatedDraftKey;
+  const draftData = useMemo(
+    () => ({
+      name,
+      description,
+      selectedSheet,
+      selectedTableId,
+      stage,
+      workId: work?._id || work?.id || null,
+      fileMeta: file
+        ? {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+          }
+        : null,
+    }),
+    [description, file, name, selectedSheet, selectedTableId, stage, work?._id, work?.id],
+  );
+  const {
+    draftSnapshot,
+    draftStatus,
+    draftError,
+    restoreDraft,
+    discardDraft,
+    markRecoveryHandled,
+  } = useAutoDraft({
+    key: draftKey,
+    data: draftData,
+    enabled: open,
+    module: "data-work",
+    mode,
+    recordId: work?._id || work?.id || "new",
+    userId: draftUserId,
+  });
+
+  useEffect(() => {
+    recoveryHandledRef.current = false;
+  }, [draftKey]);
 
   const isEditMode = mode === "edit";
   const isReplaceMode = mode === "replace";
@@ -83,6 +143,7 @@ const DataWorkFormModal = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      setDraftNotice("");
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -206,6 +267,7 @@ const DataWorkFormModal = ({
     setFile(selected);
     setSelectedSheet("");
     setSelectedTableId("");
+    setDraftNotice("");
   };
 
   const handleSubmit = async (event) => {
@@ -282,6 +344,17 @@ const DataWorkFormModal = ({
         ? "Confirm and Replace"
         : "Create Work and Import Data";
 
+  const statusText =
+    draftError ||
+    draftNotice ||
+    (draftStatus === "saved"
+      ? "Draft saved"
+      : draftStatus === "restored"
+        ? "Draft restored"
+        : draftStatus === "external-update"
+          ? "This draft was updated in another tab."
+          : "");
+
   return open ? (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 px-3 py-6 backdrop-blur">
       <div className={modalBaseClass}>
@@ -316,6 +389,11 @@ const DataWorkFormModal = ({
               {formError ? (
                 <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
                   {formError}
+                </div>
+              ) : null}
+              {statusText ? (
+                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+                  {statusText}
                 </div>
               ) : null}
 
