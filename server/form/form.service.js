@@ -782,6 +782,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   borderRadius: 24,
   logoUrl: "",
   logoAsset: null,
+  bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
   footerButtons: [],
@@ -1376,11 +1377,25 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       pick("logoAsset", legacy.emailTemplate?.logoAsset, null),
       pick("logoUrl", legacy.emailTemplate?.logoUrl, ""),
     ),
+    bannerUrl: String(
+      pick(
+        "bannerUrl",
+        legacy.bannerUrl ||
+          legacy.emailTemplate?.bannerUrl ||
+          legacy.bannerImageUrl ||
+          legacy.emailTemplate?.bannerImageUrl ||
+          "",
+      ),
+    ).trim(),
     bannerImageUrl: String(
       pick(
         "bannerImageUrl",
         legacy.bannerImageUrl ||
-        legacy.emailTemplate?.bannerImageUrl ||
+          legacy.bannerImage ||
+          legacy.emailTemplate?.bannerImageUrl ||
+          legacy.emailTemplate?.bannerImage ||
+          legacy.bannerUrl ||
+          legacy.emailTemplate?.bannerUrl ||
           "",
       ),
     ).trim(),
@@ -1394,7 +1409,9 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       pick(
         "bannerImageUrl",
         legacy.bannerImageUrl ||
+          legacy.bannerUrl ||
           legacy.emailTemplate?.bannerImageUrl ||
+          legacy.emailTemplate?.bannerUrl ||
           "",
       ),
     ),
@@ -1558,6 +1575,11 @@ const buildFormExportDto = (form, questions = []) => {
       expiresAt: plainForm.expiresAt ? new Date(plainForm.expiresAt).toISOString() : null,
       themeColor: plainForm.themeColor || "",
       logoUrl: plainForm.logoUrl || plainForm.emailTemplate?.logoUrl || "",
+      bannerUrl:
+        plainForm.emailTemplate?.bannerUrl ||
+        plainForm.bannerUrl ||
+        plainForm.bannerImageUrl ||
+        "",
       bannerImage: plainForm.bannerImage || plainForm.bannerImageUrl || "",
       questions: sortedQuestions,
     },
@@ -1888,6 +1910,27 @@ const paginateArray = (items = [], options = {}) => {
 const escapeCsv = (value) =>
   `"${String(value ?? "").replace(/"/g, '""')}"`;
 
+const formatExportAnswerValue = (answer = {}) => {
+  if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
+    return answer.fileUrls
+      .map((url, index) => {
+        const fileName = answer.fileNames?.[index] || answer.fileName || `File ${index + 1}`;
+        return url ? `${fileName} (${url})` : fileName;
+      })
+      .join(" | ");
+  }
+
+  if (answer.fileUrl) {
+    return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
+  }
+
+  if (Array.isArray(answer.value)) {
+    return answer.value.join(", ");
+  }
+
+  return answer.value ?? "";
+};
+
 const buildCsv = (form, questions, responses) => {
   const conditionalColumns = [];
   const conditionalColumnMap = new Map();
@@ -1942,24 +1985,12 @@ const buildCsv = (form, questions, responses) => {
         if (answer.question?.type === "password") {
           return "";
         }
-        if (answer.fileUrl) {
-          return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
-        }
-        if (Array.isArray(answer.value)) {
-          return answer.value.join(", ");
-        }
-        return answer.value ?? "";
+        return formatExportAnswerValue(answer);
       }),
       ...conditionalColumns.map((column) => {
         const answer = conditionalMap.get(column.key);
         if (!answer) return "";
-        if (answer.fileUrl) {
-          return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
-        }
-        if (Array.isArray(answer.value)) {
-          return answer.value.join(", ");
-        }
-        return answer.value ?? "";
+        return formatExportAnswerValue(answer);
       }),
     ];
 
@@ -2390,35 +2421,92 @@ const getConditionalFieldSubmissionValue = (
   return null;
 };
 
+const resolveSelectedOptionSummary = (question, submittedValue) => {
+  const options = normalizeQuestionOptions(question);
+  const selectedIds = getQuestionSelectedOptionIds(question, submittedValue);
+  if (!selectedIds.length) {
+    return {
+      selectedOptionId: "",
+      selectedOptionLabel: "",
+    };
+  }
+
+  const selectedOptions = selectedIds
+    .map((optionId) => options.find((option) => String(option.id) === String(optionId)))
+    .filter(Boolean);
+
+  return {
+    selectedOptionId:
+      selectedOptions.length === 1
+        ? String(selectedOptions[0].id || "")
+        : selectedOptions.map((option) => String(option.id || "")).filter(Boolean),
+    selectedOptionLabel:
+      selectedOptions.length === 1
+        ? String(selectedOptions[0].label || selectedOptions[0].value || "")
+        : selectedOptions.map((option) => String(option.label || option.value || "")).filter(Boolean),
+  };
+};
+
+const uploadFilesToCloudinary = async ({
+  fileEntries = [],
+  folder = "",
+  resourceType = "auto",
+}) =>
+  Promise.all(
+    fileEntries.map((file) =>
+      uploadBufferToCloudinary({
+        buffer: file.buffer,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        folder,
+        resourceType,
+      }),
+    ),
+  );
+
 const prepareAnswerRecord = async (
   question,
   submittedValue,
   fileEntries = [],
   uploadContext = {},
 ) => {
+  const resolvedSelection = resolveSelectedOptionSummary(question, submittedValue);
+  const normalizedValue = Array.isArray(submittedValue)
+    ? submittedValue.map((item) => String(item))
+    : submittedValue;
+
   if (fileEntries.length > 0) {
-    const file = fileEntries[0];
     const folder = getCloudinaryFolder(
       "forms",
       "responses",
       uploadContext.formSlug || uploadContext.formId || "general",
     );
-    const resourceType = getCloudinaryResourceType(file);
-    const asset = await uploadBufferToCloudinary({
-      buffer: file.buffer,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
+    const resourceType = getCloudinaryResourceType(fileEntries[0]);
+    const assets = await uploadFilesToCloudinary({
+      fileEntries,
       folder,
       resourceType,
     });
+    const primaryAsset = assets[0];
+    const fileNames = fileEntries.map((file) => file.originalname);
+    const fileUrls = assets.map((asset) => asset.secureUrl);
 
     return {
-      value: submittedValue ?? file.originalname,
-      fileUrl: asset.secureUrl,
-      fileName: file.originalname,
-      fileType: file.mimetype,
-      fileAsset: asset,
+      value: normalizedValue ?? fileNames,
+      scalarValue: Array.isArray(normalizedValue) ? null : (normalizedValue ?? fileNames[0] ?? ""),
+      arrayValue: fileNames,
+      fileUrl: primaryAsset?.secureUrl || "",
+      fileUrls,
+      fileName: fileNames[0] || "",
+      fileNames,
+      fileType: fileEntries[0].mimetype,
+      fileAsset: primaryAsset,
+      fileAssets: assets,
+      questionLabel: question.label || "",
+      questionType: question.type || "",
+      selectedOptionId: resolvedSelection.selectedOptionId || "",
+      selectedOptionLabel: resolvedSelection.selectedOptionLabel || "",
     };
   }
 
@@ -2429,6 +2517,15 @@ const prepareAnswerRecord = async (
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+        scalarValue: null,
+        arrayValue: submittedValue
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+        questionLabel: question.label || "",
+        questionType: question.type || "",
+        selectedOptionId: resolvedSelection.selectedOptionId || "",
+        selectedOptionLabel: resolvedSelection.selectedOptionLabel || "",
       };
     }
   }
@@ -2437,6 +2534,11 @@ const prepareAnswerRecord = async (
     const normalized = normalizeHttpUrl(submittedValue);
     return {
       value: normalized,
+      scalarValue: normalized,
+      questionLabel: question.label || "",
+      questionType: question.type || "",
+      selectedOptionId: resolvedSelection.selectedOptionId || "",
+      selectedOptionLabel: resolvedSelection.selectedOptionLabel || "",
     };
   }
 
@@ -2444,10 +2546,15 @@ const prepareAnswerRecord = async (
     const encrypted = encryptSecretValue(submittedValue);
     return {
       value: null,
+      scalarValue: null,
       secretCiphertext: encrypted?.ciphertext || "",
       secretIv: encrypted?.iv || "",
       secretAuthTag: encrypted?.authTag || "",
       secretAlgorithm: encrypted?.algorithm || "aes-256-gcm",
+      questionLabel: question.label || "",
+      questionType: question.type || "",
+      selectedOptionId: resolvedSelection.selectedOptionId || "",
+      selectedOptionLabel: resolvedSelection.selectedOptionLabel || "",
     };
   }
 
@@ -2458,6 +2565,12 @@ const prepareAnswerRecord = async (
         : Array.isArray(submittedValue)
           ? submittedValue.map((item) => String(item))
           : submittedValue,
+    scalarValue: Array.isArray(normalizedValue) ? null : normalizedValue,
+    arrayValue: Array.isArray(normalizedValue) ? normalizedValue : undefined,
+    questionLabel: question.label || "",
+    questionType: question.type || "",
+    selectedOptionId: resolvedSelection.selectedOptionId || "",
+    selectedOptionLabel: resolvedSelection.selectedOptionLabel || "",
   };
 };
 
@@ -2476,31 +2589,42 @@ const prepareConditionalAnswerRecord = async ({
     required: field.required === true,
     validationEnabled: field.validationEnabled === true,
   };
+  const normalizedValue = Array.isArray(submittedValue)
+    ? submittedValue.map((item) => String(item))
+    : submittedValue;
 
   if (fileEntries.length > 0) {
-    const file = fileEntries[0];
     const folder = getCloudinaryFolder(
       "forms",
       "responses",
       uploadContext.formSlug || uploadContext.formId || "general",
       "conditional",
     );
-    const resourceType = getCloudinaryResourceType(file);
-    const asset = await uploadBufferToCloudinary({
-      buffer: file.buffer,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
+    const resourceType = getCloudinaryResourceType(fileEntries[0]);
+    const assets = await uploadFilesToCloudinary({
+      fileEntries,
       folder,
       resourceType,
     });
+    const primaryAsset = assets[0];
+    const fileNames = fileEntries.map((file) => file.originalname);
+    const fileUrls = assets.map((asset) => asset.secureUrl);
 
     return {
-      value: submittedValue ?? file.originalname,
-      fileUrl: asset.secureUrl,
-      fileName: file.originalname,
-      fileType: file.mimetype,
-      fileAsset: asset,
+      value: normalizedValue ?? fileNames,
+      scalarValue: Array.isArray(normalizedValue) ? null : (normalizedValue ?? fileNames[0] ?? ""),
+      arrayValue: fileNames,
+      fileUrl: primaryAsset?.secureUrl || "",
+      fileUrls,
+      fileName: fileNames[0] || "",
+      fileNames,
+      fileType: fileEntries[0].mimetype,
+      fileAsset: primaryAsset,
+      fileAssets: assets,
+      questionLabel: parentQuestion.label || "",
+      questionType: parentQuestion.type || "",
+      selectedOptionId: String(parentOption.id || ""),
+      selectedOptionLabel: parentOption.label || "",
       fieldId: String(field.id || field.fieldId || ""),
       fieldLabel: effectiveQuestion.label,
       fieldType: effectiveQuestion.type,
@@ -2539,6 +2663,10 @@ const prepareConditionalAnswerRecord = async ({
     conditionalMeta: {
       uploadConfig: field.uploadConfig || null,
     },
+    questionLabel: parentQuestion.label || "",
+    questionType: parentQuestion.type || "",
+    selectedOptionId: String(parentOption.id || ""),
+    selectedOptionLabel: parentOption.label || "",
   };
 };
 

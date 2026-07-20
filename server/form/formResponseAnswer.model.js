@@ -18,6 +18,14 @@ const formResponseAnswerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    scalarValue: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    arrayValue: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: undefined,
+    },
     fileUrl: {
       type: String,
       default: "",
@@ -26,9 +34,17 @@ const formResponseAnswerSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    fileNames: {
+      type: [String],
+      default: undefined,
+    },
     fileType: {
       type: String,
       default: "",
+    },
+    fileUrls: {
+      type: [String],
+      default: undefined,
     },
     fileAsset: {
       url: {
@@ -83,6 +99,33 @@ const formResponseAnswerSchema = new mongoose.Schema(
         type: String,
         default: "",
       },
+    },
+    fileAssets: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: undefined,
+    },
+    questionLabel: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    questionType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    selectedOptionId: {
+      type: mongoose.Schema.Types.Mixed,
+      default: "",
+      index: true,
+    },
+    selectedOptionLabel: {
+      type: mongoose.Schema.Types.Mixed,
+      default: "",
+    },
+    conditionalAnswers: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     fieldId: {
       type: String,

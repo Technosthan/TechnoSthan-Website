@@ -1,35 +1,99 @@
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+
 const cloudinary = require("cloudinary").v2;
 const multer = require("multer");
 
-const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } =
-  process.env;
-
 let cloudinaryConfigLogged = false;
 
-if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+const trimEnv = (value = "") => String(value || "").trim().replace(/^['"]|['"]$/g, "");
+
+const parseCloudinaryUrl = (value = "") => {
+  const raw = trimEnv(value);
+  if (!raw) return null;
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "cloudinary:") {
+      return null;
+    }
+
+    const cloudName = trimEnv(parsed.hostname);
+    const apiKey = trimEnv(parsed.username);
+    const apiSecret = trimEnv(parsed.password);
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return null;
+    }
+
+    return {
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const resolveCloudinaryConfig = () => {
+  const explicit = {
+    cloud_name: trimEnv(process.env.CLOUDINARY_CLOUD_NAME),
+    api_key: trimEnv(process.env.CLOUDINARY_API_KEY),
+    api_secret: trimEnv(process.env.CLOUDINARY_API_SECRET),
+    secure: true,
+  };
+
+  if (explicit.cloud_name && explicit.api_key && explicit.api_secret) {
+    return {
+      config: explicit,
+      missing: [],
+      source: "explicit",
+    };
+  }
+
+  const fromUrl = parseCloudinaryUrl(process.env.CLOUDINARY_URL);
+  if (fromUrl) {
+    return {
+      config: fromUrl,
+      missing: [],
+      source: "url",
+    };
+  }
+
+  const missing = [];
+  if (!explicit.cloud_name) missing.push("CLOUDINARY_CLOUD_NAME");
+  if (!explicit.api_key) missing.push("CLOUDINARY_API_KEY");
+  if (!explicit.api_secret) missing.push("CLOUDINARY_API_SECRET");
+
+  return {
+    config: null,
+    missing,
+    source: "missing",
+  };
+};
+
+const cloudinarySettings = resolveCloudinaryConfig();
+
+if (cloudinarySettings.config) {
+  cloudinary.config(cloudinarySettings.config);
+} else if (!cloudinaryConfigLogged) {
   console.warn(
-    "Cloudinary environment variables not fully set. Cloud uploads will fail until CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are provided.",
+    "[cloudinary] Missing required configuration: " +
+      cloudinarySettings.missing.join(", "),
   );
+  cloudinaryConfigLogged = true;
 }
 
-cloudinary.config({
-  cloud_name: CLOUDINARY_CLOUD_NAME,
-  api_key: CLOUDINARY_API_KEY,
-  api_secret: CLOUDINARY_API_SECRET,
-  secure: true,
-});
-
 const validateCloudinaryConfig = () => {
-  const isConfigured =
-    Boolean(CLOUDINARY_CLOUD_NAME) &&
-    Boolean(CLOUDINARY_API_KEY) &&
-    Boolean(CLOUDINARY_API_SECRET);
+  const isConfigured = Boolean(cloudinarySettings.config);
 
   if (!cloudinaryConfigLogged) {
     console.log(
       isConfigured
         ? "[cloudinary] Configuration loaded successfully."
-        : "[cloudinary] Missing required configuration.",
+        : `[cloudinary] Missing required configuration: ${cloudinarySettings.missing.join(", ")}`,
     );
     cloudinaryConfigLogged = true;
   }
@@ -39,7 +103,21 @@ const validateCloudinaryConfig = () => {
 
 validateCloudinaryConfig();
 
+const createCloudinaryConfigError = () => {
+  const error = new Error("Media upload service is not configured.");
+  error.code = "CLOUDINARY_NOT_CONFIGURED";
+  error.statusCode = 503;
+  return error;
+};
+
+const assertCloudinaryConfigured = () => {
+  if (!validateCloudinaryConfig()) {
+    throw createCloudinaryConfigError();
+  }
+};
+
 const uploadFromDataUri = async (dataUri, options = {}) => {
+  assertCloudinaryConfigured();
   // options: { folder, resource_type }
   const uploadOptions = Object.assign(
     {
@@ -62,6 +140,7 @@ const uploadBuffer = async ({
   publicId,
   overwrite = false,
 } = {}) => {
+  assertCloudinaryConfigured();
   const uploadResult = await new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -87,20 +166,24 @@ const uploadBuffer = async ({
     {
       ...uploadResult,
       originalName,
+      originalFilename: originalName,
       mimeType,
       size,
       bytes: size,
       folder,
+      provider: "cloudinary",
     },
     uploadResult?.secure_url || uploadResult?.url || "",
   );
 };
 
-const uploadImage = (options = {}) =>
+const uploadImageBuffer = (options = {}) =>
   uploadBuffer({
     ...options,
     resourceType: "image",
   });
+
+const uploadImage = uploadImageBuffer;
 
 const uploadPdf = (options = {}) =>
   uploadBuffer({
@@ -215,6 +298,7 @@ const generateSignedUrl = ({
 
 const deleteAsset = async (publicId, resourceType = "auto") => {
   if (!publicId) return { result: "not_found" };
+  assertCloudinaryConfigured();
   return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
 };
 
@@ -259,12 +343,17 @@ const normalizeStoredAsset = (asset, fallbackUrl = "") => {
   if (!asset && !fallbackUrl) return null;
   if (typeof asset === "string") {
     return {
+      provider: "cloudinary",
       url: asset,
       secureUrl: asset,
+      secure_url: asset,
       publicId: "",
+      public_id: "",
       resourceType: "auto",
+      resource_type: "auto",
       format: "",
       originalName: "",
+      originalFilename: "",
       mimeType: "",
       size: 0,
       bytes: 0,
@@ -278,12 +367,18 @@ const normalizeStoredAsset = (asset, fallbackUrl = "") => {
   const source = asset || {};
   const url = source.secureUrl || source.url || fallbackUrl || "";
   return {
+    provider: source.provider || "cloudinary",
     url,
     secureUrl: source.secureUrl || url,
+    secure_url: source.secureUrl || url,
     publicId: source.publicId || source.public_id || "",
+    public_id: source.publicId || source.public_id || "",
     resourceType: source.resourceType || source.resource_type || "auto",
+    resource_type: source.resourceType || source.resource_type || "auto",
     format: source.format || "",
     originalName: source.originalName || source.original_filename || "",
+    originalFilename:
+      source.originalFilename || source.originalName || source.original_filename || "",
     mimeType: source.mimeType || source.mimetype || "",
     size: source.size || 0,
     bytes: source.bytes || source.size || 0,
@@ -346,13 +441,55 @@ const uploadBufferToCloudinary = async ({
   });
 };
 
+const uploadFormEmailAsset = async ({
+  buffer,
+  originalName = "file",
+  mimeType = "",
+  size = 0,
+  assetType = "logo",
+  publicId,
+  overwrite = false,
+} = {}) => {
+  const normalizedAssetType = String(assetType || "").toLowerCase() === "banner" ? "banner" : "logo";
+  const folder = getCloudinaryFolder(
+    "technosthan",
+    "form-builder",
+    "email-assets",
+    `${normalizedAssetType}s`,
+  );
+
+  return uploadImageBuffer({
+    buffer,
+    originalName,
+    mimeType,
+    size,
+    folder,
+    publicId,
+    overwrite,
+  });
+};
+
+const replaceAsset = async ({
+  oldPublicId,
+  oldResourceType = "image",
+  ...uploadOptions
+} = {}) => {
+  const uploaded = await uploadFormEmailAsset(uploadOptions);
+  if (oldPublicId && uploaded?.publicId && oldPublicId !== uploaded.publicId) {
+    await deleteAsset(oldPublicId, oldResourceType).catch(() => null);
+  }
+  return uploaded;
+};
+
 module.exports = {
   uploadFromDataUri,
   uploadBuffer,
+  uploadImageBuffer,
   uploadImage,
   uploadPdf,
   uploadFile,
   deleteAsset,
+  replaceAsset,
   generateSignedUrl,
   cloudinaryClient: cloudinary,
   createMemoryUpload,
@@ -364,5 +501,6 @@ module.exports = {
   resolveStoredAssetUrl,
   getPublicAssetUrl,
   uploadBufferToCloudinary,
+  uploadFormEmailAsset,
   deleteCloudinaryAsset: deleteAsset,
 };

@@ -18,7 +18,7 @@ import {
   verifyPublicPhoneVerification,
   submitPublicForm,
 } from "./formsApi";
-import { CheckCircle2, Upload, Send, ArrowLeft, Eye, EyeOff, Loader2, ShieldCheck, RefreshCcw } from "lucide-react";
+import { CheckCircle2, Upload, Send, ArrowLeft, Eye, EyeOff, Loader2, ShieldCheck, RefreshCcw, X } from "lucide-react";
 import { getMediaUrl, getOptimizedImageUrl } from "../shared/lib/assetUrl";
 import { normalizeHttpUrl } from "./formUtils";
 
@@ -141,6 +141,26 @@ const shallowEqualObject = (left = {}, right = {}) => {
   const rightKeys = Object.keys(right || {});
   if (leftKeys.length !== rightKeys.length) return false;
   return leftKeys.every((key) => Object.is(left[key], right[key]));
+};
+
+const isImageMimeType = (mimeType = "") =>
+  String(mimeType || "").toLowerCase().startsWith("image/");
+
+const getSelectedFileEntries = (selection) =>
+  Array.isArray(selection) ? selection : selection ? [selection] : [];
+
+const createSelectedFileEntry = (file) => ({
+  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+  file,
+  previewUrl: isImageMimeType(file?.type) ? URL.createObjectURL(file) : "",
+});
+
+const revokeSelectedFileEntries = (selection) => {
+  getSelectedFileEntries(selection).forEach((entry) => {
+    if (entry?.previewUrl) {
+      URL.revokeObjectURL(entry.previewUrl);
+    }
+  });
 };
 
 const getConditionalFieldAccept = (field = {}) => {
@@ -379,10 +399,17 @@ const PublicFormPage = () => {
   const [verificationTokens, setVerificationTokens] = useState({});
   const [now, setNow] = useState(Date.now());
   const submitLockRef = useRef(false);
+  const fileInputRefs = useRef({});
   const activeConditionalDescriptors = useMemo(
     () => getActiveConditionalFieldDescriptors(form?.questions || [], values),
     [form?.questions, values],
   );
+
+  useEffect(() => {
+    return () => {
+      Object.values(files).forEach((selection) => revokeSelectedFileEntries(selection));
+    };
+  }, [files]);
 
   useEffect(() => {
     const activeKeys = activeConditionalDescriptors.map((descriptor) => descriptor.key);
@@ -595,23 +622,142 @@ const PublicFormPage = () => {
     handleAnswer(questionId, sanitizePhoneInput(pasted));
   };
 
-  const handleFile = (question, fileList, keyOverride = getQuestionId(question)) => {
-    const file = fileList?.[0] || null;
-    if (!file) {
-      setFiles((prev) => ({ ...prev, [keyOverride]: null }));
+  const clearSelectedFiles = (keyOverride, inputEl = null) => {
+    const normalizedKey = String(keyOverride || "").trim();
+    setFiles((prev) => ({ ...prev, [normalizedKey]: null }));
+    if (inputEl) {
+      inputEl.value = "";
+    }
+  };
+
+  const removeSelectedFile = (keyOverride, fileId = null, inputEl = null) => {
+    const normalizedKey = String(keyOverride || "").trim();
+    setFiles((prev) => {
+      const current = getSelectedFileEntries(prev[normalizedKey]);
+      if (!current.length) {
+        return prev;
+      }
+
+      const next = fileId
+        ? current.filter((entry) => entry.id !== fileId)
+        : [];
+
+      if (!next.length) {
+        return { ...prev, [normalizedKey]: null };
+      }
+
+      return { ...prev, [normalizedKey]: next };
+    });
+
+    if (inputEl) {
+      inputEl.value = "";
+    }
+  };
+
+  const handleFile = (question, fileList, keyOverride = getQuestionId(question), inputEl = null) => {
+    const selectedFiles = Array.from(fileList || []);
+    const normalizedKey = String(keyOverride || "").trim();
+    if (!selectedFiles.length) {
+      clearSelectedFiles(normalizedKey, inputEl);
       return;
     }
 
-    const validationMessage = validateSelectedFile(question.type, file, question.uploadConfig || {});
+    const uploadConfig = question.uploadConfig || {};
+    const multipleAllowed = uploadConfig.multiple === true;
+    const maxFiles = multipleAllowed
+      ? Math.max(1, Number.parseInt(uploadConfig.maxFiles, 10) || selectedFiles.length)
+      : 1;
+    const selected = multipleAllowed ? selectedFiles.slice(0, maxFiles) : [selectedFiles[0]];
+
+    if (selectedFiles.length > maxFiles) {
+      const message = `You can upload up to ${maxFiles} file${maxFiles === 1 ? "" : "s"}.`;
+      setError(message);
+      toast.error(message);
+      clearSelectedFiles(normalizedKey, inputEl);
+      return;
+    }
+
+    const validationMessage = selected
+      .map((file) => validateSelectedFile(question.type, file, uploadConfig))
+      .find(Boolean);
     if (validationMessage) {
       setError(validationMessage);
       toast.error(validationMessage);
-      setFiles((prev) => ({ ...prev, [keyOverride]: null }));
+      clearSelectedFiles(normalizedKey, inputEl);
       return;
     }
 
     setError("");
-    setFiles((prev) => ({ ...prev, [keyOverride]: file }));
+    setFiles((prev) => ({
+      ...prev,
+      [normalizedKey]: selected.map((file) => createSelectedFileEntry(file)),
+    }));
+  };
+
+  const getSelectionList = (selection) => getSelectedFileEntries(selection);
+
+  const getSelectionLabel = (selection) => {
+    const entries = getSelectionList(selection);
+    if (!entries.length) return "";
+    if (entries.length === 1) {
+      return entries[0]?.file?.name || entries[0]?.fileName || "Selected file";
+    }
+    return `${entries.length} files selected`;
+  };
+
+  const resetAllFileInputs = () => {
+    Object.values(fileInputRefs.current || {}).forEach((input) => {
+      if (input) {
+        input.value = "";
+      }
+    });
+  };
+
+  const renderSelectedFileList = (selection, keyOverride, inputEl, fieldType = "") => {
+    const entries = getSelectionList(selection);
+    if (!entries.length) return null;
+
+    return (
+      <div className="space-y-2">
+        {entries.map((entry, index) => {
+          const file = entry?.file;
+          const fileName = file?.name || entry?.fileName || `Selected file ${index + 1}`;
+          const isImage = isImageMimeType(file?.type);
+          return (
+            <div
+              key={entry?.id || `${keyOverride}-${index}`}
+              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"
+            >
+              {isImage && entry?.previewUrl ? (
+                <img
+                  src={entry.previewUrl}
+                  alt={fileName}
+                  className="h-12 w-12 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xs font-semibold uppercase text-slate-300">
+                  {String(fieldType || file?.type || "file").slice(0, 3)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-white">{fileName}</div>
+                <div className="text-xs text-slate-400">
+                  {isImage ? "Image selected" : "Selected file"}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Remove selected file"
+                onClick={() => removeSelectedFile(keyOverride, entry?.id || null, inputEl)}
+                className="rounded-full border border-red-500/30 bg-red-500/10 p-2 text-red-200 transition hover:bg-red-500/20"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderConditionalField = (field, fieldKey, parentContext = {}) => {
@@ -717,13 +863,14 @@ const PublicFormPage = () => {
                 disabled={false}
                 accept={getConditionalFieldAccept(field)}
                 multiple={field.uploadConfig?.multiple === true}
-                onChange={(e) => handleFile(field, e.target.files, fieldKey)}
+                ref={(node) => {
+                  fileInputRefs.current[fieldKey] = node;
+                }}
+                onChange={(e) => handleFile(field, e.target.files, fieldKey, e.currentTarget)}
               />
-              {file?.name || field.uploadConfig?.label || "Choose file"}
+              {getSelectionLabel(file) || field.uploadConfig?.label || "Choose file"}
             </label>
-            {file && (
-              <p className="text-xs text-slate-400">Selected: {file.name}</p>
-            )}
+            {renderSelectedFileList(file, fieldKey, fileInputRefs.current[fieldKey], field.type)}
           </div>
         ) : field.type === "rating" ? (
           <div className="flex flex-wrap gap-2">
@@ -924,17 +1071,17 @@ const PublicFormPage = () => {
                     ? IMAGE_MIME_TYPES.join(",")
                     : FILE_MIME_TYPES.join(",")
                 }
-                onChange={(e) => handleFile(question, e.target.files)}
+                multiple={question.uploadConfig?.multiple === true}
+                ref={(node) => {
+                  fileInputRefs.current[questionId] = node;
+                }}
+                onChange={(e) => handleFile(question, e.target.files, questionId, e.currentTarget)}
               />
               {form?.allowFileUpload
-                ? files[questionId]?.name || "Choose file"
+                ? getSelectionLabel(files[questionId]) || "Choose file"
                 : "Uploads disabled"}
             </label>
-            {files[questionId] && (
-              <p className="text-xs text-slate-400">
-                Selected: {files[questionId].name}
-              </p>
-            )}
+            {renderSelectedFileList(files[questionId], questionId, fileInputRefs.current[questionId], question.type)}
             {!form?.allowFileUpload && (
               <p className="text-xs text-amber-300">
                 File uploads are currently disabled for this form.
@@ -1170,13 +1317,14 @@ const PublicFormPage = () => {
       const questionId = getQuestionId(question);
       const value = values[questionId];
       const file = files[questionId];
+      const selectedFiles = getSelectionList(file);
       const empty =
         value === undefined ||
         value === null ||
         value === "" ||
         (Array.isArray(value) && value.length === 0);
 
-      if (question.required && empty && !file) {
+      if (question.required && empty && !selectedFiles.length) {
         throw new Error(`${question.label} is required`);
       }
 
@@ -1206,8 +1354,10 @@ const PublicFormPage = () => {
         }
       }
 
-      if (file) {
-        const validationMessage = validateSelectedFile(question.type, file);
+      if (selectedFiles.length) {
+        const validationMessage = selectedFiles
+          .map((entry) => validateSelectedFile(question.type, entry.file, question.uploadConfig || {}))
+          .find(Boolean);
         if (validationMessage) {
           throw new Error(validationMessage);
         }
@@ -1218,13 +1368,14 @@ const PublicFormPage = () => {
       const field = descriptor.field || {};
       const value = values[descriptor.key];
       const file = files[descriptor.key];
+      const selectedFiles = getSelectionList(file);
       const empty =
         value === undefined ||
         value === null ||
         value === "" ||
         (Array.isArray(value) && value.length === 0);
 
-      if (field.required && empty && !file) {
+      if (field.required && empty && !selectedFiles.length) {
         throw new Error(`${field.label || "Conditional field"} is required`);
       }
 
@@ -1247,8 +1398,10 @@ const PublicFormPage = () => {
         }
       }
 
-      if (file) {
-        const validationMessage = validateSelectedFile(field.type, file, field.uploadConfig || {});
+      if (selectedFiles.length) {
+        const validationMessage = selectedFiles
+          .map((entry) => validateSelectedFile(field.type, entry.file, field.uploadConfig || {}))
+          .find(Boolean);
         if (validationMessage) {
           throw new Error(validationMessage);
         }
@@ -1282,16 +1435,19 @@ const PublicFormPage = () => {
       payload.append("answers", JSON.stringify(topLevelAnswers));
       payload.append("conditionalAnswers", JSON.stringify(conditionalAnswers));
       payload.append("verificationTokens", JSON.stringify(verificationTokens));
-      Object.entries(files).forEach(([questionId, file]) => {
-        if (file) {
-          payload.append(questionId, file);
-        }
+      Object.entries(files).forEach(([questionId, selection]) => {
+        getSelectionList(selection).forEach((entry) => {
+          if (entry?.file) {
+            payload.append(questionId, entry.file);
+          }
+        });
       });
 
       const response = await submitPublicForm(form.slug, payload);
       setSubmitted(response.data?.data || response.data);
       setValues(initialValuesFromQuestions(form.questions || []));
       setFiles({});
+      resetAllFileInputs();
       setVisiblePasswords({});
       setVerificationStates({});
       setVerificationTokens({});

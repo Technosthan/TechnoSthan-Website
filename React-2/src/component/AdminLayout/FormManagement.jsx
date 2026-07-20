@@ -144,6 +144,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   borderRadius: 24,
   logoUrl: "",
   logoAsset: null,
+  bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
   footerButtons: [],
@@ -177,6 +178,7 @@ const EMPTY_FORM = {
   logoUrl: "",
   logoAsset: null,
   bannerImage: "",
+  bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
   emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
@@ -543,8 +545,20 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
     logoUrl:
       source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
     logoAsset: source.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
+    bannerUrl:
+      source.bannerUrl ??
+      legacy.emailTemplate?.bannerUrl ??
+      legacy.bannerUrl ??
+      legacy.emailTemplate?.bannerImageUrl ??
+      legacy.bannerImageUrl ??
+      "",
     bannerImageUrl:
-      source.bannerImageUrl ?? legacy.emailTemplate?.bannerImageUrl ?? legacy.bannerImageUrl ?? "",
+      source.bannerImageUrl ??
+      legacy.emailTemplate?.bannerImageUrl ??
+      legacy.bannerImageUrl ??
+      legacy.emailTemplate?.bannerUrl ??
+      legacy.bannerUrl ??
+      "",
     bannerImageAsset:
       source.bannerImageAsset ??
       legacy.emailTemplate?.bannerImageAsset ??
@@ -691,6 +705,7 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     : [];
   const bannerUrl =
     resolved.bannerImageAsset ||
+    resolved.bannerUrl ||
     resolved.bannerImage ||
     resolved.bannerImageUrl ||
     "";
@@ -825,7 +840,9 @@ const getResponseText = (response) => {
     response?.email,
     response?.phone,
     ...answers.flatMap((answer) => {
-      if (answer.fileName) return [answer.fileName, answer.fileUrl || ""];
+      const label = answer.fieldLabel || answer.question?.label || "";
+      if (answer.fileName) return [label, answer.fileName, answer.fileUrl || ""];
+      if (answer.fieldLabel) return [label];
       if (Array.isArray(answer.value)) return answer.value;
       return [answer.value ?? ""];
     }),
@@ -840,8 +857,54 @@ const getLinkHref = (value = "") => normalizeHttpUrl(value);
 
 const renderAnswerValue = (answer, options = {}) => {
   if (!answer) return "-";
+  const answerType = String(answer.fieldType || answer.question?.type || "").toLowerCase();
+
+  if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
+    return (
+      <div className="space-y-3">
+        {answer.fileUrls.map((url, index) => {
+          const fileName = answer.fileNames?.[index] || `File ${index + 1}`;
+          return (
+            <div key={`${url}-${index}`} className="space-y-2">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 break-words text-cyan-300 underline decoration-cyan-300/50 underline-offset-4"
+              >
+                <ExternalLink size={14} />
+                <span className="break-all">{fileName}</span>
+              </a>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   if (answer.fileUrl) {
+    if (/^image\//i.test(String(answer.fileType || "")) || answerType === "imageupload") {
+      return (
+        <div className="space-y-2">
+          <a href={answer.fileUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-2xl border border-white/10">
+            <img
+              src={answer.fileUrl}
+              alt={answer.fileName || "Uploaded image"}
+              className="max-h-56 w-full object-contain"
+            />
+          </a>
+          <a
+            href={answer.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 break-words text-cyan-300 underline decoration-cyan-300/50 underline-offset-4"
+          >
+            <ExternalLink size={14} />
+            <span className="break-all">{answer.fileName || answer.fileUrl}</span>
+          </a>
+        </div>
+      );
+    }
     return (
       <a
         href={answer.fileUrl}
@@ -852,10 +915,10 @@ const renderAnswerValue = (answer, options = {}) => {
         <ExternalLink size={14} />
         <span className="break-all">{answer.fileName || answer.fileUrl}</span>
       </a>
-    );
+      );
   }
 
-  if (answer.question?.type === "password") {
+  if (answerType === "password") {
     const revealed = options.revealedValue || "";
     return options.revealed ? (
       <div className="space-y-3">
@@ -885,7 +948,7 @@ const renderAnswerValue = (answer, options = {}) => {
     );
   }
 
-  if (answer.question?.type === "link") {
+  if (answerType === "link") {
     const href = getLinkHref(answer.value);
     const label = String(answer.value || href || "-");
     return href ? (
@@ -1156,6 +1219,41 @@ const FormManagement = () => {
     }
   };
 
+  const buildUploadedAsset = (uploadData = {}, file = null, defaultFolder = "") => {
+    const secureUrl =
+      uploadData.secureUrl ||
+      uploadData.secure_url ||
+      uploadData.url ||
+      "";
+    return {
+      provider: uploadData.provider || "cloudinary",
+      url: uploadData.url || secureUrl,
+      secureUrl,
+      publicId: uploadData.publicId || uploadData.public_id || "",
+      resourceType: uploadData.resourceType || uploadData.resource_type || "image",
+      format: uploadData.format || "",
+      originalName:
+        uploadData.originalName ||
+        uploadData.originalFilename ||
+        uploadData.original_filename ||
+        file?.name ||
+        "",
+      originalFilename:
+        uploadData.originalFilename ||
+        uploadData.originalName ||
+        uploadData.original_filename ||
+        file?.name ||
+        "",
+      mimeType: uploadData.mimeType || uploadData.mimetype || file?.type || "",
+      size: uploadData.size || uploadData.bytes || file?.size || 0,
+      bytes: uploadData.bytes || uploadData.size || file?.size || 0,
+      width: uploadData.width ?? uploadData.asset?.width ?? null,
+      height: uploadData.height ?? uploadData.asset?.height ?? null,
+      version: uploadData.version ?? uploadData.asset?.version ?? null,
+      folder: uploadData.folder || uploadData.asset?.folder || defaultFolder,
+    };
+  };
+
   const updateFooterButton = (index, field, value) => {
     setDraft((prev) => {
       const buttons = normalizeEditableFooterButtons(prev.emailTemplate, prev);
@@ -1396,12 +1494,7 @@ const FormManagement = () => {
       return;
     }
 
-    const allowedTypes = new Set([
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/svg+xml",
-    ]);
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
     const maxLogoImageSizeBytes = 5 * 1024 * 1024;
 
     if (!allowedTypes.has(file.type)) {
@@ -1424,43 +1517,20 @@ const FormManagement = () => {
       setUploadingFormLogoImage(true);
       try {
         const formData = new FormData();
-        formData.append("image", file);
-        formData.append("folder", "forms/logos");
+        formData.append("file", file);
+        formData.append("assetType", "logo");
         const response = await uploadWithTimeout(uploadFormLogoImage(formData));
         const uploadData = response.data?.data || {};
-        const imageUrl =
-          uploadData.secureUrl ||
-          uploadData.url ||
-          uploadData.imageUrl ||
-          "";
+        const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
 
         updateDraft("logoUrl", imageUrl);
-        updateDraft("logoAsset", {
-          url: uploadData.url || imageUrl,
-          secureUrl: uploadData.secureUrl || imageUrl,
-          publicId: uploadData.publicId || "",
-          resourceType: uploadData.resourceType || "image",
-          format: uploadData.format || "",
-          originalName: uploadData.originalName || file.name,
-          mimeType: uploadData.mimeType || file.type,
-          size: uploadData.size || file.size,
-          bytes: uploadData.size || file.size,
-          width: uploadData.asset?.width || null,
-          height: uploadData.asset?.height || null,
-          version: uploadData.asset?.version || null,
-          folder: uploadData.asset?.folder || "technosthan/forms/logos",
-        });
+        updateDraft("logoAsset", buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/logos"));
         setFormLogoPreviewFailed(false);
         registerSessionAsset(
-          uploadData.asset || {
-            publicId: uploadData.publicId || "",
-            resourceType: uploadData.resourceType || "image",
-            url: uploadData.url || imageUrl,
-            secureUrl: uploadData.secureUrl || imageUrl,
-          },
+          uploadData.asset || buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/logos"),
         );
         toast.success("Form logo uploaded successfully");
       } catch (error) {
@@ -1516,42 +1586,19 @@ const FormManagement = () => {
       setUploadingBannerImage(true);
       try {
         const formData = new FormData();
-        formData.append("image", file);
-        formData.append("folder", "forms/banners");
+        formData.append("file", file);
+        formData.append("assetType", "banner");
         const response = await uploadWithTimeout(uploadFormBannerImage(formData));
         const uploadData = response.data?.data || {};
-        const imageUrl =
-          uploadData.secureUrl ||
-          uploadData.url ||
-          uploadData.imageUrl ||
-          "";
+        const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
         updateDraft("bannerImage", imageUrl);
         updateDraft("bannerImageUrl", imageUrl);
-        updateDraft("bannerImageAsset", {
-          url: uploadData.url || imageUrl,
-          secureUrl: uploadData.secureUrl || imageUrl,
-          publicId: uploadData.publicId || "",
-          resourceType: uploadData.resourceType || "image",
-          format: uploadData.format || "",
-          originalName: uploadData.originalName || file.name,
-          mimeType: uploadData.mimeType || file.type,
-          size: uploadData.size || file.size,
-          bytes: uploadData.size || file.size,
-          width: uploadData.asset?.width || null,
-          height: uploadData.asset?.height || null,
-          version: uploadData.asset?.version || null,
-          folder: uploadData.asset?.folder || "technosthan/forms/banners",
-        });
+        updateDraft("bannerImageAsset", buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/banners"));
         registerSessionAsset(
-          uploadData.asset || {
-            publicId: uploadData.publicId || "",
-            resourceType: uploadData.resourceType || "image",
-            url: uploadData.url || imageUrl,
-            secureUrl: uploadData.secureUrl || imageUrl,
-          },
+          uploadData.asset || buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/banners"),
         );
         toast.success("Form image uploaded successfully");
       } catch (error) {
@@ -1577,6 +1624,9 @@ const FormManagement = () => {
     if (!file) {
       updateEmailTemplate(field, "");
       updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", null);
+      if (field !== "logoUrl") {
+        updateEmailTemplate("bannerUrl", "");
+      }
       if (field === "logoUrl") {
         setLogoPreviewFailed(false);
         if (emailLogoInputRef.current) {
@@ -1591,10 +1641,7 @@ const FormManagement = () => {
       return;
     }
 
-    const allowedTypes =
-      field === "logoUrl"
-        ? new Set(["image/jpeg", "image/png", "image/webp", "image/svg+xml"])
-        : new Set(["image/jpeg", "image/png", "image/webp"]);
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
     const maxImageSizeBytes = 5 * 1024 * 1024;
 
     if (!allowedTypes.has(file.type)) {
@@ -1623,33 +1670,24 @@ const FormManagement = () => {
       setUploadingEmailTemplateField(field);
       try {
         const formData = new FormData();
-        formData.append("image", file);
-        formData.append("folder", "forms/email-templates");
+        formData.append("file", file);
+        formData.append("assetType", field === "logoUrl" ? "logo" : "banner");
         const response = await uploadWithTimeout(uploadFormBannerImage(formData));
         const uploadData = response.data?.data || {};
-        const imageUrl =
-          uploadData.secureUrl ||
-          uploadData.url ||
-          uploadData.imageUrl ||
-          "";
+        const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
         updateEmailTemplate(field, imageUrl);
+        if (field !== "logoUrl") {
+          updateEmailTemplate("bannerUrl", imageUrl);
+        }
         updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", {
-          url: uploadData.url || imageUrl,
-          secureUrl: uploadData.secureUrl || imageUrl,
-          publicId: uploadData.publicId || "",
-          resourceType: uploadData.resourceType || "image",
-          format: uploadData.format || "",
-          originalName: uploadData.originalName || file.name,
-          mimeType: uploadData.mimeType || file.type,
-          size: uploadData.size || file.size,
-          bytes: uploadData.size || file.size,
-          width: uploadData.asset?.width || null,
-          height: uploadData.asset?.height || null,
-          version: uploadData.asset?.version || null,
-          folder: uploadData.asset?.folder || "technosthan/forms/email-templates",
+          ...buildUploadedAsset(
+            uploadData,
+            file,
+            `technosthan/form-builder/email-assets/${field === "logoUrl" ? "logos" : "banners"}`,
+          ),
         });
         if (field === "logoUrl") {
           setLogoPreviewFailed(false);
@@ -1657,12 +1695,12 @@ const FormManagement = () => {
           setBannerPreviewFailed(false);
         }
         registerSessionAsset(
-          uploadData.asset || {
-            publicId: uploadData.publicId || "",
-            resourceType: uploadData.resourceType || "image",
-            url: uploadData.url || imageUrl,
-            secureUrl: uploadData.secureUrl || imageUrl,
-          },
+          uploadData.asset ||
+            buildUploadedAsset(
+              uploadData,
+              file,
+              `technosthan/form-builder/email-assets/${field === "logoUrl" ? "logos" : "banners"}`,
+            ),
         );
         toast.success(
           field === "logoUrl"
@@ -1690,6 +1728,9 @@ const FormManagement = () => {
   const clearEmailTemplateImage = (field) => {
     updateEmailTemplate(field, "");
     updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", null);
+    if (field !== "logoUrl") {
+      updateEmailTemplate("bannerUrl", "");
+    }
     if (field === "logoUrl") {
       setLogoPreviewFailed(false);
       if (emailLogoInputRef.current) {
@@ -3391,7 +3432,7 @@ const FormManagement = () => {
                           id="form-logo-upload"
                           type="file"
                           className="sr-only"
-                          accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                          accept="image/jpeg,image/png,image/webp"
                           onChange={(e) => handleFormLogoFile(e.target.files?.[0] || null)}
                         />
                         <label
@@ -3951,7 +3992,7 @@ const FormManagement = () => {
                         ref={emailLogoInputRef}
                         type="file"
                         hidden
-                        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                        accept="image/jpeg,image/png,image/webp"
                         onChange={(e) => handleEmailTemplateImageFile("logoUrl", e.target.files?.[0] || null)}
                       />
                       <button
@@ -3997,8 +4038,9 @@ const FormManagement = () => {
                       <div>
                         <label className="mb-2 block text-sm font-semibold">Banner Image URL</label>
                         <input
-                          value={draft.emailTemplate?.bannerImageUrl || ""}
+                          value={draft.emailTemplate?.bannerUrl || draft.emailTemplate?.bannerImageUrl || ""}
                           onChange={(e) => {
+                            updateEmailTemplate("bannerUrl", e.target.value);
                             updateEmailTemplate("bannerImageUrl", e.target.value);
                             updateEmailTemplate("bannerImageAsset", null);
                             setBannerPreviewFailed(false);
@@ -4033,14 +4075,14 @@ const FormManagement = () => {
                           Clear Banner
                         </button>
                       )}
-                    </div>
-                    {draft.emailTemplate?.bannerImageUrl && !bannerPreviewFailed ? (
+                      </div>
+                    {(draft.emailTemplate?.bannerUrl || draft.emailTemplate?.bannerImageUrl) && !bannerPreviewFailed ? (
                       <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
                         <img
-                          src={getOptimizedImageUrl(draft.emailTemplate.bannerImageAsset || draft.emailTemplate.bannerImageUrl)}
+                          src={getOptimizedImageUrl(draft.emailTemplate.bannerImageAsset || draft.emailTemplate.bannerUrl || draft.emailTemplate.bannerImageUrl)}
                           alt="Email banner preview"
                           onError={() => setBannerPreviewFailed(true)}
-                          className="h-32 w-full object-cover"
+                          className="h-32 w-full object-contain"
                         />
                       </div>
                     ) : (
@@ -4048,7 +4090,7 @@ const FormManagement = () => {
                         No banner selected
                       </div>
                     )}
-                      {bannerPreviewFailed && draft.emailTemplate?.bannerImageUrl && (
+                      {bannerPreviewFailed && (draft.emailTemplate?.bannerUrl || draft.emailTemplate?.bannerImageUrl) && (
                         <div className="rounded-3xl border border-white/10 bg-black/20 p-4 text-sm font-semibold">
                           Banner preview unavailable
                         </div>
@@ -4083,7 +4125,7 @@ const FormManagement = () => {
                             src={getOptimizedImageUrl(emailTemplatePreview.bannerUrl)}
                             alt="Email banner preview"
                             onError={() => setBannerPreviewFailed(true)}
-                            className="h-40 w-full rounded-3xl object-cover"
+                            className="h-40 w-full rounded-3xl object-contain"
                           />
                         </div>
                       ) : emailTemplatePreview.bannerUrl ? (

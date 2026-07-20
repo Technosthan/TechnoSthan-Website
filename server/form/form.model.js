@@ -247,6 +247,11 @@ const formSchema = new mongoose.Schema(
         default: "",
         trim: true,
       },
+      bannerUrl: {
+        type: String,
+        default: "",
+        trim: true,
+      },
       logoAsset: {
         url: {
           type: String,

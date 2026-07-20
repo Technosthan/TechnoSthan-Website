@@ -8,6 +8,9 @@ const resolveAssetCandidate = (asset) => {
       asset.secureUrl ||
       asset.secure_url ||
       asset.url ||
+      asset.bannerUrl ||
+      asset.bannerImageUrl ||
+      asset.logoUrl ||
       asset.fileUrl ||
       asset.publicUrl ||
       asset.mediaUrl ||
@@ -49,7 +52,7 @@ export const getMediaUrl = (asset) => {
   const resolved = resolveAssetCandidate(asset);
   if (!resolved) return "";
   if (isAbsoluteUrl(resolved)) {
-    return isCloudinaryUrl(resolved) ? resolved : resolved;
+    return resolved;
   }
   return normalizeRelativeAssetUrl(resolved);
 };

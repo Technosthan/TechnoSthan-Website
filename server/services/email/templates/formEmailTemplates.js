@@ -160,16 +160,48 @@ const replaceTokens = (value = "", context = {}) =>
     return escapeHtml(replacement ?? "");
   });
 
+const getSubmissionRowLabel = (answer) => {
+  if (!answer) return "Question";
+  const baseLabel = answer.fieldLabel || answer.question?.label || "Question";
+  return answer.parentOptionLabel ? `${answer.parentOptionLabel} - ${baseLabel}` : baseLabel;
+};
+
 const formatAnswerValue = (answer) => {
   if (!answer) return "";
+  if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
+    const fileNames = Array.isArray(answer.fileNames) ? answer.fileNames : [];
+    return `
+      <div style="display:block;">
+        ${answer.fileUrls
+          .map((url, index) => {
+            const fileName = escapeHtml(fileNames[index] || `File ${index + 1}`);
+            const isImage = /^image\//i.test(String(answer.fileType || ""));
+            return isImage
+              ? `<div style="margin-bottom:12px;"><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" style="display:inline-block;text-decoration:none;"><img src="${escapeHtml(url)}" alt="${fileName}" style="display:block;max-width:100%;height:auto;border-radius:12px;" /></a><div style="margin-top:8px;"><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;font-weight:700;">${fileName}</a></div></div>`
+              : `<div style="margin-bottom:8px;"><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;font-weight:700;">${fileName}</a></div>`;
+          })
+          .join("")}
+      </div>`;
+  }
   if (answer.fileUrl) {
     const fileLabel = escapeHtml(answer.fileName || answer.fileUrl);
+    if (/^image\//i.test(String(answer.fileType || "")) || (answer.fieldType || answer.question?.type) === "imageUpload") {
+      return `
+        <div style="display:block;">
+          <a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noreferrer" style="display:inline-block;text-decoration:none;">
+            <img src="${escapeHtml(answer.fileUrl)}" alt="${fileLabel}" style="display:block;max-width:100%;height:auto;border-radius:12px;" />
+          </a>
+          <div style="margin-top:8px;">
+            <a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;font-weight:700;">${fileLabel}</a>
+          </div>
+        </div>`;
+    }
     return `<a href="${escapeHtml(answer.fileUrl)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;font-weight:700;">${fileLabel}</a>`;
   }
-  if (answer.question?.type === "password") {
+  if ((answer.fieldType || answer.question?.type) === "password") {
     return `<span style="letter-spacing:0.18em;font-weight:800;">••••••••••••</span>`;
   }
-  if (answer.question?.type === "link") {
+  if ((answer.fieldType || answer.question?.type) === "link") {
     const href = normalizeHttpUrl(answer.value);
     const label = escapeHtml(String(answer.value || ""));
     return href
@@ -212,7 +244,7 @@ const renderLogo = (branding = {}, styles = {}) => {
   const headerTextColor = styles.headerTextColor || "#ffffff";
   const logoUrl = resolvePublicImageUrl(branding.logoAsset, branding.logoUrl);
   if (logoUrl) {
-    return `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(companyName)} logo" style="display:block;height:54px;max-width:180px;object-fit:contain;" />`;
+    return `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(companyName)} logo" style="display:block;max-width:180px;max-height:54px;width:auto;height:auto;object-fit:contain;" />`;
   }
   return `<div style="font-size:22px;line-height:1.2;font-weight:800;color:${headerTextColor};">${escapeHtml(companyName)}</div>`;
 };
@@ -279,9 +311,9 @@ const buildEmailShell = ({
             ${resolvedHeaderSubtitle ? `<p style="margin:10px 0 0;font-size:15px;line-height:1.6;opacity:0.95;color:${headerTextColor};">${resolvedHeaderSubtitle}</p>` : ""}
           </div>
 
-          ${resolvePublicImageUrl(branding.bannerImageAsset, branding.bannerImageUrl) ? `
+          ${resolvePublicImageUrl(branding.bannerImageAsset, branding.bannerImageUrl, branding.bannerUrl) ? `
             <div style="padding:20px 24px 0;">
-              <img src="${escapeHtml(resolvePublicImageUrl(branding.bannerImageAsset, branding.bannerImageUrl))}" alt="${escapeHtml(branding.companyName || "Banner")} banner" style="display:block;width:100%;max-height:220px;object-fit:cover;border-radius:${borderRadius}px;" />
+              <img src="${escapeHtml(resolvePublicImageUrl(branding.bannerImageAsset, branding.bannerImageUrl, branding.bannerUrl))}" alt="${escapeHtml(branding.companyName || "Banner")} banner" style="display:block;width:100%;height:auto;max-width:100%;object-fit:contain;border-radius:${borderRadius}px;" />
             </div>
           ` : ""}
 
@@ -346,11 +378,13 @@ const buildAdminFormSubmissionEmail = ({
       branding.logoAsset,
       branding.logoUrl,
     ),
-    bannerImageUrl: resolvePublicImageUrl(
+    bannerUrl: resolvePublicImageUrl(
       emailTemplate.bannerImageAsset,
       emailTemplate.bannerImageUrl,
+      emailTemplate.bannerUrl,
       branding.bannerImageAsset,
       branding.bannerImageUrl,
+      branding.bannerUrl,
     ),
   };
 
@@ -420,11 +454,13 @@ const buildUserConfirmationEmail = ({
       branding.logoAsset,
       branding.logoUrl,
     ),
-    bannerImageUrl: resolvePublicImageUrl(
+    bannerUrl: resolvePublicImageUrl(
       emailTemplate.bannerImageAsset,
       emailTemplate.bannerImageUrl,
+      emailTemplate.bannerUrl,
       branding.bannerImageAsset,
       branding.bannerImageUrl,
+      branding.bannerUrl,
     ),
   };
 
@@ -480,7 +516,7 @@ const buildUserConfirmationEmail = ({
 
 const formatSubmissionRows = (answers = []) =>
   answers.map((answer) => ({
-    question: answer.question?.label || "Question",
+    question: getSubmissionRowLabel(answer),
     answer: formatAnswerValue(answer),
   }));
 
