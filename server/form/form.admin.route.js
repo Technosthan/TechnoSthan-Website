@@ -43,6 +43,10 @@ const getUploadAssetType = (req) =>
     .trim()
     .toLowerCase() === "banner"
     ? "banner"
+    : String(req.body?.assetType || req.body?.fieldName || req.body?.field || "")
+        .trim()
+        .toLowerCase() === "header-background"
+      ? "header-background"
     : "logo";
 
 const resolveUploadedFile = (req) => {

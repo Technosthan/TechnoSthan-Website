@@ -137,6 +137,31 @@ const EMAIL_TEMPLATE_PRESETS = {
   },
 };
 
+const HEADER_BACKGROUND_TYPE_OPTIONS = [
+  { value: "color", label: "Color" },
+  { value: "image", label: "Image" },
+];
+
+const HEADER_BACKGROUND_POSITION_OPTIONS = [
+  { value: "center", label: "Center" },
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+  { value: "left", label: "Left" },
+  { value: "right", label: "Right" },
+];
+
+const HEADER_BACKGROUND_SIZE_OPTIONS = [
+  { value: "cover", label: "Cover" },
+  { value: "contain", label: "Contain" },
+  { value: "auto", label: "Auto" },
+];
+
+const HEADER_TEXT_ALIGN_OPTIONS = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
+
 const DEFAULT_EMAIL_TEMPLATE = {
   preset: "green-professional",
   headerTitle: "{{formName}}",
@@ -147,6 +172,16 @@ const DEFAULT_EMAIL_TEMPLATE = {
   websiteButtonText: "Visit Website",
   websiteButtonUrl: "",
   headerBackgroundColor: "#166534",
+  headerBackgroundType: "color",
+  headerBackgroundImageUrl: "",
+  headerBackgroundImagePublicId: "",
+  headerBackgroundPosition: "center",
+  headerBackgroundSize: "cover",
+  headerOverlayColor: "#000000",
+  headerOverlayOpacity: 0.45,
+  headerMinHeight: 220,
+  headerTextAlign: "left",
+  headerTextColor: "",
   bodyBackgroundColor: "#f0fdf4",
   cardBackgroundColor: "#ffffff",
   accentColor: "#16a34a",
@@ -158,6 +193,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
+  headerBackgroundImageAsset: null,
   footerButtons: [],
 };
 
@@ -192,6 +228,9 @@ const EMPTY_FORM = {
   bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
+  headerBackgroundImageUrl: "",
+  headerBackgroundImagePublicId: "",
+  headerBackgroundImageAsset: null,
   emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
   notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
   notificationEmail: "",
@@ -339,6 +378,7 @@ const createFormExportData = (form = {}) => {
       themeColor: String(form.themeColor || "").trim(),
       logoUrl: String(form.logoUrl || form.emailTemplate?.logoUrl || "").trim(),
       bannerImage: String(form.bannerImage || form.bannerImageUrl || "").trim(),
+      emailTemplate: normalizeEmailTemplate(form.emailTemplate, form),
       questions: safeQuestions,
     },
   };
@@ -514,6 +554,92 @@ const normalizeNumberValidation = (validation = {}) => ({
   errorMessage: validation.errorMessage || "",
 });
 
+const normalizeHttpsUrl = (value = "") => {
+  const normalized = normalizeHttpUrl(value);
+  return normalized.startsWith("https://") ? normalized : "";
+};
+
+const resolveHeaderBackgroundImageUrl = (template = {}) =>
+  normalizeHttpsUrl(
+    template?.headerBackgroundImageUrl ||
+      template?.headerBackgroundImageAsset?.secureUrl ||
+      template?.headerBackgroundImageAsset?.secure_url ||
+      template?.headerBackgroundImageAsset?.url ||
+      template?.headerBackgroundImage ||
+      "",
+  );
+
+const toAssetPayload = (asset = null, fallbackUrl = "") => {
+  if (!asset && !fallbackUrl) {
+    return null;
+  }
+
+  if (typeof asset === "string") {
+    return {
+      url: normalizeHttpsUrl(asset || fallbackUrl),
+      secureUrl: normalizeHttpsUrl(asset || fallbackUrl),
+      publicId: "",
+      resourceType: "image",
+      format: "",
+      originalName: "",
+      mimeType: "",
+      size: 0,
+      bytes: 0,
+      width: null,
+      height: null,
+      version: null,
+      folder: "",
+    };
+  }
+
+  if (!asset || typeof asset !== "object") {
+    const safeUrl = normalizeHttpsUrl(fallbackUrl);
+    return safeUrl
+      ? {
+          url: safeUrl,
+          secureUrl: safeUrl,
+          publicId: "",
+          resourceType: "image",
+          format: "",
+          originalName: "",
+          mimeType: "",
+          size: 0,
+          bytes: 0,
+          width: null,
+          height: null,
+          version: null,
+          folder: "",
+        }
+      : null;
+  }
+
+  const safeUrl = normalizeHttpsUrl(
+    asset.secureUrl ||
+      asset.secure_url ||
+      asset.url ||
+      asset.fileUrl ||
+      fallbackUrl ||
+      "",
+  );
+
+  return {
+    ...asset,
+    url: safeUrl,
+    secureUrl: safeUrl,
+    publicId: String(asset.publicId || asset.public_id || "").trim(),
+    resourceType: String(asset.resourceType || asset.resource_type || "image").trim() || "image",
+    format: String(asset.format || "").trim(),
+    originalName: String(asset.originalName || asset.originalFilename || "").trim(),
+    mimeType: String(asset.mimeType || "").trim(),
+    size: Number(asset.size || asset.bytes || 0) || 0,
+    bytes: Number(asset.bytes || asset.size || 0) || 0,
+    width: asset.width ?? null,
+    height: asset.height ?? null,
+    version: asset.version ?? null,
+    folder: String(asset.folder || "").trim(),
+  };
+};
+
 const normalizeEmailTemplate = (template = {}, form = {}) => {
   const source = template && typeof template === "object" ? template : {};
   const legacy = form && typeof form === "object" ? form : {};
@@ -527,6 +653,47 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       }))
       .filter((button) => button.text && button.url)
       .sort((a, b) => a.order - b.order);
+  const toTrimmed = (value = "") => String(value || "").trim();
+  const clampOpacity = (value, fallbackValue = 0.45) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallbackValue;
+    return Math.min(1, Math.max(0, parsed));
+  };
+  const clampMinHeight = (value, fallbackValue = 220) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+  };
+  const normalizeChoice = (value, allowed, fallbackValue) =>
+    allowed.includes(String(value || "").trim())
+      ? String(value).trim()
+      : fallbackValue;
+  const headerBackgroundImageAsset = toAssetPayload(
+    source.headerBackgroundImageAsset ?? legacy.emailTemplate?.headerBackgroundImageAsset ?? null,
+    source.headerBackgroundImageUrl ??
+      legacy.headerBackgroundImageUrl ??
+      legacy.emailTemplate?.headerBackgroundImageUrl ??
+      legacy.headerBackground ??
+      legacy.emailTemplate?.headerBackground ??
+      "",
+  );
+  const headerBackgroundImageUrl = normalizeHttpsUrl(
+    source.headerBackgroundImageUrl ??
+      legacy.headerBackgroundImageUrl ??
+      legacy.emailTemplate?.headerBackgroundImageUrl ??
+      legacy.headerBackground ??
+      legacy.emailTemplate?.headerBackground ??
+      headerBackgroundImageAsset?.secureUrl ??
+      headerBackgroundImageAsset?.url ??
+      "",
+  );
+  const headerBackgroundType = normalizeChoice(
+    source.headerBackgroundType ??
+      legacy.headerBackgroundType ??
+      legacy.emailTemplate?.headerBackgroundType ??
+      "",
+    ["color", "image"],
+    headerBackgroundImageUrl || headerBackgroundImageAsset ? "image" : "color",
+  );
   return {
     preset: source.preset || legacy.emailTemplate?.preset || DEFAULT_EMAIL_TEMPLATE.preset,
     headerTitle: source.headerTitle ?? legacy.emailTemplate?.headerTitle ?? DEFAULT_EMAIL_TEMPLATE.headerTitle,
@@ -543,6 +710,65 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       source.websiteButtonUrl ?? legacy.emailTemplate?.websiteButtonUrl ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonUrl,
     headerBackgroundColor:
       source.headerBackgroundColor ?? legacy.emailTemplate?.headerBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor,
+    headerBackgroundType,
+    headerBackgroundImageUrl,
+    headerBackgroundImagePublicId: toTrimmed(
+      source.headerBackgroundImagePublicId ??
+        legacy.headerBackgroundImagePublicId ??
+        legacy.emailTemplate?.headerBackgroundImagePublicId ??
+        headerBackgroundImageAsset?.publicId ??
+        "",
+    ),
+    headerBackgroundPosition: normalizeChoice(
+      source.headerBackgroundPosition ??
+        legacy.headerBackgroundPosition ??
+        legacy.emailTemplate?.headerBackgroundPosition ??
+        DEFAULT_EMAIL_TEMPLATE.headerBackgroundPosition,
+      ["center", "top", "bottom", "left", "right"],
+      DEFAULT_EMAIL_TEMPLATE.headerBackgroundPosition,
+    ),
+    headerBackgroundSize: normalizeChoice(
+      source.headerBackgroundSize ??
+        legacy.headerBackgroundSize ??
+        legacy.emailTemplate?.headerBackgroundSize ??
+        DEFAULT_EMAIL_TEMPLATE.headerBackgroundSize,
+      ["cover", "contain", "auto"],
+      DEFAULT_EMAIL_TEMPLATE.headerBackgroundSize,
+    ),
+    headerOverlayColor: toTrimmed(
+      source.headerOverlayColor ??
+        legacy.headerOverlayColor ??
+        legacy.emailTemplate?.headerOverlayColor ??
+        DEFAULT_EMAIL_TEMPLATE.headerOverlayColor,
+    ),
+    headerOverlayOpacity: clampOpacity(
+      source.headerOverlayOpacity ??
+        legacy.headerOverlayOpacity ??
+        legacy.emailTemplate?.headerOverlayOpacity ??
+        DEFAULT_EMAIL_TEMPLATE.headerOverlayOpacity,
+      DEFAULT_EMAIL_TEMPLATE.headerOverlayOpacity,
+    ),
+    headerMinHeight: clampMinHeight(
+      source.headerMinHeight ??
+        legacy.headerMinHeight ??
+        legacy.emailTemplate?.headerMinHeight ??
+        DEFAULT_EMAIL_TEMPLATE.headerMinHeight,
+      DEFAULT_EMAIL_TEMPLATE.headerMinHeight,
+    ),
+    headerTextAlign: normalizeChoice(
+      source.headerTextAlign ??
+        legacy.headerTextAlign ??
+        legacy.emailTemplate?.headerTextAlign ??
+        DEFAULT_EMAIL_TEMPLATE.headerTextAlign,
+      ["left", "center", "right"],
+      DEFAULT_EMAIL_TEMPLATE.headerTextAlign,
+    ),
+    headerTextColor: toTrimmed(
+      source.headerTextColor ??
+        legacy.headerTextColor ??
+        legacy.emailTemplate?.headerTextColor ??
+        "",
+    ),
     bodyBackgroundColor:
       source.bodyBackgroundColor ?? legacy.emailTemplate?.bodyBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor,
     cardBackgroundColor:
@@ -575,6 +801,7 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       legacy.emailTemplate?.bannerImageAsset ??
       legacy.bannerImageAsset ??
       null,
+    headerBackgroundImageAsset,
     footerButtons: normalizeFooterButtons(
       source.footerButtons ??
         legacy.emailTemplate?.footerButtons ??
@@ -685,6 +912,21 @@ const isLightHexColor = (value = "") => {
   return (r * 299 + g * 587 + b * 114) / 1000 >= 160;
 };
 
+const hexToRgba = (value = "#000000", opacity = 0.45) => {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^#([0-9a-f]{6})$/i);
+  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0));
+  if (!match) {
+    return `rgba(0, 0, 0, ${safeOpacity})`;
+  }
+
+  const hex = match[1];
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${safeOpacity})`;
+};
+
 const buildTemplatePreview = (template = {}, formTitle = "") => {
   const resolved = normalizeEmailTemplate(template, { title: formTitle });
   const context = {
@@ -721,6 +963,7 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     resolved.bannerImageUrl ||
     "";
   const logoUrl = resolved.logoAsset || resolved.logoUrl || "";
+  const headerBackgroundImageUrl = resolveHeaderBackgroundImageUrl(resolved);
   const tableRows = [
     { question: "Full Name", answer: "John Doe" },
     { question: "Email", answer: "john@example.com" },
@@ -729,9 +972,25 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
 
   return {
     resolved,
-    headerTextColor: isLightHexColor(resolved.headerBackgroundColor)
-      ? "#0f172a"
-      : "#ffffff",
+    headerBackgroundType:
+      (resolved.headerBackgroundType === "image" || headerBackgroundImageUrl) &&
+      headerBackgroundImageUrl
+        ? "image"
+        : "color",
+    headerBackgroundImageUrl,
+    headerBackgroundPosition: resolved.headerBackgroundPosition || "center",
+    headerBackgroundSize: resolved.headerBackgroundSize || "cover",
+    headerOverlayColor: resolved.headerOverlayColor || "#000000",
+    headerOverlayOpacity: Number.isFinite(Number(resolved.headerOverlayOpacity))
+      ? Math.min(1, Math.max(0, Number(resolved.headerOverlayOpacity)))
+      : 0.45,
+    headerMinHeight: Number.isFinite(Number(resolved.headerMinHeight))
+      ? Number(resolved.headerMinHeight)
+      : 220,
+    headerTextAlign: resolved.headerTextAlign || "left",
+    headerTextColor:
+      resolved.headerTextColor ||
+      (isLightHexColor(resolved.headerBackgroundColor) ? "#0f172a" : "#ffffff"),
     headerTitle,
     headerSubtitle,
     successMessage,
@@ -1111,10 +1370,12 @@ const FormManagement = () => {
   const [importPreview, setImportPreview] = useState(null);
   const emailLogoInputRef = useRef(null);
   const emailBannerInputRef = useRef(null);
+  const emailHeaderBackgroundInputRef = useRef(null);
   const [uploadingEmailTemplateField, setUploadingEmailTemplateField] = useState("");
   const [formLogoPreviewFailed, setFormLogoPreviewFailed] = useState(false);
   const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
   const [bannerPreviewFailed, setBannerPreviewFailed] = useState(false);
+  const [headerBackgroundPreviewFailed, setHeaderBackgroundPreviewFailed] = useState(false);
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [draftKey, setDraftKey] = useState(() =>
     findLatestDraftKeyForModule(draftUserId, "form-builder") ||
@@ -1239,6 +1500,7 @@ const FormManagement = () => {
     setFormLogoPreviewFailed(false);
     setLogoPreviewFailed(false);
     setBannerPreviewFailed(false);
+    setHeaderBackgroundPreviewFailed(false);
     setResponses([]);
     setSelectedResponse(null);
   };
@@ -1696,13 +1958,31 @@ const FormManagement = () => {
   };
 
   const handleEmailTemplateImageFile = (field, file) => {
+    const isHeaderField = field === "headerBackgroundImageUrl";
+    const isLogoField = field === "logoUrl";
+    const isBannerField = field === "bannerImageUrl";
+
     if (!file) {
       updateEmailTemplate(field, "");
-      updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", null);
-      if (field !== "logoUrl") {
-        updateEmailTemplate("bannerUrl", "");
+      updateEmailTemplate(
+        isLogoField
+          ? "logoAsset"
+          : isHeaderField
+            ? "headerBackgroundImageAsset"
+            : "bannerImageAsset",
+        null,
+      );
+      if (!isLogoField) {
+        updateEmailTemplate(isHeaderField ? "headerBackgroundImageUrl" : "bannerUrl", "");
       }
-      if (field === "logoUrl") {
+      if (isHeaderField) {
+        updateEmailTemplate("headerBackgroundImagePublicId", "");
+        updateEmailTemplate("headerBackgroundType", "color");
+        setHeaderBackgroundPreviewFailed(false);
+        if (emailHeaderBackgroundInputRef.current) {
+          emailHeaderBackgroundInputRef.current.value = "";
+        }
+      } else if (isLogoField) {
         setLogoPreviewFailed(false);
         if (emailLogoInputRef.current) {
           emailLogoInputRef.current.value = "";
@@ -1721,22 +2001,28 @@ const FormManagement = () => {
 
     if (!allowedTypes.has(file.type)) {
       toast.error("Please choose a valid image file");
-      if (field === "logoUrl" && emailLogoInputRef.current) {
+      if (isLogoField && emailLogoInputRef.current) {
         emailLogoInputRef.current.value = "";
       }
-      if (field === "bannerImageUrl" && emailBannerInputRef.current) {
+      if (isBannerField && emailBannerInputRef.current) {
         emailBannerInputRef.current.value = "";
+      }
+      if (isHeaderField && emailHeaderBackgroundInputRef.current) {
+        emailHeaderBackgroundInputRef.current.value = "";
       }
       return;
     }
 
     if (file.size > maxImageSizeBytes) {
-      toast.error("Image must be 5 MB or smaller");
-      if (field === "logoUrl" && emailLogoInputRef.current) {
+      toast.error(IMAGE_SIZE_LIMIT_MESSAGE);
+      if (isLogoField && emailLogoInputRef.current) {
         emailLogoInputRef.current.value = "";
       }
-      if (field === "bannerImageUrl" && emailBannerInputRef.current) {
+      if (isBannerField && emailBannerInputRef.current) {
         emailBannerInputRef.current.value = "";
+      }
+      if (isHeaderField && emailHeaderBackgroundInputRef.current) {
+        emailHeaderBackgroundInputRef.current.value = "";
       }
       return;
     }
@@ -1746,41 +2032,47 @@ const FormManagement = () => {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("assetType", field === "logoUrl" ? "logo" : "banner");
+        formData.append(
+          "assetType",
+          isLogoField ? "logo" : isHeaderField ? "header-background" : "banner",
+        );
         const response = await uploadWithTimeout(uploadFormBannerImage(formData));
         const uploadData = response.data?.data || {};
         const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
+
+        const folder = isLogoField
+          ? "technosthan/form-builder/email-assets/logos"
+          : isHeaderField
+            ? "technosthan/form-builder/email-assets/header-backgrounds"
+            : "technosthan/form-builder/email-assets/banners";
+        const asset = buildUploadedAsset(uploadData, file, folder);
+
         updateEmailTemplate(field, imageUrl);
-        if (field !== "logoUrl") {
-          updateEmailTemplate("bannerUrl", imageUrl);
-        }
-        updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", {
-          ...buildUploadedAsset(
-            uploadData,
-            file,
-            `technosthan/form-builder/email-assets/${field === "logoUrl" ? "logos" : "banners"}`,
-          ),
-        });
-        if (field === "logoUrl") {
+        if (isLogoField) {
+          updateEmailTemplate("logoAsset", asset);
           setLogoPreviewFailed(false);
+        } else if (isHeaderField) {
+          updateEmailTemplate("headerBackgroundType", "image");
+          updateEmailTemplate("headerBackgroundImageUrl", imageUrl);
+          updateEmailTemplate("headerBackgroundImagePublicId", asset.publicId || "");
+          updateEmailTemplate("headerBackgroundImageAsset", asset);
+          setHeaderBackgroundPreviewFailed(false);
         } else {
+          updateEmailTemplate("bannerUrl", imageUrl);
+          updateEmailTemplate("bannerImageAsset", asset);
           setBannerPreviewFailed(false);
         }
-        registerSessionAsset(
-          uploadData.asset ||
-            buildUploadedAsset(
-              uploadData,
-              file,
-              `technosthan/form-builder/email-assets/${field === "logoUrl" ? "logos" : "banners"}`,
-            ),
-        );
+
+        registerSessionAsset(uploadData.asset || asset);
         toast.success(
-          field === "logoUrl"
+          isLogoField
             ? "Email logo uploaded successfully"
-            : "Email banner uploaded successfully",
+            : isHeaderField
+              ? "Header background uploaded successfully"
+              : "Email banner uploaded successfully",
         );
       } catch (error) {
         toast.error(
@@ -1788,11 +2080,14 @@ const FormManagement = () => {
         );
       } finally {
         setUploadingEmailTemplateField("");
-        if (field === "logoUrl" && emailLogoInputRef.current) {
+        if (isLogoField && emailLogoInputRef.current) {
           emailLogoInputRef.current.value = "";
         }
-        if (field === "bannerImageUrl" && emailBannerInputRef.current) {
+        if (isBannerField && emailBannerInputRef.current) {
           emailBannerInputRef.current.value = "";
+        }
+        if (isHeaderField && emailHeaderBackgroundInputRef.current) {
+          emailHeaderBackgroundInputRef.current.value = "";
         }
       }
     };
@@ -1801,17 +2096,32 @@ const FormManagement = () => {
   };
 
   const clearEmailTemplateImage = (field) => {
+    const isHeaderField = field === "headerBackgroundImageUrl";
+    const isLogoField = field === "logoUrl";
     updateEmailTemplate(field, "");
-    updateEmailTemplate(field === "logoUrl" ? "logoAsset" : "bannerImageAsset", null);
-    if (field !== "logoUrl") {
-      updateEmailTemplate("bannerUrl", "");
-    }
-    if (field === "logoUrl") {
+    updateEmailTemplate(
+      isLogoField
+        ? "logoAsset"
+        : isHeaderField
+          ? "headerBackgroundImageAsset"
+          : "bannerImageAsset",
+      null,
+    );
+    if (isLogoField) {
       setLogoPreviewFailed(false);
       if (emailLogoInputRef.current) {
         emailLogoInputRef.current.value = "";
       }
+    } else if (isHeaderField) {
+      updateEmailTemplate("headerBackgroundImageUrl", "");
+      updateEmailTemplate("headerBackgroundImagePublicId", "");
+      updateEmailTemplate("headerBackgroundType", "color");
+      setHeaderBackgroundPreviewFailed(false);
+      if (emailHeaderBackgroundInputRef.current) {
+        emailHeaderBackgroundInputRef.current.value = "";
+      }
     } else {
+      updateEmailTemplate("bannerUrl", "");
       setBannerPreviewFailed(false);
       if (emailBannerInputRef.current) {
         emailBannerInputRef.current.value = "";
@@ -1866,6 +2176,7 @@ const FormManagement = () => {
           data.descriptionStyle,
           DEFAULT_DESCRIPTION_STYLE,
         ),
+        emailTemplate: normalizeEmailTemplate(data.emailTemplate, data),
         hasTypographySettings: fileName.endsWith(".json"),
         sections: Array.isArray(data.sections) ? data.sections : [],
         questions: Array.isArray(data.questions)
@@ -2013,6 +2324,9 @@ const FormManagement = () => {
               DEFAULT_DESCRIPTION_STYLE,
             )
           : normalizeTypographyStyle(prev.descriptionStyle, DEFAULT_DESCRIPTION_STYLE),
+        emailTemplate: importPreview.emailTemplate
+          ? normalizeEmailTemplate(importPreview.emailTemplate, prev)
+          : normalizeEmailTemplate(prev.emailTemplate, prev),
         questions: merged.map((question, order) => ({ ...question, order })),
       };
     });
@@ -2105,6 +2419,7 @@ const FormManagement = () => {
         form?.bannerImageAsset,
         form?.emailTemplate?.logoAsset,
         form?.emailTemplate?.bannerImageAsset,
+        form?.emailTemplate?.headerBackgroundImageAsset,
       ]
         .filter(Boolean)
         .map((asset) => getAssetPublicId(asset))
@@ -2144,6 +2459,10 @@ const FormManagement = () => {
     const previousTemplateBanner =
       previousForm?.emailTemplate?.bannerImageAsset || null;
     const nextTemplateBanner = nextForm?.emailTemplate?.bannerImageAsset || null;
+    const previousHeaderBackground =
+      previousForm?.emailTemplate?.headerBackgroundImageAsset || null;
+    const nextHeaderBackground =
+      nextForm?.emailTemplate?.headerBackgroundImageAsset || null;
 
     const assetsToDelete = [
       {
@@ -2161,6 +2480,10 @@ const FormManagement = () => {
       {
         previous: previousTemplateBanner,
         current: nextTemplateBanner,
+      },
+      {
+        previous: previousHeaderBackground,
+        current: nextHeaderBackground,
       },
     ]
       .filter(({ previous, current }) => {
@@ -2201,6 +2524,16 @@ const FormManagement = () => {
       logoAsset: draft.logoAsset || null,
       bannerImage: draft.bannerImage || draft.bannerImageUrl || "",
       bannerImageUrl: draft.bannerImageUrl || draft.bannerImage || "",
+      headerBackgroundImageUrl:
+        draft.emailTemplate?.headerBackgroundImageUrl ||
+        draft.emailTemplate?.headerBackgroundImageAsset?.secureUrl ||
+        draft.emailTemplate?.headerBackgroundImageAsset?.url ||
+        "",
+      headerBackgroundImagePublicId:
+        draft.emailTemplate?.headerBackgroundImagePublicId ||
+        draft.emailTemplate?.headerBackgroundImageAsset?.publicId ||
+        "",
+      headerBackgroundImageAsset: draft.emailTemplate?.headerBackgroundImageAsset || null,
       description: sanitizeRichTextHtml(draft.description || ""),
       titleStyle: normalizeTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE),
       descriptionStyle: normalizeTypographyStyle(
@@ -3991,16 +4324,214 @@ const FormManagement = () => {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold">Header Background</label>
-                      <input
-                        value={draft.emailTemplate?.headerBackgroundColor || ""}
-                        onChange={(e) => updateEmailTemplate("headerBackgroundColor", e.target.value)}
-                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                        placeholder="#166534"
-                      />
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <label className="block text-sm font-semibold">Header Background</label>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Choose a solid color or a header image with text overlay.
+                        </p>
+                      </div>
+                      <div className="inline-flex rounded-2xl border border-white/10 bg-black/20 p-1">
+                        {HEADER_BACKGROUND_TYPE_OPTIONS.map((option) => {
+                          const active =
+                            (draft.emailTemplate?.headerBackgroundType || "color") === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => updateEmailTemplate("headerBackgroundType", option.value)}
+                              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                                active ? "bg-cyan-500 text-white" : "text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    {(draft.emailTemplate?.headerBackgroundType || "color") === "color" ? (
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Header Background Color</label>
+                        <input
+                          value={draft.emailTemplate?.headerBackgroundColor || ""}
+                          onChange={(e) => updateEmailTemplate("headerBackgroundColor", e.target.value)}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          placeholder="#166534"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">Header Background Image URL</label>
+                          <input
+                            value={draft.emailTemplate?.headerBackgroundImageUrl || ""}
+                            onChange={(e) => {
+                              const normalized = normalizeHttpsUrl(e.target.value);
+                              updateEmailTemplate("headerBackgroundType", normalized ? "image" : "color");
+                              updateEmailTemplate("headerBackgroundImageUrl", normalized);
+                              updateEmailTemplate("headerBackgroundImagePublicId", "");
+                              updateEmailTemplate("headerBackgroundImageAsset", null);
+                              setHeaderBackgroundPreviewFailed(false);
+                            }}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            placeholder="https://res.cloudinary.com/..."
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            ref={emailHeaderBackgroundInputRef}
+                            type="file"
+                            hidden
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => handleEmailTemplateImageFile("headerBackgroundImageUrl", e.target.files?.[0] || null)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => emailHeaderBackgroundInputRef.current?.click()}
+                            disabled={!!uploadingEmailTemplateField}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Upload size={16} />
+                            {uploadingEmailTemplateField === "headerBackgroundImageUrl"
+                              ? "Uploading..."
+                              : draft.emailTemplate?.headerBackgroundImageUrl
+                                ? "Change Image"
+                                : "Upload Header Image"}
+                          </button>
+                          {draft.emailTemplate?.headerBackgroundImageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => clearEmailTemplateImage("headerBackgroundImageUrl")}
+                              className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                            >
+                              Clear Image
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          Recommended size: 1200 × 500 px. Use a wide image with enough empty space for readable text.
+                        </p>
+                        {(draft.emailTemplate?.headerBackgroundImageUrl || draft.emailTemplate?.headerBackgroundImageAsset) &&
+                        !headerBackgroundPreviewFailed ? (
+                          <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+                            <img
+                              src={getOptimizedImageUrl(
+                                draft.emailTemplate.headerBackgroundImageAsset ||
+                                  draft.emailTemplate.headerBackgroundImageUrl,
+                              )}
+                              alt="Header background preview"
+                              onError={() => setHeaderBackgroundPreviewFailed(true)}
+                              className="h-40 w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="rounded-3xl border border-dashed border-white/10 bg-black/10 p-4 text-xs text-slate-400">
+                            No header image selected
+                          </div>
+                        )}
+                        {headerBackgroundPreviewFailed && (
+                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-semibold text-amber-100">
+                            Header image preview unavailable. The fallback color will be used in the live preview and email.
+                          </div>
+                        )}
+
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Overlay Color</label>
+                            <input
+                              value={draft.emailTemplate?.headerOverlayColor || ""}
+                              onChange={(e) => updateEmailTemplate("headerOverlayColor", e.target.value)}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="#000000"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Overlay Opacity</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="0.9"
+                              step="0.05"
+                              value={draft.emailTemplate?.headerOverlayOpacity ?? 0.45}
+                              onChange={(e) => updateEmailTemplate("headerOverlayOpacity", e.target.value)}
+                              className="w-full"
+                            />
+                            <div className="mt-2 text-xs text-slate-400">
+                              {Math.round((Number(draft.emailTemplate?.headerOverlayOpacity ?? 0.45) || 0) * 100)}%
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Header Text Color</label>
+                            <input
+                              value={draft.emailTemplate?.headerTextColor || ""}
+                              onChange={(e) => updateEmailTemplate("headerTextColor", e.target.value)}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="#ffffff"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Background Position</label>
+                            <select
+                              value={draft.emailTemplate?.headerBackgroundPosition || "center"}
+                              onChange={(e) => updateEmailTemplate("headerBackgroundPosition", e.target.value)}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_BACKGROUND_POSITION_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Background Size</label>
+                            <select
+                              value={draft.emailTemplate?.headerBackgroundSize || "cover"}
+                              onChange={(e) => updateEmailTemplate("headerBackgroundSize", e.target.value)}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_BACKGROUND_SIZE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Text Alignment</label>
+                            <select
+                              value={draft.emailTemplate?.headerTextAlign || "left"}
+                              onChange={(e) => updateEmailTemplate("headerTextAlign", e.target.value)}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_TEXT_ALIGN_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">Minimum Header Height</label>
+                            <input
+                              type="number"
+                              min="120"
+                              step="10"
+                              value={draft.emailTemplate?.headerMinHeight ?? 220}
+                              onChange={(e) => updateEmailTemplate("headerMinHeight", e.target.value)}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="220"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <label className="mb-2 block text-sm font-semibold">Body Background</label>
                       <input
@@ -4191,21 +4722,87 @@ const FormManagement = () => {
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                     <div className="mb-3 text-sm font-semibold">Live Preview</div>
                     <div className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl" style={{ backgroundColor: emailTemplatePreview.resolved.bodyBackgroundColor }}>
-                    <div style={{ backgroundColor: emailTemplatePreview.resolved.headerBackgroundColor, color: emailTemplatePreview.headerTextColor }} className="p-5">
-                      {emailTemplatePreview.logoUrl && !logoPreviewFailed ? (
-                        <img
-                          src={getOptimizedImageUrl(emailTemplatePreview.logoUrl)}
-                          alt="Email preview logo"
-                          onError={() => setLogoPreviewFailed(true)}
-                          className="mb-4 h-12 w-full object-contain object-left"
-                        />
-                      ) : (
-                        <div className="mb-4 text-lg font-black">{emailTemplatePreview.context.companyName}</div>
-                      )}
-                      <div className="text-xs uppercase tracking-[0.25em] opacity-80">{emailTemplatePreview.context.companyName}</div>
-                      <div className="mt-2 text-2xl font-black">{emailTemplatePreview.headerTitle}</div>
-                      <p className="mt-2 text-sm leading-6 opacity-90">{emailTemplatePreview.headerSubtitle}</p>
-                    </div>
+                      <div
+                        className="relative overflow-hidden"
+                        style={{
+                          minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
+                          backgroundColor: emailTemplatePreview.resolved.headerBackgroundColor,
+                          color: emailTemplatePreview.headerTextColor,
+                        }}
+                      >
+                        {emailTemplatePreview.headerBackgroundType === "image" &&
+                        emailTemplatePreview.headerBackgroundImageUrl &&
+                        !headerBackgroundPreviewFailed ? (
+                          <img
+                            src={getOptimizedImageUrl(emailTemplatePreview.headerBackgroundImageUrl)}
+                            alt="Header background preview"
+                            onError={() => setHeaderBackgroundPreviewFailed(true)}
+                            className="absolute inset-0 h-full w-full"
+                            style={{
+                              objectFit: emailTemplatePreview.headerBackgroundSize || "cover",
+                              objectPosition: emailTemplatePreview.headerBackgroundPosition || "center",
+                            }}
+                          />
+                        ) : null}
+                        {emailTemplatePreview.headerBackgroundType === "image" &&
+                        emailTemplatePreview.headerBackgroundImageUrl &&
+                        !headerBackgroundPreviewFailed ? (
+                          <div
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                              backgroundColor: hexToRgba(
+                                emailTemplatePreview.headerOverlayColor,
+                                emailTemplatePreview.headerOverlayOpacity ?? 0.45,
+                              ),
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="relative z-10 flex h-full min-h-[220px] flex-col justify-center gap-2 p-5"
+                          style={{
+                            minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
+                            textAlign: emailTemplatePreview.headerTextAlign || "left",
+                            color: emailTemplatePreview.headerTextColor,
+                          }}
+                      >
+                        {emailTemplatePreview.logoUrl && !logoPreviewFailed ? (
+                            <img
+                              src={getOptimizedImageUrl(emailTemplatePreview.logoUrl)}
+                              alt="Email preview logo"
+                              onError={() => setLogoPreviewFailed(true)}
+                              className={`mb-2 h-12 w-full object-contain ${
+                                emailTemplatePreview.headerTextAlign === "center"
+                                  ? "object-center"
+                                  : emailTemplatePreview.headerTextAlign === "right"
+                                    ? "object-right"
+                                    : "object-left"
+                              }`}
+                            />
+                          ) : (
+                            <div className="mb-2 text-lg font-black">
+                              {emailTemplatePreview.context.companyName}
+                            </div>
+                          )}
+                          <div className="text-xs uppercase tracking-[0.25em] opacity-80">
+                            {emailTemplatePreview.context.companyName}
+                          </div>
+                          <div className="mt-2 text-2xl font-black">
+                            {emailTemplatePreview.headerTitle}
+                          </div>
+                          <p className="mt-2 text-sm leading-6 opacity-90">
+                            {emailTemplatePreview.headerSubtitle}
+                          </p>
+                        </div>
+                      </div>
+                      {headerBackgroundPreviewFailed &&
+                      emailTemplatePreview.headerBackgroundType === "image" &&
+                      emailTemplatePreview.headerBackgroundImageUrl ? (
+                        <div className="px-5 pt-4">
+                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-100">
+                            Unable to load this image URL. The fallback header color is shown instead.
+                          </div>
+                        </div>
+                      ) : null}
 
                       {emailTemplatePreview.bannerUrl && !bannerPreviewFailed ? (
                         <div className="px-5 pt-5">

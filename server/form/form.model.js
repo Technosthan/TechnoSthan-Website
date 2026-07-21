@@ -213,6 +213,58 @@ const formSchema = new mongoose.Schema(
         default: "#16a34a",
         trim: true,
       },
+      headerBackgroundType: {
+        type: String,
+        enum: ["color", "image"],
+        default: "color",
+        trim: true,
+      },
+      headerBackgroundImageUrl: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      headerBackgroundImagePublicId: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      headerBackgroundPosition: {
+        type: String,
+        enum: ["center", "top", "bottom", "left", "right"],
+        default: "center",
+        trim: true,
+      },
+      headerBackgroundSize: {
+        type: String,
+        enum: ["cover", "contain", "auto"],
+        default: "cover",
+        trim: true,
+      },
+      headerOverlayColor: {
+        type: String,
+        default: "#000000",
+        trim: true,
+      },
+      headerOverlayOpacity: {
+        type: Number,
+        default: 0.45,
+      },
+      headerMinHeight: {
+        type: Number,
+        default: 220,
+      },
+      headerTextAlign: {
+        type: String,
+        enum: ["left", "center", "right"],
+        default: "left",
+        trim: true,
+      },
+      headerTextColor: {
+        type: String,
+        default: "",
+        trim: true,
+      },
       bodyBackgroundColor: {
         type: String,
         default: "#f3f4f6",
@@ -312,6 +364,60 @@ const formSchema = new mongoose.Schema(
         trim: true,
       },
       bannerImageAsset: {
+        url: {
+          type: String,
+          default: "",
+        },
+        secureUrl: {
+          type: String,
+          default: "",
+        },
+        publicId: {
+          type: String,
+          default: "",
+        },
+        resourceType: {
+          type: String,
+          default: "",
+        },
+        format: {
+          type: String,
+          default: "",
+        },
+        originalName: {
+          type: String,
+          default: "",
+        },
+        mimeType: {
+          type: String,
+          default: "",
+        },
+        size: {
+          type: Number,
+          default: 0,
+        },
+        bytes: {
+          type: Number,
+          default: 0,
+        },
+        width: {
+          type: Number,
+          default: null,
+        },
+        height: {
+          type: Number,
+          default: null,
+        },
+        version: {
+          type: Number,
+          default: null,
+        },
+        folder: {
+          type: String,
+          default: "",
+        },
+      },
+      headerBackgroundImageAsset: {
         url: {
           type: String,
           default: "",

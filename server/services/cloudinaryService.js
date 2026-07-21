@@ -450,7 +450,9 @@ const uploadFormEmailAsset = async ({
   publicId,
   overwrite = false,
 } = {}) => {
-  const normalizedAssetType = String(assetType || "").toLowerCase() === "banner" ? "banner" : "logo";
+  const normalizedAssetTypeRaw = String(assetType || "").toLowerCase();
+  const normalizedAssetType =
+    normalizedAssetTypeRaw === "banner" ? "banner" : normalizedAssetTypeRaw === "header-background" ? "header-background" : "logo";
   const folder = getCloudinaryFolder(
     "technosthan",
     "form-builder",

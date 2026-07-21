@@ -708,6 +708,7 @@ const importFormFile = async (file) => {
       description: String(importedForm.description || "").trim(),
       titleStyle: normalizeTitleStyle(importedForm.titleStyle),
       descriptionStyle: normalizeDescriptionStyle(importedForm.descriptionStyle),
+      emailTemplate: normalizeEmailTemplate(importedForm.emailTemplate, importedForm),
       sections: Array.isArray(importedForm.sections) ? importedForm.sections : [],
       questions: importedQuestions.map((question, index) => ({
         label: String(question.label || "").trim(),
@@ -737,6 +738,7 @@ const importFormFile = async (file) => {
     description: parsed.description,
     titleStyle: normalizeTitleStyle(),
     descriptionStyle: normalizeDescriptionStyle(),
+    emailTemplate: normalizeEmailTemplate(),
     sections: parsed.sections,
     questions: parsed.questions,
   };
@@ -774,6 +776,16 @@ const DEFAULT_EMAIL_TEMPLATE = {
   websiteButtonText: "",
   websiteButtonUrl: "",
   headerBackgroundColor: "#16a34a",
+  headerBackgroundType: "color",
+  headerBackgroundImageUrl: "",
+  headerBackgroundImagePublicId: "",
+  headerBackgroundPosition: "center",
+  headerBackgroundSize: "cover",
+  headerOverlayColor: "#000000",
+  headerOverlayOpacity: 0.45,
+  headerMinHeight: 220,
+  headerTextAlign: "left",
+  headerTextColor: "",
   bodyBackgroundColor: "#f3f4f6",
   cardBackgroundColor: "#ffffff",
   accentColor: "#16a34a",
@@ -785,6 +797,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
+  headerBackgroundImageAsset: null,
   footerButtons: [],
 };
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -876,6 +889,11 @@ const normalizeHttpUrl = (value = "") => {
   } catch {
     return "";
   }
+};
+
+const normalizeHttpsUrl = (value = "") => {
+  const normalized = normalizeHttpUrl(value);
+  return normalized.startsWith("https://") ? normalized : "";
 };
 
 const normalizeDescriptionHtml = (value = "") => sanitizeRichTextHtml(value);
@@ -1310,36 +1328,93 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       }))
       .filter((button) => button.text && button.url)
       .sort((a, b) => a.order - b.order);
+  const toTrimmed = (value = "") => String(value || "").trim();
+  const clampOpacity = (value, fallbackValue = 0.45) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallbackValue;
+    return Math.min(1, Math.max(0, parsed));
+  };
+  const clampMinHeight = (value, fallbackValue = 220) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+  };
+  const normalizeAlignment = (value, fallbackValue = "left") =>
+    ["left", "center", "right"].includes(String(value || "").trim())
+      ? String(value).trim()
+      : fallbackValue;
+  const normalizeBackgroundPosition = (value, fallbackValue = "center") =>
+    ["center", "top", "bottom", "left", "right"].includes(String(value || "").trim())
+      ? String(value).trim()
+      : fallbackValue;
+  const normalizeBackgroundSize = (value, fallbackValue = "cover") =>
+    ["cover", "contain", "auto"].includes(String(value || "").trim())
+      ? String(value).trim()
+      : fallbackValue;
+  const normalizeHeaderType = (value, imageUrl = "", imageAsset = null) => {
+    const candidate = String(value || "").trim().toLowerCase();
+    if (candidate === "image") return "image";
+    if (candidate === "color") return "color";
+    return imageUrl || imageAsset ? "image" : "color";
+  };
   const legacyFooterButtons = Array.isArray(source.footerButtons)
     ? source.footerButtons
     : Array.isArray(legacy.emailTemplate?.footerButtons)
       ? legacy.emailTemplate.footerButtons
       : [];
+  const headerBackgroundImageAsset = toAssetPayload(
+    pick(
+      "headerBackgroundImageAsset",
+      legacy.headerBackgroundImageAsset,
+      legacy.emailTemplate?.headerBackgroundImageAsset,
+      null,
+    ),
+    pick(
+      "headerBackgroundImageUrl",
+      legacy.headerBackgroundImageUrl ||
+        legacy.emailTemplate?.headerBackgroundImageUrl ||
+        legacy.headerBackground ||
+        legacy.emailTemplate?.headerBackground ||
+        "",
+    ),
+  );
+  const headerBackgroundImageUrl = normalizeHttpsUrl(
+    String(
+      pick(
+        "headerBackgroundImageUrl",
+        legacy.headerBackgroundImageUrl ||
+          legacy.emailTemplate?.headerBackgroundImageUrl ||
+          legacy.headerBackground ||
+          legacy.emailTemplate?.headerBackground ||
+          headerBackgroundImageAsset?.secureUrl ||
+          headerBackgroundImageAsset?.url ||
+          "",
+      ),
+    ).trim(),
+  );
+  const headerBackgroundType = normalizeHeaderType(
+    pick(
+      "headerBackgroundType",
+      legacy.headerBackgroundType,
+      legacy.emailTemplate?.headerBackgroundType,
+      "",
+    ),
+    headerBackgroundImageUrl,
+    headerBackgroundImageAsset,
+  );
+
   return {
     preset: String(pick("preset", legacy.preset, DEFAULT_EMAIL_TEMPLATE.preset)).trim(),
     headerTitle: String(pick("headerTitle", legacy.headerTitle, "")).trim(),
     headerSubtitle: String(pick("headerSubtitle", legacy.headerSubtitle, "")).trim(),
     successMessage: String(
-      pick(
-        "successMessage",
-        legacy.emailTemplate?.successMessage ||
-        legacy.successMessage ||
-          "",
-      ),
+      pick("successMessage", legacy.emailTemplate?.successMessage || legacy.successMessage || ""),
     ).trim(),
     footerText: String(pick("footerText", legacy.footerText, "")).trim(),
     companyName: String(
-      pick(
-        "companyName",
-        legacy.companyName ||
-        legacy.emailTemplate?.companyName ||
-          "",
-      ),
+      pick("companyName", legacy.companyName || legacy.emailTemplate?.companyName || ""),
     ).trim(),
     websiteButtonText: String(pick("websiteButtonText", legacy.websiteButtonText, "")).trim(),
-    websiteButtonUrl: normalizeHttpUrl(
-      String(pick("websiteButtonUrl", legacy.websiteButtonUrl, "")).trim(),
-    ),
+    websiteButtonUrl: normalizeHttpUrl(String(pick("websiteButtonUrl", legacy.websiteButtonUrl, "")).trim()),
     footerButtons: normalizeFooterButtons(
       pick(
         "footerButtons",
@@ -1357,18 +1432,98 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
           : [],
       ) || legacyFooterButtons,
     ),
-    headerBackgroundColor:
-      String(pick("headerBackgroundColor", legacy.headerBackgroundColor, DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor)).trim(),
-    bodyBackgroundColor:
-      String(pick("bodyBackgroundColor", legacy.bodyBackgroundColor, DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor)).trim(),
-    cardBackgroundColor:
-      String(pick("cardBackgroundColor", legacy.cardBackgroundColor, DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor)).trim(),
-    accentColor:
-      String(pick("accentColor", legacy.accentColor, DEFAULT_EMAIL_TEMPLATE.accentColor)).trim(),
-    textColor:
-      String(pick("textColor", legacy.textColor, DEFAULT_EMAIL_TEMPLATE.textColor)).trim(),
-    buttonColor:
-      String(pick("buttonColor", legacy.buttonColor, DEFAULT_EMAIL_TEMPLATE.buttonColor)).trim(),
+    headerBackgroundColor: toTrimmed(
+      pick(
+        "headerBackgroundColor",
+        legacy.headerBackgroundColor,
+        legacy.emailTemplate?.headerBackgroundColor,
+        DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor,
+      ),
+    ),
+    headerBackgroundType,
+    headerBackgroundImageUrl,
+    headerBackgroundImagePublicId: toTrimmed(
+      pick(
+        "headerBackgroundImagePublicId",
+        legacy.headerBackgroundImagePublicId,
+        legacy.emailTemplate?.headerBackgroundImagePublicId,
+        headerBackgroundImageAsset?.publicId,
+        "",
+      ),
+    ),
+    headerBackgroundPosition: normalizeBackgroundPosition(
+      pick(
+        "headerBackgroundPosition",
+        legacy.headerBackgroundPosition,
+        legacy.emailTemplate?.headerBackgroundPosition,
+        DEFAULT_EMAIL_TEMPLATE.headerBackgroundPosition,
+      ),
+    ),
+    headerBackgroundSize: normalizeBackgroundSize(
+      pick(
+        "headerBackgroundSize",
+        legacy.headerBackgroundSize,
+        legacy.emailTemplate?.headerBackgroundSize,
+        DEFAULT_EMAIL_TEMPLATE.headerBackgroundSize,
+      ),
+    ),
+    headerOverlayColor: toTrimmed(
+      pick(
+        "headerOverlayColor",
+        legacy.headerOverlayColor,
+        legacy.emailTemplate?.headerOverlayColor,
+        DEFAULT_EMAIL_TEMPLATE.headerOverlayColor,
+      ),
+    ),
+    headerOverlayOpacity: clampOpacity(
+      pick(
+        "headerOverlayOpacity",
+        legacy.headerOverlayOpacity,
+        legacy.emailTemplate?.headerOverlayOpacity,
+        DEFAULT_EMAIL_TEMPLATE.headerOverlayOpacity,
+      ),
+      DEFAULT_EMAIL_TEMPLATE.headerOverlayOpacity,
+    ),
+    headerMinHeight: clampMinHeight(
+      pick(
+        "headerMinHeight",
+        legacy.headerMinHeight,
+        legacy.emailTemplate?.headerMinHeight,
+        DEFAULT_EMAIL_TEMPLATE.headerMinHeight,
+      ),
+      DEFAULT_EMAIL_TEMPLATE.headerMinHeight,
+    ),
+    headerTextAlign: normalizeAlignment(
+      pick(
+        "headerTextAlign",
+        legacy.headerTextAlign,
+        legacy.emailTemplate?.headerTextAlign,
+        DEFAULT_EMAIL_TEMPLATE.headerTextAlign,
+      ),
+    ),
+    headerTextColor: toTrimmed(
+      pick(
+        "headerTextColor",
+        legacy.headerTextColor,
+        legacy.emailTemplate?.headerTextColor,
+        "",
+      ),
+    ),
+    bodyBackgroundColor: toTrimmed(
+      pick("bodyBackgroundColor", legacy.bodyBackgroundColor, DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor),
+    ),
+    cardBackgroundColor: toTrimmed(
+      pick("cardBackgroundColor", legacy.cardBackgroundColor, DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor),
+    ),
+    accentColor: toTrimmed(
+      pick("accentColor", legacy.accentColor, DEFAULT_EMAIL_TEMPLATE.accentColor),
+    ),
+    textColor: toTrimmed(
+      pick("textColor", legacy.textColor, DEFAULT_EMAIL_TEMPLATE.textColor),
+    ),
+    buttonColor: toTrimmed(
+      pick("buttonColor", legacy.buttonColor, DEFAULT_EMAIL_TEMPLATE.buttonColor),
+    ),
     borderRadius:
       parseOptionalInteger(source.borderRadius ?? legacy.borderRadius) ??
       DEFAULT_EMAIL_TEMPLATE.borderRadius,
@@ -1415,6 +1570,7 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
           "",
       ),
     ),
+    headerBackgroundImageAsset,
   };
 };
 
@@ -1581,6 +1737,7 @@ const buildFormExportDto = (form, questions = []) => {
         plainForm.bannerImageUrl ||
         "",
       bannerImage: plainForm.bannerImage || plainForm.bannerImageUrl || "",
+      emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
       questions: sortedQuestions,
     },
   };

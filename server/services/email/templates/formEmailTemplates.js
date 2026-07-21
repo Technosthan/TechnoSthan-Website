@@ -239,6 +239,83 @@ const renderResponsesTable = (rows = [], styles = {}) => {
   `;
 };
 
+const normalizeHeaderAlignment = (value = "left") =>
+  ["left", "center", "right"].includes(String(value || "").trim())
+    ? String(value).trim()
+    : "left";
+
+const normalizeHeaderPosition = (value = "center") =>
+  ["center", "top", "bottom", "left", "right"].includes(String(value || "").trim())
+    ? String(value).trim()
+    : "center";
+
+const normalizeHeaderSize = (value = "cover") =>
+  ["cover", "contain", "auto"].includes(String(value || "").trim())
+    ? String(value).trim()
+    : "cover";
+
+const normalizeHeaderMinHeight = (value = 220) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 220;
+};
+
+const normalizeHeaderOpacity = (value = 0.45) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0.45;
+  return Math.min(1, Math.max(0, parsed));
+};
+
+const hexToRgb = (value = "") => {
+  const match = String(value || "").trim().match(/^#([a-f0-9]{6})$/i);
+  if (!match) return null;
+  return {
+    r: Number.parseInt(match[1].slice(0, 2), 16),
+    g: Number.parseInt(match[1].slice(2, 4), 16),
+    b: Number.parseInt(match[1].slice(4, 6), 16),
+  };
+};
+
+const rgbaFromHex = (value, opacity = 0.45) => {
+  const rgb = hexToRgb(value);
+  if (!rgb) {
+    return `rgba(0,0,0,${opacity})`;
+  }
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${opacity})`;
+};
+
+const resolveHeaderTheme = (styles = {}) => {
+  const headerBackgroundColor = normalizeHexColor(styles.headerBackgroundColor, "#0f172a");
+  const headerBackgroundImageUrl = resolvePublicImageUrl(
+    styles.headerBackgroundImageAsset,
+    styles.headerBackgroundImageUrl,
+    styles.headerBackgroundImage,
+  );
+  const headerBackgroundType =
+    String(styles.headerBackgroundType || "").trim() === "image" && headerBackgroundImageUrl
+      ? "image"
+      : "color";
+  const headerOverlayColor = normalizeHexColor(styles.headerOverlayColor, "#000000");
+  const headerOverlayOpacity = normalizeHeaderOpacity(styles.headerOverlayOpacity);
+  const headerMinHeight = normalizeHeaderMinHeight(styles.headerMinHeight);
+  const headerTextAlign = normalizeHeaderAlignment(styles.headerTextAlign);
+  const headerBackgroundPosition = normalizeHeaderPosition(styles.headerBackgroundPosition);
+  const headerBackgroundSize = normalizeHeaderSize(styles.headerBackgroundSize);
+  const headerTextColor =
+    styles.headerTextColor || (isLightColor(headerBackgroundColor) ? "#0f172a" : "#ffffff");
+  return {
+    headerBackgroundColor,
+    headerBackgroundType,
+    headerBackgroundImageUrl,
+    headerOverlayColor,
+    headerOverlayOpacity,
+    headerMinHeight,
+    headerTextAlign,
+    headerBackgroundPosition,
+    headerBackgroundSize,
+    headerTextColor,
+  };
+};
+
 const renderLogo = (branding = {}, styles = {}) => {
   const companyName = branding.companyName || styles.companyName || "Form Submission";
   const headerTextColor = styles.headerTextColor || "#ffffff";
@@ -247,6 +324,97 @@ const renderLogo = (branding = {}, styles = {}) => {
     return `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(companyName)} logo" style="display:block;max-width:180px;max-height:54px;width:auto;height:auto;object-fit:contain;" />`;
   }
   return `<div style="font-size:22px;line-height:1.2;font-weight:800;color:${headerTextColor};">${escapeHtml(companyName)}</div>`;
+};
+
+const renderHeaderContent = ({
+  branding = {},
+  headerTitle = "",
+  headerSubtitle = "",
+  headerTextColor = "#ffffff",
+  headerTextAlign = "left",
+  headerOverlayColor = "#000000",
+  headerOverlayOpacity = 0.45,
+}) => `
+  <div style="background:${rgbaFromHex(headerOverlayColor, headerOverlayOpacity)};padding:28px;text-align:${headerTextAlign};color:${headerTextColor};">
+    <div style="text-align:${headerTextAlign};">${renderLogo(branding, { companyName: branding.companyName, headerTextColor })}</div>
+    <div style="margin-top:18px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85;">${escapeHtml(branding.companyName || "Form Builder")}</div>
+    <h1 style="margin:10px 0 0;font-size:30px;line-height:1.2;color:${headerTextColor};">${headerTitle || "Form Submission"}</h1>
+    ${headerSubtitle ? `<p style="margin:10px 0 0;font-size:15px;line-height:1.6;opacity:0.95;color:${headerTextColor};">${headerSubtitle}</p>` : ""}
+  </div>
+`;
+
+const renderHeaderSection = ({
+  branding = {},
+  headerTitle = "",
+  headerSubtitle = "",
+  styles = {},
+}) => {
+  const headerTheme = resolveHeaderTheme(styles);
+  const overlayColor = rgbaFromHex(
+    headerTheme.headerOverlayColor,
+    headerTheme.headerOverlayOpacity,
+  );
+  const overlayContent = renderHeaderContent({
+    branding,
+    headerTitle,
+    headerSubtitle,
+    headerTextColor: headerTheme.headerTextColor,
+    headerTextAlign: headerTheme.headerTextAlign,
+    headerOverlayColor: headerTheme.headerOverlayColor,
+    headerOverlayOpacity: headerTheme.headerOverlayOpacity,
+  });
+  const headerCellStyle = [
+    `background-color:${headerTheme.headerBackgroundColor}`,
+    headerTheme.headerBackgroundType === "image" && headerTheme.headerBackgroundImageUrl
+      ? `background-image:url('${escapeHtml(headerTheme.headerBackgroundImageUrl)}')`
+      : "",
+    headerTheme.headerBackgroundType === "image" && headerTheme.headerBackgroundImageUrl
+      ? `background-repeat:no-repeat`
+      : "",
+    headerTheme.headerBackgroundType === "image" && headerTheme.headerBackgroundImageUrl
+      ? `background-position:${headerTheme.headerBackgroundPosition}`
+      : "",
+    headerTheme.headerBackgroundType === "image" && headerTheme.headerBackgroundImageUrl
+      ? `background-size:${headerTheme.headerBackgroundSize}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(";");
+
+  if (headerTheme.headerBackgroundType === "image" && headerTheme.headerBackgroundImageUrl) {
+    return `
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td
+            width="760"
+            height="${headerTheme.headerMinHeight}"
+            background="${escapeHtml(headerTheme.headerBackgroundImageUrl)}"
+            bgcolor="${escapeHtml(headerTheme.headerBackgroundColor)}"
+            valign="top"
+            style="${headerCellStyle};height:${headerTheme.headerMinHeight}px;min-height:${headerTheme.headerMinHeight}px;">
+            <!--[if gte mso 9]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:760px;height:${headerTheme.headerMinHeight}px;">
+              <v:fill type="frame" src="${escapeHtml(headerTheme.headerBackgroundImageUrl)}" color="${escapeHtml(headerTheme.headerBackgroundColor)}" />
+              <v:textbox inset="0,0,0,0">
+            <![endif]-->
+            <div style="background:${overlayColor};min-height:${headerTheme.headerMinHeight}px;height:${headerTheme.headerMinHeight}px;">
+              ${overlayContent}
+            </div>
+            <!--[if gte mso 9]>
+              </v:textbox>
+            </v:rect>
+            <![endif]-->
+          </td>
+        </tr>
+      </table>
+    `;
+  }
+
+  return `
+    <div style="background:${headerTheme.headerBackgroundColor};min-height:${headerTheme.headerMinHeight}px;">
+      ${overlayContent}
+    </div>
+  `;
 };
 
 const buildEmailShell = ({
@@ -265,15 +433,13 @@ const buildEmailShell = ({
   styles = {},
   bodyContent = "",
 }) => {
-  const headerBackgroundColor = normalizeHexColor(styles.headerBackgroundColor, "#0f172a");
+  const headerTheme = resolveHeaderTheme(styles);
   const bodyBackgroundColor = normalizeHexColor(styles.bodyBackgroundColor, "#f3f4f6");
   const cardBackgroundColor = normalizeHexColor(styles.cardBackgroundColor, "#ffffff");
   const accentColor = normalizeHexColor(styles.accentColor, "#0ea5e9");
   const textColor = normalizeHexColor(styles.textColor, "#0f172a");
   const buttonColor = normalizeHexColor(styles.buttonColor, accentColor);
   const borderRadius = normalizeBorderRadius(styles.borderRadius, 24);
-  const headerTextColor =
-    styles.headerTextColor || (isLightColor(headerBackgroundColor) ? "#0f172a" : "#ffffff");
   const responsesTable = renderResponsesTable(rows, {
     cardBackgroundColor,
     accentColor,
@@ -304,12 +470,15 @@ const buildEmailShell = ({
     <body style="margin:0;background:${bodyBackgroundColor};font-family:Arial,Helvetica,sans-serif;color:${textColor};">
       <div style="max-width:760px;margin:0 auto;padding:24px 16px;">
         <div style="border-radius:${borderRadius + 8}px;overflow:hidden;box-shadow:0 20px 50px rgba(15,23,42,0.12);background:${cardBackgroundColor};">
-          <div style="background:${headerBackgroundColor};padding:28px;color:${headerTextColor};">
-            ${renderLogo(branding, { companyName: branding.companyName, headerTextColor })}
-            <div style="margin-top:18px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85;">${escapeHtml(branding.companyName || "Form Builder")}</div>
-            <h1 style="margin:10px 0 0;font-size:30px;line-height:1.2;color:${headerTextColor};">${resolvedHeaderTitle || "Form Submission"}</h1>
-            ${resolvedHeaderSubtitle ? `<p style="margin:10px 0 0;font-size:15px;line-height:1.6;opacity:0.95;color:${headerTextColor};">${resolvedHeaderSubtitle}</p>` : ""}
-          </div>
+          ${renderHeaderSection({
+            branding,
+            headerTitle: resolvedHeaderTitle,
+            headerSubtitle: resolvedHeaderSubtitle,
+            styles: {
+              ...styles,
+              ...headerTheme,
+            },
+          })}
 
           ${resolvePublicImageUrl(branding.bannerImageAsset, branding.bannerImageUrl, branding.bannerUrl) ? `
             <div style="padding:20px 24px 0;">
