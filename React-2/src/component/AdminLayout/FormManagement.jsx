@@ -2062,6 +2062,7 @@ const FormManagement = () => {
           setHeaderBackgroundPreviewFailed(false);
         } else {
           updateEmailTemplate("bannerUrl", imageUrl);
+          updateEmailTemplate("bannerImageUrl", imageUrl);
           updateEmailTemplate("bannerImageAsset", asset);
           setBannerPreviewFailed(false);
         }
@@ -2122,6 +2123,7 @@ const FormManagement = () => {
       }
     } else {
       updateEmailTemplate("bannerUrl", "");
+      updateEmailTemplate("bannerImageUrl", "");
       setBannerPreviewFailed(false);
       if (emailBannerInputRef.current) {
         emailBannerInputRef.current.value = "";
