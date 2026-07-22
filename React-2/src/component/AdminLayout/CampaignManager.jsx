@@ -113,6 +113,8 @@ const CampaignManager = () => {
   const [error, setError] = useState(null);
   const [now, setNow] = useState(() => new Date());
   const [replaceCampaign, setReplaceCampaign] = useState(null);
+  // editing mode uses same left form
+  const [editingCampaign, setEditingCampaign] = useState(null);
   const fileInputRef = useRef(null);
   const recoveryHandledRef = useRef(false);
   const draftUserId = getCurrentDraftUserId(getStoredUser());
@@ -180,9 +182,6 @@ const CampaignManager = () => {
   useEffect(() => {
     recoveryHandledRef.current = false;
   }, [draftKey]);
-
-  // editing mode uses same left form
-  const [editingCampaign, setEditingCampaign] = useState(null);
 
   const loadCampaigns = async () => {
     try {
