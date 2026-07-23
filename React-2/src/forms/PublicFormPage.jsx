@@ -36,8 +36,22 @@ const FILE_MIME_TYPES = [
   "image/webp",
 ];
 
-const buildConditionalFieldKey = (questionId, optionId, fieldId) =>
-  `${questionId}::${optionId}::${fieldId}`;
+const OPTION_BASED_CONDITIONAL_FIELD_TYPES = new Set([
+  "dropdown",
+  "radio",
+  "checkbox",
+  "multipleSelect",
+]);
+
+const isOptionBasedConditionalFieldType = (type = "") =>
+  OPTION_BASED_CONDITIONAL_FIELD_TYPES.has(String(type || "").trim());
+
+const buildConditionalFieldKey = (...segments) =>
+  segments
+    .flat()
+    .map((segment) => String(segment || "").trim())
+    .filter(Boolean)
+    .join("::");
 
 const isConditionalFieldKey = (key = "") => String(key || "").includes("::");
 
@@ -70,6 +84,12 @@ const getQuestionOptions = (question = {}) =>
     };
   });
 
+const getConditionalBranchFields = (option = {}) =>
+  Array.isArray(option?.conditionalLogic?.fields) ? option.conditionalLogic.fields : [];
+
+const getConditionalFieldBreadcrumb = (segments = []) =>
+  (Array.isArray(segments) ? segments : [segments]).filter(Boolean).join(" \u2192 ");
+
 const getSelectedOptionIds = (question = {}, value) => {
   const options = getQuestionOptions(question);
   const selectedValues = Array.isArray(value)
@@ -93,6 +113,71 @@ const getSelectedOptionIds = (question = {}, value) => {
     .filter(Boolean);
 };
 
+const collectConditionalDescriptorsFromOption = ({
+  question,
+  questionId,
+  option,
+  pathSegments = [],
+  breadcrumbSegments = [],
+  values = {},
+  conditionalAnswers = {},
+}) => {
+  if (!option || option.isActive === false) return [];
+
+  const descriptors = [];
+  const childFields = getConditionalBranchFields(option);
+
+  childFields.forEach((field) => {
+    if (!field || field.isActive === false) return;
+
+    const fieldPathSegments = [...pathSegments, field.id];
+    const fieldKey = buildConditionalFieldKey(fieldPathSegments);
+    const fieldBreadcrumb = [...breadcrumbSegments, field.label].filter(Boolean);
+    const payloadEntry = conditionalAnswers[fieldKey] || null;
+
+    descriptors.push({
+      question,
+      questionId,
+      option,
+      field,
+      key: fieldKey,
+      pathSegments: fieldPathSegments,
+      breadcrumb: getConditionalFieldBreadcrumb(fieldBreadcrumb),
+    });
+
+    if (!isOptionBasedConditionalFieldType(field.type)) {
+      return;
+    }
+
+    const fieldValue =
+      payloadEntry?.value ??
+      payloadEntry?.answer ??
+      payloadEntry?.response ??
+      values[fieldKey] ??
+      null;
+    const selectedChildOptionIds = getSelectedOptionIds(field, fieldValue);
+    const fieldOptions = getQuestionOptions(field);
+
+    selectedChildOptionIds.forEach((childOptionId) => {
+      const childOption = fieldOptions.find((item) => item.id === childOptionId);
+      if (!childOption || childOption.isActive === false) return;
+      descriptors.push(
+        ...collectConditionalDescriptorsFromOption({
+          question,
+          questionId,
+          option: childOption,
+          pathSegments: [...fieldPathSegments, childOption.id],
+          breadcrumbSegments: [...fieldBreadcrumb, childOption.label],
+          values,
+          conditionalAnswers,
+        }),
+      );
+    });
+  });
+
+  return descriptors;
+};
+
 const getActiveConditionalFieldDescriptors = (questions = [], values = {}) => {
   const descriptors = [];
 
@@ -105,19 +190,18 @@ const getActiveConditionalFieldDescriptors = (questions = [], values = {}) => {
 
     selectedOptionIds.forEach((optionId) => {
       const option = options.find((item) => item.id === optionId);
-      const fields = option?.conditionalLogic?.enabled
-        ? option.conditionalLogic.fields || []
-        : [];
-
-      fields.forEach((field) => {
-        if (!field || field.isActive === false) return;
-        descriptors.push({
+      if (!option) return;
+      descriptors.push(
+        ...collectConditionalDescriptorsFromOption({
           question,
+          questionId,
           option,
-          field,
-          key: buildConditionalFieldKey(questionId, option.id, field.id),
-        });
-      });
+          pathSegments: [questionId, option.id],
+          breadcrumbSegments: [question.label || "Question", option.label],
+          values,
+          conditionalAnswers: values,
+        }),
+      );
     });
   });
 
@@ -760,7 +844,19 @@ const PublicFormPage = () => {
     );
   };
 
-  const renderConditionalField = (field, fieldKey, parentContext = {}) => {
+  const renderConditionalFieldsList = (fields = [], parentPath = "", level = 1) => {
+    if (!Array.isArray(fields) || !fields.length) return null;
+
+    return (
+      <div className={`space-y-4 ${level > 1 ? "pl-3 sm:pl-4" : ""}`}>
+        {fields.map((field) => (
+          <div key={buildConditionalFieldKey(parentPath, field.id)}>{renderConditionalField(field, buildConditionalFieldKey(parentPath, field.id), level)}</div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderConditionalField = (field, fieldKey, level = 1) => {
     const commonProps = {
       className: `${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`,
     };
@@ -768,28 +864,24 @@ const PublicFormPage = () => {
     const file = files[fieldKey];
     const fieldLabel = field.label || field.title || "Conditional field";
     const fieldHelpText = field.helpText || field.description || "";
-
-    if (field.type === "heading" || field.type === "information" || field.type === "sectionHeading") {
-      return (
-        <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-          <h4 className="text-lg font-bold">{fieldLabel}</h4>
-          {fieldHelpText && <p className="mt-2 text-sm text-slate-300">{fieldHelpText}</p>}
-        </div>
-      );
-    }
+    const fieldOptions = getQuestionOptions(field);
+    const optionBasedField = isOptionBasedConditionalFieldType(field.type);
+    const selectedOptionIds = optionBasedField ? getSelectedOptionIds(field, value) : [];
+    const selectedOptions = selectedOptionIds
+      .map((optionId) => fieldOptions.find((option) => option.id === optionId))
+      .filter(Boolean);
 
     return (
-      <div className="space-y-2 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+      <div
+        className={`space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5 ${
+          level > 1 ? "ml-3 border-l-2 border-l-cyan-500/30 sm:ml-4" : ""
+        }`}
+      >
         <div className="flex items-start justify-between gap-3">
           <label className="text-base font-semibold">
             {fieldLabel}
             {field.required && <span className="ml-1 text-red-400">*</span>}
           </label>
-          {parentContext.optionLabel && (
-            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-cyan-100">
-              {parentContext.optionLabel}
-            </span>
-          )}
         </div>
 
         {field.type === "paragraph" || field.type === "address" || field.type === "longText" ? (
@@ -802,13 +894,9 @@ const PublicFormPage = () => {
             className={`${commonProps.className} resize-none`}
           />
         ) : field.type === "dropdown" ? (
-          <select
-            value={value}
-            onChange={(e) => handleAnswer(fieldKey, e.target.value)}
-            {...commonProps}
-          >
+          <select value={value} onChange={(e) => handleAnswer(fieldKey, e.target.value)} {...commonProps}>
             <option value="">Select an option</option>
-            {getQuestionOptions(field).map((option) => (
+            {fieldOptions.map((option) => (
               <option key={option.id} value={option.value}>
                 {option.label}
               </option>
@@ -816,7 +904,7 @@ const PublicFormPage = () => {
           </select>
         ) : field.type === "radio" ? (
           <div className="space-y-2">
-            {getQuestionOptions(field).map((option) => (
+            {fieldOptions.map((option) => (
               <label
                 key={option.id}
                 dir="ltr"
@@ -835,7 +923,7 @@ const PublicFormPage = () => {
           </div>
         ) : field.type === "checkbox" || field.type === "multipleSelect" ? (
           <div className="space-y-2">
-            {getQuestionOptions(field).map((option) => (
+            {fieldOptions.map((option) => (
               <label
                 key={option.id}
                 dir="ltr"
@@ -880,9 +968,7 @@ const PublicFormPage = () => {
                 type="button"
                 onClick={() => handleAnswer(fieldKey, rating)}
                 className={`h-11 w-11 rounded-2xl border ${
-                  value === rating
-                    ? "border-cyan-500 bg-cyan-500 text-white"
-                    : "border-white/10 bg-white/5"
+                  value === rating ? "border-cyan-500 bg-cyan-500 text-white" : "border-white/10 bg-white/5"
                 }`}
               >
                 {rating}
@@ -942,6 +1028,18 @@ const PublicFormPage = () => {
           />
         )}
 
+        {optionBasedField &&
+          selectedOptions.map((option) => {
+            const childFields = getConditionalBranchFields(option);
+            if (!childFields.length) return null;
+            const branchPath = buildConditionalFieldKey(fieldKey, option.id);
+            return (
+              <div key={branchPath} className="mt-3 space-y-3 border-l border-white/10 pl-3 sm:pl-4">
+                {renderConditionalFieldsList(childFields, branchPath, level + 1)}
+              </div>
+            );
+          })}
+
         {fieldHelpText && <p className="text-xs text-slate-400">{fieldHelpText}</p>}
       </div>
     );
@@ -954,20 +1052,17 @@ const PublicFormPage = () => {
 
     return selectedOptionIds
       .map((optionId) => options.find((item) => item.id === optionId))
-      .filter((option) => option?.conditionalLogic?.enabled)
-      .flatMap((option) =>
-        (option.conditionalLogic.fields || []).map((field) => ({
-          option,
-          field,
-          key: buildConditionalFieldKey(questionId, option.id, field.id),
-        })),
-      )
-      .filter((entry) => entry.field && entry.field.isActive !== false)
-      .map((entry) => (
-        <div key={entry.key} className="mt-4">
-          {renderConditionalField(entry.field, entry.key, { optionLabel: entry.option.label })}
-        </div>
-      ));
+      .filter(Boolean)
+      .flatMap((option) => {
+        const childFields = getConditionalBranchFields(option);
+        if (!childFields.length) return [];
+        const branchPath = buildConditionalFieldKey(questionId, option.id);
+        return [
+          <div key={branchPath} className="mt-4">
+            {renderConditionalFieldsList(childFields, branchPath, 1)}
+          </div>,
+        ];
+      });
   };
 
   const renderQuestion = (question) => {
@@ -1423,10 +1518,7 @@ const PublicFormPage = () => {
       const conditionalAnswers = {};
       Object.entries(values).forEach(([key, value]) => {
         if (isConditionalFieldKey(key)) {
-          const [questionId, optionId, fieldId] = key.split("::");
-          if (!conditionalAnswers[questionId]) conditionalAnswers[questionId] = {};
-          if (!conditionalAnswers[questionId][optionId]) conditionalAnswers[questionId][optionId] = {};
-          conditionalAnswers[questionId][optionId][fieldId] = { value };
+          conditionalAnswers[key] = { value };
         } else {
           topLevelAnswers[key] = value;
         }

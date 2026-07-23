@@ -54,7 +54,15 @@ const CONDITIONAL_FIELD_TYPES = new Set([
   "sectionHeading",
 ]);
 
-const MAX_CONDITIONAL_DEPTH = 1;
+const CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS = new Set([
+  "dropdown",
+  "radio",
+  "checkbox",
+  "multipleSelect",
+]);
+
+const isOptionBasedConditionalFieldType = (type = "") =>
+  CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS.has(String(type || "").trim());
 
 const createConditionalId = (prefix = "cond") =>
   `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -82,6 +90,25 @@ const normalizeConditionalValidation = (validation = {}) => ({
 const normalizeConditionalOptions = (options = []) =>
   (Array.isArray(options) ? options : [])
     .map((option, index) => normalizeQuestionOption(option, index))
+    .filter(Boolean);
+
+const normalizeConditionalFieldOptions = (options = []) =>
+  (Array.isArray(options) ? options : [])
+    .map((option, index) =>
+      typeof option === "string"
+        ? {
+            id: createConditionalId(`option-${index}`),
+            label: String(option).trim(),
+            value: String(option).trim(),
+            order: index,
+            conditionalLogic: {
+              enabled: false,
+              resetOnHide: true,
+              fields: [],
+            },
+          }
+        : normalizeQuestionOption(option, index),
+    )
     .filter(Boolean);
 
 function normalizeQuestionOption(option, index = 0) {
@@ -121,13 +148,19 @@ function normalizeQuestionOption(option, index = 0) {
     value: value || label || id,
     order: typeof source.order === "number" ? source.order : index,
     conditionalLogic: {
-      enabled: conditionalSource.enabled === true,
+      enabled:
+        conditionalSource.enabled === true ||
+        Array.isArray(conditionalSource.fields) && conditionalSource.fields.length > 0,
       resetOnHide: conditionalSource.resetOnHide !== false,
       fields: normalizeConditionalFields(
         conditionalSource.fields || source.fields || [],
         1,
       ),
     },
+    conditionalFields: normalizeConditionalFields(
+      conditionalSource.fields || source.fields || [],
+      1,
+    ),
   };
 }
 
@@ -141,8 +174,12 @@ function normalizeConditionalField(field, index = 0, depth = 1) {
     String(field.id || field.fieldId || "").trim() ||
     createConditionalId(`field-${index}`);
   const label = String(field.label || field.title || "").trim() || "Untitled field";
-  const options = normalizeConditionalOptions(field.options || []);
+  const options = normalizeConditionalFieldOptions(field.options || []);
   const nestedDepth = Number.isInteger(depth) ? depth : 1;
+  const nestedConditionalFields = normalizeConditionalFields(
+    field.conditionalLogic?.fields || field.conditionalFields || [],
+    nestedDepth + 1,
+  );
 
   return {
     id,
@@ -185,32 +222,67 @@ function normalizeConditionalField(field, index = 0, depth = 1) {
     conditionalLogic: {
       enabled: field.conditionalLogic?.enabled === true,
       resetOnHide: field.conditionalLogic?.resetOnHide !== false,
-      fields: normalizeConditionalFields(field.conditionalLogic?.fields || [], nestedDepth + 1),
+      fields: nestedConditionalFields,
     },
+    conditionalFields: nestedConditionalFields,
   };
 }
 
 function normalizeConditionalFields(fields = [], depth = 1) {
-  const normalizedDepth = Number.isInteger(depth) ? depth : 1;
-  if (normalizedDepth > MAX_CONDITIONAL_DEPTH) {
-    return [];
-  }
-
   return (Array.isArray(fields) ? fields : [])
-    .map((field, index) => normalizeConditionalField(field, index, normalizedDepth))
+    .map((field, index) => normalizeConditionalField(field, index, depth))
     .filter(Boolean)
     .map((field, index) => ({
       ...field,
       order: typeof field.order === "number" ? field.order : index,
       conditionalLogic: {
         ...(field.conditionalLogic || {}),
-        fields:
-          normalizedDepth >= MAX_CONDITIONAL_DEPTH
-            ? []
-            : normalizeConditionalFields(field.conditionalLogic?.fields || [], normalizedDepth + 1),
+        fields: normalizeConditionalFields(field.conditionalLogic?.fields || [], depth + 1),
       },
+      conditionalFields: normalizeConditionalFields(
+        field.conditionalLogic?.fields || field.conditionalFields || [],
+        depth + 1,
+      ),
     }));
 }
+
+const getConditionalFieldOptionValues = (options = []) =>
+  (Array.isArray(options) ? options : [])
+    .map((option) => {
+      if (typeof option === "string") {
+        return option;
+      }
+      return option?.label || option?.value || "";
+    })
+    .map((option) => String(option || "").trim())
+    .filter(Boolean);
+
+const validateConditionalFieldOptionConfig = (questions = []) => {
+  const inspectFields = (fields = []) => {
+    for (const field of Array.isArray(fields) ? fields : []) {
+      if (!field || field.isActive === false) continue;
+      if (isOptionBasedConditionalFieldType(field.type) && !getConditionalFieldOptionValues(field.options).length) {
+        throw new Error(
+          `Conditional field "${String(field.label || "Untitled field")}" needs at least one option.`,
+        );
+      }
+      const fieldOptions = Array.isArray(field.options) ? field.options : [];
+      for (const option of fieldOptions) {
+        inspectFields(option?.conditionalLogic?.fields || []);
+      }
+      inspectFields(field?.conditionalLogic?.fields || []);
+    }
+  };
+
+  for (const question of Array.isArray(questions) ? questions : []) {
+    const questionOptions = Array.isArray(question?.options) ? question.options : [];
+    for (const option of questionOptions) {
+      inspectFields(option?.conditionalLogic?.fields || []);
+    }
+
+    inspectFields(question?.conditionalFields || question?.followUpFields || []);
+  }
+};
 
 const normalizeQuestionOptions = (question = {}) =>
   (Array.isArray(question.options) ? question.options : [])
@@ -265,22 +337,48 @@ const normalizeConditionalPayload = (payload = {}) => {
     : {};
 };
 
-const buildConditionalFieldPath = ({
-  questionId,
-  optionId,
-  fieldId,
-}) => `${questionId}::${optionId}::${fieldId}`;
+const buildConditionalFieldPath = (segments = []) =>
+  (Array.isArray(segments) ? segments : [segments])
+    .flat()
+    .map((segment) => String(segment || "").trim())
+    .filter(Boolean)
+    .join("::");
 
-const resolveConditionalPayloadEntry = (
-  conditionalAnswers = {},
-  questionId,
-  optionId,
-  fieldId,
-) => {
-  const questionBucket = conditionalAnswers[String(questionId)] || {};
-  const optionBucket = questionBucket[String(optionId)] || {};
-  return optionBucket[String(fieldId)] || null;
+const resolveConditionalPayloadEntry = (conditionalAnswers = {}, pathSegments = []) => {
+  const segments = (Array.isArray(pathSegments) ? pathSegments : String(pathSegments || "").split("::"))
+    .map((segment) => String(segment || "").trim())
+    .filter(Boolean);
+  if (!segments.length) {
+    return null;
+  }
+
+  const flatKey = buildConditionalFieldPath(segments);
+  if (
+    conditionalAnswers &&
+    typeof conditionalAnswers === "object" &&
+    !Array.isArray(conditionalAnswers) &&
+    Object.prototype.hasOwnProperty.call(conditionalAnswers, flatKey)
+  ) {
+    return conditionalAnswers[flatKey];
+  }
+
+  let current = conditionalAnswers;
+  for (const segment of segments) {
+    if (!current || typeof current !== "object") {
+      return null;
+    }
+    current = current[segment];
+  }
+
+  return current && typeof current === "object" ? current : null;
 };
+
+const getConditionalFieldNodePathSegments = (context = {}) => [
+  ...(Array.isArray(context.ancestors) ? context.ancestors : []),
+  context.questionId,
+  context.optionId,
+  context.fieldId,
+].filter(Boolean);
 
 const getConditionalFileEntriesByKey = (files = []) => {
   const map = new Map();
@@ -1821,12 +1919,142 @@ const collectResponses = async (formId) => {
   });
 };
 
+const isConditionalResponseAnswer = (answer = {}) =>
+  Boolean(
+    answer.fieldId ||
+      answer.parentQuestionId ||
+      answer.parentOptionId ||
+      answer.conditionalPath ||
+      answer.conditionalDepth,
+  );
+
+const getResponseAnswerLabel = (answer = {}) =>
+  String(answer.fieldLabel || answer.question?.label || answer.questionLabel || "Question").trim();
+
+const getResponseAnswerContext = (answer = {}) => {
+  const breadcrumb = String(answer.conditionalMeta?.breadcrumb || "").trim();
+  if (breadcrumb) {
+    return breadcrumb;
+  }
+
+  const trail = [];
+  if (answer.question?.label || answer.questionLabel) {
+    trail.push(String(answer.question?.label || answer.questionLabel || "").trim());
+  }
+  if (answer.parentOptionLabel) {
+    trail.push(String(answer.parentOptionLabel).trim());
+  }
+  if (answer.fieldLabel && answer.fieldLabel !== answer.question?.label) {
+    trail.push(String(answer.fieldLabel).trim());
+  }
+  return trail.filter(Boolean).join(" → ");
+};
+
+const getResponseAnswerDisplayValue = (answer = {}) => {
+  if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
+    return answer.fileUrls.map((url, index) => ({
+      type: "file",
+      url,
+      label: answer.fileNames?.[index] || `File ${index + 1}`,
+      mimeType: answer.fileType || "",
+    }));
+  }
+
+  if (answer.fileUrl) {
+    return [
+      {
+        type: /^image\//i.test(String(answer.fileType || "")) || answer.fieldType === "imageUpload"
+          ? "image"
+          : "file",
+        url: answer.fileUrl,
+        label: answer.fileName || answer.fileUrl,
+        mimeType: answer.fileType || "",
+      },
+    ];
+  }
+
+  if (Array.isArray(answer.value)) {
+    return answer.value.map((item) => String(item));
+  }
+
+  return String(answer.value ?? "");
+};
+
+const buildResponseAnswerView = (answer = {}) => ({
+  questionId: String(answer.questionId?._id || answer.questionId || ""),
+  fieldId: String(answer.fieldId || ""),
+  fieldLabel: getResponseAnswerLabel(answer),
+  fieldType: String(answer.fieldType || answer.question?.type || "").trim(),
+  value: answer.value,
+  displayValue: getResponseAnswerDisplayValue(answer),
+  conditional: isConditionalResponseAnswer(answer),
+  parentQuestionId: String(answer.parentQuestionId || answer.questionId?._id || answer.questionId || ""),
+  parentOptionId: String(answer.parentOptionId || ""),
+  parentOptionLabel: String(answer.parentOptionLabel || "").trim(),
+  conditionalPath: String(answer.conditionalPath || "").trim(),
+  conditionalDepth: Number.isFinite(Number(answer.conditionalDepth)) ? Number(answer.conditionalDepth) : 0,
+  conditionalOrder: Number.isFinite(Number(answer.conditionalOrder)) ? Number(answer.conditionalOrder) : 0,
+  context: getResponseAnswerContext(answer),
+  fileUrl: answer.fileUrl || "",
+  fileUrls: Array.isArray(answer.fileUrls) ? answer.fileUrls : [],
+  fileName: answer.fileName || "",
+  fileNames: Array.isArray(answer.fileNames) ? answer.fileNames : [],
+  fileType: answer.fileType || "",
+  question: answer.question || null,
+});
+
+const buildResponseSubmissionRows = (answers = []) => {
+  const normalized = Array.isArray(answers)
+    ? [...answers]
+        .map((answer, index) => ({
+          ...answer,
+          __order:
+            Number.isFinite(Number(answer.conditionalDepth))
+              ? Number(answer.conditionalDepth) * 1000 + Number(answer.conditionalOrder || index)
+              : index,
+        }))
+        .sort((left, right) => left.__order - right.__order)
+    : [];
+
+  const mainRows = [];
+  const conditionalRows = [];
+
+  for (const answer of normalized) {
+    const row = buildResponseAnswerView(answer);
+    if (row.conditional) {
+      conditionalRows.push(row);
+    } else {
+      mainRows.push(row);
+    }
+  }
+
+  const rows = [];
+  if (mainRows.length) {
+    rows.push({ kind: "section", label: "Submission Details" });
+    rows.push(...mainRows.map((row) => ({ kind: "row", ...row })));
+  }
+  if (conditionalRows.length) {
+    rows.push({ kind: "section", label: "Conditional Answers" });
+    rows.push(...conditionalRows.map((row) => ({ kind: "row", ...row })));
+  }
+
+  return {
+    mainRows,
+    conditionalRows,
+    rows,
+  };
+};
+
 const sanitizeAnswerForApi = (answer) => {
   const questionType = answer.question?.type;
   return {
     ...answer,
     questionId: String(answer.questionId?._id || answer.questionId || ""),
     value: questionType === "password" ? null : answer.value,
+    displayLabel: getResponseAnswerLabel(answer),
+    displayContext: getResponseAnswerContext(answer),
+    displayValue: getResponseAnswerDisplayValue(answer),
+    conditional: isConditionalResponseAnswer(answer),
     secretCiphertext: undefined,
     secretIv: undefined,
     secretAuthTag: undefined,
@@ -1839,6 +2067,7 @@ const sanitizeResponseForApi = (response) => ({
   answers: Array.isArray(response.answers)
     ? response.answers.map(sanitizeAnswerForApi)
     : [],
+  submissionSummary: buildResponseSubmissionRows(response.answers || []),
 });
 
 const extractSummary = (answers = []) => {
@@ -1895,9 +2124,11 @@ const matchesResponseSearch = (response, search = "") => {
 
   const answerTexts = (response.answers || [])
     .flatMap((answer) => {
-      if (answer.fileName) return [answer.fileName, answer.fileUrl || ""];
-      if (Array.isArray(answer.value)) return answer.value;
-      return [answer.value ?? ""];
+      const label = answer.displayLabel || answer.fieldLabel || answer.question?.label || "";
+      const context = answer.displayContext || answer.parentOptionLabel || "";
+      if (answer.fileName) return [label, context, answer.fileName, answer.fileUrl || ""];
+      if (Array.isArray(answer.value)) return [label, context, ...answer.value];
+      return [label, context, answer.value ?? ""];
     })
     .map((item) => normalizeSearchText(item))
     .join(" ");
@@ -2096,9 +2327,11 @@ const buildCsv = (form, questions, responses) => {
       if (!answer.fieldId && !answer.parentOptionId) continue;
       const key = answer.conditionalPath || answer.fieldId || `${answer.parentOptionId}:${answer.fieldLabel}`;
       if (conditionalColumnMap.has(key)) continue;
-      const header = answer.parentOptionLabel
-        ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional Field"}`
-        : answer.fieldLabel || answer.question?.label || "Conditional Field";
+      const header = answer.displayContext
+        ? answer.displayContext
+        : answer.parentOptionLabel
+          ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional Field"}`
+          : answer.fieldLabel || answer.question?.label || "Conditional Field";
       conditionalColumnMap.set(key, header);
       conditionalColumns.push({ key, header });
     }
@@ -2514,32 +2747,29 @@ const getConditionalFieldDescriptors = ({
   conditionalAnswers = {},
 }) => {
   const descriptors = [];
-  const selectedOptionIds = getQuestionSelectedOptionIds(question, submittedValue);
+  const questionId = String(question?._id || question?.id || "");
   const optionMap = new Map(
     normalizeQuestionOptions(question).map((option) => [String(option.id), option]),
   );
 
-  for (const optionId of selectedOptionIds) {
-    const option = optionMap.get(String(optionId));
-    if (!option?.conditionalLogic?.enabled) {
-      continue;
+  const walkOptionBranch = ({ option, pathSegments = [], breadcrumb = [] }) => {
+    if (!option || option.isActive === false) {
+      return;
     }
 
-    const fields = Array.isArray(option.conditionalLogic.fields)
+    const fields = Array.isArray(option.conditionalLogic?.fields)
       ? option.conditionalLogic.fields
       : [];
 
     for (const field of fields) {
       if (!field || field.isActive === false) continue;
-      const payloadEntry = resolveConditionalPayloadEntry(
-        conditionalAnswers,
-        question._id,
-        option.id,
-        field.id,
-      );
+      const fieldPathSegments = [...pathSegments, field.id];
+      const payloadEntry = resolveConditionalPayloadEntry(conditionalAnswers, fieldPathSegments);
+      const fieldBreadcrumb = [...breadcrumb, field.label].filter(Boolean);
+      const fieldPath = buildConditionalFieldPath(fieldPathSegments);
       descriptors.push({
         parentQuestion: question,
-        parentQuestionId: String(question._id),
+        parentQuestionId: questionId,
         parentQuestionLabel: question.label,
         parentQuestionType: question.type,
         parentOption: option,
@@ -2550,17 +2780,55 @@ const getConditionalFieldDescriptors = ({
         fieldLabel: field.label,
         fieldType: field.type,
         fieldOrder: field.order || 0,
-        path: buildConditionalFieldPath({
-          questionId: question._id,
-          optionId: option.id,
-          fieldId: field.id,
-        }),
+        conditionalDepth: Math.max(1, Math.floor((fieldPathSegments.length - 1) / 2)),
+        path: fieldPath,
+        breadcrumb: fieldBreadcrumb.join(" → "),
         payloadEntry,
       });
+
+      if (!isOptionBasedConditionalFieldType(field.type)) {
+        continue;
+      }
+
+      const fieldValue = getConditionalFieldSubmissionValue(
+        payloadEntry,
+        fieldPath,
+        conditionalAnswers,
+      );
+      const selectedOptionIds = getQuestionSelectedOptionIds(field, fieldValue);
+      const fieldOptionMap = new Map(
+        normalizeQuestionOptions(field).map((item) => [String(item.id), item]),
+      );
+
+      for (const childOptionId of selectedOptionIds) {
+        const childOption = fieldOptionMap.get(String(childOptionId));
+        if (!childOption || childOption.isActive === false) {
+          continue;
+        }
+
+        walkOptionBranch({
+          option: childOption,
+          pathSegments: [...fieldPathSegments, childOption.id],
+          breadcrumb: [...fieldBreadcrumb, childOption.label],
+        });
+      }
     }
+  };
+
+  const selectedOptionIds = getQuestionSelectedOptionIds(question, submittedValue);
+  for (const optionId of selectedOptionIds) {
+    const option = optionMap.get(String(optionId));
+    if (!option) continue;
+    walkOptionBranch({
+      option,
+      pathSegments: [questionId, option.id],
+      breadcrumb: [String(question.label || "") || "Question", option.label],
+    });
   }
 
-  return descriptors.sort((a, b) => a.fieldOrder - b.fieldOrder);
+  return descriptors.sort(
+    (a, b) => a.conditionalDepth - b.conditionalDepth || a.fieldOrder - b.fieldOrder,
+  );
 };
 
 const getConditionalFieldSubmissionValue = (
@@ -2738,6 +3006,7 @@ const prepareConditionalAnswerRecord = async ({
   submittedValue,
   fileEntries = [],
   uploadContext = {},
+  descriptor = null,
 }) => {
   const effectiveQuestion = {
     ...field,
@@ -2749,6 +3018,16 @@ const prepareConditionalAnswerRecord = async ({
   const normalizedValue = Array.isArray(submittedValue)
     ? submittedValue.map((item) => String(item))
     : submittedValue;
+  const conditionalPath = descriptor?.path
+    ? String(descriptor.path)
+    : buildConditionalFieldPath([
+        parentQuestion?._id,
+        parentOption?.id,
+        field?.id,
+      ]);
+  const breadcrumb = String(descriptor?.breadcrumb || "").trim();
+  const conditionalDepth =
+    descriptor?.conditionalDepth || Math.max(1, Math.floor((conditionalPath.split("::").length - 1) / 2));
 
   if (fileEntries.length > 0) {
     const folder = getCloudinaryFolder(
@@ -2788,15 +3067,12 @@ const prepareConditionalAnswerRecord = async ({
       parentQuestionId: String(parentQuestion._id),
       parentOptionId: String(parentOption.id),
       parentOptionLabel: parentOption.label,
-      conditionalPath: buildConditionalFieldPath({
-        questionId: parentQuestion._id,
-        optionId: parentOption.id,
-        fieldId: field.id,
-      }),
-      conditionalDepth: field.nestedDepth || 1,
+      conditionalPath,
+      conditionalDepth,
       conditionalOrder: field.order || 0,
       conditionalMeta: {
         uploadConfig: field.uploadConfig || null,
+        breadcrumb,
       },
     };
   }
@@ -2810,15 +3086,12 @@ const prepareConditionalAnswerRecord = async ({
     parentQuestionId: String(parentQuestion._id),
     parentOptionId: String(parentOption.id),
     parentOptionLabel: parentOption.label,
-    conditionalPath: buildConditionalFieldPath({
-      questionId: parentQuestion._id,
-      optionId: parentOption.id,
-      fieldId: field.id,
-    }),
-    conditionalDepth: field.nestedDepth || 1,
+    conditionalPath,
+    conditionalDepth,
     conditionalOrder: field.order || 0,
     conditionalMeta: {
       uploadConfig: field.uploadConfig || null,
+      breadcrumb,
     },
     questionLabel: parentQuestion.label || "",
     questionType: parentQuestion.type || "",
@@ -3152,6 +3425,7 @@ const sendSubmissionNotifications = async ({
 };
 
 const createForm = async (payload, userId) => {
+  validateConditionalFieldOptionConfig(getQuestionsPayload(payload));
   const formPayload = await normalizeFormPayload(payload);
   const questionsPayload = getQuestionsPayload(payload);
 
@@ -3209,6 +3483,8 @@ const updateForm = async (formId, payload) => {
   if (!existing) {
     throw new Error("Form not found");
   }
+
+  validateConditionalFieldOptionConfig(getQuestionsPayload(payload));
 
   const formPayload = await normalizeFormPayload(
     payload,
@@ -3352,14 +3628,16 @@ const getFormResponseById = async (formId, responseId) => {
     .sort({ createdAt: 1 })
     .populate("questionId")
     .lean();
+  const normalizedAnswers = answers.map((answer) =>
+    sanitizeAnswerForApi({
+      ...answer,
+      question: answer.questionId,
+    }),
+  );
   return {
     ...response,
-    answers: answers.map((answer) =>
-      sanitizeAnswerForApi({
-        ...answer,
-        question: answer.questionId,
-      }),
-    ),
+    answers: normalizedAnswers,
+    submissionSummary: buildResponseSubmissionRows(normalizedAnswers),
   };
 };
 
@@ -3554,6 +3832,7 @@ const submitForm = async ({
   }
 
   const answersToInsert = [];
+  const activeConditionalKeys = new Set();
   for (const question of questions) {
     const questionKey = String(question._id);
     const slugKey = slugify(question.label);
@@ -3582,6 +3861,12 @@ const submitForm = async ({
       submittedValue,
       conditionalAnswers: conditionalAnswersPayload,
     });
+    conditionalDescriptors.forEach((descriptor) => {
+      const key = String(descriptor.path || "").trim();
+      if (key) {
+        activeConditionalKeys.add(key);
+      }
+    });
 
     for (const descriptor of conditionalDescriptors) {
       const conditionalValue = getConditionalFieldSubmissionValue(
@@ -3604,6 +3889,13 @@ const submitForm = async ({
         descriptor,
       });
     }
+  }
+
+  const invalidConditionalKeys = Object.keys(conditionalAnswersPayload || {}).filter(
+    (key) => String(key || "").includes("::") && !activeConditionalKeys.has(String(key)),
+  );
+  if (invalidConditionalKeys.length) {
+    throw new Error("One or more conditional answers do not belong to the active form branch.");
   }
 
   const duplicateSubmission = await findDuplicateFormResponse(form._id, contact);
@@ -3646,6 +3938,7 @@ const submitForm = async ({
                 formId: String(form._id),
                 formSlug: form.slug || form.publicSlug || slugify(form.title),
               },
+              descriptor: item.descriptor,
             })
           : await prepareAnswerRecord(
               item.question,

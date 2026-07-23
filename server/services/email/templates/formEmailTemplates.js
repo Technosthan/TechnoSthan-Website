@@ -162,8 +162,22 @@ const replaceTokens = (value = "", context = {}) =>
 
 const getSubmissionRowLabel = (answer) => {
   if (!answer) return "Question";
-  const baseLabel = answer.fieldLabel || answer.question?.label || "Question";
-  return answer.parentOptionLabel ? `${answer.parentOptionLabel} - ${baseLabel}` : baseLabel;
+  return answer.fieldLabel || answer.question?.label || "Question";
+};
+
+const getSubmissionRowContext = (answer) => {
+  if (!answer) return "";
+  const breadcrumb = String(answer.displayContext || answer.conditionalMeta?.breadcrumb || "").trim();
+  if (breadcrumb) return breadcrumb;
+
+  const pieces = [];
+  const mainLabel = String(answer.question?.label || "").trim();
+  const parentLabel = String(answer.parentOptionLabel || "").trim();
+  const fieldLabel = String(answer.fieldLabel || "").trim();
+  if (mainLabel) pieces.push(mainLabel);
+  if (parentLabel) pieces.push(parentLabel);
+  if (fieldLabel && fieldLabel !== mainLabel) pieces.push(fieldLabel);
+  return pieces.join(" → ");
 };
 
 const formatAnswerValue = (answer) => {
@@ -209,7 +223,12 @@ const formatAnswerValue = (answer) => {
       : escapeHtml(String(answer.value ?? ""));
   }
   if (Array.isArray(answer.value)) {
-    return escapeHtml(answer.value.join(", "));
+    return `
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${answer.value
+          .map((item) => `<div style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;top:0;">•</span><span>${escapeHtml(item)}</span></div>`)
+          .join("")}
+      </div>`;
   }
   return escapeHtml(String(answer.value ?? ""));
 };
@@ -225,11 +244,21 @@ const renderResponsesTable = (rows = [], styles = {}) => {
       <tbody>
         ${rows
           .map(
-            ({ question, answer }) => `
+            (row) => row.kind === "section"
+              ? `
               <tr>
-                <td style="padding:14px 16px;border-bottom:1px solid ${border};background:rgba(0,0,0,0.02);color:${textColor};font-weight:700;width:34%;vertical-align:top;">${escapeHtml(question)}</td>
+                <td colspan="2" style="padding:16px 16px 10px;background:${styles.cardBackgroundColor || "#ffffff"};color:${accent};font-weight:800;text-transform:uppercase;letter-spacing:0.14em;font-size:11px;border-top:1px solid ${border};">
+                  ${escapeHtml(row.label)}
+                </td>
+              </tr>`
+              : `
+              <tr>
+                <td style="padding:14px 16px;border-bottom:1px solid ${border};background:rgba(0,0,0,0.02);color:${textColor};font-weight:700;width:34%;vertical-align:top;">
+                  <div>${escapeHtml(row.question)}</div>
+                  ${row.context ? `<div style="margin-top:4px;font-size:11px;font-weight:600;letter-spacing:0.04em;color:${accent};opacity:0.85;">${escapeHtml(row.context)}</div>` : ""}
+                </td>
                 <td style="padding:14px 16px;border-bottom:1px solid ${border};color:${textColor};vertical-align:top;line-height:1.65;">
-                  <span style="display:inline-block;border-left:3px solid ${accent};padding-left:12px;">${answer}</span>
+                  <span style="display:inline-block;border-left:3px solid ${accent};padding-left:12px;">${row.answer}</span>
                 </td>
               </tr>`,
           )
@@ -684,10 +713,41 @@ const buildUserConfirmationEmail = ({
 };
 
 const formatSubmissionRows = (answers = []) =>
-  answers.map((answer) => ({
-    question: getSubmissionRowLabel(answer),
-    answer: formatAnswerValue(answer),
-  }));
+  (() => {
+    const normalized = [...(Array.isArray(answers) ? answers : [])].sort((left, right) => {
+      const leftOrder = Number.isFinite(Number(left.conditionalDepth))
+        ? Number(left.conditionalDepth) * 1000 + Number(left.conditionalOrder || 0)
+        : 0;
+      const rightOrder = Number.isFinite(Number(right.conditionalDepth))
+        ? Number(right.conditionalDepth) * 1000 + Number(right.conditionalOrder || 0)
+        : 0;
+      return leftOrder - rightOrder;
+    });
+    const mainRows = [];
+    const conditionalRows = [];
+
+    normalized.forEach((answer) => {
+      const row = {
+        question: getSubmissionRowLabel(answer),
+        context: getSubmissionRowContext(answer),
+        answer: formatAnswerValue(answer),
+      };
+      if (answer.fieldId || answer.parentOptionId || answer.conditionalPath) {
+        conditionalRows.push(row);
+      } else {
+        mainRows.push(row);
+      }
+    });
+
+    const rows = [];
+    if (mainRows.length) {
+      rows.push({ kind: "section", label: "Submission Details" }, ...mainRows);
+    }
+    if (conditionalRows.length) {
+      rows.push({ kind: "section", label: "Conditional Answers" }, ...conditionalRows);
+    }
+    return rows;
+  })();
 
 module.exports = {
   buildAdminFormSubmissionEmail,

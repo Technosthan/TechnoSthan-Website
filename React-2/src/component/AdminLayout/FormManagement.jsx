@@ -91,6 +91,18 @@ const QUESTION_TYPES = [
   { value: "sectionHeading", label: "Section Heading" },
 ];
 
+const CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS = new Set([
+  "dropdown",
+  "radio",
+  "checkbox",
+  "multipleSelect",
+]);
+
+const CONDITIONAL_FIELD_TYPE_OPTIONS = [
+  ...QUESTION_TYPES,
+  { value: "multipleSelect", label: "Multiple Choice" },
+];
+
 const EMAIL_TEMPLATE_PRESETS = {
   "green-professional": {
     label: "Green Professional",
@@ -298,6 +310,69 @@ const createConditionalField = (order = 0) => ({
     resetOnHide: true,
     fields: [],
   },
+});
+
+const createConditionalFieldOption = (label = "", order = 0) => ({
+  id: crypto.randomUUID(),
+  label,
+  value: label,
+  order,
+  conditionalLogic: {
+    enabled: false,
+    resetOnHide: true,
+    fields: [],
+  },
+});
+
+const mapConditionalOptionNodes = (options = [], visitor) =>
+  (Array.isArray(options) ? options : []).map((option, index) => {
+    const current = visitor?.({ kind: "option", node: option, index }) || option;
+    const conditionalFields = Array.isArray(current?.conditionalLogic?.fields)
+      ? current.conditionalLogic.fields
+      : [];
+    return {
+      ...current,
+      conditionalLogic: {
+        ...(current.conditionalLogic || {}),
+        enabled:
+          current?.conditionalLogic?.enabled === true ||
+          conditionalFields.length > 0,
+        resetOnHide: current?.conditionalLogic?.resetOnHide !== false,
+        fields: mapConditionalFieldNodes(conditionalFields, visitor),
+      },
+    };
+  });
+
+const mapConditionalFieldNodes = (fields = [], visitor) =>
+  (Array.isArray(fields) ? fields : []).map((field, index) => {
+    const current = visitor?.({ kind: "field", node: field, index }) || field;
+    return {
+      ...current,
+      options: mapConditionalOptionNodes(current.options || [], visitor),
+      conditionalLogic: {
+        ...(current.conditionalLogic || {}),
+        enabled: current?.conditionalLogic?.enabled === true,
+        resetOnHide: current?.conditionalLogic?.resetOnHide !== false,
+        fields: mapConditionalFieldNodes(current?.conditionalLogic?.fields || [], visitor),
+      },
+    };
+  });
+
+const mapQuestionConditionalTree = (question, visitor) => ({
+  ...question,
+  options: mapConditionalOptionNodes(question.options || [], visitor),
+  conditionalFields: mapConditionalFieldNodes(question.conditionalFields || [], visitor),
+});
+
+const cloneConditionalTree = (question) => mapQuestionConditionalTree(question, (entry) => {
+  const node = entry.node || {};
+  return {
+    ...node,
+    id: crypto.randomUUID(),
+    conditionalLogic: {
+      ...(node.conditionalLogic || {}),
+    },
+  };
 });
 
 const slugify = (value = "") =>
@@ -1110,11 +1185,11 @@ const getResponseText = (response) => {
     response?.email,
     response?.phone,
     ...answers.flatMap((answer) => {
-      const label = answer.fieldLabel || answer.question?.label || "";
-      if (answer.fileName) return [label, answer.fileName, answer.fileUrl || ""];
-      if (answer.fieldLabel) return [label];
-      if (Array.isArray(answer.value)) return answer.value;
-      return [answer.value ?? ""];
+      const label = answer.displayLabel || answer.fieldLabel || answer.question?.label || "";
+      const context = answer.displayContext || answer.parentOptionLabel || "";
+      if (answer.fileName) return [label, context, answer.fileName, answer.fileUrl || ""];
+      if (Array.isArray(answer.value)) return [label, context, ...answer.value];
+      return [label, context, answer.value ?? ""];
     }),
   ]
     .join(" ")
@@ -1149,6 +1224,18 @@ const renderAnswerValue = (answer, options = {}) => {
           );
         })}
       </div>
+    );
+  }
+
+  if (Array.isArray(answer.value)) {
+    return (
+      <ul className="space-y-2 pl-5">
+        {answer.value.map((item, index) => (
+          <li key={`${item}-${index}`} className="list-disc break-words">
+            {String(item)}
+          </li>
+        ))}
+      </ul>
     );
   }
 
@@ -1239,10 +1326,6 @@ const renderAnswerValue = (answer, options = {}) => {
     ) : (
       <span className="break-all">{label}</span>
     );
-  }
-
-  if (Array.isArray(answer.value)) {
-    return answer.value.join(", ");
   }
 
   return String(answer.value ?? "-");
@@ -1356,6 +1439,7 @@ const FormManagement = () => {
   const [analysisAvailabilityFilter, setAnalysisAvailabilityFilter] = useState("all");
   const [analysisEmailFilter, setAnalysisEmailFilter] = useState("all");
   const [analysisPhoneFilter, setAnalysisPhoneFilter] = useState("all");
+  const [expandedConditionalPanels, setExpandedConditionalPanels] = useState({});
   const lastSavedFormRef = useRef(null);
   const draftResolutionRef = useRef(null);
   const [draftsOpen, setDraftsOpen] = useState(false);
@@ -1757,19 +1841,20 @@ const FormManagement = () => {
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
-        const options = (question.options || []).map((option) => {
-          if (option.id !== optionId) return option;
-          const fields = option.conditionalLogic?.fields || [];
+        return mapQuestionConditionalTree(question, (entry) => {
+          if (entry.kind !== "option" || entry.node.id !== optionId) return entry.node;
+          const fields = Array.isArray(entry.node.conditionalLogic?.fields)
+            ? entry.node.conditionalLogic.fields
+            : [];
           return {
-            ...option,
+            ...entry.node,
             conditionalLogic: {
-              ...(option.conditionalLogic || {}),
+              ...(entry.node.conditionalLogic || {}),
               enabled: true,
               fields: [...fields, createConditionalField(fields.length)],
             },
           };
         });
-        return { ...question, options };
       }),
     }));
   };
@@ -1779,23 +1864,168 @@ const FormManagement = () => {
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
-        const options = (question.options || []).map((option) => {
-          if (option.id !== optionId) return option;
-          const fields = (option.conditionalLogic?.fields || []).map((field) =>
-            field.id === fieldId ? { ...field, [key]: value } : field,
-          );
-          return {
-            ...option,
-            conditionalLogic: {
-              ...(option.conditionalLogic || {}),
-              enabled: true,
-              fields,
-            },
+        return mapQuestionConditionalTree(question, (entry) => {
+          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
+          const next = {
+            ...entry.node,
+            [key]: value,
           };
+          if (
+            key === "type" &&
+            CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS.has(value) &&
+            !(next.options || []).length
+          ) {
+            next.options = [createConditionalFieldOption("", 0)];
+          }
+          return next;
         });
-        return { ...question, options };
       }),
     }));
+  };
+
+  const updateConditionalFieldOption = (questionIndex, optionId, fieldId, fieldOptionId, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        return mapQuestionConditionalTree(question, (entry) => {
+          if (entry.kind !== "option" || entry.node.id !== fieldOptionId) return entry.node;
+          return {
+            ...entry.node,
+            label: value,
+            value,
+          };
+        });
+      }),
+    }));
+  };
+
+  const addConditionalFieldOption = (questionIndex, optionId, fieldId) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        return mapQuestionConditionalTree(question, (entry) => {
+          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
+          const fieldOptions = Array.isArray(entry.node.options) ? [...entry.node.options] : [];
+          fieldOptions.push(createConditionalFieldOption("", fieldOptions.length));
+          return {
+            ...entry.node,
+            options: fieldOptions,
+          };
+        });
+      }),
+    }));
+  };
+
+  const moveConditionalFieldOption = (questionIndex, optionId, fieldId, fieldOptionId, direction) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        return mapQuestionConditionalTree(question, (entry) => {
+          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
+          const fieldOptions = Array.isArray(entry.node.options) ? [...entry.node.options] : [];
+          const currentIndexInField = fieldOptions.findIndex((item) => item.id === fieldOptionId);
+          const targetIndex = currentIndexInField + direction;
+          if (
+            currentIndexInField < 0 ||
+            targetIndex < 0 ||
+            targetIndex >= fieldOptions.length
+          ) {
+            return entry.node;
+          }
+          [fieldOptions[currentIndexInField], fieldOptions[targetIndex]] = [
+            fieldOptions[targetIndex],
+            fieldOptions[currentIndexInField],
+          ];
+          return {
+            ...entry.node,
+            options: fieldOptions,
+          };
+        });
+      }),
+    }));
+  };
+
+  const removeConditionalFieldOption = (questionIndex, optionId, fieldId, fieldOptionId) => {
+    setDraft((prev) => ({
+      ...prev,
+      questions: prev.questions.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
+        return mapQuestionConditionalTree(question, (entry) => {
+          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
+          return {
+            ...entry.node,
+            options: (entry.node.options || []).filter(
+              (fieldOption) => fieldOption.id !== fieldOptionId,
+            ),
+          };
+        });
+      }),
+    }));
+  };
+
+  const getConditionalFieldOptionValues = (field = {}) =>
+    (Array.isArray(field.options) ? field.options : [])
+      .map((option) => {
+        if (typeof option === "string") {
+          return option;
+        }
+        return option?.label || option?.value || "";
+      })
+      .map((option) => String(option || "").trim())
+      .filter(Boolean);
+
+  const validateConditionalFieldOptionConfig = (questions = []) => {
+    const inspectFields = (fields = []) => {
+      for (const field of Array.isArray(fields) ? fields : []) {
+        if (field?.isActive === false) {
+          continue;
+        }
+        if (
+          CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS.has(field.type) &&
+          !getConditionalFieldOptionValues(field).length
+        ) {
+          return `Conditional field "${field.label || "Untitled field"}" needs at least one option.`;
+        }
+
+        const nestedFields = Array.isArray(field.conditionalLogic?.fields)
+          ? field.conditionalLogic.fields
+          : [];
+        const nestedError = inspectFields(nestedFields);
+        if (nestedError) {
+          return nestedError;
+        }
+
+        const fieldOptions = Array.isArray(field.options) ? field.options : [];
+        for (const option of fieldOptions) {
+          const optionNestedError = inspectFields(option?.conditionalLogic?.fields || []);
+          if (optionNestedError) {
+            return optionNestedError;
+          }
+        }
+      }
+
+      return "";
+    };
+
+    for (const question of questions) {
+      const questionOptions = Array.isArray(question.options) ? question.options : [];
+      for (const option of questionOptions) {
+        const error = inspectFields(option?.conditionalLogic?.fields || []);
+        if (error) {
+          return error;
+        }
+      }
+
+      const directConditionalError = inspectFields(question.conditionalFields || []);
+      if (directConditionalError) {
+        return directConditionalError;
+      }
+    }
+
+    return "";
   };
 
   const removeConditionalField = (questionIndex, optionId, fieldId) => {
@@ -2345,36 +2575,12 @@ const FormManagement = () => {
     setDraft((prev) => {
       const source = prev.questions[index];
       if (!source) return prev;
-      const copy = {
+      const copy = cloneConditionalTree({
         ...source,
         id: crypto.randomUUID(),
         label: `${source.label} copy`,
         order: prev.questions.length,
-        options: Array.isArray(source.options)
-          ? source.options.map((option, optionIndex) => ({
-              ...option,
-              id: crypto.randomUUID(),
-              order: optionIndex,
-              conditionalLogic: {
-                ...(option.conditionalLogic || {}),
-                fields: Array.isArray(option.conditionalLogic?.fields)
-                  ? option.conditionalLogic.fields.map((field, fieldIndex) => ({
-                      ...field,
-                      id: crypto.randomUUID(),
-                      order: fieldIndex,
-                    }))
-                  : [],
-              },
-            }))
-          : [],
-        conditionalFields: Array.isArray(source.conditionalFields)
-          ? source.conditionalFields.map((field, fieldIndex) => ({
-              ...field,
-              id: crypto.randomUUID(),
-              order: fieldIndex,
-            }))
-          : [],
-      };
+      });
       return { ...prev, questions: [...prev.questions, copy] };
     });
   };
@@ -2513,6 +2719,14 @@ const FormManagement = () => {
       return;
     }
 
+    const conditionalFieldValidationError = validateConditionalFieldOptionConfig(
+      draft.questions || [],
+    );
+    if (conditionalFieldValidationError) {
+      toast.error(conditionalFieldValidationError);
+      return;
+    }
+
     const parsedExpiresAt = draft.expiresAt ? new Date(draft.expiresAt) : null;
     const normalizedEmailTemplate = normalizeEmailTemplate(draft.emailTemplate, {
       ...draft,
@@ -2580,15 +2794,34 @@ const FormManagement = () => {
                       validationEnabled: field.validationEnabled === true,
                       validation: normalizeNumberValidation(field.validation),
                       options: Array.isArray(field.options)
-                        ? field.options.map((childOption, childIndex) => ({
-                            id: String(childOption.id || crypto.randomUUID()),
-                            label: String(childOption.label || childOption.value || "").trim(),
-                            value: String(childOption.value || childOption.label || "").trim(),
-                            order:
-                              typeof childOption.order === "number"
-                                ? childOption.order
-                                : childIndex,
-                          }))
+                        ? field.options
+                            .map((childOption, childIndex) => {
+                              const optionSource =
+                                typeof childOption === "string"
+                                  ? { label: childOption, value: childOption }
+                                  : childOption || {};
+                              return {
+                                ...optionSource,
+                                id: String(optionSource.id || crypto.randomUUID()),
+                                label: String(
+                                  optionSource.label || optionSource.value || "",
+                                ).trim(),
+                                value: String(
+                                  optionSource.value || optionSource.label || "",
+                                ).trim(),
+                                order:
+                                  typeof optionSource.order === "number"
+                                    ? optionSource.order
+                                    : childIndex,
+                              };
+                            })
+                            .filter((childOption) =>
+                              String(childOption.label || childOption.value || "").trim(),
+                            )
+                            .map((childOption, childIndex) => ({
+                              ...childOption,
+                              order: childIndex,
+                            }))
                         : [],
                       uploadConfig: field.uploadConfig || null,
                       order: typeof field.order === "number" ? field.order : fieldIndex,
@@ -2609,15 +2842,30 @@ const FormManagement = () => {
               validationEnabled: field.validationEnabled === true,
               validation: normalizeNumberValidation(field.validation),
               options: Array.isArray(field.options)
-                ? field.options.map((childOption, childIndex) => ({
-                    id: String(childOption.id || crypto.randomUUID()),
-                    label: String(childOption.label || childOption.value || "").trim(),
-                    value: String(childOption.value || childOption.label || "").trim(),
-                    order:
-                      typeof childOption.order === "number"
-                        ? childOption.order
-                        : childIndex,
-                  }))
+                ? field.options
+                    .map((childOption, childIndex) => {
+                      const optionSource =
+                        typeof childOption === "string"
+                          ? { label: childOption, value: childOption }
+                          : childOption || {};
+                      return {
+                        ...optionSource,
+                        id: String(optionSource.id || crypto.randomUUID()),
+                        label: String(optionSource.label || optionSource.value || "").trim(),
+                        value: String(optionSource.value || optionSource.label || "").trim(),
+                        order:
+                          typeof optionSource.order === "number"
+                            ? optionSource.order
+                            : childIndex,
+                      };
+                    })
+                    .filter((childOption) =>
+                      String(childOption.label || childOption.value || "").trim(),
+                    )
+                    .map((childOption, childIndex) => ({
+                      ...childOption,
+                      order: childIndex,
+                    }))
                 : [],
               uploadConfig: field.uploadConfig || null,
               order: typeof field.order === "number" ? field.order : fieldIndex,
@@ -2982,6 +3230,330 @@ const FormManagement = () => {
     () => normalizeEditableFooterButtons(draft.emailTemplate, draft),
     [draft.emailTemplate, draft],
   );
+  const toggleConditionalPanel = (panelKey) => {
+    setExpandedConditionalPanels((prev) => ({
+      ...prev,
+      [panelKey]: !prev[panelKey],
+    }));
+  };
+
+  const isConditionalPanelExpanded = (panelKey) =>
+    expandedConditionalPanels[panelKey] === true;
+
+  const renderConditionalFieldEditor = (
+    questionId,
+    questionIndex,
+    optionId,
+    field,
+    level = 1,
+    breadcrumb = [],
+  ) => {
+    const fieldBreadcrumb = [...breadcrumb, field.label || "Untitled field"];
+    const fieldOptions = Array.isArray(field.options) ? field.options : [];
+    const isChoiceField = CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS.has(String(field.type || ""));
+
+    return (
+      <div
+        key={field.id}
+        className={`rounded-2xl border border-white/10 bg-slate-950/30 p-4 space-y-4 ${
+          level > 1 ? "ml-4 md:ml-6" : ""
+        }`}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="text-sm font-semibold text-slate-100">
+              {field.label || "Untitled field"}
+            </div>
+            <div className="text-xs text-slate-400">
+              {fieldBreadcrumb.join(" -> ")}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => removeConditionalField(questionIndex, optionId, field.id)}
+            className="rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+          >
+            Remove Field
+          </button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Label</label>
+            <input
+              value={field.label || ""}
+              onChange={(e) =>
+                updateConditionalField(questionIndex, optionId, field.id, "label", e.target.value)
+              }
+              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Type</label>
+            <select
+              value={field.type || "shortAnswer"}
+              onChange={(e) =>
+                updateConditionalField(questionIndex, optionId, field.id, "type", e.target.value)
+              }
+              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+            >
+              {CONDITIONAL_FIELD_TYPE_OPTIONS.map((typeOption) => (
+                <option key={typeOption.value} value={typeOption.value}>
+                  {typeOption.label}
+                </option>
+              ))}
+              <option value="heading">Heading / Information</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">Placeholder</label>
+            <input
+              value={field.placeholder || ""}
+              onChange={(e) =>
+                updateConditionalField(questionIndex, optionId, field.id, "placeholder", e.target.value)
+              }
+              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">Help Text</label>
+            <input
+              value={field.helpText || ""}
+              onChange={(e) =>
+                updateConditionalField(questionIndex, optionId, field.id, "helpText", e.target.value)
+              }
+              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={field.required === true}
+              onChange={(e) =>
+                updateConditionalField(questionIndex, optionId, field.id, "required", e.target.checked)
+              }
+            />
+            Required
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={field.validationEnabled === true}
+              onChange={(e) =>
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "validationEnabled",
+                  e.target.checked,
+                )
+              }
+            />
+            Enable Validation
+          </label>
+        </div>
+
+        {isChoiceField && (
+          <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                  {field.type === "dropdown" ? "Dropdown Options" : "Field Options"}
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Add one option per row. Each option can open its own conditional branch.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => addConditionalFieldOption(questionIndex, optionId, field.id)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+              >
+                <Plus size={14} /> Add Option
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {fieldOptions.map((fieldOption, fieldOptionIndex) => {
+                const panelKey = `${questionId}::${optionId}::${field.id}::${fieldOption.id}`;
+                const childFields = Array.isArray(fieldOption.conditionalLogic?.fields)
+                  ? fieldOption.conditionalLogic.fields
+                  : [];
+                const expanded = isConditionalPanelExpanded(panelKey);
+                const childBreadcrumb = [...fieldBreadcrumb, fieldOption.label || `Option ${fieldOptionIndex + 1}`];
+
+                return (
+                  <div
+                    key={fieldOption.id}
+                    className="space-y-3 rounded-2xl border border-white/10 bg-slate-950/30 p-3"
+                  >
+                    <div className="text-xs text-slate-400">
+                      {childBreadcrumb.join(" -> ")}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto_auto_auto]">
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-slate-300">
+                          Option Label
+                        </label>
+                        <input
+                          value={fieldOption.label || ""}
+                          onChange={(e) =>
+                            updateConditionalFieldOption(
+                              questionIndex,
+                              optionId,
+                              field.id,
+                              fieldOption.id,
+                              e.target.value,
+                            )
+                          }
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                          placeholder={`Option ${fieldOptionIndex + 1}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-slate-300">
+                          Option Value
+                        </label>
+                        <input
+                          value={fieldOption.value || ""}
+                          onChange={(e) =>
+                            updateConditionalFieldOption(
+                              questionIndex,
+                              optionId,
+                              field.id,
+                              fieldOption.id,
+                              e.target.value,
+                            )
+                          }
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                          placeholder="Stable internal value"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleConditionalPanel(panelKey)}
+                        className="mt-7 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                      >
+                        {expanded ? "Collapse" : "Expand"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          moveConditionalFieldOption(
+                            questionIndex,
+                            optionId,
+                            field.id,
+                            fieldOption.id,
+                            -1,
+                          )
+                        }
+                        disabled={fieldOptionIndex === 0}
+                        className="mt-7 rounded-2xl border border-white/10 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Move option up"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          moveConditionalFieldOption(
+                            questionIndex,
+                            optionId,
+                            field.id,
+                            fieldOption.id,
+                            1,
+                          )
+                        }
+                        disabled={fieldOptionIndex === fieldOptions.length - 1}
+                        className="mt-7 rounded-2xl border border-white/10 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Move option down"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeConditionalFieldOption(
+                            questionIndex,
+                            optionId,
+                            field.id,
+                            fieldOption.id,
+                          )
+                        }
+                        className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <span>Stable ID: {fieldOption.id}</span>
+                      <button
+                        type="button"
+                        onClick={() => addConditionalFieldToOption(questionIndex, fieldOption.id)}
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-[11px] font-semibold text-slate-200"
+                      >
+                        <ListPlus size={12} /> Add Conditional Question
+                      </button>
+                    </div>
+
+                    {expanded && (
+                      <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                              Conditional Fields
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400">
+                              {childBreadcrumb.join(" → ")}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => addConditionalFieldToOption(questionIndex, fieldOption.id)}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                          >
+                            <Plus size={14} /> Add Conditional Question
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {childFields.map((nestedField) =>
+                            renderConditionalFieldEditor(
+                              questionId,
+                              questionIndex,
+                              fieldOption.id,
+                              nestedField,
+                              level + 1,
+                              childBreadcrumb,
+                            ),
+                          )}
+                          {!childFields.length && (
+                            <div className="rounded-2xl border border-dashed border-cyan-500/30 bg-slate-950/20 p-4 text-xs text-slate-400">
+                              No conditional questions yet. Add one to continue nesting.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {!fieldOptions.length && (
+                <div className="rounded-2xl border border-dashed border-cyan-500/30 bg-slate-950/20 p-4 text-xs text-slate-400">
+                  No options yet. Add at least one option before saving.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={`p-6 ${theme.text} space-y-6`}>
@@ -3690,94 +4262,14 @@ const FormManagement = () => {
                                 {option.conditionalLogic?.fields?.length > 0 && (
                                   <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
                                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
-                                      Follow-up Fields
+                                      Conditional Fields
                                     </div>
-                                    {option.conditionalLogic.fields.map((field, fieldIndex) => (
-                                      <div
-                                        key={field.id}
-                                        className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 space-y-4"
-                                      >
-                                        <div className="grid gap-3 md:grid-cols-2">
-                                          <div>
-                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Label</label>
-                                            <input
-                                              value={field.label || ""}
-                                              onChange={(e) =>
-                                                updateConditionalField(index, option.id, field.id, "label", e.target.value)
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                            />
-                                          </div>
-                                          <div>
-                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Type</label>
-                                            <select
-                                              value={field.type || "shortAnswer"}
-                                              onChange={(e) =>
-                                                updateConditionalField(index, option.id, field.id, "type", e.target.value)
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                            >
-                                              {QUESTION_TYPES.map((typeOption) => (
-                                                <option key={typeOption.value} value={typeOption.value}>
-                                                  {typeOption.label}
-                                                </option>
-                                              ))}
-                                              <option value="heading">Heading / Information</option>
-                                            </select>
-                                          </div>
-                                          <div>
-                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Placeholder</label>
-                                            <input
-                                              value={field.placeholder || ""}
-                                              onChange={(e) =>
-                                                updateConditionalField(index, option.id, field.id, "placeholder", e.target.value)
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                            />
-                                          </div>
-                                          <div>
-                                            <label className="mb-2 block text-xs font-semibold text-slate-300">Help Text</label>
-                                            <input
-                                              value={field.helpText || ""}
-                                              onChange={(e) =>
-                                                updateConditionalField(index, option.id, field.id, "helpText", e.target.value)
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                            />
-                                          </div>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                                          <label className="inline-flex items-center gap-2">
-                                            <input
-                                              type="checkbox"
-                                              checked={field.required === true}
-                                              onChange={(e) =>
-                                                updateConditionalField(index, option.id, field.id, "required", e.target.checked)
-                                              }
-                                            />
-                                            Required
-                                          </label>
-                                          <label className="inline-flex items-center gap-2">
-                                            <input
-                                              type="checkbox"
-                                              checked={field.validationEnabled === true}
-                                              onChange={(e) =>
-                                                updateConditionalField(index, option.id, field.id, "validationEnabled", e.target.checked)
-                                              }
-                                            />
-                                            Enable Validation
-                                          </label>
-                                          <button
-                                            type="button"
-                                            onClick={() => removeConditionalField(index, option.id, field.id)}
-                                            className="rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
-                                          >
-                                            Remove Field
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
+                                    {option.conditionalLogic.fields.map((field, fieldIndex) =>
+                                      renderConditionalFieldEditor(question.id, index, option.id, field, 1, [
+                                        question.label || "Question",
+                                        option.label || "Option",
+                                      ]),
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -5513,41 +6005,71 @@ const FormManagement = () => {
               </button>
             </div>
 
-            <div className="space-y-4">
-              {(selectedResponse.answers || []).map((answer) => (
-                <div key={answer._id || answer.questionId?._id || answer.questionId} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm font-semibold">
-                    {answer.parentOptionLabel
-                      ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional field"}`
-                      : answer.fieldLabel || answer.question?.label || "Question"}
-                  </div>
-                  {answer.parentOptionLabel && (
-                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-200/80">
-                      Triggered by {answer.parentOptionLabel}
+            <div className="space-y-6">
+              {(() => {
+                const answers = Array.isArray(selectedResponse.answers) ? selectedResponse.answers : [];
+                const mainAnswers = answers.filter((answer) => !answer.conditional);
+                const conditionalAnswers = answers.filter((answer) => answer.conditional);
+
+                const renderAnswerCard = (answer, keyPrefix) => {
+                  const questionId =
+                    answer.question?._id ||
+                    answer.questionId?._id ||
+                    answer.questionId ||
+                    answer._id;
+                  return (
+                    <div key={`${keyPrefix}-${answer._id || questionId}`} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                      <div className="text-sm font-semibold">
+                        {answer.displayLabel || answer.fieldLabel || answer.question?.label || "Question"}
+                      </div>
+                      {answer.displayContext ? (
+                        <div className="mt-1 text-xs text-cyan-200/80">
+                          {answer.displayContext}
+                        </div>
+                      ) : null}
+                      <div className="mt-2 text-sm text-slate-300">
+                        {renderAnswerValue(answer, {
+                          revealed: Boolean(revealedSecrets[questionId]),
+                          revealedValue: revealedSecrets[questionId],
+                          onReveal: () => revealSecret(questionId),
+                          onCopy: async () => {
+                            const secret = revealedSecrets[questionId];
+                            if (!secret) return;
+                            await navigator.clipboard.writeText(secret);
+                            toast.success("Secret copied");
+                          },
+                        })}
+                      </div>
                     </div>
-                  )}
-                  <div className="mt-2 text-sm text-slate-300">
-                    {(() => {
-                      const questionId =
-                        answer.question?._id ||
-                        answer.questionId?._id ||
-                        answer.questionId ||
-                        answer._id;
-                      return renderAnswerValue(answer, {
-                        revealed: Boolean(revealedSecrets[questionId]),
-                        revealedValue: revealedSecrets[questionId],
-                        onReveal: () => revealSecret(questionId),
-                        onCopy: async () => {
-                          const secret = revealedSecrets[questionId];
-                          if (!secret) return;
-                          await navigator.clipboard.writeText(secret);
-                          toast.success("Secret copied");
-                        },
-                      });
-                    })()}
-                  </div>
-                </div>
-              ))}
+                  );
+                };
+
+                return (
+                  <>
+                    {mainAnswers.length > 0 && (
+                      <section className="space-y-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Submission Details
+                        </div>
+                        <div className="space-y-3">
+                          {mainAnswers.map((answer) => renderAnswerCard(answer, "main"))}
+                        </div>
+                      </section>
+                    )}
+
+                    {conditionalAnswers.length > 0 && (
+                      <section className="space-y-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Conditional Answers
+                        </div>
+                        <div className="space-y-3">
+                          {conditionalAnswers.map((answer) => renderAnswerCard(answer, "conditional"))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
