@@ -648,7 +648,71 @@ app.set("io", io);
 
 // ================= DATABASE =================
 
-mongoose
+const DB_RETRY_DELAY_MS = Number(process.env.DB_RETRY_DELAY_MS || 15000);
+let serverStarted = false;
+let postConnectBootstrapCompleted = false;
+
+const startServer = () => {
+  if (serverStarted) {
+    return;
+  }
+
+  serverStarted = true;
+
+  const PORT = process.env.PORT || 5000;
+
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+};
+
+const runPostConnectBootstrap = async () => {
+  if (postConnectBootstrapCompleted) {
+    return;
+  }
+
+  postConnectBootstrapCompleted = true;
+
+  await initializeDefaultPermissions();
+  await dailyTaskSchedulerService.startDailyTaskScheduler(app);
+
+  const emailReady = await bootstrapEmailTransport();
+  if (!emailReady) {
+    console.warn("Email transport bootstrap did not complete successfully.");
+  }
+};
+
+const connectMongoWithRetry = async () => {
+  if (!process.env.MONGO_URI) {
+    console.error("MONGO_URI is not set. Mongo-backed routes will stay unavailable.");
+    return;
+  }
+
+  while (true) {
+    try {
+      await mongoose.connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+      });
+
+      console.log("MongoDB connected");
+      await runPostConnectBootstrap();
+      return;
+    } catch (err) {
+      console.error("MongoDB connection failed:", err?.message || err);
+      console.error(
+        "If this is an Atlas cluster, confirm Network Access allows your current IP and that the MONGO_URI is correct.",
+      );
+      console.log(`Retrying MongoDB connection in ${DB_RETRY_DELAY_MS} ms...`);
+      await new Promise((resolve) => setTimeout(resolve, DB_RETRY_DELAY_MS));
+    }
+  }
+};
+
+startServer();
+connectMongoWithRetry();
+
+/* mongoose
   .connect(process.env.MONGO_URI)
 
   .then(async () => {
@@ -673,6 +737,7 @@ mongoose
 
     process.exit(1);
   });
+*/
 
 // ================= ERROR HANDLER =================
 

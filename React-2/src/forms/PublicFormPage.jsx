@@ -18,7 +18,18 @@ import {
   verifyPublicPhoneVerification,
   submitPublicForm,
 } from "./formsApi";
-import { CheckCircle2, Upload, Send, ArrowLeft, Eye, EyeOff, Loader2, ShieldCheck, RefreshCcw, X } from "lucide-react";
+import {
+  CheckCircle2,
+  Upload,
+  Send,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  ShieldCheck,
+  RefreshCcw,
+  X,
+} from "lucide-react";
 import { getMediaUrl, getOptimizedImageUrl } from "../shared/lib/assetUrl";
 import { normalizeHttpUrl } from "./formUtils";
 
@@ -59,36 +70,42 @@ const getQuestionId = (question = {}) =>
   String(question?._id || question?.id || "").trim();
 
 const getQuestionOptions = (question = {}) =>
-  (Array.isArray(question.options) ? question.options : []).map((option, index) => {
-    if (typeof option === "string") {
-      const value = String(option).trim();
-      return {
-        id: value || `option-${index}`,
-        label: value,
-        value,
-        conditionalLogic: { enabled: false, resetOnHide: true, fields: [] },
-      };
-    }
+  (Array.isArray(question.options) ? question.options : []).map(
+    (option, index) => {
+      if (typeof option === "string") {
+        const value = String(option).trim();
+        return {
+          id: value || `option-${index}`,
+          label: value,
+          value,
+          conditionalLogic: { enabled: false, resetOnHide: true, fields: [] },
+        };
+      }
 
-    return {
-      id: String(option?.id || option?.value || `option-${index}`),
-      label: String(option?.label || option?.value || "").trim(),
-      value: String(option?.value || option?.label || "").trim(),
-      conditionalLogic: {
-        enabled: option?.conditionalLogic?.enabled === true,
-        resetOnHide: option?.conditionalLogic?.resetOnHide !== false,
-        fields: Array.isArray(option?.conditionalLogic?.fields)
-          ? option.conditionalLogic.fields
-          : [],
-      },
-    };
-  });
+      return {
+        id: String(option?.id || option?.value || `option-${index}`),
+        label: String(option?.label || option?.value || "").trim(),
+        value: String(option?.value || option?.label || "").trim(),
+        conditionalLogic: {
+          enabled: option?.conditionalLogic?.enabled === true,
+          resetOnHide: option?.conditionalLogic?.resetOnHide !== false,
+          fields: Array.isArray(option?.conditionalLogic?.fields)
+            ? option.conditionalLogic.fields
+            : [],
+        },
+      };
+    },
+  );
 
 const getConditionalBranchFields = (option = {}) =>
-  Array.isArray(option?.conditionalLogic?.fields) ? option.conditionalLogic.fields : [];
+  Array.isArray(option?.conditionalLogic?.fields)
+    ? option.conditionalLogic.fields
+    : [];
 
 const getConditionalFieldBreadcrumb = (segments = []) =>
-  (Array.isArray(segments) ? segments : [segments]).filter(Boolean).join(" \u2192 ");
+  (Array.isArray(segments) ? segments : [segments])
+    .filter(Boolean)
+    .join(" \u2192 ");
 
 const getSelectedOptionIds = (question = {}, value) => {
   const options = getQuestionOptions(question);
@@ -99,13 +116,23 @@ const getSelectedOptionIds = (question = {}, value) => {
       : [value];
 
   return selectedValues
-    .map((selected) => String(selected || "").trim().toLowerCase())
+    .map((selected) =>
+      String(selected || "")
+        .trim()
+        .toLowerCase(),
+    )
     .flatMap((selected) =>
       options
         .filter((option) => {
-          const id = String(option.id || "").trim().toLowerCase();
-          const optionValue = String(option.value || "").trim().toLowerCase();
-          const label = String(option.label || "").trim().toLowerCase();
+          const id = String(option.id || "")
+            .trim()
+            .toLowerCase();
+          const optionValue = String(option.value || "")
+            .trim()
+            .toLowerCase();
+          const label = String(option.label || "")
+            .trim()
+            .toLowerCase();
           return selected && [id, optionValue, label].includes(selected);
         })
         .map((option) => option.id),
@@ -132,7 +159,9 @@ const collectConditionalDescriptorsFromOption = ({
 
     const fieldPathSegments = [...pathSegments, field.id];
     const fieldKey = buildConditionalFieldKey(fieldPathSegments);
-    const fieldBreadcrumb = [...breadcrumbSegments, field.label].filter(Boolean);
+    const fieldBreadcrumb = [...breadcrumbSegments, field.label].filter(
+      Boolean,
+    );
     const payloadEntry = conditionalAnswers[fieldKey] || null;
 
     descriptors.push({
@@ -159,7 +188,9 @@ const collectConditionalDescriptorsFromOption = ({
     const fieldOptions = getQuestionOptions(field);
 
     selectedChildOptionIds.forEach((childOptionId) => {
-      const childOption = fieldOptions.find((item) => item.id === childOptionId);
+      const childOption = fieldOptions.find(
+        (item) => item.id === childOptionId,
+      );
       if (!childOption || childOption.isActive === false) return;
       descriptors.push(
         ...collectConditionalDescriptorsFromOption({
@@ -228,13 +259,18 @@ const shallowEqualObject = (left = {}, right = {}) => {
 };
 
 const isImageMimeType = (mimeType = "") =>
-  String(mimeType || "").toLowerCase().startsWith("image/");
+  String(mimeType || "")
+    .toLowerCase()
+    .startsWith("image/");
 
 const getSelectedFileEntries = (selection) =>
   Array.isArray(selection) ? selection : selection ? [selection] : [];
 
 const createSelectedFileEntry = (file) => ({
-  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+  id:
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`,
   file,
   previewUrl: isImageMimeType(file?.type) ? URL.createObjectURL(file) : "",
 });
@@ -249,7 +285,10 @@ const revokeSelectedFileEntries = (selection) => {
 
 const getConditionalFieldAccept = (field = {}) => {
   const uploadConfig = field.uploadConfig || {};
-  if (Array.isArray(uploadConfig.allowedMimeTypes) && uploadConfig.allowedMimeTypes.length) {
+  if (
+    Array.isArray(uploadConfig.allowedMimeTypes) &&
+    uploadConfig.allowedMimeTypes.length
+  ) {
     return uploadConfig.allowedMimeTypes.join(",");
   }
   if (field.type === "imageUpload") {
@@ -281,11 +320,7 @@ const SafeMediaImage = ({
   }, [optimizedUrl, rawUrl]);
 
   if (!src || failed) {
-    return (
-      <div className={fallbackClassName}>
-        {fallbackContent}
-      </div>
-    );
+    return <div className={fallbackClassName}>{fallbackContent}</div>;
   }
 
   return (
@@ -414,8 +449,7 @@ const validateSelectedFile = (questionType, file, uploadConfig = {}) => {
     }
     return raw < 1024 * 1024 ? raw * 1024 * 1024 : raw;
   };
-  const maxSize =
-    normalizeMaxSizeBytes(uploadConfig.maxFileSize);
+  const maxSize = normalizeMaxSizeBytes(uploadConfig.maxFileSize);
 
   if (file.size > maxSize) {
     return `File size must not exceed ${Math.max(1, Math.round(maxSize / (1024 * 1024)))} MB.`;
@@ -454,7 +488,9 @@ const validateSelectedFile = (questionType, file, uploadConfig = {}) => {
   if (
     hasCustomExtRule &&
     !allowedExtensions.some((extension) =>
-      String(file.name || "").toLowerCase().endsWith(String(extension).toLowerCase()),
+      String(file.name || "")
+        .toLowerCase()
+        .endsWith(String(extension).toLowerCase()),
     )
   ) {
     return "This file extension is not allowed.";
@@ -491,12 +527,16 @@ const PublicFormPage = () => {
 
   useEffect(() => {
     return () => {
-      Object.values(files).forEach((selection) => revokeSelectedFileEntries(selection));
+      Object.values(files).forEach((selection) =>
+        revokeSelectedFileEntries(selection),
+      );
     };
   }, [files]);
 
   useEffect(() => {
-    const activeKeys = activeConditionalDescriptors.map((descriptor) => descriptor.key);
+    const activeKeys = activeConditionalDescriptors.map(
+      (descriptor) => descriptor.key,
+    );
     setValues((prev) => {
       const next = pruneConditionalState(prev, activeKeys);
       return shallowEqualObject(prev, next) ? prev : next;
@@ -561,12 +601,19 @@ const PublicFormPage = () => {
     });
   };
 
-  const handleVerifiedInputChange = (question, value, sanitizer = (input) => input) => {
+  const handleVerifiedInputChange = (
+    question,
+    value,
+    sanitizer = (input) => input,
+  ) => {
     const nextValue = sanitizer(value);
     const questionId = getQuestionId(question);
     handleAnswer(questionId, nextValue);
     const currentVerification = verificationStates[questionId];
-    if (currentVerification?.destination && currentVerification.destination !== String(nextValue || "").trim()) {
+    if (
+      currentVerification?.destination &&
+      currentVerification.destination !== String(nextValue || "").trim()
+    ) {
       resetVerification(questionId);
     }
   };
@@ -629,7 +676,11 @@ const PublicFormPage = () => {
           destination,
         },
       }));
-      toast.error(error.response?.data?.message || error.message || "Failed to send verification code");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to send verification code",
+      );
     }
   };
 
@@ -673,7 +724,8 @@ const PublicFormPage = () => {
           ...state,
           status: "verified",
           destination,
-          verifiedAt: response.data?.data?.verifiedAt || new Date().toISOString(),
+          verifiedAt:
+            response.data?.data?.verifiedAt || new Date().toISOString(),
         },
       }));
       toast.success("Verified");
@@ -686,7 +738,11 @@ const PublicFormPage = () => {
           destination,
         },
       }));
-      toast.error(error.response?.data?.message || error.message || "OTP verification failed");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "OTP verification failed",
+      );
     }
   };
 
@@ -722,9 +778,7 @@ const PublicFormPage = () => {
         return prev;
       }
 
-      const next = fileId
-        ? current.filter((entry) => entry.id !== fileId)
-        : [];
+      const next = fileId ? current.filter((entry) => entry.id !== fileId) : [];
 
       if (!next.length) {
         return { ...prev, [normalizedKey]: null };
@@ -738,7 +792,12 @@ const PublicFormPage = () => {
     }
   };
 
-  const handleFile = (question, fileList, keyOverride = getQuestionId(question), inputEl = null) => {
+  const handleFile = (
+    question,
+    fileList,
+    keyOverride = getQuestionId(question),
+    inputEl = null,
+  ) => {
     const selectedFiles = Array.from(fileList || []);
     const normalizedKey = String(keyOverride || "").trim();
     if (!selectedFiles.length) {
@@ -749,9 +808,14 @@ const PublicFormPage = () => {
     const uploadConfig = question.uploadConfig || {};
     const multipleAllowed = uploadConfig.multiple === true;
     const maxFiles = multipleAllowed
-      ? Math.max(1, Number.parseInt(uploadConfig.maxFiles, 10) || selectedFiles.length)
+      ? Math.max(
+          1,
+          Number.parseInt(uploadConfig.maxFiles, 10) || selectedFiles.length,
+        )
       : 1;
-    const selected = multipleAllowed ? selectedFiles.slice(0, maxFiles) : [selectedFiles[0]];
+    const selected = multipleAllowed
+      ? selectedFiles.slice(0, maxFiles)
+      : [selectedFiles[0]];
 
     if (selectedFiles.length > maxFiles) {
       const message = `You can upload up to ${maxFiles} file${maxFiles === 1 ? "" : "s"}.`;
@@ -797,7 +861,12 @@ const PublicFormPage = () => {
     });
   };
 
-  const renderSelectedFileList = (selection, keyOverride, inputEl, fieldType = "") => {
+  const renderSelectedFileList = (
+    selection,
+    keyOverride,
+    inputEl,
+    fieldType = "",
+  ) => {
     const entries = getSelectionList(selection);
     if (!entries.length) return null;
 
@@ -805,7 +874,8 @@ const PublicFormPage = () => {
       <div className="space-y-2">
         {entries.map((entry, index) => {
           const file = entry?.file;
-          const fileName = file?.name || entry?.fileName || `Selected file ${index + 1}`;
+          const fileName =
+            file?.name || entry?.fileName || `Selected file ${index + 1}`;
           const isImage = isImageMimeType(file?.type);
           return (
             <div
@@ -824,7 +894,9 @@ const PublicFormPage = () => {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-white">{fileName}</div>
+                <div className="truncate text-sm font-medium text-white">
+                  {fileName}
+                </div>
                 <div className="text-xs text-slate-400">
                   {isImage ? "Image selected" : "Selected file"}
                 </div>
@@ -832,7 +904,9 @@ const PublicFormPage = () => {
               <button
                 type="button"
                 aria-label="Remove selected file"
-                onClick={() => removeSelectedFile(keyOverride, entry?.id || null, inputEl)}
+                onClick={() =>
+                  removeSelectedFile(keyOverride, entry?.id || null, inputEl)
+                }
                 className="rounded-full border border-red-500/30 bg-red-500/10 p-2 text-red-200 transition hover:bg-red-500/20"
               >
                 <X size={14} />
@@ -844,13 +918,23 @@ const PublicFormPage = () => {
     );
   };
 
-  const renderConditionalFieldsList = (fields = [], parentPath = "", level = 1) => {
+  const renderConditionalFieldsList = (
+    fields = [],
+    parentPath = "",
+    level = 1,
+  ) => {
     if (!Array.isArray(fields) || !fields.length) return null;
 
     return (
-      <div className={`space-y-4 ${level > 1 ? "pl-3 sm:pl-4" : ""}`}>
+      <div className="space-y-5">
         {fields.map((field) => (
-          <div key={buildConditionalFieldKey(parentPath, field.id)}>{renderConditionalField(field, buildConditionalFieldKey(parentPath, field.id), level)}</div>
+          <div key={buildConditionalFieldKey(parentPath, field.id)}>
+            {renderConditionalField(
+              field,
+              buildConditionalFieldKey(parentPath, field.id),
+              level,
+            )}
+          </div>
         ))}
       </div>
     );
@@ -860,194 +944,243 @@ const PublicFormPage = () => {
     const commonProps = {
       className: `${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`,
     };
-    const value = values[fieldKey] || (field.type === "checkbox" || field.type === "multipleSelect" ? [] : "");
+
+    const value =
+      values[fieldKey] ||
+      (field.type === "checkbox" || field.type === "multipleSelect" ? [] : "");
+
     const file = files[fieldKey];
     const fieldLabel = field.label || field.title || "Conditional field";
     const fieldHelpText = field.helpText || field.description || "";
     const fieldOptions = getQuestionOptions(field);
     const optionBasedField = isOptionBasedConditionalFieldType(field.type);
-    const selectedOptionIds = optionBasedField ? getSelectedOptionIds(field, value) : [];
+
+    const selectedOptionIds = optionBasedField
+      ? getSelectedOptionIds(field, value)
+      : [];
+
     const selectedOptions = selectedOptionIds
       .map((optionId) => fieldOptions.find((option) => option.id === optionId))
       .filter(Boolean);
 
     return (
-      <div
-        className={`space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5 ${
-          level > 1 ? "ml-3 border-l-2 border-l-cyan-500/30 sm:ml-4" : ""
-        }`}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <label className="text-base font-semibold">
-            {fieldLabel}
-            {field.required && <span className="ml-1 text-red-400">*</span>}
-          </label>
-        </div>
-
-        {field.type === "paragraph" || field.type === "address" || field.type === "longText" ? (
-          <textarea
-            rows={4}
-            value={value}
-            onChange={(e) => handleAnswer(fieldKey, e.target.value)}
-            placeholder={field.placeholder}
-            {...commonProps}
-            className={`${commonProps.className} resize-none`}
-          />
-        ) : field.type === "dropdown" ? (
-          <select value={value} onChange={(e) => handleAnswer(fieldKey, e.target.value)} {...commonProps}>
-            <option value="">Select an option</option>
-            {fieldOptions.map((option) => (
-              <option key={option.id} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        ) : field.type === "radio" ? (
-          <div className="space-y-2">
-            {fieldOptions.map((option) => (
-              <label
-                key={option.id}
-                dir="ltr"
-                className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 text-left"
-              >
-                <input
-                  type="radio"
-                  className="h-4 w-4 shrink-0 accent-cyan-500"
-                  name={fieldKey}
-                  checked={value === option.value}
-                  onChange={() => handleAnswer(fieldKey, option.value)}
-                />
-                <span className="min-w-0 flex-1 break-words">{option.label}</span>
-              </label>
-            ))}
-          </div>
-        ) : field.type === "checkbox" || field.type === "multipleSelect" ? (
-          <div className="space-y-2">
-            {fieldOptions.map((option) => (
-              <label
-                key={option.id}
-                dir="ltr"
-                className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 text-left"
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 shrink-0 accent-cyan-500"
-                  checked={(Array.isArray(value) ? value : []).includes(option.value)}
-                  onChange={() => handleCheckbox(fieldKey, option.value, fieldKey)}
-                />
-                <span className="min-w-0 flex-1 break-words">{option.label}</span>
-              </label>
-            ))}
-          </div>
-        ) : field.type === "fileUpload" ||
-          field.type === "imageUpload" ||
-          field.type === "pdfUpload" ? (
-          <div className="space-y-3">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
-              <Upload size={16} />
-              <input
-                type="file"
-                hidden
-                disabled={false}
-                accept={getConditionalFieldAccept(field)}
-                multiple={field.uploadConfig?.multiple === true}
-                ref={(node) => {
-                  fileInputRefs.current[fieldKey] = node;
-                }}
-                onChange={(e) => handleFile(field, e.target.files, fieldKey, e.currentTarget)}
-              />
-              {getSelectionLabel(file) || field.uploadConfig?.label || "Choose file"}
+      <>
+        {/* Current conditional question card */}
+        <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <label className="text-base font-semibold">
+              {fieldLabel}
+              {field.required && <span className="ml-1 text-red-400">*</span>}
             </label>
-            {renderSelectedFileList(file, fieldKey, fileInputRefs.current[fieldKey], field.type)}
           </div>
-        ) : field.type === "rating" ? (
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5].map((rating) => (
-              <button
-                key={rating}
-                type="button"
-                onClick={() => handleAnswer(fieldKey, rating)}
-                className={`h-11 w-11 rounded-2xl border ${
-                  value === rating ? "border-cyan-500 bg-cyan-500 text-white" : "border-white/10 bg-white/5"
-                }`}
-              >
-                {rating}
-              </button>
-            ))}
-          </div>
-        ) : field.type === "password" ? (
-          <div className="relative">
-            <input
-              type={visiblePasswords[fieldKey] ? "text" : "password"}
-              autoComplete="new-password"
-              spellCheck={false}
+
+          {field.type === "paragraph" ||
+          field.type === "address" ||
+          field.type === "longText" ? (
+            <textarea
+              rows={4}
               value={value}
               onChange={(e) => handleAnswer(fieldKey, e.target.value)}
               placeholder={field.placeholder}
               {...commonProps}
-              className={`${commonProps.className} pr-12`}
+              className={`${commonProps.className} resize-none`}
             />
-            <button
-              type="button"
-              onClick={() => togglePasswordVisibility(fieldKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-slate-950/60 p-2 text-slate-300"
-              aria-label={visiblePasswords[fieldKey] ? "Hide secret" : "Show secret"}
+          ) : field.type === "dropdown" ? (
+            <select
+              value={value}
+              onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+              {...commonProps}
             >
-              {visiblePasswords[fieldKey] ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        ) : field.type === "email" || field.type === "phone" || field.type === "shortAnswer" || field.type === "number" || field.type === "date" || field.type === "time" || field.type === "link" ? (
-          <input
-            type={
-              field.type === "email"
-                ? "email"
-                : field.type === "phone"
-                  ? "tel"
-                  : field.type === "link"
-                    ? "url"
-                    : field.type === "number"
-                      ? "number"
-                      : field.type === "date"
-                        ? "date"
-                        : field.type === "time"
-                          ? "time"
-                          : "text"
-            }
-            value={value}
-            onChange={(e) => handleAnswer(fieldKey, e.target.value)}
-            placeholder={field.placeholder}
-            {...commonProps}
-          />
-        ) : (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => handleAnswer(fieldKey, e.target.value)}
-            placeholder={field.placeholder}
-            {...commonProps}
-          />
-        )}
+              <option value="">Select an option</option>
 
+              {fieldOptions.map((option) => (
+                <option key={option.id} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : field.type === "radio" ? (
+            <div className="space-y-2">
+              {fieldOptions.map((option) => (
+                <label
+                  key={option.id}
+                  dir="ltr"
+                  className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 text-left"
+                >
+                  <input
+                    type="radio"
+                    className="h-4 w-4 shrink-0 accent-cyan-500"
+                    name={fieldKey}
+                    checked={value === option.value}
+                    onChange={() => handleAnswer(fieldKey, option.value)}
+                  />
+
+                  <span className="min-w-0 flex-1 break-words">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : field.type === "checkbox" || field.type === "multipleSelect" ? (
+            <div className="space-y-2">
+              {fieldOptions.map((option) => (
+                <label
+                  key={option.id}
+                  dir="ltr"
+                  className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 text-left"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 shrink-0 accent-cyan-500"
+                    checked={(Array.isArray(value) ? value : []).includes(
+                      option.value,
+                    )}
+                    onChange={() =>
+                      handleCheckbox(fieldKey, option.value, fieldKey)
+                    }
+                  />
+
+                  <span className="min-w-0 flex-1 break-words">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : field.type === "fileUpload" ||
+            field.type === "imageUpload" ||
+            field.type === "pdfUpload" ? (
+            <div className="space-y-3">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
+                <Upload size={16} />
+
+                <input
+                  type="file"
+                  hidden
+                  accept={getConditionalFieldAccept(field)}
+                  multiple={field.uploadConfig?.multiple === true}
+                  ref={(node) => {
+                    fileInputRefs.current[fieldKey] = node;
+                  }}
+                  onChange={(e) =>
+                    handleFile(field, e.target.files, fieldKey, e.currentTarget)
+                  }
+                />
+
+                {getSelectionLabel(file) ||
+                  field.uploadConfig?.label ||
+                  "Choose file"}
+              </label>
+
+              {renderSelectedFileList(
+                file,
+                fieldKey,
+                fileInputRefs.current[fieldKey],
+                field.type,
+              )}
+            </div>
+          ) : field.type === "rating" ? (
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button
+                  key={rating}
+                  type="button"
+                  onClick={() => handleAnswer(fieldKey, rating)}
+                  className={`h-11 w-11 rounded-2xl border ${
+                    value === rating
+                      ? "border-cyan-500 bg-cyan-500 text-white"
+                      : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  {rating}
+                </button>
+              ))}
+            </div>
+          ) : field.type === "password" ? (
+            <div className="relative">
+              <input
+                type={visiblePasswords[fieldKey] ? "text" : "password"}
+                value={value}
+                onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+                placeholder={field.placeholder}
+                autoComplete="new-password"
+                spellCheck={false}
+                {...commonProps}
+                className={`${commonProps.className} pr-12`}
+              />
+
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility(fieldKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-slate-950/60 p-2 text-slate-300"
+                aria-label={
+                  visiblePasswords[fieldKey] ? "Hide secret" : "Show secret"
+                }
+              >
+                {visiblePasswords[fieldKey] ? (
+                  <EyeOff size={16} />
+                ) : (
+                  <Eye size={16} />
+                )}
+              </button>
+            </div>
+          ) : (
+            <input
+              type={
+                field.type === "email"
+                  ? "email"
+                  : field.type === "phone"
+                    ? "tel"
+                    : field.type === "link"
+                      ? "url"
+                      : field.type === "number"
+                        ? "number"
+                        : field.type === "date"
+                          ? "date"
+                          : field.type === "time"
+                            ? "time"
+                            : "text"
+              }
+              value={value}
+              onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+              placeholder={field.placeholder}
+              {...commonProps}
+            />
+          )}
+
+          {fieldHelpText && (
+            <p className="text-xs text-slate-400">{fieldHelpText}</p>
+          )}
+        </div>
+
+        {/* Child conditional questions outside current card */}
         {optionBasedField &&
           selectedOptions.map((option) => {
             const childFields = getConditionalBranchFields(option);
+
             if (!childFields.length) return null;
+
             const branchPath = buildConditionalFieldKey(fieldKey, option.id);
+
             return (
-              <div key={branchPath} className="mt-3 space-y-3 border-l border-white/10 pl-3 sm:pl-4">
-                {renderConditionalFieldsList(childFields, branchPath, level + 1)}
+              <div key={branchPath} className="mt-5">
+                {renderConditionalFieldsList(
+                  childFields,
+                  branchPath,
+                  level + 1,
+                )}
               </div>
             );
           })}
-
-        {fieldHelpText && <p className="text-xs text-slate-400">{fieldHelpText}</p>}
-      </div>
+      </>
     );
   };
 
   const renderConditionalBlocks = (question) => {
     const questionId = getQuestionId(question);
-    const selectedOptionIds = getSelectedOptionIds(question, values[questionId]);
+    const selectedOptionIds = getSelectedOptionIds(
+      question,
+      values[questionId],
+    );
     const options = getQuestionOptions(question);
 
     return selectedOptionIds
@@ -1058,7 +1191,7 @@ const PublicFormPage = () => {
         if (!childFields.length) return [];
         const branchPath = buildConditionalFieldKey(questionId, option.id);
         return [
-          <div key={branchPath} className="mt-4">
+          <div key={branchPath} className="mt-5">
             {renderConditionalFieldsList(childFields, branchPath, 1)}
           </div>,
         ];
@@ -1130,7 +1263,9 @@ const PublicFormPage = () => {
                   checked={values[questionId] === option.value}
                   onChange={() => handleAnswer(questionId, option.value)}
                 />
-                <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                <span className="min-w-0 flex-1 break-words">
+                  {option.label}
+                </span>
               </label>
             ))}
           </div>
@@ -1148,7 +1283,9 @@ const PublicFormPage = () => {
                   checked={(values[questionId] || []).includes(option.value)}
                   onChange={() => handleCheckbox(questionId, option.value)}
                 />
-                <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                <span className="min-w-0 flex-1 break-words">
+                  {option.label}
+                </span>
               </label>
             ))}
           </div>
@@ -1170,13 +1307,25 @@ const PublicFormPage = () => {
                 ref={(node) => {
                   fileInputRefs.current[questionId] = node;
                 }}
-                onChange={(e) => handleFile(question, e.target.files, questionId, e.currentTarget)}
+                onChange={(e) =>
+                  handleFile(
+                    question,
+                    e.target.files,
+                    questionId,
+                    e.currentTarget,
+                  )
+                }
               />
               {form?.allowFileUpload
                 ? getSelectionLabel(files[questionId]) || "Choose file"
                 : "Uploads disabled"}
             </label>
-            {renderSelectedFileList(files[questionId], questionId, fileInputRefs.current[questionId], question.type)}
+            {renderSelectedFileList(
+              files[questionId],
+              questionId,
+              fileInputRefs.current[questionId],
+              question.type,
+            )}
             {!form?.allowFileUpload && (
               <p className="text-xs text-amber-300">
                 File uploads are currently disabled for this form.
@@ -1216,9 +1365,15 @@ const PublicFormPage = () => {
               type="button"
               onClick={() => togglePasswordVisibility(questionId)}
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-slate-950/60 p-2 text-slate-300"
-              aria-label={visiblePasswords[questionId] ? "Hide secret" : "Show secret"}
+              aria-label={
+                visiblePasswords[questionId] ? "Hide secret" : "Show secret"
+              }
             >
-              {visiblePasswords[questionId] ? <EyeOff size={16} /> : <Eye size={16} />}
+              {visiblePasswords[questionId] ? (
+                <EyeOff size={16} />
+              ) : (
+                <Eye size={16} />
+              )}
             </button>
           </div>
         ) : question.type === "email" || question.type === "phone" ? (
@@ -1235,7 +1390,9 @@ const PublicFormPage = () => {
                   handleVerifiedInputChange(
                     question,
                     e.target.value,
-                    question.type === "phone" ? sanitizePhoneInput : (input) => input,
+                    question.type === "phone"
+                      ? sanitizePhoneInput
+                      : (input) => input,
                   )
                 }
                 placeholder={question.placeholder}
@@ -1252,23 +1409,34 @@ const PublicFormPage = () => {
                       return;
                     }
                     if (question.type === "phone" && !validatePhone(current)) {
-                      toast.error("Please enter a valid 10-digit mobile number.");
+                      toast.error(
+                        "Please enter a valid 10-digit mobile number.",
+                      );
                       return;
                     }
-                    if ((verificationStates[questionId]?.status || "idle") === "verified") {
+                    if (
+                      (verificationStates[questionId]?.status || "idle") ===
+                      "verified"
+                    ) {
                       resetVerification(questionId);
                     } else {
                       sendVerificationCode(question);
                     }
                   }}
-                  disabled={(verificationStates[questionId]?.status || "idle") === "sending"}
+                  disabled={
+                    (verificationStates[questionId]?.status || "idle") ===
+                    "sending"
+                  }
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 disabled:opacity-60 sm:w-40"
                 >
-                  {(verificationStates[questionId]?.status || "idle") === "sending" ? (
+                  {(verificationStates[questionId]?.status || "idle") ===
+                  "sending" ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> Sending OTP...
+                      <Loader2 size={16} className="animate-spin" /> Sending
+                      OTP...
                     </>
-                  ) : (verificationStates[questionId]?.status || "idle") === "verified" ? (
+                  ) : (verificationStates[questionId]?.status || "idle") ===
+                    "verified" ? (
                     <>
                       <ShieldCheck size={16} /> Verified
                     </>
@@ -1319,7 +1487,8 @@ const PublicFormPage = () => {
               )}
 
             {question.validationEnabled === true &&
-              (verificationStates[questionId]?.status || "idle") === "verified" && (
+              (verificationStates[questionId]?.status || "idle") ===
+                "verified" && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
                   <CheckCircle2 size={14} /> Verified
                 </div>
@@ -1334,11 +1503,11 @@ const PublicFormPage = () => {
                   ? "tel"
                   : question.type === "link"
                     ? "url"
-                  : question.type === "number"
-                    ? "number"
-                    : question.type === "date"
-                      ? "date"
-                      : "text"
+                    : question.type === "number"
+                      ? "number"
+                      : question.type === "date"
+                        ? "date"
+                        : "text"
             }
             step={question.type === "number" ? "1" : undefined}
             inputMode={
@@ -1368,7 +1537,7 @@ const PublicFormPage = () => {
                   ? sanitizeNumberInput(e.target.value)
                   : question.type === "phone"
                     ? sanitizePhoneInput(e.target.value)
-                  : e.target.value,
+                    : e.target.value,
               )
             }
             onPaste={
@@ -1400,8 +1569,6 @@ const PublicFormPage = () => {
         {question.helpText && (
           <p className="text-xs text-slate-400">{question.helpText}</p>
         )}
-
-        {question.type !== "sectionHeading" && renderConditionalBlocks(question)}
       </div>
     );
   };
@@ -1451,7 +1618,13 @@ const PublicFormPage = () => {
 
       if (selectedFiles.length) {
         const validationMessage = selectedFiles
-          .map((entry) => validateSelectedFile(question.type, entry.file, question.uploadConfig || {}))
+          .map((entry) =>
+            validateSelectedFile(
+              question.type,
+              entry.file,
+              question.uploadConfig || {},
+            ),
+          )
           .find(Boolean);
         if (validationMessage) {
           throw new Error(validationMessage);
@@ -1475,7 +1648,9 @@ const PublicFormPage = () => {
       }
 
       if (field.type === "email" && value && !validateEmail(value)) {
-        throw new Error(`${field.label || "Conditional field"} must be a valid email`);
+        throw new Error(
+          `${field.label || "Conditional field"} must be a valid email`,
+        );
       }
       if (field.type === "phone" && value && !validatePhone(value)) {
         throw new Error("Please enter a valid 10-digit mobile number.");
@@ -1495,7 +1670,13 @@ const PublicFormPage = () => {
 
       if (selectedFiles.length) {
         const validationMessage = selectedFiles
-          .map((entry) => validateSelectedFile(field.type, entry.file, field.uploadConfig || {}))
+          .map((entry) =>
+            validateSelectedFile(
+              field.type,
+              entry.file,
+              field.uploadConfig || {},
+            ),
+          )
           .find(Boolean);
         if (validationMessage) {
           throw new Error(validationMessage);
@@ -1585,7 +1766,10 @@ const PublicFormPage = () => {
       !Number.isNaN(expiresAt.getTime()) &&
       expiresAt.getTime() < now,
     );
-  const titleStyle = resolveTypographyStyle(form?.titleStyle, DEFAULT_TITLE_STYLE);
+  const titleStyle = resolveTypographyStyle(
+    form?.titleStyle,
+    DEFAULT_TITLE_STYLE,
+  );
   const descriptionStyle = resolveTypographyStyle(
     form?.descriptionStyle,
     DEFAULT_DESCRIPTION_STYLE,
@@ -1667,7 +1851,11 @@ const PublicFormPage = () => {
           {(form.bannerImage || form.bannerImageUrl) && (
             <div className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/20 p-3 sm:p-4">
               <SafeMediaImage
-                asset={form.bannerImageAsset || form.bannerImage || form.bannerImageUrl}
+                asset={
+                  form.bannerImageAsset ||
+                  form.bannerImage ||
+                  form.bannerImageUrl
+                }
                 alt={form.title ? `${form.title} banner` : "Form banner"}
                 className="block h-auto w-full object-contain"
                 fallbackClassName="flex min-h-[180px] items-center justify-center rounded-[1.5rem] border border-dashed border-white/10 text-sm text-slate-400"
@@ -1692,7 +1880,19 @@ const PublicFormPage = () => {
             <div className="min-w-0 flex-1">
               <h1
                 className="mt-1 break-words"
-                style={titleStyle}
+                style={{
+                  ...titleStyle,
+
+                  color:
+                    form?.titleStyle?.color || titleStyle?.color || "#ffffff",
+
+                  background: "none",
+                  backgroundImage: "none",
+                  WebkitBackgroundClip: "initial",
+                  backgroundClip: "initial",
+                  WebkitTextFillColor:
+                    form?.titleStyle?.color || titleStyle?.color || "#ffffff",
+                }}
               >
                 {form.title}
               </h1>
@@ -1723,9 +1923,19 @@ const PublicFormPage = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            {form.questions?.map((question, index) => (
-              <div key={question._id || question.id || `question-${index}`}>{renderQuestion(question)}</div>
-            ))}
+            {form.questions?.map((question, index) => {
+              const questionKey =
+                question._id || question.id || `question-${index}`;
+
+              return (
+                <div key={questionKey} className="space-y-5">
+                  {renderQuestion(question)}
+
+                  {question.type !== "sectionHeading" &&
+                    renderConditionalBlocks(question)}
+                </div>
+              );
+            })}
 
             {error && (
               <div className="rounded-3xl bg-red-500/10 p-4 text-sm text-red-200">

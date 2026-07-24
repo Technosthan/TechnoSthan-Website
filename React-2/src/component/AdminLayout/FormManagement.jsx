@@ -326,7 +326,8 @@ const createConditionalFieldOption = (label = "", order = 0) => ({
 
 const mapConditionalOptionNodes = (options = [], visitor) =>
   (Array.isArray(options) ? options : []).map((option, index) => {
-    const current = visitor?.({ kind: "option", node: option, index }) || option;
+    const current =
+      visitor?.({ kind: "option", node: option, index }) || option;
     const conditionalFields = Array.isArray(current?.conditionalLogic?.fields)
       ? current.conditionalLogic.fields
       : [];
@@ -353,7 +354,10 @@ const mapConditionalFieldNodes = (fields = [], visitor) =>
         ...(current.conditionalLogic || {}),
         enabled: current?.conditionalLogic?.enabled === true,
         resetOnHide: current?.conditionalLogic?.resetOnHide !== false,
-        fields: mapConditionalFieldNodes(current?.conditionalLogic?.fields || [], visitor),
+        fields: mapConditionalFieldNodes(
+          current?.conditionalLogic?.fields || [],
+          visitor,
+        ),
       },
     };
   });
@@ -361,19 +365,23 @@ const mapConditionalFieldNodes = (fields = [], visitor) =>
 const mapQuestionConditionalTree = (question, visitor) => ({
   ...question,
   options: mapConditionalOptionNodes(question.options || [], visitor),
-  conditionalFields: mapConditionalFieldNodes(question.conditionalFields || [], visitor),
+  conditionalFields: mapConditionalFieldNodes(
+    question.conditionalFields || [],
+    visitor,
+  ),
 });
 
-const cloneConditionalTree = (question) => mapQuestionConditionalTree(question, (entry) => {
-  const node = entry.node || {};
-  return {
-    ...node,
-    id: crypto.randomUUID(),
-    conditionalLogic: {
-      ...(node.conditionalLogic || {}),
-    },
-  };
-});
+const cloneConditionalTree = (question) =>
+  mapQuestionConditionalTree(question, (entry) => {
+    const node = entry.node || {};
+    return {
+      ...node,
+      id: crypto.randomUUID(),
+      conditionalLogic: {
+        ...(node.conditionalLogic || {}),
+      },
+    };
+  });
 
 const slugify = (value = "") =>
   String(value)
@@ -432,7 +440,10 @@ const createFormExportData = (form = {}) => {
   const safeQuestions = questions
     .map((question, index) => sanitizeExportQuestion(question, index))
     .sort((a, b) => a.order - b.order);
-  const titleStyle = normalizeTypographyStyle(form.titleStyle, DEFAULT_TITLE_STYLE);
+  const titleStyle = normalizeTypographyStyle(
+    form.titleStyle,
+    DEFAULT_TITLE_STYLE,
+  );
   const descriptionStyle = normalizeTypographyStyle(
     form.descriptionStyle,
     DEFAULT_DESCRIPTION_STYLE,
@@ -538,13 +549,15 @@ const normalizeConditionalField = (field = {}, index = 0) => ({
               id: String(option.id || crypto.randomUUID()),
               label: String(option.label || option.value || ""),
               value: String(option.value || option.label || ""),
-              order: typeof option.order === "number" ? option.order : optionIndex,
+              order:
+                typeof option.order === "number" ? option.order : optionIndex,
               conditionalLogic: {
                 enabled: option.conditionalLogic?.enabled === true,
                 resetOnHide: option.conditionalLogic?.resetOnHide !== false,
                 fields: Array.isArray(option.conditionalLogic?.fields)
-                  ? option.conditionalLogic.fields.map((fieldItem, fieldIndex) =>
-                      normalizeConditionalField(fieldItem, fieldIndex),
+                  ? option.conditionalLogic.fields.map(
+                      (fieldItem, fieldIndex) =>
+                        normalizeConditionalField(fieldItem, fieldIndex),
                     )
                   : [],
               },
@@ -556,13 +569,13 @@ const normalizeConditionalField = (field = {}, index = 0) => ({
     required: field.uploadConfig?.required === true,
     multiple: field.uploadConfig?.multiple === true,
     maxFiles:
-      Number.isInteger(field.uploadConfig?.maxFiles) && field.uploadConfig.maxFiles > 0
+      Number.isInteger(field.uploadConfig?.maxFiles) &&
+      field.uploadConfig.maxFiles > 0
         ? field.uploadConfig.maxFiles
         : 1,
-    maxFileSize:
-      Number.isFinite(Number(field.uploadConfig?.maxFileSize))
-        ? Number(field.uploadConfig.maxFileSize)
-        : 5,
+    maxFileSize: Number.isFinite(Number(field.uploadConfig?.maxFileSize))
+      ? Number(field.uploadConfig.maxFileSize)
+      : 5,
     allowedExtensions: Array.isArray(field.uploadConfig?.allowedExtensions)
       ? field.uploadConfig.allowedExtensions
       : [],
@@ -589,24 +602,29 @@ const normalizeConditionalField = (field = {}, index = 0) => ({
 });
 
 const normalizeQuestionOptions = (question = {}) =>
-  (Array.isArray(question.options) ? question.options : []).map((option, index) =>
-    typeof option === "string"
-      ? createQuestionOption(option, index)
-      : {
-          id: String(option.id || option.optionId || crypto.randomUUID()),
-          label: String(option.label || option.value || `Option ${index + 1}`),
-          value: String(option.value || option.label || `option-${index + 1}`),
-          order: typeof option.order === "number" ? option.order : index,
-          conditionalLogic: {
-            enabled: option.conditionalLogic?.enabled === true,
-            resetOnHide: option.conditionalLogic?.resetOnHide !== false,
-            fields: Array.isArray(option.conditionalLogic?.fields)
-              ? option.conditionalLogic.fields.map((field, fieldIndex) =>
-                  normalizeConditionalField(field, fieldIndex),
-                )
-              : [],
+  (Array.isArray(question.options) ? question.options : []).map(
+    (option, index) =>
+      typeof option === "string"
+        ? createQuestionOption(option, index)
+        : {
+            id: String(option.id || option.optionId || crypto.randomUUID()),
+            label: String(
+              option.label || option.value || `Option ${index + 1}`,
+            ),
+            value: String(
+              option.value || option.label || `option-${index + 1}`,
+            ),
+            order: typeof option.order === "number" ? option.order : index,
+            conditionalLogic: {
+              enabled: option.conditionalLogic?.enabled === true,
+              resetOnHide: option.conditionalLogic?.resetOnHide !== false,
+              fields: Array.isArray(option.conditionalLogic?.fields)
+                ? option.conditionalLogic.fields.map((field, fieldIndex) =>
+                    normalizeConditionalField(field, fieldIndex),
+                  )
+                : [],
+            },
           },
-        },
   );
 
 const normalizeNumberValidation = (validation = {}) => ({
@@ -702,9 +720,13 @@ const toAssetPayload = (asset = null, fallbackUrl = "") => {
     url: safeUrl,
     secureUrl: safeUrl,
     publicId: String(asset.publicId || asset.public_id || "").trim(),
-    resourceType: String(asset.resourceType || asset.resource_type || "image").trim() || "image",
+    resourceType:
+      String(asset.resourceType || asset.resource_type || "image").trim() ||
+      "image",
     format: String(asset.format || "").trim(),
-    originalName: String(asset.originalName || asset.originalFilename || "").trim(),
+    originalName: String(
+      asset.originalName || asset.originalFilename || "",
+    ).trim(),
     mimeType: String(asset.mimeType || "").trim(),
     size: Number(asset.size || asset.bytes || 0) || 0,
     bytes: Number(asset.bytes || asset.size || 0) || 0,
@@ -743,7 +765,9 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       ? String(value).trim()
       : fallbackValue;
   const headerBackgroundImageAsset = toAssetPayload(
-    source.headerBackgroundImageAsset ?? legacy.emailTemplate?.headerBackgroundImageAsset ?? null,
+    source.headerBackgroundImageAsset ??
+      legacy.emailTemplate?.headerBackgroundImageAsset ??
+      null,
     source.headerBackgroundImageUrl ??
       legacy.headerBackgroundImageUrl ??
       legacy.emailTemplate?.headerBackgroundImageUrl ??
@@ -770,21 +794,44 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
     headerBackgroundImageUrl || headerBackgroundImageAsset ? "image" : "color",
   );
   return {
-    preset: source.preset || legacy.emailTemplate?.preset || DEFAULT_EMAIL_TEMPLATE.preset,
-    headerTitle: source.headerTitle ?? legacy.emailTemplate?.headerTitle ?? DEFAULT_EMAIL_TEMPLATE.headerTitle,
+    preset:
+      source.preset ||
+      legacy.emailTemplate?.preset ||
+      DEFAULT_EMAIL_TEMPLATE.preset,
+    headerTitle:
+      source.headerTitle ??
+      legacy.emailTemplate?.headerTitle ??
+      DEFAULT_EMAIL_TEMPLATE.headerTitle,
     headerSubtitle:
-      source.headerSubtitle ?? legacy.emailTemplate?.headerSubtitle ?? DEFAULT_EMAIL_TEMPLATE.headerSubtitle,
+      source.headerSubtitle ??
+      legacy.emailTemplate?.headerSubtitle ??
+      DEFAULT_EMAIL_TEMPLATE.headerSubtitle,
     successMessage:
-      source.successMessage ?? legacy.emailTemplate?.successMessage ?? legacy.successMessage ?? DEFAULT_EMAIL_TEMPLATE.successMessage,
-    footerText: source.footerText ?? legacy.emailTemplate?.footerText ?? DEFAULT_EMAIL_TEMPLATE.footerText,
+      source.successMessage ??
+      legacy.emailTemplate?.successMessage ??
+      legacy.successMessage ??
+      DEFAULT_EMAIL_TEMPLATE.successMessage,
+    footerText:
+      source.footerText ??
+      legacy.emailTemplate?.footerText ??
+      DEFAULT_EMAIL_TEMPLATE.footerText,
     companyName:
-      source.companyName ?? legacy.emailTemplate?.companyName ?? legacy.companyName ?? DEFAULT_EMAIL_TEMPLATE.companyName,
+      source.companyName ??
+      legacy.emailTemplate?.companyName ??
+      legacy.companyName ??
+      DEFAULT_EMAIL_TEMPLATE.companyName,
     websiteButtonText:
-      source.websiteButtonText ?? legacy.emailTemplate?.websiteButtonText ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonText,
+      source.websiteButtonText ??
+      legacy.emailTemplate?.websiteButtonText ??
+      DEFAULT_EMAIL_TEMPLATE.websiteButtonText,
     websiteButtonUrl:
-      source.websiteButtonUrl ?? legacy.emailTemplate?.websiteButtonUrl ?? DEFAULT_EMAIL_TEMPLATE.websiteButtonUrl,
+      source.websiteButtonUrl ??
+      legacy.emailTemplate?.websiteButtonUrl ??
+      DEFAULT_EMAIL_TEMPLATE.websiteButtonUrl,
     headerBackgroundColor:
-      source.headerBackgroundColor ?? legacy.emailTemplate?.headerBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor,
+      source.headerBackgroundColor ??
+      legacy.emailTemplate?.headerBackgroundColor ??
+      DEFAULT_EMAIL_TEMPLATE.headerBackgroundColor,
     headerBackgroundType,
     headerBackgroundImageUrl,
     headerBackgroundImagePublicId: toTrimmed(
@@ -845,17 +892,30 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
         "",
     ),
     bodyBackgroundColor:
-      source.bodyBackgroundColor ?? legacy.emailTemplate?.bodyBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor,
+      source.bodyBackgroundColor ??
+      legacy.emailTemplate?.bodyBackgroundColor ??
+      DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor,
     cardBackgroundColor:
-      source.cardBackgroundColor ?? legacy.emailTemplate?.cardBackgroundColor ?? DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor,
+      source.cardBackgroundColor ??
+      legacy.emailTemplate?.cardBackgroundColor ??
+      DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor,
     accentColor:
-      source.accentColor ?? legacy.emailTemplate?.accentColor ?? DEFAULT_EMAIL_TEMPLATE.accentColor,
-    textColor: source.textColor ?? legacy.emailTemplate?.textColor ?? DEFAULT_EMAIL_TEMPLATE.textColor,
-    buttonColor: source.buttonColor ?? legacy.emailTemplate?.buttonColor ?? DEFAULT_EMAIL_TEMPLATE.buttonColor,
+      source.accentColor ??
+      legacy.emailTemplate?.accentColor ??
+      DEFAULT_EMAIL_TEMPLATE.accentColor,
+    textColor:
+      source.textColor ??
+      legacy.emailTemplate?.textColor ??
+      DEFAULT_EMAIL_TEMPLATE.textColor,
+    buttonColor:
+      source.buttonColor ??
+      legacy.emailTemplate?.buttonColor ??
+      DEFAULT_EMAIL_TEMPLATE.buttonColor,
     borderRadius:
-      source.borderRadius ?? legacy.emailTemplate?.borderRadius ?? DEFAULT_EMAIL_TEMPLATE.borderRadius,
-    logoUrl:
-      source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
+      source.borderRadius ??
+      legacy.emailTemplate?.borderRadius ??
+      DEFAULT_EMAIL_TEMPLATE.borderRadius,
+    logoUrl: source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
     logoAsset: source.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
     bannerUrl:
       source.bannerUrl ??
@@ -929,7 +989,9 @@ const normalizeNotificationSettings = (settings = {}, form = {}) => {
       legacy.notificationSettings?.telegramBotToken ??
       "",
     telegramChatId:
-      source.telegramChatId ?? legacy.notificationSettings?.telegramChatId ?? "",
+      source.telegramChatId ??
+      legacy.notificationSettings?.telegramChatId ??
+      "",
     sendWhatsAppNotification:
       source.sendWhatsAppNotification ??
       legacy.notificationSettings?.sendWhatsAppNotification ??
@@ -954,7 +1016,8 @@ const normalizeNotificationSettings = (settings = {}, form = {}) => {
 };
 
 const applyPresetToTemplate = (presetKey, currentTemplate = {}) => {
-  const preset = EMAIL_TEMPLATE_PRESETS[presetKey] || EMAIL_TEMPLATE_PRESETS.custom;
+  const preset =
+    EMAIL_TEMPLATE_PRESETS[presetKey] || EMAIL_TEMPLATE_PRESETS.custom;
   if (presetKey === "custom") {
     return {
       ...normalizeEmailTemplate(currentTemplate),
@@ -973,7 +1036,9 @@ const applyPresetToTemplate = (presetKey, currentTemplate = {}) => {
 const interpolateTemplateText = (value = "", context = {}) =>
   String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, token) => {
     const replacement = context[token];
-    return replacement === undefined || replacement === null ? "" : String(replacement);
+    return replacement === undefined || replacement === null
+      ? ""
+      : String(replacement);
   });
 
 const isLightHexColor = (value = "") => {
@@ -1012,24 +1077,30 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     companyName: resolved.companyName || "TechnoSthan",
   };
 
-  const headerTitle = interpolateTemplateText(resolved.headerTitle, context) || context.formName;
+  const headerTitle =
+    interpolateTemplateText(resolved.headerTitle, context) || context.formName;
   const headerSubtitle =
-    interpolateTemplateText(resolved.headerSubtitle, context) || "Thank you for your submission";
+    interpolateTemplateText(resolved.headerSubtitle, context) ||
+    "Thank you for your submission";
   const successMessage =
     interpolateTemplateText(resolved.successMessage, context) ||
     "Thank you for your response.";
   const footerText = interpolateTemplateText(resolved.footerText, context);
   const buttonText =
-    interpolateTemplateText(resolved.websiteButtonText, context) || "Visit Website";
+    interpolateTemplateText(resolved.websiteButtonText, context) ||
+    "Visit Website";
   const buttonUrl =
-    interpolateTemplateText(resolved.websiteButtonUrl, context) || "https://example.com";
+    interpolateTemplateText(resolved.websiteButtonUrl, context) ||
+    "https://example.com";
   const footerButtons = Array.isArray(resolved.footerButtons)
-    ? resolved.footerButtons.map((button, index) => ({
-        id: button.id || `footer-button-${index}`,
-        text: interpolateTemplateText(button.text, context).trim(),
-        url: normalizeHttpUrl(interpolateTemplateText(button.url, context)),
-        order: typeof button.order === "number" ? button.order : index,
-      })).filter((button) => button.text && button.url)
+    ? resolved.footerButtons
+        .map((button, index) => ({
+          id: button.id || `footer-button-${index}`,
+          text: interpolateTemplateText(button.text, context).trim(),
+          url: normalizeHttpUrl(interpolateTemplateText(button.url, context)),
+          order: typeof button.order === "number" ? button.order : index,
+        }))
+        .filter((button) => button.text && button.url)
     : [];
   const bannerUrl =
     resolved.bannerImageAsset ||
@@ -1160,10 +1231,7 @@ const normalizeForm = (form) => ({
     form?.emailTemplate?.logoAsset?.secureUrl ||
     form?.emailTemplate?.logoAsset?.url ||
     "",
-  logoAsset:
-    form?.logoAsset ||
-    form?.emailTemplate?.logoAsset ||
-    null,
+  logoAsset: form?.logoAsset || form?.emailTemplate?.logoAsset || null,
   emailTemplate: normalizeEmailTemplate(form?.emailTemplate, form),
   notificationSettings: normalizeNotificationSettings(
     form?.notificationSettings,
@@ -1185,9 +1253,14 @@ const getResponseText = (response) => {
     response?.email,
     response?.phone,
     ...answers.flatMap((answer) => {
-      const label = answer.displayLabel || answer.fieldLabel || answer.question?.label || "";
+      const label =
+        answer.displayLabel ||
+        answer.fieldLabel ||
+        answer.question?.label ||
+        "";
       const context = answer.displayContext || answer.parentOptionLabel || "";
-      if (answer.fileName) return [label, context, answer.fileName, answer.fileUrl || ""];
+      if (answer.fileName)
+        return [label, context, answer.fileName, answer.fileUrl || ""];
       if (Array.isArray(answer.value)) return [label, context, ...answer.value];
       return [label, context, answer.value ?? ""];
     }),
@@ -1196,13 +1269,16 @@ const getResponseText = (response) => {
     .toLowerCase();
 };
 
-const maskSecretValue = () => "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+const maskSecretValue = () =>
+  "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
 
 const getLinkHref = (value = "") => normalizeHttpUrl(value);
 
 const renderAnswerValue = (answer, options = {}) => {
   if (!answer) return "-";
-  const answerType = String(answer.fieldType || answer.question?.type || "").toLowerCase();
+  const answerType = String(
+    answer.fieldType || answer.question?.type || "",
+  ).toLowerCase();
 
   if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
     return (
@@ -1240,10 +1316,18 @@ const renderAnswerValue = (answer, options = {}) => {
   }
 
   if (answer.fileUrl) {
-    if (/^image\//i.test(String(answer.fileType || "")) || answerType === "imageupload") {
+    if (
+      /^image\//i.test(String(answer.fileType || "")) ||
+      answerType === "imageupload"
+    ) {
       return (
         <div className="space-y-2">
-          <a href={answer.fileUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-2xl border border-white/10">
+          <a
+            href={answer.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block overflow-hidden rounded-2xl border border-white/10"
+          >
             <img
               src={answer.fileUrl}
               alt={answer.fileName || "Uploaded image"}
@@ -1257,7 +1341,9 @@ const renderAnswerValue = (answer, options = {}) => {
             className="inline-flex items-center gap-2 break-words text-cyan-300 underline decoration-cyan-300/50 underline-offset-4"
           >
             <ExternalLink size={14} />
-            <span className="break-all">{answer.fileName || answer.fileUrl}</span>
+            <span className="break-all">
+              {answer.fileName || answer.fileUrl}
+            </span>
           </a>
         </div>
       );
@@ -1272,7 +1358,7 @@ const renderAnswerValue = (answer, options = {}) => {
         <ExternalLink size={14} />
         <span className="break-all">{answer.fileName || answer.fileUrl}</span>
       </a>
-      );
+    );
   }
 
   if (answerType === "password") {
@@ -1289,11 +1375,15 @@ const renderAnswerValue = (answer, options = {}) => {
             <Copy size={14} /> Copy
           </button>
         </div>
-        <p className="text-xs text-slate-400">Secret auto-hides after 30 seconds.</p>
+        <p className="text-xs text-slate-400">
+          Secret auto-hides after 30 seconds.
+        </p>
       </div>
     ) : (
       <div className="flex flex-wrap items-center gap-3">
-        <span className="tracking-[0.35em] text-slate-300">{maskSecretValue()}</span>
+        <span className="tracking-[0.35em] text-slate-300">
+          {maskSecretValue()}
+        </span>
         <button
           type="button"
           onClick={options.onReveal}
@@ -1371,14 +1461,17 @@ const getScoreBucket = (score) => {
 const formatSubmittedAt = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).replace("am", "AM").replace("pm", "PM");
+  return date
+    .toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .replace("am", "AM")
+    .replace("pm", "PM");
 };
 
 const getFilterRange = (filter) => {
@@ -1436,10 +1529,13 @@ const FormManagement = () => {
   const [analysisLeadFilter, setAnalysisLeadFilter] = useState("all");
   const [analysisRatingFilter, setAnalysisRatingFilter] = useState("all");
   const [analysisInterestFilter, setAnalysisInterestFilter] = useState("all");
-  const [analysisAvailabilityFilter, setAnalysisAvailabilityFilter] = useState("all");
+  const [analysisAvailabilityFilter, setAnalysisAvailabilityFilter] =
+    useState("all");
   const [analysisEmailFilter, setAnalysisEmailFilter] = useState("all");
   const [analysisPhoneFilter, setAnalysisPhoneFilter] = useState("all");
-  const [expandedConditionalPanels, setExpandedConditionalPanels] = useState({});
+  const [expandedConditionalPanels, setExpandedConditionalPanels] = useState(
+    {},
+  );
   const lastSavedFormRef = useRef(null);
   const draftResolutionRef = useRef(null);
   const [draftsOpen, setDraftsOpen] = useState(false);
@@ -1455,20 +1551,23 @@ const FormManagement = () => {
   const emailLogoInputRef = useRef(null);
   const emailBannerInputRef = useRef(null);
   const emailHeaderBackgroundInputRef = useRef(null);
-  const [uploadingEmailTemplateField, setUploadingEmailTemplateField] = useState("");
+  const [uploadingEmailTemplateField, setUploadingEmailTemplateField] =
+    useState("");
   const [formLogoPreviewFailed, setFormLogoPreviewFailed] = useState(false);
   const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
   const [bannerPreviewFailed, setBannerPreviewFailed] = useState(false);
-  const [headerBackgroundPreviewFailed, setHeaderBackgroundPreviewFailed] = useState(false);
+  const [headerBackgroundPreviewFailed, setHeaderBackgroundPreviewFailed] =
+    useState(false);
   const [revealedSecrets, setRevealedSecrets] = useState({});
-  const [draftKey, setDraftKey] = useState(() =>
-    findLatestDraftKeyForModule(draftUserId, "form-builder") ||
-    buildDraftKey({
-      module: "form-builder",
-      mode: "create",
-      recordId: "new",
-      userId: draftUserId,
-    }),
+  const [draftKey, setDraftKey] = useState(
+    () =>
+      findLatestDraftKeyForModule(draftUserId, "form-builder") ||
+      buildDraftKey({
+        module: "form-builder",
+        mode: "create",
+        recordId: "new",
+        userId: draftUserId,
+      }),
   );
   const recoveryHandledRef = useRef(false);
   const draftState = useMemo(
@@ -1602,13 +1701,11 @@ const FormManagement = () => {
   const updateTitleStyle = (field, value) => {
     setDraft((prev) => ({
       ...prev,
-      titleStyle: normalizeTypographyStyle(
-        {
-          ...(prev.titleStyle || {}),
-          [field]: value,
-        },
-        DEFAULT_TITLE_STYLE,
-      ),
+      titleStyle: {
+        ...DEFAULT_TITLE_STYLE,
+        ...(prev.titleStyle || {}),
+        [field]: value,
+      },
     }));
   };
 
@@ -1622,7 +1719,10 @@ const FormManagement = () => {
     }));
   };
 
-  const uploadWithTimeout = async (promise, timeoutMessage = "Upload timed out. Please try again.") => {
+  const uploadWithTimeout = async (
+    promise,
+    timeoutMessage = "Upload timed out. Please try again.",
+  ) => {
     let timeoutId;
     try {
       return await Promise.race([
@@ -1640,18 +1740,20 @@ const FormManagement = () => {
     }
   };
 
-  const buildUploadedAsset = (uploadData = {}, file = null, defaultFolder = "") => {
+  const buildUploadedAsset = (
+    uploadData = {},
+    file = null,
+    defaultFolder = "",
+  ) => {
     const secureUrl =
-      uploadData.secureUrl ||
-      uploadData.secure_url ||
-      uploadData.url ||
-      "";
+      uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
     return {
       provider: uploadData.provider || "cloudinary",
       url: uploadData.url || secureUrl,
       secureUrl,
       publicId: uploadData.publicId || uploadData.public_id || "",
-      resourceType: uploadData.resourceType || uploadData.resource_type || "image",
+      resourceType:
+        uploadData.resourceType || uploadData.resource_type || "image",
       format: uploadData.format || "",
       originalName:
         uploadData.originalName ||
@@ -1692,7 +1794,12 @@ const FormManagement = () => {
   const addFooterButton = () => {
     setDraft((prev) => {
       const buttons = normalizeEditableFooterButtons(prev.emailTemplate, prev);
-      buttons.push({ id: crypto.randomUUID(), text: "", url: "", order: buttons.length });
+      buttons.push({
+        id: crypto.randomUUID(),
+        text: "",
+        url: "",
+        order: buttons.length,
+      });
       return {
         ...prev,
         emailTemplate: {
@@ -1721,9 +1828,10 @@ const FormManagement = () => {
 
   const deleteFooterButton = (index) => {
     setDraft((prev) => {
-      const buttons = normalizeEditableFooterButtons(prev.emailTemplate, prev).filter(
-        (_, currentIndex) => currentIndex !== index,
-      );
+      const buttons = normalizeEditableFooterButtons(
+        prev.emailTemplate,
+        prev,
+      ).filter((_, currentIndex) => currentIndex !== index);
       return {
         ...prev,
         emailTemplate: {
@@ -1759,9 +1867,14 @@ const FormManagement = () => {
           ? {
               ...question,
               [field]: value,
-              ...(field === "type" && ["dropdown", "radio", "checkbox"].includes(value) && !(question.options || []).length
+              ...(field === "type" &&
+              ["dropdown", "radio", "checkbox"].includes(value) &&
+              !(question.options || []).length
                 ? {
-                    options: [createQuestionOption("Option 1", 0), createQuestionOption("Option 2", 1)],
+                    options: [
+                      createQuestionOption("Option 1", 0),
+                      createQuestionOption("Option 2", 1),
+                    ],
                   }
                 : {}),
             }
@@ -1796,7 +1909,9 @@ const FormManagement = () => {
               ...question,
               options: [
                 ...(question.options || []),
-                createQuestionOption(`Option ${(question.options || []).length + 1}`),
+                createQuestionOption(
+                  `Option ${(question.options || []).length + 1}`,
+                ),
               ],
             }
           : question,
@@ -1826,7 +1941,9 @@ const FormManagement = () => {
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
-        const options = (question.options || []).filter((option) => option.id !== optionId);
+        const options = (question.options || []).filter(
+          (option) => option.id !== optionId,
+        );
         return {
           ...question,
           options,
@@ -1842,7 +1959,8 @@ const FormManagement = () => {
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "option" || entry.node.id !== optionId) return entry.node;
+          if (entry.kind !== "option" || entry.node.id !== optionId)
+            return entry.node;
           const fields = Array.isArray(entry.node.conditionalLogic?.fields)
             ? entry.node.conditionalLogic.fields
             : [];
@@ -1859,13 +1977,20 @@ const FormManagement = () => {
     }));
   };
 
-  const updateConditionalField = (questionIndex, optionId, fieldId, key, value) => {
+  const updateConditionalField = (
+    questionIndex,
+    optionId,
+    fieldId,
+    key,
+    value,
+  ) => {
     setDraft((prev) => ({
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
+          if (entry.kind !== "field" || entry.node.id !== fieldId)
+            return entry.node;
           const next = {
             ...entry.node,
             [key]: value,
@@ -1883,13 +2008,20 @@ const FormManagement = () => {
     }));
   };
 
-  const updateConditionalFieldOption = (questionIndex, optionId, fieldId, fieldOptionId, value) => {
+  const updateConditionalFieldOption = (
+    questionIndex,
+    optionId,
+    fieldId,
+    fieldOptionId,
+    value,
+  ) => {
     setDraft((prev) => ({
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "option" || entry.node.id !== fieldOptionId) return entry.node;
+          if (entry.kind !== "option" || entry.node.id !== fieldOptionId)
+            return entry.node;
           return {
             ...entry.node,
             label: value,
@@ -1906,9 +2038,14 @@ const FormManagement = () => {
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
-          const fieldOptions = Array.isArray(entry.node.options) ? [...entry.node.options] : [];
-          fieldOptions.push(createConditionalFieldOption("", fieldOptions.length));
+          if (entry.kind !== "field" || entry.node.id !== fieldId)
+            return entry.node;
+          const fieldOptions = Array.isArray(entry.node.options)
+            ? [...entry.node.options]
+            : [];
+          fieldOptions.push(
+            createConditionalFieldOption("", fieldOptions.length),
+          );
           return {
             ...entry.node,
             options: fieldOptions,
@@ -1918,15 +2055,26 @@ const FormManagement = () => {
     }));
   };
 
-  const moveConditionalFieldOption = (questionIndex, optionId, fieldId, fieldOptionId, direction) => {
+  const moveConditionalFieldOption = (
+    questionIndex,
+    optionId,
+    fieldId,
+    fieldOptionId,
+    direction,
+  ) => {
     setDraft((prev) => ({
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
-          const fieldOptions = Array.isArray(entry.node.options) ? [...entry.node.options] : [];
-          const currentIndexInField = fieldOptions.findIndex((item) => item.id === fieldOptionId);
+          if (entry.kind !== "field" || entry.node.id !== fieldId)
+            return entry.node;
+          const fieldOptions = Array.isArray(entry.node.options)
+            ? [...entry.node.options]
+            : [];
+          const currentIndexInField = fieldOptions.findIndex(
+            (item) => item.id === fieldOptionId,
+          );
           const targetIndex = currentIndexInField + direction;
           if (
             currentIndexInField < 0 ||
@@ -1948,13 +2096,19 @@ const FormManagement = () => {
     }));
   };
 
-  const removeConditionalFieldOption = (questionIndex, optionId, fieldId, fieldOptionId) => {
+  const removeConditionalFieldOption = (
+    questionIndex,
+    optionId,
+    fieldId,
+    fieldOptionId,
+  ) => {
     setDraft((prev) => ({
       ...prev,
       questions: prev.questions.map((question, currentIndex) => {
         if (currentIndex !== questionIndex) return question;
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "field" || entry.node.id !== fieldId) return entry.node;
+          if (entry.kind !== "field" || entry.node.id !== fieldId)
+            return entry.node;
           return {
             ...entry.node,
             options: (entry.node.options || []).filter(
@@ -2000,7 +2154,9 @@ const FormManagement = () => {
 
         const fieldOptions = Array.isArray(field.options) ? field.options : [];
         for (const option of fieldOptions) {
-          const optionNestedError = inspectFields(option?.conditionalLogic?.fields || []);
+          const optionNestedError = inspectFields(
+            option?.conditionalLogic?.fields || [],
+          );
           if (optionNestedError) {
             return optionNestedError;
           }
@@ -2011,7 +2167,9 @@ const FormManagement = () => {
     };
 
     for (const question of questions) {
-      const questionOptions = Array.isArray(question.options) ? question.options : [];
+      const questionOptions = Array.isArray(question.options)
+        ? question.options
+        : [];
       for (const option of questionOptions) {
         const error = inspectFields(option?.conditionalLogic?.fields || []);
         if (error) {
@@ -2019,7 +2177,9 @@ const FormManagement = () => {
         }
       }
 
-      const directConditionalError = inspectFields(question.conditionalFields || []);
+      const directConditionalError = inspectFields(
+        question.conditionalFields || [],
+      );
       if (directConditionalError) {
         return directConditionalError;
       }
@@ -2035,7 +2195,9 @@ const FormManagement = () => {
         if (currentIndex !== questionIndex) return question;
         const options = (question.options || []).map((option) => {
           if (option.id !== optionId) return option;
-          const fields = (option.conditionalLogic?.fields || []).filter((field) => field.id !== fieldId);
+          const fields = (option.conditionalLogic?.fields || []).filter(
+            (field) => field.id !== fieldId,
+          );
           return {
             ...option,
             conditionalLogic: {
@@ -2088,26 +2250,39 @@ const FormManagement = () => {
         formData.append("assetType", "logo");
         const response = await uploadWithTimeout(uploadFormLogoImage(formData));
         const uploadData = response.data?.data || {};
-        const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
+        const imageUrl =
+          uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
 
         updateDraft("logoUrl", imageUrl);
-        updateDraft("logoAsset", buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/logos"));
+        updateDraft(
+          "logoAsset",
+          buildUploadedAsset(
+            uploadData,
+            file,
+            "technosthan/form-builder/email-assets/logos",
+          ),
+        );
         setFormLogoPreviewFailed(false);
         registerSessionAsset(
-          uploadData.asset || buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/logos"),
+          uploadData.asset ||
+            buildUploadedAsset(
+              uploadData,
+              file,
+              "technosthan/form-builder/email-assets/logos",
+            ),
         );
         toast.success("Form logo uploaded successfully");
       } catch (error) {
         const uploadErrorMessage =
           error.response?.status === 413
             ? IMAGE_SIZE_LIMIT_MESSAGE
-            : error.response?.data?.message || error.message || "Failed to upload image";
-        toast.error(
-          uploadErrorMessage,
-        );
+            : error.response?.data?.message ||
+              error.message ||
+              "Failed to upload image";
+        toast.error(uploadErrorMessage);
       } finally {
         setUploadingFormLogoImage(false);
         if (formLogoInputRef.current) {
@@ -2155,27 +2330,42 @@ const FormManagement = () => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("assetType", "banner");
-        const response = await uploadWithTimeout(uploadFormBannerImage(formData));
+        const response = await uploadWithTimeout(
+          uploadFormBannerImage(formData),
+        );
         const uploadData = response.data?.data || {};
-        const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
+        const imageUrl =
+          uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
         updateDraft("bannerImage", imageUrl);
         updateDraft("bannerImageUrl", imageUrl);
-        updateDraft("bannerImageAsset", buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/banners"));
+        updateDraft(
+          "bannerImageAsset",
+          buildUploadedAsset(
+            uploadData,
+            file,
+            "technosthan/form-builder/email-assets/banners",
+          ),
+        );
         registerSessionAsset(
-          uploadData.asset || buildUploadedAsset(uploadData, file, "technosthan/form-builder/email-assets/banners"),
+          uploadData.asset ||
+            buildUploadedAsset(
+              uploadData,
+              file,
+              "technosthan/form-builder/email-assets/banners",
+            ),
         );
         toast.success("Form image uploaded successfully");
       } catch (error) {
         const uploadErrorMessage =
           error.response?.status === 413
             ? IMAGE_SIZE_LIMIT_MESSAGE
-            : error.response?.data?.message || error.message || "Failed to upload image";
-        toast.error(
-          uploadErrorMessage,
-        );
+            : error.response?.data?.message ||
+              error.message ||
+              "Failed to upload image";
+        toast.error(uploadErrorMessage);
       } finally {
         setUploadingBannerImage(false);
         if (bannerImageInputRef.current) {
@@ -2203,7 +2393,10 @@ const FormManagement = () => {
         null,
       );
       if (!isLogoField) {
-        updateEmailTemplate(isHeaderField ? "headerBackgroundImageUrl" : "bannerUrl", "");
+        updateEmailTemplate(
+          isHeaderField ? "headerBackgroundImageUrl" : "bannerUrl",
+          "",
+        );
       }
       if (isHeaderField) {
         updateEmailTemplate("headerBackgroundImagePublicId", "");
@@ -2266,9 +2459,12 @@ const FormManagement = () => {
           "assetType",
           isLogoField ? "logo" : isHeaderField ? "header-background" : "banner",
         );
-        const response = await uploadWithTimeout(uploadFormBannerImage(formData));
+        const response = await uploadWithTimeout(
+          uploadFormBannerImage(formData),
+        );
         const uploadData = response.data?.data || {};
-        const imageUrl = uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
+        const imageUrl =
+          uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
         if (!imageUrl) {
           throw new Error("Image upload failed");
         }
@@ -2287,7 +2483,10 @@ const FormManagement = () => {
         } else if (isHeaderField) {
           updateEmailTemplate("headerBackgroundType", "image");
           updateEmailTemplate("headerBackgroundImageUrl", imageUrl);
-          updateEmailTemplate("headerBackgroundImagePublicId", asset.publicId || "");
+          updateEmailTemplate(
+            "headerBackgroundImagePublicId",
+            asset.publicId || "",
+          );
           updateEmailTemplate("headerBackgroundImageAsset", asset);
           setHeaderBackgroundPreviewFailed(false);
         } else {
@@ -2307,7 +2506,9 @@ const FormManagement = () => {
         );
       } catch (error) {
         toast.error(
-          error.response?.data?.message || error.message || "Failed to upload image",
+          error.response?.data?.message ||
+            error.message ||
+            "Failed to upload image",
         );
       } finally {
         setUploadingEmailTemplateField("");
@@ -2403,7 +2604,10 @@ const FormManagement = () => {
       setImportPreview({
         title: data.title || "",
         description: normalizeRichTextValue(data.description || ""),
-        titleStyle: normalizeTypographyStyle(data.titleStyle, DEFAULT_TITLE_STYLE),
+        titleStyle: normalizeTypographyStyle(
+          data.titleStyle,
+          DEFAULT_TITLE_STYLE,
+        ),
         descriptionStyle: normalizeTypographyStyle(
           data.descriptionStyle,
           DEFAULT_DESCRIPTION_STYLE,
@@ -2426,17 +2630,24 @@ const FormManagement = () => {
                 : [],
               optionsText: Array.isArray(question.options)
                 ? question.options
-                    .map((option) => String(option.label || option.value || option))
+                    .map((option) =>
+                      String(option.label || option.value || option),
+                    )
                     .join("\n")
                 : String(question.options || ""),
-              order: typeof question.order === "number" ? question.order : index,
+              order:
+                typeof question.order === "number" ? question.order : index,
             }))
           : [],
       });
       setActiveTab("questions");
       toast.success("Analyzing file complete");
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Failed to analyze file");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to analyze file",
+      );
     } finally {
       setImportingFormFile(false);
       if (importFileInputRef.current) {
@@ -2495,23 +2706,28 @@ const FormManagement = () => {
         required: question.required === true,
         placeholder: question.placeholder || "",
         helpText: question.helpText || "",
-        options: Array.isArray(question.options) &&
+        options:
+          Array.isArray(question.options) &&
           question.options.some(
-            (option) => option && typeof option === "object" && (option.id || option.conditionalLogic),
+            (option) =>
+              option &&
+              typeof option === "object" &&
+              (option.id || option.conditionalLogic),
           )
-          ? question.options.map((option, optionIndex) =>
-              typeof option === "string"
-                ? createQuestionOption(option, optionIndex)
-                : {
-                    ...option,
-                    id: String(option.id || crypto.randomUUID()),
-                    label: String(option.label || option.value || "").trim(),
-                    value: String(option.value || option.label || "").trim(),
-                  },
-            )
-          : parseOptionsText(question.optionsText || "").map((option, optionIndex) =>
-              createQuestionOption(option, optionIndex),
-            ),
+            ? question.options.map((option, optionIndex) =>
+                typeof option === "string"
+                  ? createQuestionOption(option, optionIndex)
+                  : {
+                      ...option,
+                      id: String(option.id || crypto.randomUUID()),
+                      label: String(option.label || option.value || "").trim(),
+                      value: String(option.value || option.label || "").trim(),
+                    },
+              )
+            : parseOptionsText(question.optionsText || "").map(
+                (option, optionIndex) =>
+                  createQuestionOption(option, optionIndex),
+              ),
         conditionalFields: Array.isArray(question.conditionalFields)
           ? question.conditionalFields.map((field, fieldIndex) => ({
               ...createConditionalField(fieldIndex),
@@ -2526,14 +2742,23 @@ const FormManagement = () => {
     setDraft((prev) => {
       const existing = Array.isArray(prev.questions) ? [...prev.questions] : [];
       const existingKeys = new Set(
-        existing.map((question) =>
-          `${String(question.label || "").trim().toLowerCase()}::${String(question.type || "").trim().toLowerCase()}`,
+        existing.map(
+          (question) =>
+            `${String(question.label || "")
+              .trim()
+              .toLowerCase()}::${String(question.type || "")
+              .trim()
+              .toLowerCase()}`,
         ),
       );
 
       const merged = [...existing];
       importedQuestions.forEach((question) => {
-        const key = `${String(question.label || "").trim().toLowerCase()}::${String(question.type || "").trim().toLowerCase()}`;
+        const key = `${String(question.label || "")
+          .trim()
+          .toLowerCase()}::${String(question.type || "")
+          .trim()
+          .toLowerCase()}`;
         if (existingKeys.has(key)) {
           return;
         }
@@ -2543,19 +2768,29 @@ const FormManagement = () => {
 
       return {
         ...prev,
-        title: String(prev.title || "").trim() ? prev.title : importPreview.title || prev.title,
+        title: String(prev.title || "").trim()
+          ? prev.title
+          : importPreview.title || prev.title,
         description: String(prev.description || "").trim()
           ? prev.description
-          : normalizeRichTextValue(importPreview.description || prev.description),
+          : normalizeRichTextValue(
+              importPreview.description || prev.description,
+            ),
         titleStyle: importPreview.hasTypographySettings
-          ? normalizeTypographyStyle(importPreview.titleStyle, DEFAULT_TITLE_STYLE)
+          ? normalizeTypographyStyle(
+              importPreview.titleStyle,
+              DEFAULT_TITLE_STYLE,
+            )
           : normalizeTypographyStyle(prev.titleStyle, DEFAULT_TITLE_STYLE),
         descriptionStyle: importPreview.hasTypographySettings
           ? normalizeTypographyStyle(
               importPreview.descriptionStyle,
               DEFAULT_DESCRIPTION_STYLE,
             )
-          : normalizeTypographyStyle(prev.descriptionStyle, DEFAULT_DESCRIPTION_STYLE),
+          : normalizeTypographyStyle(
+              prev.descriptionStyle,
+              DEFAULT_DESCRIPTION_STYLE,
+            ),
         emailTemplate: importPreview.emailTemplate
           ? normalizeEmailTemplate(importPreview.emailTemplate, prev)
           : normalizeEmailTemplate(prev.emailTemplate, prev),
@@ -2588,7 +2823,9 @@ const FormManagement = () => {
   const removeQuestion = (index) => {
     setDraft((prev) => ({
       ...prev,
-      questions: prev.questions.filter((_, currentIndex) => currentIndex !== index),
+      questions: prev.questions.filter(
+        (_, currentIndex) => currentIndex !== index,
+      ),
     }));
   };
 
@@ -2606,7 +2843,9 @@ const FormManagement = () => {
   };
 
   const getAssetPublicId = (asset) =>
-    asset && typeof asset === "object" ? asset.publicId || asset.public_id || "" : "";
+    asset && typeof asset === "object"
+      ? asset.publicId || asset.public_id || ""
+      : "";
 
   const registerSessionAsset = (asset) => {
     const publicId = getAssetPublicId(asset);
@@ -2647,13 +2886,16 @@ const FormManagement = () => {
           publicId: getAssetPublicId(asset),
           resourceType: asset?.resourceType || "image",
         }).catch((error) => {
-          console.warn("Failed to delete temporary uploaded asset:", error.message);
+          console.warn(
+            "Failed to delete temporary uploaded asset:",
+            error.message,
+          );
         }),
       ),
     );
 
-    sessionUploadedAssetsRef.current = sessionUploadedAssetsRef.current.filter((asset) =>
-      keepIds.has(getAssetPublicId(asset)),
+    sessionUploadedAssetsRef.current = sessionUploadedAssetsRef.current.filter(
+      (asset) => keepIds.has(getAssetPublicId(asset)),
     );
   };
 
@@ -2666,7 +2908,8 @@ const FormManagement = () => {
     const nextLogo = nextForm?.emailTemplate?.logoAsset || null;
     const previousTemplateBanner =
       previousForm?.emailTemplate?.bannerImageAsset || null;
-    const nextTemplateBanner = nextForm?.emailTemplate?.bannerImageAsset || null;
+    const nextTemplateBanner =
+      nextForm?.emailTemplate?.bannerImageAsset || null;
     const previousHeaderBackground =
       previousForm?.emailTemplate?.headerBackgroundImageAsset || null;
     const nextHeaderBackground =
@@ -2719,20 +2962,22 @@ const FormManagement = () => {
       return;
     }
 
-    const conditionalFieldValidationError = validateConditionalFieldOptionConfig(
-      draft.questions || [],
-    );
+    const conditionalFieldValidationError =
+      validateConditionalFieldOptionConfig(draft.questions || []);
     if (conditionalFieldValidationError) {
       toast.error(conditionalFieldValidationError);
       return;
     }
 
     const parsedExpiresAt = draft.expiresAt ? new Date(draft.expiresAt) : null;
-    const normalizedEmailTemplate = normalizeEmailTemplate(draft.emailTemplate, {
-      ...draft,
-      logoUrl: "",
-      logoAsset: null,
-    });
+    const normalizedEmailTemplate = normalizeEmailTemplate(
+      draft.emailTemplate,
+      {
+        ...draft,
+        logoUrl: "",
+        logoAsset: null,
+      },
+    );
 
     const payload = {
       ...draft,
@@ -2749,9 +2994,13 @@ const FormManagement = () => {
         draft.emailTemplate?.headerBackgroundImagePublicId ||
         draft.emailTemplate?.headerBackgroundImageAsset?.publicId ||
         "",
-      headerBackgroundImageAsset: draft.emailTemplate?.headerBackgroundImageAsset || null,
+      headerBackgroundImageAsset:
+        draft.emailTemplate?.headerBackgroundImageAsset || null,
       description: sanitizeRichTextHtml(draft.description || ""),
-      titleStyle: normalizeTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE),
+      titleStyle: normalizeTypographyStyle(
+        draft.titleStyle,
+        DEFAULT_TITLE_STYLE,
+      ),
       descriptionStyle: normalizeTypographyStyle(
         draft.descriptionStyle,
         DEFAULT_DESCRIPTION_STYLE,
@@ -2779,7 +3028,8 @@ const FormManagement = () => {
               id: String(option.id || crypto.randomUUID()),
               label: String(option.label || option.value || "").trim(),
               value: String(option.value || option.label || "").trim(),
-              order: typeof option.order === "number" ? option.order : optionIndex,
+              order:
+                typeof option.order === "number" ? option.order : optionIndex,
               conditionalLogic: {
                 enabled: option.conditionalLogic?.enabled === true,
                 resetOnHide: option.conditionalLogic?.resetOnHide !== false,
@@ -2802,12 +3052,18 @@ const FormManagement = () => {
                                   : childOption || {};
                               return {
                                 ...optionSource,
-                                id: String(optionSource.id || crypto.randomUUID()),
+                                id: String(
+                                  optionSource.id || crypto.randomUUID(),
+                                ),
                                 label: String(
-                                  optionSource.label || optionSource.value || "",
+                                  optionSource.label ||
+                                    optionSource.value ||
+                                    "",
                                 ).trim(),
                                 value: String(
-                                  optionSource.value || optionSource.label || "",
+                                  optionSource.value ||
+                                    optionSource.label ||
+                                    "",
                                 ).trim(),
                                 order:
                                   typeof optionSource.order === "number"
@@ -2816,7 +3072,9 @@ const FormManagement = () => {
                               };
                             })
                             .filter((childOption) =>
-                              String(childOption.label || childOption.value || "").trim(),
+                              String(
+                                childOption.label || childOption.value || "",
+                              ).trim(),
                             )
                             .map((childOption, childIndex) => ({
                               ...childOption,
@@ -2824,7 +3082,10 @@ const FormManagement = () => {
                             }))
                         : [],
                       uploadConfig: field.uploadConfig || null,
-                      order: typeof field.order === "number" ? field.order : fieldIndex,
+                      order:
+                        typeof field.order === "number"
+                          ? field.order
+                          : fieldIndex,
                       isActive: field.isActive !== false,
                     }))
                   : [],
@@ -2851,8 +3112,12 @@ const FormManagement = () => {
                       return {
                         ...optionSource,
                         id: String(optionSource.id || crypto.randomUUID()),
-                        label: String(optionSource.label || optionSource.value || "").trim(),
-                        value: String(optionSource.value || optionSource.label || "").trim(),
+                        label: String(
+                          optionSource.label || optionSource.value || "",
+                        ).trim(),
+                        value: String(
+                          optionSource.value || optionSource.label || "",
+                        ).trim(),
                         order:
                           typeof optionSource.order === "number"
                             ? optionSource.order
@@ -2860,7 +3125,9 @@ const FormManagement = () => {
                       };
                     })
                     .filter((childOption) =>
-                      String(childOption.label || childOption.value || "").trim(),
+                      String(
+                        childOption.label || childOption.value || "",
+                      ).trim(),
                     )
                     .map((childOption, childIndex) => ({
                       ...childOption,
@@ -2942,7 +3209,11 @@ const FormManagement = () => {
 
   const previewLink = () => {
     if (!draft.slug) return toast.error("Save the form first");
-    window.open(buildPublicFormUrl(draft.slug), "_blank", "noopener,noreferrer");
+    window.open(
+      buildPublicFormUrl(draft.slug),
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const exportResponses = async (params = {}, filenameSuffix = "responses") => {
@@ -2968,7 +3239,9 @@ const FormManagement = () => {
         throw new Error("Form export data is incomplete");
       }
 
-      const exportData = createFormExportData(exportedForm.form || exportedForm);
+      const exportData = createFormExportData(
+        exportedForm.form || exportedForm,
+      );
       const json = JSON.stringify(exportData, null, 2);
       const blob = new Blob([json], {
         type: "application/json;charset=utf-8",
@@ -2987,7 +3260,10 @@ const FormManagement = () => {
 
       toast.success("Form exported successfully.");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to export form. Please try again.");
+      toast.error(
+        error.response?.data?.message ||
+          "Unable to export form. Please try again.",
+      );
     } finally {
       setExportingFormId(null);
     }
@@ -3088,7 +3364,9 @@ const FormManagement = () => {
 
   const responseTable = useMemo(() => {
     const term = responseSearch.trim().toLowerCase();
-    const fromTime = responseDateFrom ? new Date(responseDateFrom).getTime() : null;
+    const fromTime = responseDateFrom
+      ? new Date(responseDateFrom).getTime()
+      : null;
     const toTime = responseDateTo ? new Date(responseDateTo).getTime() : null;
 
     return responses
@@ -3107,7 +3385,8 @@ const FormManagement = () => {
           start.setDate(start.getDate() - 1);
           const end = new Date(start);
           end.setDate(end.getDate() + 1);
-          if (submittedTime < start.getTime() || submittedTime >= end.getTime()) return false;
+          if (submittedTime < start.getTime() || submittedTime >= end.getTime())
+            return false;
         }
         if (responseFilter === "7days") {
           const start = new Date();
@@ -3120,33 +3399,42 @@ const FormManagement = () => {
           if (submittedTime < start.getTime()) return false;
         }
         if (fromTime && submittedTime < fromTime) return false;
-        if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1) return false;
+        if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1)
+          return false;
         if (!term) return true;
         return getResponseText(response).includes(term);
       })
       .map((response) => {
-      const answers = Array.isArray(response.answers) ? response.answers : [];
-      const email =
-        response.email ||
-        answers.find((item) => item.question?.type === "email")?.value ||
-        "";
-      const phone =
-        response.phone ||
-        answers.find((item) => item.question?.type === "phone")?.value ||
-        "";
-      const name =
-        response.name ||
-        answers.find((item) => item.question?.type === "shortAnswer")?.value ||
-        answers.find((item) => /name/i.test(item.question?.label || ""))?.value ||
-        "";
-      return {
-        ...response,
-        name,
-        email,
-        phone,
-      };
+        const answers = Array.isArray(response.answers) ? response.answers : [];
+        const email =
+          response.email ||
+          answers.find((item) => item.question?.type === "email")?.value ||
+          "";
+        const phone =
+          response.phone ||
+          answers.find((item) => item.question?.type === "phone")?.value ||
+          "";
+        const name =
+          response.name ||
+          answers.find((item) => item.question?.type === "shortAnswer")
+            ?.value ||
+          answers.find((item) => /name/i.test(item.question?.label || ""))
+            ?.value ||
+          "";
+        return {
+          ...response,
+          name,
+          email,
+          phone,
+        };
       });
-  }, [responseDateFrom, responseDateTo, responseFilter, responseSearch, responses]);
+  }, [
+    responseDateFrom,
+    responseDateTo,
+    responseFilter,
+    responseSearch,
+    responses,
+  ]);
 
   const analysisRows = useMemo(() => {
     return responseTable.filter((response) => {
@@ -3154,9 +3442,10 @@ const FormManagement = () => {
       const leadCategory = response.leadCategory || getScoreBucket(score);
       const ratingValue = getRatingValue(response);
       const interestAnswer = getInterestAnswer(response);
-      const hasYes = /^(yes|y|true|interested|available|available to join)$/i.test(
-        String(interestAnswer || "").trim(),
-      );
+      const hasYes =
+        /^(yes|y|true|interested|available|available to join)$/i.test(
+          String(interestAnswer || "").trim(),
+        );
       const availableYes = Boolean(response.availableYes);
       const hasEmail = Boolean(response.email);
       const hasPhone = Boolean(response.phone);
@@ -3250,7 +3539,9 @@ const FormManagement = () => {
   ) => {
     const fieldBreadcrumb = [...breadcrumb, field.label || "Untitled field"];
     const fieldOptions = Array.isArray(field.options) ? field.options : [];
-    const isChoiceField = CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS.has(String(field.type || ""));
+    const isChoiceField = CONDITIONAL_FIELD_TYPES_REQUIRING_OPTIONS.has(
+      String(field.type || ""),
+    );
 
     return (
       <div
@@ -3270,7 +3561,9 @@ const FormManagement = () => {
           </div>
           <button
             type="button"
-            onClick={() => removeConditionalField(questionIndex, optionId, field.id)}
+            onClick={() =>
+              removeConditionalField(questionIndex, optionId, field.id)
+            }
             className="rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
           >
             Remove Field
@@ -3279,21 +3572,37 @@ const FormManagement = () => {
 
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Label</label>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">
+              Field Label
+            </label>
             <input
               value={field.label || ""}
               onChange={(e) =>
-                updateConditionalField(questionIndex, optionId, field.id, "label", e.target.value)
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "label",
+                  e.target.value,
+                )
               }
               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
             />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold text-slate-300">Field Type</label>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">
+              Field Type
+            </label>
             <select
               value={field.type || "shortAnswer"}
               onChange={(e) =>
-                updateConditionalField(questionIndex, optionId, field.id, "type", e.target.value)
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "type",
+                  e.target.value,
+                )
               }
               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
             >
@@ -3306,21 +3615,37 @@ const FormManagement = () => {
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold text-slate-300">Placeholder</label>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">
+              Placeholder
+            </label>
             <input
               value={field.placeholder || ""}
               onChange={(e) =>
-                updateConditionalField(questionIndex, optionId, field.id, "placeholder", e.target.value)
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "placeholder",
+                  e.target.value,
+                )
               }
               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
             />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold text-slate-300">Help Text</label>
+            <label className="mb-2 block text-xs font-semibold text-slate-300">
+              Help Text
+            </label>
             <input
               value={field.helpText || ""}
               onChange={(e) =>
-                updateConditionalField(questionIndex, optionId, field.id, "helpText", e.target.value)
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "helpText",
+                  e.target.value,
+                )
               }
               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
             />
@@ -3333,7 +3658,13 @@ const FormManagement = () => {
               type="checkbox"
               checked={field.required === true}
               onChange={(e) =>
-                updateConditionalField(questionIndex, optionId, field.id, "required", e.target.checked)
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "required",
+                  e.target.checked,
+                )
               }
             />
             Required
@@ -3361,15 +3692,20 @@ const FormManagement = () => {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
-                  {field.type === "dropdown" ? "Dropdown Options" : "Field Options"}
+                  {field.type === "dropdown"
+                    ? "Dropdown Options"
+                    : "Field Options"}
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  Add one option per row. Each option can open its own conditional branch.
+                  Add one option per row. Each option can open its own
+                  conditional branch.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => addConditionalFieldOption(questionIndex, optionId, field.id)}
+                onClick={() =>
+                  addConditionalFieldOption(questionIndex, optionId, field.id)
+                }
                 className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
               >
                 <Plus size={14} /> Add Option
@@ -3379,11 +3715,16 @@ const FormManagement = () => {
             <div className="mt-4 space-y-3">
               {fieldOptions.map((fieldOption, fieldOptionIndex) => {
                 const panelKey = `${questionId}::${optionId}::${field.id}::${fieldOption.id}`;
-                const childFields = Array.isArray(fieldOption.conditionalLogic?.fields)
+                const childFields = Array.isArray(
+                  fieldOption.conditionalLogic?.fields,
+                )
                   ? fieldOption.conditionalLogic.fields
                   : [];
                 const expanded = isConditionalPanelExpanded(panelKey);
-                const childBreadcrumb = [...fieldBreadcrumb, fieldOption.label || `Option ${fieldOptionIndex + 1}`];
+                const childBreadcrumb = [
+                  ...fieldBreadcrumb,
+                  fieldOption.label || `Option ${fieldOptionIndex + 1}`,
+                ];
 
                 return (
                   <div
@@ -3493,7 +3834,12 @@ const FormManagement = () => {
                       <span>Stable ID: {fieldOption.id}</span>
                       <button
                         type="button"
-                        onClick={() => addConditionalFieldToOption(questionIndex, fieldOption.id)}
+                        onClick={() =>
+                          addConditionalFieldToOption(
+                            questionIndex,
+                            fieldOption.id,
+                          )
+                        }
                         className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-[11px] font-semibold text-slate-200"
                       >
                         <ListPlus size={12} /> Add Conditional Question
@@ -3513,7 +3859,12 @@ const FormManagement = () => {
                           </div>
                           <button
                             type="button"
-                            onClick={() => addConditionalFieldToOption(questionIndex, fieldOption.id)}
+                            onClick={() =>
+                              addConditionalFieldToOption(
+                                questionIndex,
+                                fieldOption.id,
+                              )
+                            }
                             className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
                           >
                             <Plus size={14} /> Add Conditional Question
@@ -3533,7 +3884,8 @@ const FormManagement = () => {
                           )}
                           {!childFields.length && (
                             <div className="rounded-2xl border border-dashed border-cyan-500/30 bg-slate-950/20 p-4 text-xs text-slate-400">
-                              No conditional questions yet. Add one to continue nesting.
+                              No conditional questions yet. Add one to continue
+                              nesting.
                             </div>
                           )}
                         </div>
@@ -3561,7 +3913,8 @@ const FormManagement = () => {
         <div>
           <h1 className="text-4xl font-black">Forms Builder</h1>
           <p className={theme.textSecondary}>
-            Clean Google Forms-style builder for public links and response tracking.
+            Clean Google Forms-style builder for public links and response
+            tracking.
           </p>
         </div>
 
@@ -3585,11 +3938,15 @@ const FormManagement = () => {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
-        <aside className={`${theme.card} rounded-3xl border ${theme.border} p-4 space-y-4`}>
+        <aside
+          className={`${theme.card} rounded-3xl border ${theme.border} p-4 space-y-4`}
+        >
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">All Forms</h2>
-              <p className={`text-sm ${theme.textSecondary}`}>Title, slug, status, responses.</p>
+              <p className={`text-sm ${theme.textSecondary}`}>
+                Title, slug, status, responses.
+              </p>
             </div>
             <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-semibold text-cyan-300">
               {forms.length}
@@ -3627,9 +3984,13 @@ const FormManagement = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="font-semibold">{form.title}</div>
-                        <div className="text-xs text-slate-400">/{form.slug}</div>
+                        <div className="text-xs text-slate-400">
+                          /{form.slug}
+                        </div>
                       </div>
-                      <span className={`text-xs font-semibold ${form.status === "live" ? "text-cyan-300" : "text-amber-300"}`}>
+                      <span
+                        className={`text-xs font-semibold ${form.status === "live" ? "text-cyan-300" : "text-amber-300"}`}
+                      >
                         {form.status === "live" ? "Live" : "Draft"}
                       </span>
                     </div>
@@ -3695,12 +4056,19 @@ const FormManagement = () => {
           )}
         </aside>
 
-        <section className={`${theme.card} rounded-3xl border ${theme.border} p-6 space-y-6`}>
+        <section
+          className={`${theme.card} rounded-3xl border ${theme.border} p-6 space-y-6`}
+        >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-2xl font-black">{draft.title || "Untitled form"}</h2>
+              <h2 className="text-2xl font-black">
+                {draft.title || "Untitled form"}
+              </h2>
               <p className={`text-sm ${theme.textSecondary}`}>
-                Public link: {draft.slug ? buildPublicFormUrl(draft.slug) : "Save to generate link"}
+                Public link:{" "}
+                {draft.slug
+                  ? buildPublicFormUrl(draft.slug)
+                  : "Save to generate link"}
               </p>
             </div>
 
@@ -3722,7 +4090,11 @@ const FormManagement = () => {
               <button
                 type="button"
                 onClick={() => saveForm("draft")}
-                disabled={saving || uploadingBannerImage || !!uploadingEmailTemplateField}
+                disabled={
+                  saving ||
+                  uploadingBannerImage ||
+                  !!uploadingEmailTemplateField
+                }
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold disabled:opacity-50"
               >
                 <Save size={16} /> Save
@@ -3730,7 +4102,11 @@ const FormManagement = () => {
               <button
                 type="button"
                 onClick={publishForm}
-                disabled={saving || uploadingBannerImage || !!uploadingEmailTemplateField}
+                disabled={
+                  saving ||
+                  uploadingBannerImage ||
+                  !!uploadingEmailTemplateField
+                }
                 className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
               >
                 <Send size={16} /> Publish
@@ -3753,7 +4129,11 @@ const FormManagement = () => {
             {[
               { id: "questions", label: "Questions", icon: ListPlus },
               { id: "settings", label: "Settings", icon: Settings },
-              { id: "notification-settings", label: "Notification Settings", icon: Bell },
+              {
+                id: "notification-settings",
+                label: "Notification Settings",
+                icon: Bell,
+              },
               { id: "email-template", label: "Email Template", icon: Mail },
               { id: "responses", label: "Responses", icon: MessageSquare },
             ].map((tab) => {
@@ -3765,7 +4145,9 @@ const FormManagement = () => {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold ${
-                    active ? "bg-cyan-600 text-white" : "bg-white/5 text-slate-300"
+                    active
+                      ? "bg-cyan-600 text-white"
+                      : "bg-white/5 text-slate-300"
                   }`}
                 >
                   <Icon size={16} /> {tab.label}
@@ -3778,7 +4160,9 @@ const FormManagement = () => {
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold">Form Title</label>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Form Title
+                  </label>
                   <input
                     value={draft.title}
                     onChange={(e) => updateDraft("title", e.target.value)}
@@ -3787,7 +4171,9 @@ const FormManagement = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold">Slug / Public Route</label>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Slug / Public Route
+                  </label>
                   <input
                     value={draft.slug}
                     onChange={(e) => {
@@ -3797,7 +4183,9 @@ const FormManagement = () => {
                     className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                     placeholder="internship-application"
                   />
-                  <p className="mt-2 text-xs text-slate-400">Public URL: /forms/{draft.slug || "slug"}</p>
+                  <p className="mt-2 text-xs text-slate-400">
+                    Public URL: /forms/{draft.slug || "slug"}
+                  </p>
                 </div>
               </div>
 
@@ -3805,10 +4193,14 @@ const FormManagement = () => {
                 <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold">Title Font Family</label>
+                      <label className="block text-sm font-semibold">
+                        Title Font Family
+                      </label>
                       <select
                         value={draft.titleStyle?.fontFamily || ""}
-                        onChange={(e) => updateTitleStyle("fontFamily", e.target.value)}
+                        onChange={(e) =>
+                          updateTitleStyle("fontFamily", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       >
                         <option value="">Default</option>
@@ -3820,10 +4212,14 @@ const FormManagement = () => {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold">Title Font Size</label>
+                      <label className="block text-sm font-semibold">
+                        Title Font Size
+                      </label>
                       <select
                         value={draft.titleStyle?.fontSize || ""}
-                        onChange={(e) => updateTitleStyle("fontSize", e.target.value)}
+                        onChange={(e) =>
+                          updateTitleStyle("fontSize", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       >
                         <option value="">Default</option>
@@ -3835,10 +4231,14 @@ const FormManagement = () => {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold">Title Font Weight</label>
+                      <label className="block text-sm font-semibold">
+                        Title Font Weight
+                      </label>
                       <select
                         value={draft.titleStyle?.fontWeight || ""}
-                        onChange={(e) => updateTitleStyle("fontWeight", e.target.value)}
+                        onChange={(e) =>
+                          updateTitleStyle("fontWeight", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       >
                         <option value="">Default</option>
@@ -3850,11 +4250,15 @@ const FormManagement = () => {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold">Title Color</label>
+                      <label className="block text-sm font-semibold">
+                        Title Color
+                      </label>
                       <input
                         type="color"
-                        value={draft.titleStyle?.color || "#111827"}
-                        onChange={(e) => updateTitleStyle("color", e.target.value)}
+                        value={draft.titleStyle?.color || "#ffffff"}
+                        onChange={(e) =>
+                          updateTitleStyle("color", e.target.value)
+                        }
                         className="h-12 w-full rounded-2xl border border-white/10 bg-transparent px-2 py-1"
                       />
                     </div>
@@ -3865,9 +4269,12 @@ const FormManagement = () => {
                       <button
                         key={alignment.value}
                         type="button"
-                        onClick={() => updateTitleStyle("textAlign", alignment.value)}
+                        onClick={() =>
+                          updateTitleStyle("textAlign", alignment.value)
+                        }
                         className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                          (draft.titleStyle?.textAlign || "left") === alignment.value
+                          (draft.titleStyle?.textAlign || "left") ===
+                          alignment.value
                             ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
                             : "border-white/10 bg-white/5 text-slate-200"
                         }`}
@@ -3880,7 +4287,9 @@ const FormManagement = () => {
                       onClick={() =>
                         updateTitleStyle(
                           "fontStyle",
-                          draft.titleStyle?.fontStyle === "italic" ? "normal" : "italic",
+                          draft.titleStyle?.fontStyle === "italic"
+                            ? "normal"
+                            : "italic",
                         )
                       }
                       className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
@@ -3896,7 +4305,9 @@ const FormManagement = () => {
                       onClick={() =>
                         updateTitleStyle(
                           "textDecoration",
-                          draft.titleStyle?.textDecoration === "underline" ? "none" : "underline",
+                          draft.titleStyle?.textDecoration === "underline"
+                            ? "none"
+                            : "underline",
                         )
                       }
                       className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
@@ -3909,7 +4320,12 @@ const FormManagement = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDraft((prev) => ({ ...prev, titleStyle: { ...DEFAULT_TITLE_STYLE } }))}
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          titleStyle: { ...DEFAULT_TITLE_STYLE },
+                        }))
+                      }
                       className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200"
                     >
                       Reset title style
@@ -3917,7 +4333,9 @@ const FormManagement = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold">Description</label>
+                    <label className="block text-sm font-semibold">
+                      Description
+                    </label>
                     <RichTextEditor
                       value={draft.description}
                       onChange={(html) => updateDraft("description", html)}
@@ -3930,8 +4348,12 @@ const FormManagement = () => {
                 <div className="rounded-3xl border border-cyan-400/20 bg-slate-950/45 p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-100">Live Preview</div>
-                      <div className="text-xs text-slate-400">Matches the public form typography</div>
+                      <div className="text-sm font-semibold text-slate-100">
+                        Live Preview
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        Matches the public form typography
+                      </div>
                     </div>
                     {/* <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
                       Public preview
@@ -3941,7 +4363,9 @@ const FormManagement = () => {
                     <div className="flex flex-row items-center gap-4">
                       {draft.logoUrl ? (
                         <img
-                          src={getOptimizedImageUrl(draft.logoAsset || draft.logoUrl)}
+                          src={getOptimizedImageUrl(
+                            draft.logoAsset || draft.logoUrl,
+                          )}
                           alt="Form logo preview"
                           className="h-16 w-16 shrink-0 rounded-2xl bg-white/5 object-contain p-2"
                         />
@@ -3953,7 +4377,22 @@ const FormManagement = () => {
                       <div className="min-w-0 flex-1">
                         <h1
                           className="break-words"
-                          style={resolveTypographyStyle(draft.titleStyle, DEFAULT_TITLE_STYLE)}
+                          style={{
+                            ...resolveTypographyStyle(
+                              draft.titleStyle,
+                              DEFAULT_TITLE_STYLE,
+                            ),
+
+                            color: draft.titleStyle?.color || "#ffffff",
+
+                            // Global gradient heading CSS ko override karega
+                            background: "none",
+                            backgroundImage: "none",
+                            WebkitBackgroundClip: "initial",
+                            backgroundClip: "initial",
+                            WebkitTextFillColor:
+                              draft.titleStyle?.color || "#ffffff",
+                          }}
                         >
                           {draft.title || "Form title preview"}
                         </h1>
@@ -3965,7 +4404,9 @@ const FormManagement = () => {
                               DEFAULT_DESCRIPTION_STYLE,
                             )}
                             dangerouslySetInnerHTML={{
-                              __html: sanitizeRichTextHtml(draft.description || ""),
+                              __html: sanitizeRichTextHtml(
+                                draft.description || "",
+                              ),
                             }}
                           />
                         ) : (
@@ -3980,13 +4421,15 @@ const FormManagement = () => {
                     <div>
                       <div className="text-slate-400">Title font</div>
                       <div className="mt-1 font-semibold text-slate-100">
-                        {draft.titleStyle?.fontFamily || DEFAULT_TITLE_STYLE.fontFamily}
+                        {draft.titleStyle?.fontFamily ||
+                          DEFAULT_TITLE_STYLE.fontFamily}
                       </div>
                     </div>
                     <div>
                       <div className="text-slate-400">Description font</div>
                       <div className="mt-1 font-semibold text-slate-100">
-                        {draft.descriptionStyle?.fontFamily || "Inherited / pasted"}
+                        {draft.descriptionStyle?.fontFamily ||
+                          "Inherited / pasted"}
                       </div>
                     </div>
                   </div>
@@ -3996,7 +4439,9 @@ const FormManagement = () => {
               <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="font-semibold">Questions</div>
-                  <div className="text-sm text-slate-400">Add unlimited questions.</div>
+                  <div className="text-sm text-slate-400">
+                    Add unlimited questions.
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button
@@ -4013,7 +4458,9 @@ const FormManagement = () => {
                     className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Upload size={16} />
-                    {importingFormFile ? "Analyzing File..." : "Import Form From File"}
+                    {importingFormFile
+                      ? "Analyzing File..."
+                      : "Import Form From File"}
                   </button>
                   <input
                     ref={importFileInputRef}
@@ -4028,25 +4475,50 @@ const FormManagement = () => {
               <div className="space-y-4">
                 {draft.questions.map((question, index) => {
                   const type = question.type;
-                  const isChoice = ["dropdown", "radio", "checkbox"].includes(type);
+                  const isChoice = ["dropdown", "radio", "checkbox"].includes(
+                    type,
+                  );
                   return (
-                    <div key={question.id} className="rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div
+                      key={question.id}
+                      className="rounded-3xl border border-white/10 bg-slate-950/40 p-5"
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm font-semibold">Question {index + 1}</div>
-                          <div className="text-xs text-slate-400">Drag-free reorder with arrows</div>
+                          <div className="text-sm font-semibold">
+                            Question {index + 1}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            Drag-free reorder with arrows
+                          </div>
                         </div>
                         <div className="flex gap-2">
-                          <button type="button" onClick={() => moveQuestion(index, -1)} className="rounded-xl border border-white/10 p-2">
+                          <button
+                            type="button"
+                            onClick={() => moveQuestion(index, -1)}
+                            className="rounded-xl border border-white/10 p-2"
+                          >
                             <ArrowUp size={14} />
                           </button>
-                          <button type="button" onClick={() => moveQuestion(index, 1)} className="rounded-xl border border-white/10 p-2">
+                          <button
+                            type="button"
+                            onClick={() => moveQuestion(index, 1)}
+                            className="rounded-xl border border-white/10 p-2"
+                          >
                             <ArrowDown size={14} />
                           </button>
-                          <button type="button" onClick={() => duplicateQuestion(index)} className="rounded-xl border border-white/10 p-2">
+                          <button
+                            type="button"
+                            onClick={() => duplicateQuestion(index)}
+                            className="rounded-xl border border-white/10 p-2"
+                          >
                             <Duplicate size={14} />
                           </button>
-                          <button type="button" onClick={() => removeQuestion(index)} className="rounded-xl border border-red-500/30 p-2 text-red-300">
+                          <button
+                            type="button"
+                            onClick={() => removeQuestion(index)}
+                            className="rounded-xl border border-red-500/30 p-2 text-red-300"
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -4054,19 +4526,27 @@ const FormManagement = () => {
 
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div>
-                          <label className="mb-2 block text-sm font-semibold">Question Label</label>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Question Label
+                          </label>
                           <input
                             value={question.label}
-                            onChange={(e) => updateQuestion(index, "label", e.target.value)}
+                            onChange={(e) =>
+                              updateQuestion(index, "label", e.target.value)
+                            }
                             className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                             placeholder="Enter question text"
                           />
                         </div>
                         <div>
-                          <label className="mb-2 block text-sm font-semibold">Question Type</label>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Question Type
+                          </label>
                           <select
                             value={question.type}
-                            onChange={(e) => updateQuestion(index, "type", e.target.value)}
+                            onChange={(e) =>
+                              updateQuestion(index, "type", e.target.value)
+                            }
                             className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                           >
                             {QUESTION_TYPES.map((item) => (
@@ -4080,18 +4560,30 @@ const FormManagement = () => {
 
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div>
-                          <label className="mb-2 block text-sm font-semibold">Placeholder</label>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Placeholder
+                          </label>
                           <input
                             value={question.placeholder}
-                            onChange={(e) => updateQuestion(index, "placeholder", e.target.value)}
+                            onChange={(e) =>
+                              updateQuestion(
+                                index,
+                                "placeholder",
+                                e.target.value,
+                              )
+                            }
                             className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                           />
                         </div>
                         <div>
-                          <label className="mb-2 block text-sm font-semibold">Help Text</label>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Help Text
+                          </label>
                           <input
                             value={question.helpText}
-                            onChange={(e) => updateQuestion(index, "helpText", e.target.value)}
+                            onChange={(e) =>
+                              updateQuestion(index, "helpText", e.target.value)
+                            }
                             className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                           />
                         </div>
@@ -4102,7 +4594,13 @@ const FormManagement = () => {
                           <input
                             type="checkbox"
                             checked={question.required}
-                            onChange={(e) => updateQuestion(index, "required", e.target.checked)}
+                            onChange={(e) =>
+                              updateQuestion(
+                                index,
+                                "required",
+                                e.target.checked,
+                              )
+                            }
                           />
                           Required
                         </label>
@@ -4110,77 +4608,117 @@ const FormManagement = () => {
                           <input
                             type="checkbox"
                             checked={question.validationEnabled === true}
-                            onChange={(e) => updateQuestion(index, "validationEnabled", e.target.checked)}
+                            onChange={(e) =>
+                              updateQuestion(
+                                index,
+                                "validationEnabled",
+                                e.target.checked,
+                              )
+                            }
                           />
                           Enable Validation
                         </label>
-                        <span className="text-xs text-slate-400">Type: {question.type}</span>
+                        <span className="text-xs text-slate-400">
+                          Type: {question.type}
+                        </span>
                       </div>
 
                       {type === "number" && (
                         <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4">
-                          <div className="mb-4 text-sm font-semibold">Number Validation</div>
+                          <div className="mb-4 text-sm font-semibold">
+                            Number Validation
+                          </div>
                           <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                              <label className="mb-2 block text-sm font-semibold">Minimum Value</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Minimum Value
+                              </label>
                               <input
                                 type="number"
                                 step="1"
                                 value={question.validation?.minValue ?? ""}
                                 onChange={(e) =>
-                                  updateQuestionValidation(index, "minValue", e.target.value)
+                                  updateQuestionValidation(
+                                    index,
+                                    "minValue",
+                                    e.target.value,
+                                  )
                                 }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="18"
                               />
                             </div>
                             <div>
-                              <label className="mb-2 block text-sm font-semibold">Maximum Value</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Maximum Value
+                              </label>
                               <input
                                 type="number"
                                 step="1"
                                 value={question.validation?.maxValue ?? ""}
                                 onChange={(e) =>
-                                  updateQuestionValidation(index, "maxValue", e.target.value)
+                                  updateQuestionValidation(
+                                    index,
+                                    "maxValue",
+                                    e.target.value,
+                                  )
                                 }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="60"
                               />
                             </div>
                             <div>
-                              <label className="mb-2 block text-sm font-semibold">Minimum Digit Length</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Minimum Digit Length
+                              </label>
                               <input
                                 type="number"
                                 min="1"
                                 step="1"
                                 value={question.validation?.minDigits ?? ""}
                                 onChange={(e) =>
-                                  updateQuestionValidation(index, "minDigits", e.target.value)
+                                  updateQuestionValidation(
+                                    index,
+                                    "minDigits",
+                                    e.target.value,
+                                  )
                                 }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="2"
                               />
                             </div>
                             <div>
-                              <label className="mb-2 block text-sm font-semibold">Maximum Digit Length</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Maximum Digit Length
+                              </label>
                               <input
                                 type="number"
                                 min="1"
                                 step="1"
                                 value={question.validation?.maxDigits ?? ""}
                                 onChange={(e) =>
-                                  updateQuestionValidation(index, "maxDigits", e.target.value)
+                                  updateQuestionValidation(
+                                    index,
+                                    "maxDigits",
+                                    e.target.value,
+                                  )
                                 }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="2"
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="mb-2 block text-sm font-semibold">Custom Error Message</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Custom Error Message
+                              </label>
                               <textarea
                                 value={question.validation?.errorMessage ?? ""}
                                 onChange={(e) =>
-                                  updateQuestionValidation(index, "errorMessage", e.target.value)
+                                  updateQuestionValidation(
+                                    index,
+                                    "errorMessage",
+                                    e.target.value,
+                                  )
                                 }
                                 rows={3}
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
@@ -4194,7 +4732,9 @@ const FormManagement = () => {
                       {isChoice && (
                         <div className="mt-4 space-y-4">
                           <div className="flex items-center justify-between gap-3">
-                            <label className="block text-sm font-semibold">Options</label>
+                            <label className="block text-sm font-semibold">
+                              Options
+                            </label>
                             <button
                               type="button"
                               onClick={() => addQuestionOption(index)}
@@ -4205,75 +4745,104 @@ const FormManagement = () => {
                           </div>
 
                           <div className="space-y-3">
-                            {(question.options || []).map((option, optionIndex) => (
-                              <div
-                                key={option.id}
-                                className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
-                              >
-                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                                  <div>
-                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
-                                      Option Label
-                                    </label>
-                                    <input
-                                      value={option.label || ""}
-                                      onChange={(e) =>
-                                        updateQuestionOption(index, option.id, "label", e.target.value)
-                                      }
-                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                      placeholder={`Option ${optionIndex + 1}`}
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
-                                      Option Value
-                                    </label>
-                                    <input
-                                      value={option.value || ""}
-                                      onChange={(e) =>
-                                        updateQuestionOption(index, option.id, "value", e.target.value)
-                                      }
-                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                      placeholder="Stable internal value"
-                                    />
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeQuestionOption(index, option.id)}
-                                    className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => addConditionalFieldToOption(index, option.id)}
-                                    className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
-                                  >
-                                    <ListPlus size={14} /> Configure conditional fields
-                                  </button>
-                                  <span className="text-xs text-slate-400">
-                                    Stable ID: {option.id}
-                                  </span>
-                                </div>
-
-                                {option.conditionalLogic?.fields?.length > 0 && (
-                                  <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
-                                      Conditional Fields
+                            {(question.options || []).map(
+                              (option, optionIndex) => (
+                                <div
+                                  key={option.id}
+                                  className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
+                                >
+                                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                                    <div>
+                                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                        Option Label
+                                      </label>
+                                      <input
+                                        value={option.label || ""}
+                                        onChange={(e) =>
+                                          updateQuestionOption(
+                                            index,
+                                            option.id,
+                                            "label",
+                                            e.target.value,
+                                          )
+                                        }
+                                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                        placeholder={`Option ${optionIndex + 1}`}
+                                      />
                                     </div>
-                                    {option.conditionalLogic.fields.map((field, fieldIndex) =>
-                                      renderConditionalFieldEditor(question.id, index, option.id, field, 1, [
-                                        question.label || "Question",
-                                        option.label || "Option",
-                                      ]),
-                                    )}
+                                    <div>
+                                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                        Option Value
+                                      </label>
+                                      <input
+                                        value={option.value || ""}
+                                        onChange={(e) =>
+                                          updateQuestionOption(
+                                            index,
+                                            option.id,
+                                            "value",
+                                            e.target.value,
+                                          )
+                                        }
+                                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                        placeholder="Stable internal value"
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        removeQuestionOption(index, option.id)
+                                      }
+                                      className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                                    >
+                                      Remove
+                                    </button>
                                   </div>
-                                )}
-                              </div>
-                            ))}
+
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        addConditionalFieldToOption(
+                                          index,
+                                          option.id,
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                    >
+                                      <ListPlus size={14} /> Configure
+                                      conditional fields
+                                    </button>
+                                    <span className="text-xs text-slate-400">
+                                      Stable ID: {option.id}
+                                    </span>
+                                  </div>
+
+                                  {option.conditionalLogic?.fields?.length >
+                                    0 && (
+                                    <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                                        Conditional Fields
+                                      </div>
+                                      {option.conditionalLogic.fields.map(
+                                        (field, fieldIndex) =>
+                                          renderConditionalFieldEditor(
+                                            question.id,
+                                            index,
+                                            option.id,
+                                            field,
+                                            1,
+                                            [
+                                              question.label || "Question",
+                                              option.label || "Option",
+                                            ],
+                                          ),
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ),
+                            )}
                           </div>
                         </div>
                       )}
@@ -4294,7 +4863,9 @@ const FormManagement = () => {
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold">Status</label>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Status
+                  </label>
                   <select
                     value={draft.status}
                     onChange={(e) => updateDraft("status", e.target.value)}
@@ -4305,7 +4876,9 @@ const FormManagement = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold">Theme Color</label>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Theme Color
+                  </label>
                   <input
                     value={draft.themeColor}
                     onChange={(e) => updateDraft("themeColor", e.target.value)}
@@ -4314,7 +4887,9 @@ const FormManagement = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold">Expiry Date & Time</label>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Expiry Date & Time
+                  </label>
                   <input
                     type="datetime-local"
                     value={draft.expiresAt}
@@ -4329,10 +4904,14 @@ const FormManagement = () => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold">Success Message</label>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Success Message
+                  </label>
                   <textarea
                     value={draft.successMessage}
-                    onChange={(e) => updateDraft("successMessage", e.target.value)}
+                    onChange={(e) =>
+                      updateDraft("successMessage", e.target.value)
+                    }
                     rows={3}
                     className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
                   />
@@ -4340,7 +4919,9 @@ const FormManagement = () => {
                 <div className="space-y-4">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Form Logo</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Form Logo
+                      </label>
                       <div className="flex flex-wrap items-center gap-3">
                         <input
                           ref={formLogoInputRef}
@@ -4348,7 +4929,9 @@ const FormManagement = () => {
                           type="file"
                           className="sr-only"
                           accept="image/jpeg,image/png,image/webp"
-                          onChange={(e) => handleFormLogoFile(e.target.files?.[0] || null)}
+                          onChange={(e) =>
+                            handleFormLogoFile(e.target.files?.[0] || null)
+                          }
                         />
                         <label
                           htmlFor="form-logo-upload"
@@ -4392,22 +4975,30 @@ const FormManagement = () => {
                     <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-4">
                       {draft.logoUrl && !formLogoPreviewFailed ? (
                         <img
-                          src={getOptimizedImageUrl(draft.logoAsset || draft.logoUrl)}
+                          src={getOptimizedImageUrl(
+                            draft.logoAsset || draft.logoUrl,
+                          )}
                           alt="Form logo preview"
                           className="block max-h-24 w-auto max-w-full object-contain"
                           onError={() => setFormLogoPreviewFailed(true)}
                         />
                       ) : draft.logoUrl ? (
-                        <div className="text-sm text-slate-400">Logo preview unavailable</div>
+                        <div className="text-sm text-slate-400">
+                          Logo preview unavailable
+                        </div>
                       ) : (
-                        <div className="text-sm text-slate-400">No logo selected</div>
+                        <div className="text-sm text-slate-400">
+                          No logo selected
+                        </div>
                       )}
                     </div>
                   </div>
 
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Form Banner Image</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Form Banner Image
+                      </label>
                       <input
                         value={draft.bannerImage || draft.bannerImageUrl}
                         onChange={(e) => {
@@ -4426,7 +5017,9 @@ const FormManagement = () => {
                         type="file"
                         className="sr-only"
                         accept="image/jpeg,image/png,image/webp"
-                        onChange={(e) => handleBannerImageFile(e.target.files?.[0] || null)}
+                        onChange={(e) =>
+                          handleBannerImageFile(e.target.files?.[0] || null)
+                        }
                       />
                       <label
                         htmlFor="form-banner-upload"
@@ -4477,10 +5070,14 @@ const FormManagement = () => {
                     )}
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Admin Notification Email</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Admin Notification Email
+                    </label>
                     <input
                       value={draft.notificationEmail}
-                      onChange={(e) => updateDraft("notificationEmail", e.target.value)}
+                      onChange={(e) =>
+                        updateDraft("notificationEmail", e.target.value)
+                      }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="admin@example.com"
                     />
@@ -4489,7 +5086,12 @@ const FormManagement = () => {
                     <input
                       type="checkbox"
                       checked={draft.confirmationEmailEnabled}
-                      onChange={(e) => updateDraft("confirmationEmailEnabled", e.target.checked)}
+                      onChange={(e) =>
+                        updateDraft(
+                          "confirmationEmailEnabled",
+                          e.target.checked,
+                        )
+                      }
                     />
                     Send confirmation email to submitter
                   </label>
@@ -4497,7 +5099,9 @@ const FormManagement = () => {
                     <input
                       type="checkbox"
                       checked={draft.allowFileUpload}
-                      onChange={(e) => updateDraft("allowFileUpload", e.target.checked)}
+                      onChange={(e) =>
+                        updateDraft("allowFileUpload", e.target.checked)
+                      }
                     />
                     Allow file/image uploads
                   </label>
@@ -4509,7 +5113,9 @@ const FormManagement = () => {
           {activeTab === "notification-settings" && (
             <div className="space-y-5">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <div className="text-lg font-semibold">Notification Settings</div>
+                <div className="text-lg font-semibold">
+                  Notification Settings
+                </div>
                 <div className="text-sm text-slate-400">
                   Enable the delivery channels you want for this form.
                 </div>
@@ -4519,9 +5125,15 @@ const FormManagement = () => {
                 <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
                   <input
                     type="checkbox"
-                    checked={draft.notificationSettings?.sendEmailNotification !== false}
+                    checked={
+                      draft.notificationSettings?.sendEmailNotification !==
+                      false
+                    }
                     onChange={(e) =>
-                      updateNotificationSettings("sendEmailNotification", e.target.checked)
+                      updateNotificationSettings(
+                        "sendEmailNotification",
+                        e.target.checked,
+                      )
                     }
                   />
                   Email Notification
@@ -4529,9 +5141,15 @@ const FormManagement = () => {
                 <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
                   <input
                     type="checkbox"
-                    checked={draft.notificationSettings?.sendDashboardNotification === true}
+                    checked={
+                      draft.notificationSettings?.sendDashboardNotification ===
+                      true
+                    }
                     onChange={(e) =>
-                      updateNotificationSettings("sendDashboardNotification", e.target.checked)
+                      updateNotificationSettings(
+                        "sendDashboardNotification",
+                        e.target.checked,
+                      )
                     }
                   />
                   Send Dashboard Notification
@@ -4539,9 +5157,15 @@ const FormManagement = () => {
                 <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
                   <input
                     type="checkbox"
-                    checked={draft.notificationSettings?.sendTelegramNotification === true}
+                    checked={
+                      draft.notificationSettings?.sendTelegramNotification ===
+                      true
+                    }
                     onChange={(e) =>
-                      updateNotificationSettings("sendTelegramNotification", e.target.checked)
+                      updateNotificationSettings(
+                        "sendTelegramNotification",
+                        e.target.checked,
+                      )
                     }
                   />
                   Send Telegram Notification
@@ -4549,9 +5173,15 @@ const FormManagement = () => {
                 <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
                   <input
                     type="checkbox"
-                    checked={draft.notificationSettings?.sendWhatsAppNotification === true}
+                    checked={
+                      draft.notificationSettings?.sendWhatsAppNotification ===
+                      true
+                    }
                     onChange={(e) =>
-                      updateNotificationSettings("sendWhatsAppNotification", e.target.checked)
+                      updateNotificationSettings(
+                        "sendWhatsAppNotification",
+                        e.target.checked,
+                      )
                     }
                   />
                   Send WhatsApp Notification
@@ -4561,22 +5191,32 @@ const FormManagement = () => {
               {draft.notificationSettings?.sendTelegramNotification && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Telegram Bot Token</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Telegram Bot Token
+                    </label>
                     <input
                       value={draft.notificationSettings?.telegramBotToken || ""}
                       onChange={(e) =>
-                        updateNotificationSettings("telegramBotToken", e.target.value)
+                        updateNotificationSettings(
+                          "telegramBotToken",
+                          e.target.value,
+                        )
                       }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="123456:ABC..."
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Telegram Chat ID</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Telegram Chat ID
+                    </label>
                     <input
                       value={draft.notificationSettings?.telegramChatId || ""}
                       onChange={(e) =>
-                        updateNotificationSettings("telegramChatId", e.target.value)
+                        updateNotificationSettings(
+                          "telegramChatId",
+                          e.target.value,
+                        )
                       }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="-1001234567890"
@@ -4588,44 +5228,72 @@ const FormManagement = () => {
               {draft.notificationSettings?.sendWhatsAppNotification && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Access Token</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Access Token
+                    </label>
                     <input
-                      value={draft.notificationSettings?.whatsappAccessToken || ""}
+                      value={
+                        draft.notificationSettings?.whatsappAccessToken || ""
+                      }
                       onChange={(e) =>
-                        updateNotificationSettings("whatsappAccessToken", e.target.value)
+                        updateNotificationSettings(
+                          "whatsappAccessToken",
+                          e.target.value,
+                        )
                       }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="Meta access token"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Phone Number ID</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Phone Number ID
+                    </label>
                     <input
-                      value={draft.notificationSettings?.whatsappPhoneNumberId || ""}
+                      value={
+                        draft.notificationSettings?.whatsappPhoneNumberId || ""
+                      }
                       onChange={(e) =>
-                        updateNotificationSettings("whatsappPhoneNumberId", e.target.value)
+                        updateNotificationSettings(
+                          "whatsappPhoneNumberId",
+                          e.target.value,
+                        )
                       }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="1234567890"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Verify Token (optional)</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Verify Token (optional)
+                    </label>
                     <input
-                      value={draft.notificationSettings?.whatsappVerifyToken || ""}
+                      value={
+                        draft.notificationSettings?.whatsappVerifyToken || ""
+                      }
                       onChange={(e) =>
-                        updateNotificationSettings("whatsappVerifyToken", e.target.value)
+                        updateNotificationSettings(
+                          "whatsappVerifyToken",
+                          e.target.value,
+                        )
                       }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="optional"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Business Number</label>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Business Number
+                    </label>
                     <input
-                      value={draft.notificationSettings?.whatsappBusinessNumber || ""}
+                      value={
+                        draft.notificationSettings?.whatsappBusinessNumber || ""
+                      }
                       onChange={(e) =>
-                        updateNotificationSettings("whatsappBusinessNumber", e.target.value)
+                        updateNotificationSettings(
+                          "whatsappBusinessNumber",
+                          e.target.value,
+                        )
                       }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                       placeholder="+91 9876543210"
@@ -4642,110 +5310,172 @@ const FormManagement = () => {
                 <div>
                   <div className="text-lg font-semibold">Email Template</div>
                   <div className="text-sm text-slate-400">
-                    Configure confirmation and notification emails for this form.
+                    Configure confirmation and notification emails for this
+                    form.
                   </div>
                 </div>
                 <div className="text-xs text-slate-400">
-                  Variables: {"{{formName}}"}, {"{{submissionDate}}"}, {"{{userName}}"}, {"{{userEmail}}"}, {"{{responsesTable}}"}, {"{{companyName}}"}
+                  Variables: {"{{formName}}"}, {"{{submissionDate}}"},{" "}
+                  {"{{userName}}"}, {"{{userEmail}}"}, {"{{responsesTable}}"},{" "}
+                  {"{{companyName}}"}
                 </div>
               </div>
 
               <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="space-y-5">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                    <label className="mb-3 block text-sm font-semibold">Theme Preset</label>
+                    <label className="mb-3 block text-sm font-semibold">
+                      Theme Preset
+                    </label>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {Object.entries(EMAIL_TEMPLATE_PRESETS).map(([key, preset]) => {
-                        const active = (draft.emailTemplate?.preset || "green-professional") === key;
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => updateEmailTemplatePreset(key)}
-                            className={`rounded-2xl border p-4 text-left transition ${
-                              active
-                                ? "border-cyan-500 bg-cyan-500/10 text-white"
-                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-                            }`}
-                          >
-                            <div className="font-semibold">{preset.label}</div>
-                            <div className="mt-2 flex gap-2">
-                              {key !== "custom" && (
-                                <>
-                                  <span className="h-4 w-4 rounded-full" style={{ backgroundColor: preset.headerBackgroundColor }} />
-                                  <span className="h-4 w-4 rounded-full" style={{ backgroundColor: preset.accentColor }} />
-                                  <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: preset.cardBackgroundColor }} />
-                                </>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
+                      {Object.entries(EMAIL_TEMPLATE_PRESETS).map(
+                        ([key, preset]) => {
+                          const active =
+                            (draft.emailTemplate?.preset ||
+                              "green-professional") === key;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => updateEmailTemplatePreset(key)}
+                              className={`rounded-2xl border p-4 text-left transition ${
+                                active
+                                  ? "border-cyan-500 bg-cyan-500/10 text-white"
+                                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                              }`}
+                            >
+                              <div className="font-semibold">
+                                {preset.label}
+                              </div>
+                              <div className="mt-2 flex gap-2">
+                                {key !== "custom" && (
+                                  <>
+                                    <span
+                                      className="h-4 w-4 rounded-full"
+                                      style={{
+                                        backgroundColor:
+                                          preset.headerBackgroundColor,
+                                      }}
+                                    />
+                                    <span
+                                      className="h-4 w-4 rounded-full"
+                                      style={{
+                                        backgroundColor: preset.accentColor,
+                                      }}
+                                    />
+                                    <span
+                                      className="h-4 w-4 rounded-full border border-white/20"
+                                      style={{
+                                        backgroundColor:
+                                          preset.cardBackgroundColor,
+                                      }}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Header Title</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Header Title
+                      </label>
                       <input
                         value={draft.emailTemplate?.headerTitle || ""}
-                        onChange={(e) => updateEmailTemplate("headerTitle", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("headerTitle", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="{{formName}}"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Header Subtitle</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Header Subtitle
+                      </label>
                       <input
                         value={draft.emailTemplate?.headerSubtitle || ""}
-                        onChange={(e) => updateEmailTemplate("headerSubtitle", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("headerSubtitle", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="Thank you for your submission"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Success / Thank-you Message</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Success / Thank-you Message
+                      </label>
                       <textarea
                         value={draft.emailTemplate?.successMessage || ""}
-                        onChange={(e) => updateEmailTemplate("successMessage", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("successMessage", e.target.value)
+                        }
                         rows={3}
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
                         placeholder="Thank you for your response."
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Footer Text</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Footer Text
+                      </label>
                       <textarea
                         value={draft.emailTemplate?.footerText || ""}
-                        onChange={(e) => updateEmailTemplate("footerText", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("footerText", e.target.value)
+                        }
                         rows={3}
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
                         placeholder="This email was sent automatically."
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Company Name</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Company Name
+                      </label>
                       <input
                         value={draft.emailTemplate?.companyName || ""}
-                        onChange={(e) => updateEmailTemplate("companyName", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("companyName", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="TechnoSthan"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Website Button Text</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Website Button Text
+                      </label>
                       <input
                         value={draft.emailTemplate?.websiteButtonText || ""}
-                        onChange={(e) => updateEmailTemplate("websiteButtonText", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate(
+                            "websiteButtonText",
+                            e.target.value,
+                          )
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="Visit Website"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm font-semibold">Website Button URL</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Website Button URL
+                      </label>
                       <input
                         value={draft.emailTemplate?.websiteButtonUrl || ""}
-                        onChange={(e) => updateEmailTemplate("websiteButtonUrl", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate(
+                            "websiteButtonUrl",
+                            e.target.value,
+                          )
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="https://example.com"
                       />
@@ -4755,8 +5485,12 @@ const FormManagement = () => {
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-5 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className="text-sm font-semibold">Footer Buttons</div>
-                        <div className="text-xs text-slate-400">Optional buttons rendered in email footers.</div>
+                        <div className="text-sm font-semibold">
+                          Footer Buttons
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          Optional buttons rendered in email footers.
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -4769,22 +5503,41 @@ const FormManagement = () => {
 
                     <div className="space-y-4">
                       {emailFooterButtons.map((button, index) => (
-                        <div key={button.id || index} className="rounded-3xl border border-white/10 bg-slate-950/30 p-4 space-y-4">
+                        <div
+                          key={button.id || index}
+                          className="rounded-3xl border border-white/10 bg-slate-950/30 p-4 space-y-4"
+                        >
                           <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                              <label className="mb-2 block text-sm font-semibold">Button Text</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Button Text
+                              </label>
                               <input
                                 value={button.text || ""}
-                                onChange={(e) => updateFooterButton(index, "text", e.target.value)}
+                                onChange={(e) =>
+                                  updateFooterButton(
+                                    index,
+                                    "text",
+                                    e.target.value,
+                                  )
+                                }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="Visit Website"
                               />
                             </div>
                             <div>
-                              <label className="mb-2 block text-sm font-semibold">Button URL</label>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Button URL
+                              </label>
                               <input
                                 value={button.url || ""}
-                                onChange={(e) => updateFooterButton(index, "url", e.target.value)}
+                                onChange={(e) =>
+                                  updateFooterButton(
+                                    index,
+                                    "url",
+                                    e.target.value,
+                                  )
+                                }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="https://technosthan.com"
                               />
@@ -4821,22 +5574,33 @@ const FormManagement = () => {
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <label className="block text-sm font-semibold">Header Background</label>
+                        <label className="block text-sm font-semibold">
+                          Header Background
+                        </label>
                         <p className="mt-1 text-xs text-slate-400">
-                          Choose a solid color or a header image with text overlay.
+                          Choose a solid color or a header image with text
+                          overlay.
                         </p>
                       </div>
                       <div className="inline-flex rounded-2xl border border-white/10 bg-black/20 p-1">
                         {HEADER_BACKGROUND_TYPE_OPTIONS.map((option) => {
                           const active =
-                            (draft.emailTemplate?.headerBackgroundType || "color") === option.value;
+                            (draft.emailTemplate?.headerBackgroundType ||
+                              "color") === option.value;
                           return (
                             <button
                               key={option.value}
                               type="button"
-                              onClick={() => updateEmailTemplate("headerBackgroundType", option.value)}
+                              onClick={() =>
+                                updateEmailTemplate(
+                                  "headerBackgroundType",
+                                  option.value,
+                                )
+                              }
                               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                                active ? "bg-cyan-500 text-white" : "text-slate-300 hover:text-white"
+                                active
+                                  ? "bg-cyan-500 text-white"
+                                  : "text-slate-300 hover:text-white"
                               }`}
                             >
                               {option.label}
@@ -4846,12 +5610,22 @@ const FormManagement = () => {
                       </div>
                     </div>
 
-                    {(draft.emailTemplate?.headerBackgroundType || "color") === "color" ? (
+                    {(draft.emailTemplate?.headerBackgroundType || "color") ===
+                    "color" ? (
                       <div>
-                        <label className="mb-2 block text-sm font-semibold">Header Background Color</label>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Header Background Color
+                        </label>
                         <input
-                          value={draft.emailTemplate?.headerBackgroundColor || ""}
-                          onChange={(e) => updateEmailTemplate("headerBackgroundColor", e.target.value)}
+                          value={
+                            draft.emailTemplate?.headerBackgroundColor || ""
+                          }
+                          onChange={(e) =>
+                            updateEmailTemplate(
+                              "headerBackgroundColor",
+                              e.target.value,
+                            )
+                          }
                           className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                           placeholder="#166534"
                         />
@@ -4859,15 +5633,34 @@ const FormManagement = () => {
                     ) : (
                       <div className="space-y-4">
                         <div>
-                          <label className="mb-2 block text-sm font-semibold">Header Background Image URL</label>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Header Background Image URL
+                          </label>
                           <input
-                            value={draft.emailTemplate?.headerBackgroundImageUrl || ""}
+                            value={
+                              draft.emailTemplate?.headerBackgroundImageUrl ||
+                              ""
+                            }
                             onChange={(e) => {
-                              const normalized = normalizeHttpsUrl(e.target.value);
-                              updateEmailTemplate("headerBackgroundType", normalized ? "image" : "color");
-                              updateEmailTemplate("headerBackgroundImageUrl", normalized);
-                              updateEmailTemplate("headerBackgroundImagePublicId", "");
-                              updateEmailTemplate("headerBackgroundImageAsset", null);
+                              const normalized = normalizeHttpsUrl(
+                                e.target.value,
+                              );
+                              updateEmailTemplate(
+                                "headerBackgroundType",
+                                normalized ? "image" : "color",
+                              );
+                              updateEmailTemplate(
+                                "headerBackgroundImageUrl",
+                                normalized,
+                              );
+                              updateEmailTemplate(
+                                "headerBackgroundImagePublicId",
+                                "",
+                              );
+                              updateEmailTemplate(
+                                "headerBackgroundImageAsset",
+                                null,
+                              );
                               setHeaderBackgroundPreviewFailed(false);
                             }}
                             className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
@@ -4880,16 +5673,24 @@ const FormManagement = () => {
                             type="file"
                             hidden
                             accept="image/jpeg,image/png,image/webp"
-                            onChange={(e) => handleEmailTemplateImageFile("headerBackgroundImageUrl", e.target.files?.[0] || null)}
+                            onChange={(e) =>
+                              handleEmailTemplateImageFile(
+                                "headerBackgroundImageUrl",
+                                e.target.files?.[0] || null,
+                              )
+                            }
                           />
                           <button
                             type="button"
-                            onClick={() => emailHeaderBackgroundInputRef.current?.click()}
+                            onClick={() =>
+                              emailHeaderBackgroundInputRef.current?.click()
+                            }
                             disabled={!!uploadingEmailTemplateField}
                             className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <Upload size={16} />
-                            {uploadingEmailTemplateField === "headerBackgroundImageUrl"
+                            {uploadingEmailTemplateField ===
+                            "headerBackgroundImageUrl"
                               ? "Uploading..."
                               : draft.emailTemplate?.headerBackgroundImageUrl
                                 ? "Change Image"
@@ -4898,7 +5699,11 @@ const FormManagement = () => {
                           {draft.emailTemplate?.headerBackgroundImageUrl && (
                             <button
                               type="button"
-                              onClick={() => clearEmailTemplateImage("headerBackgroundImageUrl")}
+                              onClick={() =>
+                                clearEmailTemplateImage(
+                                  "headerBackgroundImageUrl",
+                                )
+                              }
                               className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
                             >
                               Clear Image
@@ -4906,18 +5711,23 @@ const FormManagement = () => {
                           )}
                         </div>
                         <p className="text-xs text-slate-400">
-                          Recommended size: 1200 × 500 px. Use a wide image with enough empty space for readable text.
+                          Recommended size: 1200 × 500 px. Use a wide image with
+                          enough empty space for readable text.
                         </p>
-                        {(draft.emailTemplate?.headerBackgroundImageUrl || draft.emailTemplate?.headerBackgroundImageAsset) &&
+                        {(draft.emailTemplate?.headerBackgroundImageUrl ||
+                          draft.emailTemplate?.headerBackgroundImageAsset) &&
                         !headerBackgroundPreviewFailed ? (
                           <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
                             <img
                               src={getOptimizedImageUrl(
-                                draft.emailTemplate.headerBackgroundImageAsset ||
+                                draft.emailTemplate
+                                  .headerBackgroundImageAsset ||
                                   draft.emailTemplate.headerBackgroundImageUrl,
                               )}
                               alt="Header background preview"
-                              onError={() => setHeaderBackgroundPreviewFailed(true)}
+                              onError={() =>
+                                setHeaderBackgroundPreviewFailed(true)
+                              }
                               className="h-40 w-full object-cover"
                             />
                           </div>
@@ -4928,63 +5738,121 @@ const FormManagement = () => {
                         )}
                         {headerBackgroundPreviewFailed && (
                           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-semibold text-amber-100">
-                            Header image preview unavailable. The fallback color will be used in the live preview and email.
+                            Header image preview unavailable. The fallback color
+                            will be used in the live preview and email.
                           </div>
                         )}
 
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Overlay Color</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Overlay Color
+                            </label>
                             <input
-                              value={draft.emailTemplate?.headerOverlayColor || ""}
-                              onChange={(e) => updateEmailTemplate("headerOverlayColor", e.target.value)}
+                              value={
+                                draft.emailTemplate?.headerOverlayColor || ""
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerOverlayColor",
+                                  e.target.value,
+                                )
+                              }
                               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                               placeholder="#000000"
                             />
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Overlay Opacity</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Overlay Opacity
+                            </label>
                             <input
                               type="range"
                               min="0"
                               max="0.9"
                               step="0.05"
-                              value={draft.emailTemplate?.headerOverlayOpacity ?? 0.45}
-                              onChange={(e) => updateEmailTemplate("headerOverlayOpacity", e.target.value)}
+                              value={
+                                draft.emailTemplate?.headerOverlayOpacity ??
+                                0.45
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerOverlayOpacity",
+                                  e.target.value,
+                                )
+                              }
                               className="w-full"
                             />
                             <div className="mt-2 text-xs text-slate-400">
-                              {Math.round((Number(draft.emailTemplate?.headerOverlayOpacity ?? 0.45) || 0) * 100)}%
+                              {Math.round(
+                                (Number(
+                                  draft.emailTemplate?.headerOverlayOpacity ??
+                                    0.45,
+                                ) || 0) * 100,
+                              )}
+                              %
                             </div>
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Header Text Color</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Header Text Color
+                            </label>
                             <input
                               value={draft.emailTemplate?.headerTextColor || ""}
-                              onChange={(e) => updateEmailTemplate("headerTextColor", e.target.value)}
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerTextColor",
+                                  e.target.value,
+                                )
+                              }
                               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                               placeholder="#ffffff"
                             />
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Background Position</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Background Position
+                            </label>
                             <select
-                              value={draft.emailTemplate?.headerBackgroundPosition || "center"}
-                              onChange={(e) => updateEmailTemplate("headerBackgroundPosition", e.target.value)}
+                              value={
+                                draft.emailTemplate?.headerBackgroundPosition ||
+                                "center"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerBackgroundPosition",
+                                  e.target.value,
+                                )
+                              }
                               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                             >
-                              {HEADER_BACKGROUND_POSITION_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
+                              {HEADER_BACKGROUND_POSITION_OPTIONS.map(
+                                (option) => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ),
+                              )}
                             </select>
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Background Size</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Background Size
+                            </label>
                             <select
-                              value={draft.emailTemplate?.headerBackgroundSize || "cover"}
-                              onChange={(e) => updateEmailTemplate("headerBackgroundSize", e.target.value)}
+                              value={
+                                draft.emailTemplate?.headerBackgroundSize ||
+                                "cover"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerBackgroundSize",
+                                  e.target.value,
+                                )
+                              }
                               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                             >
                               {HEADER_BACKGROUND_SIZE_OPTIONS.map((option) => (
@@ -4995,10 +5863,19 @@ const FormManagement = () => {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Text Alignment</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Text Alignment
+                            </label>
                             <select
-                              value={draft.emailTemplate?.headerTextAlign || "left"}
-                              onChange={(e) => updateEmailTemplate("headerTextAlign", e.target.value)}
+                              value={
+                                draft.emailTemplate?.headerTextAlign || "left"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerTextAlign",
+                                  e.target.value,
+                                )
+                              }
                               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                             >
                               {HEADER_TEXT_ALIGN_OPTIONS.map((option) => (
@@ -5009,13 +5886,22 @@ const FormManagement = () => {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold">Minimum Header Height</label>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Minimum Header Height
+                            </label>
                             <input
                               type="number"
                               min="120"
                               step="10"
-                              value={draft.emailTemplate?.headerMinHeight ?? 220}
-                              onChange={(e) => updateEmailTemplate("headerMinHeight", e.target.value)}
+                              value={
+                                draft.emailTemplate?.headerMinHeight ?? 220
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "headerMinHeight",
+                                  e.target.value,
+                                )
+                              }
                               className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                               placeholder="220"
                             />
@@ -5027,58 +5913,88 @@ const FormManagement = () => {
 
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Body Background</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Body Background
+                      </label>
                       <input
                         value={draft.emailTemplate?.bodyBackgroundColor || ""}
-                        onChange={(e) => updateEmailTemplate("bodyBackgroundColor", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate(
+                            "bodyBackgroundColor",
+                            e.target.value,
+                          )
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="#f0fdf4"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Card Background</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Card Background
+                      </label>
                       <input
                         value={draft.emailTemplate?.cardBackgroundColor || ""}
-                        onChange={(e) => updateEmailTemplate("cardBackgroundColor", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate(
+                            "cardBackgroundColor",
+                            e.target.value,
+                          )
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="#ffffff"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Accent Color</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Accent Color
+                      </label>
                       <input
                         value={draft.emailTemplate?.accentColor || ""}
-                        onChange={(e) => updateEmailTemplate("accentColor", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("accentColor", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="#16a34a"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Text Color</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Text Color
+                      </label>
                       <input
                         value={draft.emailTemplate?.textColor || ""}
-                        onChange={(e) => updateEmailTemplate("textColor", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("textColor", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="#0f172a"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Button Color</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Button Color
+                      </label>
                       <input
                         value={draft.emailTemplate?.buttonColor || ""}
-                        onChange={(e) => updateEmailTemplate("buttonColor", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("buttonColor", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="#16a34a"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Border Radius</label>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Border Radius
+                      </label>
                       <input
                         type="number"
                         min="0"
                         step="1"
                         value={draft.emailTemplate?.borderRadius ?? ""}
-                        onChange={(e) => updateEmailTemplate("borderRadius", e.target.value)}
+                        onChange={(e) =>
+                          updateEmailTemplate("borderRadius", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                         placeholder="24"
                       />
@@ -5087,60 +6003,74 @@ const FormManagement = () => {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold">Logo URL</label>
-                      <input
-                        value={draft.emailTemplate?.logoUrl || ""}
-                        onChange={(e) => {
-                          updateEmailTemplate("logoUrl", e.target.value);
-                          updateEmailTemplate("logoAsset", null);
-                          setLogoPreviewFailed(false);
-                        }}
-                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                        placeholder="Paste logo image URL"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        ref={emailLogoInputRef}
-                        type="file"
-                        hidden
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(e) => handleEmailTemplateImageFile("logoUrl", e.target.files?.[0] || null)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => emailLogoInputRef.current?.click()}
-                        disabled={!!uploadingEmailTemplateField}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <Upload size={16} />
-                        {uploadingEmailTemplateField === "logoUrl" ? "Uploading..." : draft.emailTemplate?.logoUrl ? "Change Logo" : "Upload Logo"}
-                      </button>
-                      {draft.emailTemplate?.logoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => clearEmailTemplateImage("logoUrl")}
-                          className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
-                        >
-                          Clear Logo
-                        </button>
-                      )}
-                    </div>
-                    {draft.emailTemplate?.logoUrl && !logoPreviewFailed ? (
-                      <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-3">
-                        <img
-                          src={getOptimizedImageUrl(draft.emailTemplate.logoAsset || draft.emailTemplate.logoUrl)}
-                          alt="Email logo preview"
-                          onError={() => setLogoPreviewFailed(true)}
-                          className="h-20 w-full object-contain"
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Logo URL
+                        </label>
+                        <input
+                          value={draft.emailTemplate?.logoUrl || ""}
+                          onChange={(e) => {
+                            updateEmailTemplate("logoUrl", e.target.value);
+                            updateEmailTemplate("logoAsset", null);
+                            setLogoPreviewFailed(false);
+                          }}
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          placeholder="Paste logo image URL"
                         />
                       </div>
-                    ) : (
-                      <div className="rounded-3xl border border-dashed border-white/10 bg-black/10 p-4 text-xs text-slate-400">
-                        No logo selected
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input
+                          ref={emailLogoInputRef}
+                          type="file"
+                          hidden
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(e) =>
+                            handleEmailTemplateImageFile(
+                              "logoUrl",
+                              e.target.files?.[0] || null,
+                            )
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => emailLogoInputRef.current?.click()}
+                          disabled={!!uploadingEmailTemplateField}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Upload size={16} />
+                          {uploadingEmailTemplateField === "logoUrl"
+                            ? "Uploading..."
+                            : draft.emailTemplate?.logoUrl
+                              ? "Change Logo"
+                              : "Upload Logo"}
+                        </button>
+                        {draft.emailTemplate?.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => clearEmailTemplateImage("logoUrl")}
+                            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Clear Logo
+                          </button>
+                        )}
                       </div>
-                    )}
+                      {draft.emailTemplate?.logoUrl && !logoPreviewFailed ? (
+                        <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-3">
+                          <img
+                            src={getOptimizedImageUrl(
+                              draft.emailTemplate.logoAsset ||
+                                draft.emailTemplate.logoUrl,
+                            )}
+                            alt="Email logo preview"
+                            onError={() => setLogoPreviewFailed(true)}
+                            className="h-20 w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="rounded-3xl border border-dashed border-white/10 bg-black/10 p-4 text-xs text-slate-400">
+                          No logo selected
+                        </div>
+                      )}
                       {logoPreviewFailed && draft.emailTemplate?.logoUrl && (
                         <div className="rounded-3xl border border-white/10 bg-black/20 p-4 text-sm font-semibold">
                           Logo preview unavailable
@@ -5149,12 +6079,21 @@ const FormManagement = () => {
                     </div>
                     <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
                       <div>
-                        <label className="mb-2 block text-sm font-semibold">Banner Image URL</label>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Banner Image URL
+                        </label>
                         <input
-                          value={draft.emailTemplate?.bannerUrl || draft.emailTemplate?.bannerImageUrl || ""}
+                          value={
+                            draft.emailTemplate?.bannerUrl ||
+                            draft.emailTemplate?.bannerImageUrl ||
+                            ""
+                          }
                           onChange={(e) => {
                             updateEmailTemplate("bannerUrl", e.target.value);
-                            updateEmailTemplate("bannerImageUrl", e.target.value);
+                            updateEmailTemplate(
+                              "bannerImageUrl",
+                              e.target.value,
+                            );
                             updateEmailTemplate("bannerImageAsset", null);
                             setBannerPreviewFailed(false);
                           }}
@@ -5168,77 +6107,115 @@ const FormManagement = () => {
                           type="file"
                           hidden
                           accept="image/jpeg,image/png,image/webp"
-                          onChange={(e) => handleEmailTemplateImageFile("bannerImageUrl", e.target.files?.[0] || null)}
+                          onChange={(e) =>
+                            handleEmailTemplateImageFile(
+                              "bannerImageUrl",
+                              e.target.files?.[0] || null,
+                            )
+                          }
                         />
-                      <button
-                        type="button"
-                        onClick={() => emailBannerInputRef.current?.click()}
-                        disabled={!!uploadingEmailTemplateField}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Upload size={16} />
-                          {uploadingEmailTemplateField === "bannerImageUrl" ? "Uploading..." : draft.emailTemplate?.bannerImageUrl ? "Change Banner" : "Upload Banner"}
-                      </button>
-                      {draft.emailTemplate?.bannerImageUrl && (
                         <button
                           type="button"
-                          onClick={() => clearEmailTemplateImage("bannerImageUrl")}
-                          className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          onClick={() => emailBannerInputRef.current?.click()}
+                          disabled={!!uploadingEmailTemplateField}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Clear Banner
+                          <Upload size={16} />
+                          {uploadingEmailTemplateField === "bannerImageUrl"
+                            ? "Uploading..."
+                            : draft.emailTemplate?.bannerImageUrl
+                              ? "Change Banner"
+                              : "Upload Banner"}
                         </button>
-                      )}
+                        {draft.emailTemplate?.bannerImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              clearEmailTemplateImage("bannerImageUrl")
+                            }
+                            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Clear Banner
+                          </button>
+                        )}
                       </div>
-                    {(draft.emailTemplate?.bannerUrl || draft.emailTemplate?.bannerImageUrl) && !bannerPreviewFailed ? (
-                      <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
-                        <img
-                          src={getOptimizedImageUrl(draft.emailTemplate.bannerImageAsset || draft.emailTemplate.bannerUrl || draft.emailTemplate.bannerImageUrl)}
-                          alt="Email banner preview"
-                          onError={() => setBannerPreviewFailed(true)}
-                          className="h-32 w-full object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="rounded-3xl border border-dashed border-white/10 bg-black/10 p-4 text-xs text-slate-400">
-                        No banner selected
-                      </div>
-                    )}
-                      {bannerPreviewFailed && (draft.emailTemplate?.bannerUrl || draft.emailTemplate?.bannerImageUrl) && (
-                        <div className="rounded-3xl border border-white/10 bg-black/20 p-4 text-sm font-semibold">
-                          Banner preview unavailable
+                      {(draft.emailTemplate?.bannerUrl ||
+                        draft.emailTemplate?.bannerImageUrl) &&
+                      !bannerPreviewFailed ? (
+                        <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+                          <img
+                            src={getOptimizedImageUrl(
+                              draft.emailTemplate.bannerImageAsset ||
+                                draft.emailTemplate.bannerUrl ||
+                                draft.emailTemplate.bannerImageUrl,
+                            )}
+                            alt="Email banner preview"
+                            onError={() => setBannerPreviewFailed(true)}
+                            className="h-32 w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="rounded-3xl border border-dashed border-white/10 bg-black/10 p-4 text-xs text-slate-400">
+                          No banner selected
                         </div>
                       )}
+                      {bannerPreviewFailed &&
+                        (draft.emailTemplate?.bannerUrl ||
+                          draft.emailTemplate?.bannerImageUrl) && (
+                          <div className="rounded-3xl border border-white/10 bg-black/20 p-4 text-sm font-semibold">
+                            Banner preview unavailable
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-3 text-sm font-semibold">Live Preview</div>
-                    <div className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl" style={{ backgroundColor: emailTemplatePreview.resolved.bodyBackgroundColor }}>
+                    <div className="mb-3 text-sm font-semibold">
+                      Live Preview
+                    </div>
+                    <div
+                      className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
+                      style={{
+                        backgroundColor:
+                          emailTemplatePreview.resolved.bodyBackgroundColor,
+                      }}
+                    >
                       <div
                         className="relative overflow-hidden"
                         style={{
                           minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
-                          backgroundColor: emailTemplatePreview.resolved.headerBackgroundColor,
+                          backgroundColor:
+                            emailTemplatePreview.resolved.headerBackgroundColor,
                           color: emailTemplatePreview.headerTextColor,
                         }}
                       >
-                        {emailTemplatePreview.headerBackgroundType === "image" &&
+                        {emailTemplatePreview.headerBackgroundType ===
+                          "image" &&
                         emailTemplatePreview.headerBackgroundImageUrl &&
                         !headerBackgroundPreviewFailed ? (
                           <img
-                            src={getOptimizedImageUrl(emailTemplatePreview.headerBackgroundImageUrl)}
+                            src={getOptimizedImageUrl(
+                              emailTemplatePreview.headerBackgroundImageUrl,
+                            )}
                             alt="Header background preview"
-                            onError={() => setHeaderBackgroundPreviewFailed(true)}
+                            onError={() =>
+                              setHeaderBackgroundPreviewFailed(true)
+                            }
                             className="absolute inset-0 h-full w-full"
                             style={{
-                              objectFit: emailTemplatePreview.headerBackgroundSize || "cover",
-                              objectPosition: emailTemplatePreview.headerBackgroundPosition || "center",
+                              objectFit:
+                                emailTemplatePreview.headerBackgroundSize ||
+                                "cover",
+                              objectPosition:
+                                emailTemplatePreview.headerBackgroundPosition ||
+                                "center",
                             }}
                           />
                         ) : null}
-                        {emailTemplatePreview.headerBackgroundType === "image" &&
+                        {emailTemplatePreview.headerBackgroundType ===
+                          "image" &&
                         emailTemplatePreview.headerBackgroundImageUrl &&
                         !headerBackgroundPreviewFailed ? (
                           <div
@@ -5246,7 +6223,8 @@ const FormManagement = () => {
                             style={{
                               backgroundColor: hexToRgba(
                                 emailTemplatePreview.headerOverlayColor,
-                                emailTemplatePreview.headerOverlayOpacity ?? 0.45,
+                                emailTemplatePreview.headerOverlayOpacity ??
+                                  0.45,
                               ),
                             }}
                           />
@@ -5255,19 +6233,25 @@ const FormManagement = () => {
                           className="relative z-10 flex h-full min-h-[220px] flex-col justify-center gap-2 p-5"
                           style={{
                             minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
-                            textAlign: emailTemplatePreview.headerTextAlign || "left",
+                            textAlign:
+                              emailTemplatePreview.headerTextAlign || "left",
                             color: emailTemplatePreview.headerTextColor,
                           }}
-                      >
-                        {emailTemplatePreview.logoUrl && !logoPreviewFailed ? (
+                        >
+                          {emailTemplatePreview.logoUrl &&
+                          !logoPreviewFailed ? (
                             <img
-                              src={getOptimizedImageUrl(emailTemplatePreview.logoUrl)}
+                              src={getOptimizedImageUrl(
+                                emailTemplatePreview.logoUrl,
+                              )}
                               alt="Email preview logo"
                               onError={() => setLogoPreviewFailed(true)}
                               className={`mb-2 h-12 w-full object-contain ${
-                                emailTemplatePreview.headerTextAlign === "center"
+                                emailTemplatePreview.headerTextAlign ===
+                                "center"
                                   ? "object-center"
-                                  : emailTemplatePreview.headerTextAlign === "right"
+                                  : emailTemplatePreview.headerTextAlign ===
+                                      "right"
                                     ? "object-right"
                                     : "object-left"
                               }`}
@@ -5293,15 +6277,19 @@ const FormManagement = () => {
                       emailTemplatePreview.headerBackgroundImageUrl ? (
                         <div className="px-5 pt-4">
                           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-100">
-                            Unable to load this image URL. The fallback header color is shown instead.
+                            Unable to load this image URL. The fallback header
+                            color is shown instead.
                           </div>
                         </div>
                       ) : null}
 
-                      {emailTemplatePreview.bannerUrl && !bannerPreviewFailed ? (
+                      {emailTemplatePreview.bannerUrl &&
+                      !bannerPreviewFailed ? (
                         <div className="px-5 pt-5">
                           <img
-                            src={getOptimizedImageUrl(emailTemplatePreview.bannerUrl)}
+                            src={getOptimizedImageUrl(
+                              emailTemplatePreview.bannerUrl,
+                            )}
                             alt="Email banner preview"
                             onError={() => setBannerPreviewFailed(true)}
                             className="h-40 w-full rounded-3xl object-contain"
@@ -5315,22 +6303,73 @@ const FormManagement = () => {
                         </div>
                       ) : null}
 
-                      <div className="p-5" style={{ color: emailTemplatePreview.resolved.textColor }}>
-                        <div className="rounded-3xl border p-4" style={{ backgroundColor: emailTemplatePreview.resolved.bodyBackgroundColor, borderColor: emailTemplatePreview.resolved.accentColor }}>
-                          <div className="text-sm font-bold">{emailTemplatePreview.successMessage}</div>
+                      <div
+                        className="p-5"
+                        style={{
+                          color: emailTemplatePreview.resolved.textColor,
+                        }}
+                      >
+                        <div
+                          className="rounded-3xl border p-4"
+                          style={{
+                            backgroundColor:
+                              emailTemplatePreview.resolved.bodyBackgroundColor,
+                            borderColor:
+                              emailTemplatePreview.resolved.accentColor,
+                          }}
+                        >
+                          <div className="text-sm font-bold">
+                            {emailTemplatePreview.successMessage}
+                          </div>
                           <div className="mt-3 space-y-1 text-xs leading-6 opacity-80">
-                            <div><strong>Form:</strong> {draft.title || "Sample Form"}</div>
-                            <div><strong>Submitted at:</strong> {emailTemplatePreview.context.submissionDate}</div>
+                            <div>
+                              <strong>Form:</strong>{" "}
+                              {draft.title || "Sample Form"}
+                            </div>
+                            <div>
+                              <strong>Submitted at:</strong>{" "}
+                              {emailTemplatePreview.context.submissionDate}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="mt-4 overflow-hidden rounded-3xl border" style={{ borderColor: "rgba(148,163,184,0.18)", backgroundColor: emailTemplatePreview.resolved.cardBackgroundColor }}>
+                        <div
+                          className="mt-4 overflow-hidden rounded-3xl border"
+                          style={{
+                            borderColor: "rgba(148,163,184,0.18)",
+                            backgroundColor:
+                              emailTemplatePreview.resolved.cardBackgroundColor,
+                          }}
+                        >
                           <table className="min-w-full text-left text-sm">
                             <tbody>
                               {emailTemplatePreview.tableRows.map((row) => (
-                                <tr key={row.question} className="border-t first:border-t-0" style={{ borderColor: "rgba(148,163,184,0.18)" }}>
-                                  <td className="w-1/3 px-4 py-3 font-semibold" style={{ color: emailTemplatePreview.resolved.textColor, backgroundColor: "rgba(0,0,0,0.02)" }}>{row.question}</td>
-                                  <td className="px-4 py-3" style={{ color: emailTemplatePreview.resolved.textColor }}>{row.answer}</td>
+                                <tr
+                                  key={row.question}
+                                  className="border-t first:border-t-0"
+                                  style={{
+                                    borderColor: "rgba(148,163,184,0.18)",
+                                  }}
+                                >
+                                  <td
+                                    className="w-1/3 px-4 py-3 font-semibold"
+                                    style={{
+                                      color:
+                                        emailTemplatePreview.resolved.textColor,
+                                      backgroundColor: "rgba(0,0,0,0.02)",
+                                    }}
+                                  >
+                                    {row.question}
+                                  </td>
+                                  <td
+                                    className="px-4 py-3"
+                                    style={{
+                                      color:
+                                        emailTemplatePreview.resolved.textColor,
+                                    }}
+                                  >
+                                    {row.answer}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -5346,7 +6385,11 @@ const FormManagement = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="block rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white"
-                                style={{ backgroundColor: emailTemplatePreview.resolved.buttonColor || emailTemplatePreview.resolved.accentColor }}
+                                style={{
+                                  backgroundColor:
+                                    emailTemplatePreview.resolved.buttonColor ||
+                                    emailTemplatePreview.resolved.accentColor,
+                                }}
                               >
                                 {button.text}
                               </a>
@@ -5357,7 +6400,11 @@ const FormManagement = () => {
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex rounded-2xl px-4 py-3 text-sm font-semibold text-white"
-                              style={{ backgroundColor: emailTemplatePreview.resolved.buttonColor || emailTemplatePreview.resolved.accentColor }}
+                              style={{
+                                backgroundColor:
+                                  emailTemplatePreview.resolved.buttonColor ||
+                                  emailTemplatePreview.resolved.accentColor,
+                              }}
                             >
                               {emailTemplatePreview.buttonText}
                             </a>
@@ -5365,7 +6412,10 @@ const FormManagement = () => {
                         </div>
 
                         {emailTemplatePreview.footerText && (
-                          <div className="mt-5 border-t pt-4 text-xs leading-6 opacity-80" style={{ borderColor: "rgba(148,163,184,0.18)" }}>
+                          <div
+                            className="mt-5 border-t pt-4 text-xs leading-6 opacity-80"
+                            style={{ borderColor: "rgba(148,163,184,0.18)" }}
+                          >
                             {emailTemplatePreview.footerText}
                           </div>
                         )}
@@ -5382,7 +6432,9 @@ const FormManagement = () => {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-xl font-semibold">Responses</h3>
-                  <p className={`text-sm ${theme.textSecondary}`}>{responseTable.length} submissions</p>
+                  <p className={`text-sm ${theme.textSecondary}`}>
+                    {responseTable.length} submissions
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -5392,8 +6444,11 @@ const FormManagement = () => {
                         {
                           search: responseSearch,
                           ...getFilterRange(responseFilter),
-                          from: responseDateFrom || getFilterRange(responseFilter).from,
-                          to: responseDateTo || getFilterRange(responseFilter).to,
+                          from:
+                            responseDateFrom ||
+                            getFilterRange(responseFilter).from,
+                          to:
+                            responseDateTo || getFilterRange(responseFilter).to,
                         },
                         "filtered",
                       )
@@ -5404,10 +6459,16 @@ const FormManagement = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setResponsesTab((prev) => (prev === "list" ? "analysis" : "list"))}
+                    onClick={() =>
+                      setResponsesTab((prev) =>
+                        prev === "list" ? "analysis" : "list",
+                      )
+                    }
                     className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
                   >
-                    {responsesTab === "list" ? "Interest Analysis" : "Response List"}
+                    {responsesTab === "list"
+                      ? "Interest Analysis"
+                      : "Response List"}
                   </button>
                 </div>
               </div>
@@ -5416,31 +6477,74 @@ const FormManagement = () => {
                 <div className="space-y-5">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     {[
-                      { label: "Hot Leads", value: "hot", count: analysisStats.hot },
-                      { label: "Warm Leads", value: "warm", count: analysisStats.warm },
-                      { label: "Cold Leads", value: "cold", count: analysisStats.cold },
-                      { label: "5 Star", value: "5", count: analysisStats.ratings[5] },
-                      { label: "Interested Yes", value: "interested", count: analysisStats.interestedYes },
-                      { label: "Available to Join", value: "available", count: analysisStats.availableYes },
-                      { label: "Has Phone", value: "phone", count: analysisStats.hasPhone },
-                      { label: "Has Email", value: "email", count: analysisStats.hasEmail },
+                      {
+                        label: "Hot Leads",
+                        value: "hot",
+                        count: analysisStats.hot,
+                      },
+                      {
+                        label: "Warm Leads",
+                        value: "warm",
+                        count: analysisStats.warm,
+                      },
+                      {
+                        label: "Cold Leads",
+                        value: "cold",
+                        count: analysisStats.cold,
+                      },
+                      {
+                        label: "5 Star",
+                        value: "5",
+                        count: analysisStats.ratings[5],
+                      },
+                      {
+                        label: "Interested Yes",
+                        value: "interested",
+                        count: analysisStats.interestedYes,
+                      },
+                      {
+                        label: "Available to Join",
+                        value: "available",
+                        count: analysisStats.availableYes,
+                      },
+                      {
+                        label: "Has Phone",
+                        value: "phone",
+                        count: analysisStats.hasPhone,
+                      },
+                      {
+                        label: "Has Email",
+                        value: "email",
+                        count: analysisStats.hasEmail,
+                      },
                     ].map((card) => {
                       const active =
-                        (card.value === "hot" && analysisLeadFilter === "hot") ||
-                        (card.value === "warm" && analysisLeadFilter === "warm") ||
-                        (card.value === "cold" && analysisLeadFilter === "cold") ||
+                        (card.value === "hot" &&
+                          analysisLeadFilter === "hot") ||
+                        (card.value === "warm" &&
+                          analysisLeadFilter === "warm") ||
+                        (card.value === "cold" &&
+                          analysisLeadFilter === "cold") ||
                         (card.value === "5" && analysisRatingFilter === "5") ||
-                        (card.value === "interested" && analysisInterestFilter === "yes") ||
-                        (card.value === "available" && analysisAvailabilityFilter === "yes") ||
-                        (card.value === "phone" && analysisPhoneFilter === "yes") ||
-                        (card.value === "email" && analysisEmailFilter === "yes");
+                        (card.value === "interested" &&
+                          analysisInterestFilter === "yes") ||
+                        (card.value === "available" &&
+                          analysisAvailabilityFilter === "yes") ||
+                        (card.value === "phone" &&
+                          analysisPhoneFilter === "yes") ||
+                        (card.value === "email" &&
+                          analysisEmailFilter === "yes");
 
                       return (
                         <button
                           key={card.label}
                           type="button"
                           onClick={() => {
-                            if (card.value === "hot" || card.value === "warm" || card.value === "cold") {
+                            if (
+                              card.value === "hot" ||
+                              card.value === "warm" ||
+                              card.value === "cold"
+                            ) {
                               setAnalysisLeadFilter(card.value);
                               setAnalysisRatingFilter("all");
                               setAnalysisInterestFilter("all");
@@ -5465,8 +6569,12 @@ const FormManagement = () => {
                               : "border-white/10 bg-white/5 hover:border-cyan-500/40"
                           }`}
                         >
-                          <div className="text-xs uppercase tracking-[0.18em] text-slate-400">{card.label}</div>
-                          <div className="mt-2 text-3xl font-black">{card.count}</div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                            {card.label}
+                          </div>
+                          <div className="mt-2 text-3xl font-black">
+                            {card.count}
+                          </div>
                         </button>
                       );
                     })}
@@ -5487,7 +6595,9 @@ const FormManagement = () => {
                     </select>
                     <select
                       value={analysisInterestFilter}
-                      onChange={(e) => setAnalysisInterestFilter(e.target.value)}
+                      onChange={(e) =>
+                        setAnalysisInterestFilter(e.target.value)
+                      }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
                     >
                       <option value="all">All Interest</option>
@@ -5496,7 +6606,9 @@ const FormManagement = () => {
                     </select>
                     <select
                       value={analysisAvailabilityFilter}
-                      onChange={(e) => setAnalysisAvailabilityFilter(e.target.value)}
+                      onChange={(e) =>
+                        setAnalysisAvailabilityFilter(e.target.value)
+                      }
                       className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
                     >
                       <option value="all">Availability Any</option>
@@ -5575,59 +6687,71 @@ const FormManagement = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      exportResponses(
-                        {
-                          score: "hot",
-                          search: responseSearch,
-                          ...getFilterRange(responseFilter),
-                          from: responseDateFrom || getFilterRange(responseFilter).from,
-                          to: responseDateTo || getFilterRange(responseFilter).to,
-                        },
-                        "hot-leads",
-                      )
-                    }
-                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
-                  >
-                    Export Hot Leads
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      exportResponses(
-                        {
-                          rating: 5,
-                          search: responseSearch,
-                          ...getFilterRange(responseFilter),
-                          from: responseDateFrom || getFilterRange(responseFilter).from,
-                          to: responseDateTo || getFilterRange(responseFilter).to,
-                        },
-                        "5-star",
-                      )
-                    }
-                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
-                  >
-                    Export 5 Star
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      exportResponses(
-                        {
-                          search: responseSearch,
-                          ...getFilterRange(responseFilter),
-                          from: responseDateFrom || getFilterRange(responseFilter).from,
-                          to: responseDateTo || getFilterRange(responseFilter).to,
-                        },
-                        "filtered",
-                      )
-                    }
-                    className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
-                  >
-                    Export Filtered
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        exportResponses(
+                          {
+                            score: "hot",
+                            search: responseSearch,
+                            ...getFilterRange(responseFilter),
+                            from:
+                              responseDateFrom ||
+                              getFilterRange(responseFilter).from,
+                            to:
+                              responseDateTo ||
+                              getFilterRange(responseFilter).to,
+                          },
+                          "hot-leads",
+                        )
+                      }
+                      className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                    >
+                      Export Hot Leads
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        exportResponses(
+                          {
+                            rating: 5,
+                            search: responseSearch,
+                            ...getFilterRange(responseFilter),
+                            from:
+                              responseDateFrom ||
+                              getFilterRange(responseFilter).from,
+                            to:
+                              responseDateTo ||
+                              getFilterRange(responseFilter).to,
+                          },
+                          "5-star",
+                        )
+                      }
+                      className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                    >
+                      Export 5 Star
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        exportResponses(
+                          {
+                            search: responseSearch,
+                            ...getFilterRange(responseFilter),
+                            from:
+                              responseDateFrom ||
+                              getFilterRange(responseFilter).from,
+                            to:
+                              responseDateTo ||
+                              getFilterRange(responseFilter).to,
+                          },
+                          "filtered",
+                        )
+                      }
+                      className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                    >
+                      Export Filtered
+                    </button>
                   </div>
 
                   <div className="overflow-x-auto rounded-3xl border border-white/10">
@@ -5647,24 +6771,49 @@ const FormManagement = () => {
                       </thead>
                       <tbody>
                         {analysisRows.map((response) => (
-                          <tr key={response._id} className="border-t border-white/10">
+                          <tr
+                            key={response._id}
+                            className="border-t border-white/10"
+                          >
                             <td className="px-4 py-3">
-                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                (response.leadCategory || getScoreBucket(Number(response.score || 0))) === "hot"
-                                  ? "bg-red-500/20 text-red-300"
-                                  : (response.leadCategory || getScoreBucket(Number(response.score || 0))) === "warm"
-                                    ? "bg-amber-500/20 text-amber-300"
-                                    : "bg-slate-500/20 text-slate-300"
-                              }`}>
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  (response.leadCategory ||
+                                    getScoreBucket(
+                                      Number(response.score || 0),
+                                    )) === "hot"
+                                    ? "bg-red-500/20 text-red-300"
+                                    : (response.leadCategory ||
+                                          getScoreBucket(
+                                            Number(response.score || 0),
+                                          )) === "warm"
+                                      ? "bg-amber-500/20 text-amber-300"
+                                      : "bg-slate-500/20 text-slate-300"
+                                }`}
+                              >
                                 {Number(response.score || 0)}
                               </span>
                             </td>
-                            <td className="px-4 py-3">{response.name || "-"}</td>
-                            <td className="px-4 py-3">{response.email || "-"}</td>
-                            <td className="px-4 py-3">{response.phone || "-"}</td>
-                            <td className="px-4 py-3">{getRatingValue(response) || "-"}</td>
-                            <td className="px-4 py-3">{getInterestAnswer(response) || "-"}</td>
-                            <td className="px-4 py-3">{formatSubmittedAt(response.submittedAt || response.createdAt)}</td>
+                            <td className="px-4 py-3">
+                              {response.name || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {response.email || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {response.phone || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {getRatingValue(response) || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {getInterestAnswer(response) || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {formatSubmittedAt(
+                                response.submittedAt || response.createdAt,
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <button
                                 type="button"
@@ -5683,8 +6832,13 @@ const FormManagement = () => {
                                       search: responseSearch,
                                       from: responseDateFrom,
                                       to: responseDateTo,
-                                      rating: getRatingValue(response) || undefined,
-                                      score: response.leadCategory || getScoreBucket(Number(response.score || 0)),
+                                      rating:
+                                        getRatingValue(response) || undefined,
+                                      score:
+                                        response.leadCategory ||
+                                        getScoreBucket(
+                                          Number(response.score || 0),
+                                        ),
                                     },
                                     `lead-${slugify(response.name || response.referenceId || "response")}`,
                                   )
@@ -5698,7 +6852,10 @@ const FormManagement = () => {
                         ))}
                         {!analysisRows.length && (
                           <tr>
-                            <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                            <td
+                              colSpan={9}
+                              className="px-4 py-8 text-center text-slate-400"
+                            >
                               No interest analysis matches found.
                             </td>
                           </tr>
@@ -5767,11 +6924,24 @@ const FormManagement = () => {
                       </thead>
                       <tbody>
                         {responseTable.map((response) => (
-                          <tr key={response._id} className="border-t border-white/10">
-                            <td className="px-4 py-3">{response.name || "-"}</td>
-                            <td className="px-4 py-3">{response.email || "-"}</td>
-                            <td className="px-4 py-3">{response.phone || "-"}</td>
-                            <td className="px-4 py-3">{formatSubmittedAt(response.submittedAt || response.createdAt)}</td>
+                          <tr
+                            key={response._id}
+                            className="border-t border-white/10"
+                          >
+                            <td className="px-4 py-3">
+                              {response.name || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {response.email || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {response.phone || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {formatSubmittedAt(
+                                response.submittedAt || response.createdAt,
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <button
                                 type="button"
@@ -5794,7 +6964,10 @@ const FormManagement = () => {
                         ))}
                         {!responseTable.length && (
                           <tr>
-                            <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                            <td
+                              colSpan={6}
+                              className="px-4 py-8 text-center text-slate-400"
+                            >
                               No responses yet.
                             </td>
                           </tr>
@@ -5811,11 +6984,15 @@ const FormManagement = () => {
 
       {importPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className={`${theme.card} max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}>
+          <div
+            className={`${theme.card} max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}
+          >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-2xl font-bold">Import Form Preview</h3>
-                <p className={`text-sm ${theme.textSecondary}`}>Review and adjust detected fields before applying them.</p>
+                <p className={`text-sm ${theme.textSecondary}`}>
+                  Review and adjust detected fields before applying them.
+                </p>
               </div>
               <button
                 type="button"
@@ -5828,45 +7005,59 @@ const FormManagement = () => {
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-semibold">Detected Form Title</label>
+                <label className="mb-2 block text-sm font-semibold">
+                  Detected Form Title
+                </label>
                 <input
                   value={importPreview.title || ""}
-                  onChange={(e) => updateImportPreviewField("title", e.target.value)}
+                  onChange={(e) =>
+                    updateImportPreviewField("title", e.target.value)
+                  }
                   className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                   placeholder="Form title"
                 />
               </div>
               <div className="lg:col-span-2">
-                <label className="mb-2 block text-sm font-semibold">Detected Description</label>
+                <label className="mb-2 block text-sm font-semibold">
+                  Detected Description
+                </label>
                 <RichTextEditor
                   value={importPreview.description || ""}
-                  onChange={(html) => updateImportPreviewField("description", html)}
+                  onChange={(html) =>
+                    updateImportPreviewField("description", html)
+                  }
                   placeholder="Form description"
                   minHeight="220px"
                 />
               </div>
             </div>
 
-            {Array.isArray(importPreview.sections) && importPreview.sections.length > 0 && (
-              <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-4">
-                <div className="mb-3 text-sm font-semibold">Detected Sections</div>
-                <div className="flex flex-wrap gap-2">
-                  {importPreview.sections.map((section) => (
-                    <span
-                      key={section.order ?? section.label}
-                      className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100"
-                    >
-                      {section.label}
-                    </span>
-                  ))}
+            {Array.isArray(importPreview.sections) &&
+              importPreview.sections.length > 0 && (
+                <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-4">
+                  <div className="mb-3 text-sm font-semibold">
+                    Detected Sections
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {importPreview.sections.map((section) => (
+                      <span
+                        key={section.order ?? section.label}
+                        className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100"
+                      >
+                        {section.label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div className="mt-6 space-y-4">
               <div className="text-sm font-semibold">Detected Questions</div>
               {importPreview.questions.map((question, index) => (
-                <div key={question.id || index} className="rounded-3xl border border-white/10 bg-slate-950/30 p-4 space-y-4">
+                <div
+                  key={question.id || index}
+                  className="rounded-3xl border border-white/10 bg-slate-950/30 p-4 space-y-4"
+                >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <label className="inline-flex items-center gap-2 text-sm font-semibold">
                       <input
@@ -5884,40 +7075,67 @@ const FormManagement = () => {
 
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-xs font-semibold text-slate-300">Question Label</label>
+                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                        Question Label
+                      </label>
                       <input
                         value={question.label || ""}
-                        onChange={(e) => updateImportedQuestion(index, "label", e.target.value)}
+                        onChange={(e) =>
+                          updateImportedQuestion(index, "label", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold text-slate-300">Question Type</label>
+                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                        Question Type
+                      </label>
                       <select
                         value={question.type || "shortAnswer"}
-                        onChange={(e) => updateImportedQuestion(index, "type", e.target.value)}
+                        onChange={(e) =>
+                          updateImportedQuestion(index, "type", e.target.value)
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
                       >
                         {QUESTION_TYPES.map((typeOption) => (
-                          <option key={typeOption.value} value={typeOption.value}>
+                          <option
+                            key={typeOption.value}
+                            value={typeOption.value}
+                          >
                             {typeOption.label}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold text-slate-300">Placeholder</label>
+                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                        Placeholder
+                      </label>
                       <input
                         value={question.placeholder || ""}
-                        onChange={(e) => updateImportedQuestion(index, "placeholder", e.target.value)}
+                        onChange={(e) =>
+                          updateImportedQuestion(
+                            index,
+                            "placeholder",
+                            e.target.value,
+                          )
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold text-slate-300">Help Text</label>
+                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                        Help Text
+                      </label>
                       <input
                         value={question.helpText || ""}
-                        onChange={(e) => updateImportedQuestion(index, "helpText", e.target.value)}
+                        onChange={(e) =>
+                          updateImportedQuestion(
+                            index,
+                            "helpText",
+                            e.target.value,
+                          )
+                        }
                         className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
                       />
                     </div>
@@ -5926,18 +7144,34 @@ const FormManagement = () => {
                         <input
                           type="checkbox"
                           checked={question.required === true}
-                          onChange={(e) => updateImportedQuestion(index, "required", e.target.checked)}
+                          onChange={(e) =>
+                            updateImportedQuestion(
+                              index,
+                              "required",
+                              e.target.checked,
+                            )
+                          }
                           className="h-4 w-4 rounded border-white/20 bg-transparent"
                         />
                         Required
                       </label>
                     </div>
-                    {["dropdown", "radio", "checkbox"].includes(question.type) && (
+                    {["dropdown", "radio", "checkbox"].includes(
+                      question.type,
+                    ) && (
                       <div className="lg:col-span-2">
-                        <label className="mb-2 block text-xs font-semibold text-slate-300">Options</label>
+                        <label className="mb-2 block text-xs font-semibold text-slate-300">
+                          Options
+                        </label>
                         <textarea
                           value={question.optionsText || ""}
-                          onChange={(e) => updateImportedQuestion(index, "optionsText", e.target.value)}
+                          onChange={(e) =>
+                            updateImportedQuestion(
+                              index,
+                              "optionsText",
+                              e.target.value,
+                            )
+                          }
                           rows={4}
                           className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm resize-none`}
                           placeholder={"Option 1\nOption 2\nOption 3"}
@@ -5976,19 +7210,25 @@ const FormManagement = () => {
 
       {selectedResponse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className={`${theme.card} max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}>
+          <div
+            className={`${theme.card} max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}
+          >
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-bold">Response Details</h3>
-                <p className={`text-sm ${theme.textSecondary}`}>{selectedResponse.referenceId}</p>
+                <p className={`text-sm ${theme.textSecondary}`}>
+                  {selectedResponse.referenceId}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setSelectedResponse(null);
-                  Object.values(secretRevealTimersRef.current).forEach((timer) => {
-                    window.clearTimeout(timer);
-                  });
+                  Object.values(secretRevealTimersRef.current).forEach(
+                    (timer) => {
+                      window.clearTimeout(timer);
+                    },
+                  );
                   secretRevealTimersRef.current = {};
                   setRevealedSecrets({});
                 }}
@@ -6007,9 +7247,15 @@ const FormManagement = () => {
 
             <div className="space-y-6">
               {(() => {
-                const answers = Array.isArray(selectedResponse.answers) ? selectedResponse.answers : [];
-                const mainAnswers = answers.filter((answer) => !answer.conditional);
-                const conditionalAnswers = answers.filter((answer) => answer.conditional);
+                const answers = Array.isArray(selectedResponse.answers)
+                  ? selectedResponse.answers
+                  : [];
+                const mainAnswers = answers.filter(
+                  (answer) => !answer.conditional,
+                );
+                const conditionalAnswers = answers.filter(
+                  (answer) => answer.conditional,
+                );
 
                 const renderAnswerCard = (answer, keyPrefix) => {
                   const questionId =
@@ -6018,9 +7264,15 @@ const FormManagement = () => {
                     answer.questionId ||
                     answer._id;
                   return (
-                    <div key={`${keyPrefix}-${answer._id || questionId}`} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div
+                      key={`${keyPrefix}-${answer._id || questionId}`}
+                      className="rounded-3xl border border-white/10 bg-white/5 p-4"
+                    >
                       <div className="text-sm font-semibold">
-                        {answer.displayLabel || answer.fieldLabel || answer.question?.label || "Question"}
+                        {answer.displayLabel ||
+                          answer.fieldLabel ||
+                          answer.question?.label ||
+                          "Question"}
                       </div>
                       {answer.displayContext ? (
                         <div className="mt-1 text-xs text-cyan-200/80">
@@ -6052,7 +7304,9 @@ const FormManagement = () => {
                           Submission Details
                         </div>
                         <div className="space-y-3">
-                          {mainAnswers.map((answer) => renderAnswerCard(answer, "main"))}
+                          {mainAnswers.map((answer) =>
+                            renderAnswerCard(answer, "main"),
+                          )}
                         </div>
                       </section>
                     )}
@@ -6063,7 +7317,9 @@ const FormManagement = () => {
                           Conditional Answers
                         </div>
                         <div className="space-y-3">
-                          {conditionalAnswers.map((answer) => renderAnswerCard(answer, "conditional"))}
+                          {conditionalAnswers.map((answer) =>
+                            renderAnswerCard(answer, "conditional"),
+                          )}
                         </div>
                       </section>
                     )}
@@ -6082,7 +7338,9 @@ const FormManagement = () => {
         moduleLabel="Form Builder"
         hasUnsavedChanges={false}
         titleResolver={(draftItem) =>
-          draftItem.data?.title || draftItem.data?.emailTemplate?.headerTitle || "Untitled Form Draft"
+          draftItem.data?.title ||
+          draftItem.data?.emailTemplate?.headerTitle ||
+          "Untitled Form Draft"
         }
         summaryResolver={(draftItem) => {
           const questionCount = Array.isArray(draftItem.data?.questions)
