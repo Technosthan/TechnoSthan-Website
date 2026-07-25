@@ -18,12 +18,6 @@ import "./WorkspaceServices.css";
 
 const WorkspaceServices = () => {
   const [activeTab, setActiveTab] = useState("global");
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const handlePermissionUpdate = () => {
-    // Refresh all components
-    setRefreshKey((prev) => prev + 1);
-  };
 
   const tabs = [
     {
@@ -89,7 +83,7 @@ const WorkspaceServices = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2. text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                   activeTab === tab.id
                     ? "bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-500/50"
                     : "text-slate-400 hover:text-slate-300"
@@ -117,10 +111,7 @@ const WorkspaceServices = () => {
                   of role or overrides.
                 </p>
               </div>
-              <GlobalServicesComponent
-                key={`global-${refreshKey}`}
-                onUpdate={handlePermissionUpdate}
-              />
+              <GlobalServicesComponent />
             </div>
           )}
 
@@ -136,10 +127,7 @@ const WorkspaceServices = () => {
                   default permissions that apply to all users in each role.
                 </p>
               </div>
-              <RolePermissionsComponent
-                key={`roles-${refreshKey}`}
-                onUpdate={handlePermissionUpdate}
-              />
+              <RolePermissionsComponent />
             </div>
           )}
 
@@ -156,10 +144,7 @@ const WorkspaceServices = () => {
                   restrictions, or special privileges.
                 </p>
               </div>
-              <UserOverridesComponent
-                key={`overrides-${refreshKey}`}
-                onUpdate={handlePermissionUpdate}
-              />
+              <UserOverridesComponent />
             </div>
           )}
         </div>
