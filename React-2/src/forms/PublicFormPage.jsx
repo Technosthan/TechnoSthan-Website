@@ -69,6 +69,140 @@ const isConditionalFieldKey = (key = "") => String(key || "").includes("::");
 const getQuestionId = (question = {}) =>
   String(question?._id || question?.id || "").trim();
 
+const LEGACY_DEFAULT_SECTION_ID = "legacy-default-section";
+const LEGACY_DEFAULT_SECTION_TITLE = "Form Details";
+const QUESTIONS_PER_PAGE = 4;
+
+const normalizePublicSection = (section = {}, index = 0) => ({
+  id:
+    String(section.id || section.sectionId || section.key || "").trim() ||
+    LEGACY_DEFAULT_SECTION_ID,
+  title:
+    String(section.title || section.label || "").trim() ||
+    LEGACY_DEFAULT_SECTION_TITLE,
+  description: String(section.description || section.helpText || "").trim(),
+  order: typeof section.order === "number" ? section.order : index,
+  isActive: section.isActive !== false,
+});
+
+const groupFormSections = (form = {}) => {
+  const questions = Array.isArray(form.questions) && form.questions.length
+    ? form.questions
+    : flattenQuestionsFromSections(
+        Array.isArray(form.sections) ? form.sections : [],
+      );
+  const normalizedSections = (Array.isArray(form.sections) ? form.sections : [])
+    .map((section, index) => normalizePublicSection(section, index))
+    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .sort((left, right) => left.order - right.order);
+
+  const hints = questions
+    .map((question) => ({
+      id: String(question.sectionId || question.section?.id || "").trim(),
+      title: String(question.sectionTitle || question.section?.title || "").trim(),
+      description: String(
+        question.sectionDescription || question.section?.description || "",
+      ).trim(),
+      order:
+        typeof question.sectionOrder === "number"
+          ? question.sectionOrder
+          : typeof question.section?.order === "number"
+            ? question.section.order
+            : 0,
+      isActive:
+        question.sectionIsActive !== undefined
+          ? question.sectionIsActive === true
+          : question.section?.isActive !== false,
+    }))
+    .filter((section) => section.id);
+
+  const hasMeaningfulHints = hints.some(
+    (section) => section.id !== LEGACY_DEFAULT_SECTION_ID,
+  );
+
+  const sections =
+    normalizedSections.length > 0
+      ? normalizedSections
+      : hasMeaningfulHints
+        ? hints
+            .filter(
+              (section, index, list) =>
+                list.findIndex((item) => item.id === section.id) === index,
+            )
+            .map((section, index) => ({
+              id: section.id,
+              title: section.title || LEGACY_DEFAULT_SECTION_TITLE,
+              description: section.description || "",
+              order: typeof section.order === "number" ? section.order : index,
+              isActive: section.isActive !== false,
+            }))
+            .sort((left, right) => left.order - right.order)
+        : [normalizePublicSection({}, 0)];
+
+  const sectionMap = new Map(
+    sections.map((section) => [section.id, { ...section, questions: [] }]),
+  );
+  const defaultSection =
+    sectionMap.get(LEGACY_DEFAULT_SECTION_ID) ||
+    sectionMap.values().next().value ||
+    {
+      ...normalizePublicSection({}, 0),
+      questions: [],
+    };
+  if (!sectionMap.has(defaultSection.id)) {
+    sectionMap.set(defaultSection.id, defaultSection);
+  }
+
+  questions.forEach((question, index) => {
+    const questionSectionId = String(
+      question.sectionId || question.section?.id || "",
+    ).trim();
+    const targetSection =
+      sectionMap.get(questionSectionId) || defaultSection;
+    targetSection.questions.push({
+      ...question,
+      id: getQuestionId(question) || String(question.id || question._id || index),
+      sectionId: targetSection.id,
+      sectionTitle: targetSection.title,
+      sectionDescription: targetSection.description,
+      sectionOrder: targetSection.order,
+      sectionIsActive: targetSection.isActive,
+      order:
+        typeof question.order === "number"
+          ? question.order
+          : targetSection.questions.length - 1,
+    });
+  });
+
+  return Array.from(sectionMap.values())
+    .map((section) => ({
+      ...section,
+      questions: (section.questions || []).sort(
+        (left, right) => left.order - right.order,
+      ),
+    }))
+    .sort((left, right) => left.order - right.order);
+};
+
+const flattenQuestionsFromSections = (sections = []) =>
+  (Array.isArray(sections) ? sections : []).flatMap((section) =>
+    Array.isArray(section.questions)
+      ? section.questions
+      : Array.isArray(section.items)
+        ? section.items
+        : [],
+  );
+
+const chunkQuestions = (questions = [], pageSize = QUESTIONS_PER_PAGE) => {
+  const size = Math.max(1, Number(pageSize) || QUESTIONS_PER_PAGE);
+  const list = Array.isArray(questions) ? questions : [];
+  const pages = [];
+  for (let index = 0; index < list.length; index += size) {
+    pages.push(list.slice(index, index + size));
+  }
+  return pages.length ? pages : [[]];
+};
+
 const getQuestionOptions = (question = {}) =>
   (Array.isArray(question.options) ? question.options : []).map(
     (option, index) => {
@@ -518,11 +652,80 @@ const PublicFormPage = () => {
   const [verificationStates, setVerificationStates] = useState({});
   const [verificationTokens, setVerificationTokens] = useState({});
   const [now, setNow] = useState(Date.now());
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const submitLockRef = useRef(false);
+  const sectionTopRef = useRef(null);
   const fileInputRefs = useRef({});
+  const sections = useMemo(() => groupFormSections(form || {}), [form]);
+  const allQuestions = useMemo(
+    () =>
+      flattenQuestionsFromSections(sections).filter(
+        (question) => question.isActive !== false,
+      ),
+    [sections],
+  );
+  const publicSections = useMemo(
+    () =>
+      sections
+        .filter(
+          (section) =>
+            section.isActive !== false &&
+            Array.isArray(section.questions) &&
+            section.questions.length > 0,
+        )
+        .map((section) => ({
+          ...section,
+          questions: [...section.questions].sort(
+            (left, right) => (left.order || 0) - (right.order || 0),
+          ).filter((question) => question.isActive !== false),
+        }))
+        .filter(
+          (section) =>
+            Array.isArray(section.questions) && section.questions.length > 0,
+        ),
+    [sections],
+  );
+  const currentSection =
+    publicSections[currentSectionIndex] || publicSections[0] || null;
+  const currentSectionQuestions = currentSection?.questions || [];
+  const currentSectionPages = useMemo(
+    () => chunkQuestions(currentSectionQuestions, QUESTIONS_PER_PAGE),
+    [currentSectionQuestions],
+  );
+  const currentPageQuestions =
+    currentSectionPages[currentPageIndex] || currentSectionPages[0] || [];
+  const currentSectionTotalPages = currentSectionPages.length;
+  const hasPublicQuestions = publicSections.length > 0;
+  const totalPages = useMemo(
+    () =>
+      publicSections.reduce(
+        (count, section) =>
+          count +
+          chunkQuestions(section.questions || [], QUESTIONS_PER_PAGE).length,
+        0,
+      ),
+    [publicSections],
+  );
+  const overallStep = useMemo(() => {
+    let step = 1;
+    for (let i = 0; i < publicSections.length; i += 1) {
+      const section = publicSections[i];
+      const pages = chunkQuestions(section.questions || [], QUESTIONS_PER_PAGE);
+      if (i < currentSectionIndex) {
+        step += pages.length;
+        continue;
+      }
+      if (i === currentSectionIndex) {
+        step += Math.min(currentPageIndex, Math.max(0, pages.length - 1));
+        break;
+      }
+    }
+    return step;
+  }, [currentPageIndex, currentSectionIndex, publicSections]);
   const activeConditionalDescriptors = useMemo(
-    () => getActiveConditionalFieldDescriptors(form?.questions || [], values),
-    [form?.questions, values],
+    () => getActiveConditionalFieldDescriptors(allQuestions, values),
+    [allQuestions, values],
   );
 
   useEffect(() => {
@@ -548,6 +751,15 @@ const PublicFormPage = () => {
   }, [activeConditionalDescriptors]);
 
   useEffect(() => {
+    if (publicSections.length > 0 && currentSectionIndex >= publicSections.length) {
+      setCurrentSectionIndex(0);
+    }
+    if (currentPageIndex >= currentSectionPages.length) {
+      setCurrentPageIndex(Math.max(0, currentSectionPages.length - 1));
+    }
+  }, [currentPageIndex, currentSectionIndex, currentSectionPages.length, publicSections.length]);
+
+  useEffect(() => {
     let mounted = true;
     const loadForm = async () => {
       setLoading(true);
@@ -557,7 +769,10 @@ const PublicFormPage = () => {
         if (!mounted) return;
         const nextForm = response.data?.data;
         setForm(nextForm);
-        setValues(initialValuesFromQuestions(nextForm?.questions || []));
+        const nextSections = groupFormSections(nextForm || {});
+        setCurrentSectionIndex(0);
+        setCurrentPageIndex(0);
+        setValues(initialValuesFromQuestions(flattenQuestionsFromSections(nextSections)));
         setVisiblePasswords({});
         setVerificationStates({});
         setVerificationTokens({});
@@ -1573,8 +1788,11 @@ const PublicFormPage = () => {
     );
   };
 
-  const validate = () => {
-    for (const question of form?.questions || []) {
+  const validateQuestionSet = (
+    questionsToValidate = [],
+    conditionalDescriptors = [],
+  ) => {
+    for (const question of questionsToValidate || []) {
       if (question.type === "sectionHeading") continue;
       const questionId = getQuestionId(question);
       const value = values[questionId];
@@ -1632,7 +1850,7 @@ const PublicFormPage = () => {
       }
     }
 
-    for (const descriptor of activeConditionalDescriptors) {
+    for (const descriptor of conditionalDescriptors || []) {
       const field = descriptor.field || {};
       const value = values[descriptor.key];
       const file = files[descriptor.key];
@@ -1685,14 +1903,85 @@ const PublicFormPage = () => {
     }
   };
 
+  const validateCurrentPage = () => {
+    const currentIds = new Set(
+      (currentPageQuestions || []).map((question) => getQuestionId(question)),
+    );
+    const sectionDescriptors = activeConditionalDescriptors.filter((descriptor) =>
+      currentIds.has(descriptor.questionId),
+    );
+    validateQuestionSet(currentPageQuestions, sectionDescriptors);
+  };
+
+  const validateAllSections = () => {
+    validateQuestionSet(allQuestions, activeConditionalDescriptors);
+  };
+
+  const goToSectionTop = () => {
+    sectionTopRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex((prev) => Math.max(0, prev - 1));
+      window.requestAnimationFrame(() => goToSectionTop());
+      return;
+    }
+
+    if (currentSectionIndex > 0) {
+      const previousSectionIndex = currentSectionIndex - 1;
+      const previousSection = publicSections[previousSectionIndex];
+      const previousPages = chunkQuestions(
+        previousSection?.questions || [],
+        QUESTIONS_PER_PAGE,
+      );
+      setCurrentSectionIndex(previousSectionIndex);
+      setCurrentPageIndex(Math.max(0, previousPages.length - 1));
+    }
+    window.requestAnimationFrame(() => goToSectionTop());
+  };
+
+  const handleNextPage = () => {
+    try {
+      validateCurrentPage();
+      setError("");
+
+      if (currentPageIndex < currentSectionTotalPages - 1) {
+        setCurrentPageIndex((prev) => prev + 1);
+      } else if (currentSectionIndex < publicSections.length - 1) {
+        setCurrentSectionIndex((prev) => prev + 1);
+        setCurrentPageIndex(0);
+      }
+
+      window.requestAnimationFrame(() => goToSectionTop());
+      return true;
+    } catch (validationError) {
+      const message =
+        validationError?.message || "Please complete the current page.";
+      setError(message);
+      toast.error(message);
+      window.requestAnimationFrame(() => goToSectionTop());
+      return false;
+    }
+  };
+
+  const isFinalPage =
+    currentSectionIndex === publicSections.length - 1 &&
+    currentPageIndex === currentSectionTotalPages - 1;
+  const hasNextPageInSection = currentPageIndex < currentSectionTotalPages - 1;
+  const hasNextSection = currentSectionIndex < publicSections.length - 1;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form || submitLockRef.current || submitting || submitted) return;
+    if (!form || !hasPublicQuestions || submitLockRef.current || submitting || submitted) return;
 
     submitLockRef.current = true;
     setSubmitting(true);
     try {
-      validate();
+      validateAllSections();
       setError("");
       const payload = new FormData();
       const topLevelAnswers = {};
@@ -1718,12 +2007,13 @@ const PublicFormPage = () => {
 
       const response = await submitPublicForm(form.slug, payload);
       setSubmitted(response.data?.data || response.data);
-      setValues(initialValuesFromQuestions(form.questions || []));
+      setValues(initialValuesFromQuestions(allQuestions));
       setFiles({});
       resetAllFileInputs();
       setVisiblePasswords({});
       setVerificationStates({});
       setVerificationTokens({});
+      setCurrentSectionIndex(0);
       setSubmitting(false);
       toast.success(
         getSuccessMessage(form, response.data?.data || response.data),
@@ -1837,7 +2127,7 @@ const PublicFormPage = () => {
 
   return (
     <div className={`min-h-screen ${theme.bgGradient} ${theme.text}`}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+     <div className="w-full px-4 py-6 sm:px-6 lg:px-10 xl:px-14">
         <div className="mb-6 flex items-center justify-between">
           <Link
             to="/"
@@ -1923,19 +2213,88 @@ const PublicFormPage = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            {form.questions?.map((question, index) => {
-              const questionKey =
-                question._id || question.id || `question-${index}`;
+            {!hasPublicQuestions ? (
+              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 text-sm text-slate-300">
+                This form currently has no questions.
+              </div>
+            ) : (
+              <>
+                <div
+                  ref={sectionTopRef}
+                  className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-xl"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+                        Section {currentSectionIndex + 1} of {publicSections.length}
+                      </div>
+                      <h2 className="text-2xl font-black break-words">
+                        {currentSection?.title || LEGACY_DEFAULT_SECTION_TITLE}
+                      </h2>
+                      {currentSection?.description ? (
+                        <div
+                          className={`max-w-3xl whitespace-pre-wrap break-words text-sm ${theme.textSecondary}`}
+                        >
+                          {currentSection.description}
+                        </div>
+                      ) : null}
+                    </div>
 
-              return (
-                <div key={questionKey} className="space-y-5">
-                  {renderQuestion(question)}
+                    <div className="w-full max-w-sm space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span>
+                          Page {currentPageIndex + 1} of {currentSectionTotalPages}
+                        </span>
+                        <span>
+                          Step {overallStep} of {totalPages}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-cyan-500 transition-all duration-300"
+                          style={{
+                            width: `${totalPages > 0 ? (overallStep / totalPages) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                  {question.type !== "sectionHeading" &&
-                    renderConditionalBlocks(question)}
+                  {publicSections.length > 1 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {publicSections.map((section, index) => (
+                        <span
+                          key={section.id}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            index === currentSectionIndex
+                              ? "bg-cyan-500 text-white"
+                              : "bg-white/5 text-slate-400"
+                          }`}
+                        >
+                          {section.title || `Section ${index + 1}`}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              );
-            })}
+
+                <div className="space-y-5">
+                  {currentPageQuestions.map((question, index) => {
+                    const questionKey =
+                      question._id || question.id || `question-${index}`;
+
+                    return (
+                      <div key={questionKey} className="space-y-5">
+                        {renderQuestion(question)}
+
+                        {question.type !== "sectionHeading" &&
+                          renderConditionalBlocks(question)}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             {error && (
               <div className="rounded-3xl bg-red-500/10 p-4 text-sm text-red-200">
@@ -1943,14 +2302,50 @@ const PublicFormPage = () => {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl disabled:opacity-60"
-            >
-              <Send size={16} />
-              {submitting ? "Submitting..." : "Submit Response"}
-            </button>
+            {currentSection && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {currentSectionIndex > 0 || currentPageIndex > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handlePreviousPage}
+                    className="inline-flex items-center bg-cyan-600  justify-center gap-2 rounded-2xl border border-white/10 px-6 py-4 text-sm font-semibold sm:min-w-36"
+                  >
+                    <ArrowLeft size={16} /> Previous
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                {hasNextPageInSection ? (
+                  <button
+                    type="button"
+                    onClick={handleNextPage}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl sm:min-w-36"
+                  >
+                    Next
+                    <Send size={16} />
+                  </button>
+                ) : hasNextSection ? (
+                  <button
+                    type="button"
+                    onClick={handleNextPage}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl sm:min-w-40"
+                  >
+                    Next Section
+                    <Send size={16} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl disabled:opacity-60 sm:min-w-44"
+                  >
+                    <Send size={16} />
+                    {submitting ? "Submitting..." : "Submit Response"}
+                  </button>
+                )}
+              </div>
+            )}
           </form>
         )}
       </div>

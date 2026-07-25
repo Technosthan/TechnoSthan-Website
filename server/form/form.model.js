@@ -18,6 +18,39 @@ const typographyStyleSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const formSectionSchema = new mongoose.Schema(
+  {
+    id: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    title: {
+      type: String,
+      default: "Untitled Section",
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    order: {
+      type: Number,
+      default: 0,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    questions: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
+  },
+  { _id: false },
+);
+
 const formSchema = new mongoose.Schema(
   {
     title: {
@@ -58,6 +91,10 @@ const formSchema = new mongoose.Schema(
         margin: "",
         padding: "",
       }),
+    },
+    sections: {
+      type: [formSectionSchema],
+      default: [],
     },
     slug: {
       type: String,

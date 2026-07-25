@@ -246,6 +246,195 @@ function normalizeConditionalFields(fields = [], depth = 1) {
     }));
 }
 
+const LEGACY_DEFAULT_SECTION_ID = "legacy-default-section";
+const LEGACY_DEFAULT_SECTION_TITLE = "Form Details";
+
+const normalizeSectionId = (value = "") =>
+  String(value || "").trim() || LEGACY_DEFAULT_SECTION_ID;
+
+const normalizeSectionTitle = (value = "") =>
+  String(value || "").trim() || LEGACY_DEFAULT_SECTION_TITLE;
+
+const createLegacySection = () => ({
+  id: LEGACY_DEFAULT_SECTION_ID,
+  title: LEGACY_DEFAULT_SECTION_TITLE,
+  description: "",
+  order: 0,
+  isActive: true,
+});
+
+const normalizeSection = (section = {}, index = 0) => ({
+  id: normalizeSectionId(section.id || section.sectionId || section.key),
+  title: normalizeSectionTitle(section.title || section.label),
+  description: String(section.description || section.helpText || "").trim(),
+  order: Number.isFinite(Number(section.order)) ? Number(section.order) : index,
+  isActive: section.isActive !== false,
+});
+
+const normalizeSectionsPayload = (sections = []) => {
+  const normalized = (Array.isArray(sections) ? sections : [])
+    .map((section, index) => normalizeSection(section, index))
+    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .sort((left, right) => left.order - right.order);
+
+  return normalized.length ? normalized : [createLegacySection()];
+};
+
+const normalizeQuestionForSection = (question = {}, index = 0, fallbackSection = null) => {
+  const sourceSection = fallbackSection || {};
+  const sectionId = normalizeSectionId(
+    question.sectionId ||
+      question.section?.id ||
+      question.section?.sectionId ||
+      sourceSection.id,
+  );
+  const sectionTitle = normalizeSectionTitle(
+    question.sectionTitle ||
+      question.section?.title ||
+      sourceSection.title ||
+      LEGACY_DEFAULT_SECTION_TITLE,
+  );
+  const sectionDescription = String(
+    question.sectionDescription ||
+      question.section?.description ||
+      sourceSection.description ||
+      "",
+  ).trim();
+  const sectionOrder = Number.isFinite(Number(question.sectionOrder))
+    ? Number(question.sectionOrder)
+    : Number.isFinite(Number(sourceSection.order))
+      ? Number(sourceSection.order)
+      : 0;
+
+  return {
+    ...question,
+    _id: String(question._id || question.id || ""),
+    id: String(question._id || question.id || ""),
+    label: String(question.label || "").trim() || "Untitled question",
+    type:
+      question.type === "One line Text" || question.type === "One Line Text"
+        ? "shortAnswer"
+        : question.type || "shortAnswer",
+    placeholder: String(question.placeholder || "").trim(),
+    helpText: String(question.helpText || "").trim(),
+    required: question.required === true,
+    validationEnabled: question.validationEnabled === true,
+    sectionId,
+    sectionTitle,
+    sectionDescription,
+    sectionOrder,
+    sectionIsActive:
+      question.sectionIsActive !== undefined
+        ? question.sectionIsActive === true
+        : sourceSection.isActive !== false,
+    options: normalizeQuestionOptions(question),
+    conditionalFields: normalizeQuestionConditionalFields(question),
+    validation:
+      question.type === "number"
+        ? {
+            minValue: parseOptionalNumber(question.validation?.minValue),
+            maxValue: parseOptionalNumber(question.validation?.maxValue),
+            minDigits: parseOptionalInteger(question.validation?.minDigits),
+            maxDigits: parseOptionalInteger(question.validation?.maxDigits),
+            errorMessage: String(question.validation?.errorMessage || "").trim(),
+          }
+        : undefined,
+    order: typeof question.order === "number" ? question.order : index,
+  };
+};
+
+const flattenQuestionsFromSections = (sections = []) => {
+  const sourceSections = Array.isArray(sections) ? sections : [];
+  const flattened = [];
+  sourceSections.forEach((rawSection, sectionIndex) => {
+    const section = normalizeSection(rawSection, sectionIndex);
+    const rawQuestions = Array.isArray(rawSection.questions)
+      ? rawSection.questions
+      : Array.isArray(rawSection.items)
+        ? rawSection.items
+        : [];
+    rawQuestions.forEach((question, questionIndex) => {
+      flattened.push(
+        normalizeQuestionForSection(
+          {
+            ...question,
+            sectionId: section.id,
+            sectionTitle: section.title,
+            sectionDescription: section.description,
+            sectionOrder: section.order,
+            sectionIsActive: section.isActive,
+          },
+          questionIndex,
+          section,
+        ),
+      );
+    });
+  });
+  return flattened;
+};
+
+const buildSectionsDto = (sections = [], questions = []) => {
+  const normalizedSections = normalizeSectionsPayload(sections);
+  const sectionMap = new Map(
+    normalizedSections.map((section) => [
+      section.id,
+      {
+        ...section,
+        questions: [],
+      },
+    ]),
+  );
+
+  const defaultSection =
+    sectionMap.get(LEGACY_DEFAULT_SECTION_ID) || {
+      ...createLegacySection(),
+      questions: [],
+    };
+  if (!sectionMap.has(defaultSection.id)) {
+    sectionMap.set(defaultSection.id, defaultSection);
+  }
+
+  const sourceQuestions =
+    Array.isArray(questions) && questions.length
+      ? questions
+      : flattenQuestionsFromSections(sections);
+  const sortedQuestions = [...sourceQuestions]
+    .map((question, index) => normalizeQuestionForSection(question, index))
+    .sort((left, right) => {
+      const leftSection = sectionMap.get(left.sectionId) || defaultSection;
+      const rightSection = sectionMap.get(right.sectionId) || defaultSection;
+      return (
+        leftSection.order - rightSection.order ||
+        left.order - right.order ||
+        String(left.label || "").localeCompare(String(right.label || ""))
+      );
+    });
+
+  sortedQuestions.forEach((question) => {
+    const sectionId = sectionMap.has(question.sectionId)
+      ? question.sectionId
+      : defaultSection.id;
+    const section = sectionMap.get(sectionId) || defaultSection;
+    section.questions.push({
+      ...question,
+      sectionId: section.id,
+      sectionTitle: section.title,
+      sectionDescription: section.description,
+      sectionOrder: section.order,
+      sectionIsActive: section.isActive,
+    });
+  });
+
+  return [...sectionMap.values()]
+    .map((section) => ({
+      ...section,
+      questions: [...(section.questions || [])].sort(
+        (left, right) => left.order - right.order || String(left.id).localeCompare(String(right.id)),
+      ),
+    }))
+    .sort((left, right) => left.order - right.order);
+};
+
 const getConditionalFieldOptionValues = (options = []) =>
   (Array.isArray(options) ? options : [])
     .map((option) => {
@@ -796,8 +985,33 @@ const importFormFile = async (file) => {
       : Array.isArray(jsonPayload.questions)
         ? jsonPayload.questions
         : [];
+    const importedSections = Array.isArray(importedForm.sections)
+      ? importedForm.sections
+      : Array.isArray(jsonPayload.sections)
+        ? jsonPayload.sections
+        : [];
+    const derivedSections = importedSections.length
+      ? importedSections.map((section, index) => ({
+          ...normalizeSection(section, index),
+          questions: flattenQuestionsFromSections([
+            {
+              ...normalizeSection(section, index),
+              questions: Array.isArray(section.questions) ? section.questions : [],
+            },
+          ]),
+        }))
+      : [createLegacySection()];
+    const flattenedQuestions = importedSections.length
+      ? flattenQuestionsFromSections(importedSections)
+      : importedQuestions.map((question, index) =>
+          normalizeQuestionForSection(question, index, createLegacySection()),
+        );
 
-    if (!importedForm.title && !importedForm.description && !importedQuestions.length) {
+    if (
+      !importedForm.title &&
+      !importedForm.description &&
+      !flattenedQuestions.length
+    ) {
       throw new Error("Could not detect form content from the uploaded file");
     }
 
@@ -807,19 +1021,29 @@ const importFormFile = async (file) => {
       titleStyle: normalizeTitleStyle(importedForm.titleStyle),
       descriptionStyle: normalizeDescriptionStyle(importedForm.descriptionStyle),
       emailTemplate: normalizeEmailTemplate(importedForm.emailTemplate, importedForm),
-      sections: Array.isArray(importedForm.sections) ? importedForm.sections : [],
-      questions: importedQuestions.map((question, index) => ({
-        label: String(question.label || "").trim(),
-        type: question.type || "shortAnswer",
-        required: question.required === true,
-        placeholder: String(question.placeholder || "").trim(),
-        helpText: String(question.helpText || question.description || "").trim(),
-        options: Array.isArray(question.options)
-          ? question.options.map((item) => String(item).trim()).filter(Boolean)
-          : [],
-        validationEnabled: question.validationEnabled === true,
-        validation: question.validation || undefined,
-        order: typeof question.order === "number" ? question.order : index,
+      sections: derivedSections.map((section, index) => ({
+        id: section.id,
+        title: section.title,
+        description: section.description,
+        order: section.order ?? index,
+        isActive: section.isActive !== false,
+        questions: (section.questions || []).map((question, questionIndex) =>
+          normalizeQuestionForSection(
+            {
+              ...question,
+              sectionId: section.id,
+              sectionTitle: section.title,
+              sectionDescription: section.description,
+              sectionOrder: section.order ?? index,
+              sectionIsActive: section.isActive !== false,
+            },
+            questionIndex,
+            section,
+          ),
+        ),
+      })),
+      questions: flattenedQuestions.map((question, index) => ({
+        ...normalizeQuestionForSection(question, index),
       })),
     };
   }
@@ -1284,15 +1508,22 @@ const ensureUniqueSlug = async (baseSlug, excludeId = null) => {
 };
 
 const getQuestionsPayload = (payload = {}) => {
+  if (Array.isArray(payload.sections) && payload.sections.length > 0) {
+    return flattenQuestionsFromSections(payload.sections);
+  }
+
   if (Array.isArray(payload.questions)) {
-    return payload.questions;
+    const defaultSection = createLegacySection();
+    return payload.questions.map((question, index) =>
+      normalizeQuestionForSection(question, index, defaultSection),
+    );
   }
 
   if (Array.isArray(payload.fields)) {
-    return payload.fields.map((field, index) => ({
-      ...field,
-      order: typeof field.order === "number" ? field.order : index,
-    }));
+    const defaultSection = createLegacySection();
+    return payload.fields.map((field, index) =>
+      normalizeQuestionForSection(field, index, defaultSection),
+    );
   }
 
   return [];
@@ -1304,29 +1535,22 @@ const normalizeQuestion = (question, index) => {
       ? "shortAnswer"
       : question.type
     : "shortAnswer";
-  const validation =
-    type === "number"
-      ? {
-          minValue: parseOptionalNumber(question.validation?.minValue),
-          maxValue: parseOptionalNumber(question.validation?.maxValue),
-          minDigits: parseOptionalInteger(question.validation?.minDigits),
-          maxDigits: parseOptionalInteger(question.validation?.maxDigits),
-          errorMessage: String(question.validation?.errorMessage || "").trim(),
-        }
-      : undefined;
+  const base = normalizeQuestionForSection(question, index);
   return {
-    _id: String(question._id || question.id || ""),
-    id: String(question._id || question.id || ""),
-    label: String(question.label || "").trim() || "Untitled question",
+    ...base,
     type,
-    placeholder: String(question.placeholder || "").trim(),
-    helpText: String(question.helpText || "").trim(),
-    required: question.required === true,
-    validationEnabled: question.validationEnabled === true,
+    validation:
+      type === "number"
+        ? {
+            minValue: parseOptionalNumber(question.validation?.minValue),
+            maxValue: parseOptionalNumber(question.validation?.maxValue),
+            minDigits: parseOptionalInteger(question.validation?.minDigits),
+            maxDigits: parseOptionalInteger(question.validation?.maxDigits),
+            errorMessage: String(question.validation?.errorMessage || "").trim(),
+          }
+        : undefined,
     options: normalizeQuestionOptions(question),
     conditionalFields: normalizeQuestionConditionalFields(question),
-    ...(validation ? { validation } : {}),
-    order: typeof question.order === "number" ? question.order : index,
   };
 };
 
@@ -1352,12 +1576,44 @@ const normalizeFormPayload = async (
 
   const status =
     payload.status === "live" || payload.active === true ? "live" : "draft";
+  const sourceSections = Array.isArray(payload.sections) ? payload.sections : [];
+  const normalizedSections = normalizeSectionsPayload(sourceSections);
+  const sectionQuestionsMap = new Map();
+  sourceSections.forEach((rawSection, index) => {
+    const normalizedSection = normalizeSection(rawSection, index);
+    const rawQuestions = Array.isArray(rawSection.questions)
+      ? rawSection.questions
+      : Array.isArray(rawSection.items)
+        ? rawSection.items
+        : [];
+    sectionQuestionsMap.set(
+      normalizedSection.id,
+      rawQuestions.map((question, questionIndex) =>
+        normalizeQuestionForSection(
+          {
+            ...question,
+            sectionId: normalizedSection.id,
+            sectionTitle: normalizedSection.title,
+            sectionDescription: normalizedSection.description,
+            sectionOrder: normalizedSection.order,
+            sectionIsActive: normalizedSection.isActive,
+          },
+          questionIndex,
+          normalizedSection,
+        ),
+      ),
+    );
+  });
 
   return {
     title,
     description: normalizeDescriptionHtml(payload.description || ""),
     titleStyle: normalizeTitleStyle(payload.titleStyle),
     descriptionStyle: normalizeDescriptionStyle(payload.descriptionStyle),
+    sections: normalizedSections.map((section) => ({
+      ...section,
+      questions: sectionQuestionsMap.get(section.id) || [],
+    })),
     slug,
     status,
     successMessage:
@@ -1764,6 +2020,7 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
       plainForm.notificationSettings,
       plainForm,
     ),
+    sections: buildSectionsDto(plainForm.sections || [], sortedQuestions),
     questions: sortedQuestions,
     responseCount,
   };
@@ -1777,6 +2034,13 @@ const buildQuestionExportDto = (question, index = 0) => ({
   placeholder: question.placeholder || "",
   required: question.required === true,
   validationEnabled: question.validationEnabled === true,
+  sectionId: normalizeSectionId(question.sectionId),
+  sectionTitle: normalizeSectionTitle(question.sectionTitle),
+  sectionDescription: String(question.sectionDescription || "").trim(),
+  sectionOrder: Number.isFinite(Number(question.sectionOrder))
+    ? Number(question.sectionOrder)
+    : 0,
+  sectionIsActive: question.sectionIsActive !== false,
   options: normalizeQuestionOptions(question),
   conditionalFields: normalizeConditionalFields(
     question.conditionalFields || question.followUpFields || [],
@@ -1814,9 +2078,21 @@ const buildFormExportDto = (form, questions = []) => {
       ),
     )
     .sort((a, b) => a.order - b.order);
+  const sections = buildSectionsDto(plainForm.sections || [], sortedQuestions).map(
+    (section) => ({
+      id: section.id,
+      title: section.title,
+      description: section.description,
+      order: section.order,
+      isActive: section.isActive,
+      questions: section.questions.map((question, index) =>
+        buildQuestionExportDto(question, index),
+      ),
+    }),
+  );
 
   return {
-    exportVersion: "1.0",
+    exportVersion: "2.0",
     exportedAt: new Date().toISOString(),
     form: {
       title: plainForm.title || "",
@@ -1836,7 +2112,10 @@ const buildFormExportDto = (form, questions = []) => {
         "",
       bannerImage: plainForm.bannerImage || plainForm.bannerImageUrl || "",
       emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
-      questions: sortedQuestions,
+      sections,
+      questions: sortedQuestions.map((question, index) =>
+        buildQuestionExportDto(question, index),
+      ),
     },
   };
 };
@@ -3510,6 +3789,7 @@ const updateForm = async (formId, payload) => {
   existing.allowFileUpload = formPayload.allowFileUpload;
   existing.expiresAt = formPayload.expiresAt;
   existing.themeColor = formPayload.themeColor;
+  existing.sections = formPayload.sections;
 
   await existing.save();
   const questions = await syncQuestions(existing._id, getQuestionsPayload(payload));

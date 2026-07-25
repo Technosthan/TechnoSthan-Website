@@ -251,6 +251,126 @@ const EMPTY_FORM = {
   expiresAt: "",
   themeColor: "#16a34a",
   questions: [],
+  sections: [],
+};
+
+const LEGACY_DEFAULT_SECTION_ID = "legacy-default-section";
+const LEGACY_DEFAULT_SECTION_TITLE = "Form Details";
+
+const createLegacySection = () => ({
+  id: LEGACY_DEFAULT_SECTION_ID,
+  title: LEGACY_DEFAULT_SECTION_TITLE,
+  description: "",
+  order: 0,
+  isActive: true,
+});
+
+const createSection = (order = 0, overrides = {}) => ({
+  id: overrides.id || crypto.randomUUID(),
+  title: overrides.title || "Untitled Section",
+  description: overrides.description || "",
+  order,
+  isActive: overrides.isActive !== false,
+});
+
+const normalizeSection = (section = {}, index = 0) => ({
+  id: String(section.id || section.sectionId || section.key || "").trim() || crypto.randomUUID(),
+  title: (() => {
+    const rawTitle = String(section.title || section.label || "");
+    return rawTitle.trim() ? rawTitle : "Untitled Section";
+  })(),
+  description: String(section.description || section.helpText || ""),
+  order: typeof section.order === "number" ? section.order : index,
+  isActive: section.isActive !== false,
+});
+
+const normalizeSections = (sections = [], questions = []) => {
+  const normalized = (Array.isArray(sections) ? sections : [])
+    .map((section, index) => normalizeSection(section, index))
+    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .sort((left, right) => left.order - right.order);
+
+  if (normalized.length) {
+    return normalized;
+  }
+
+  const sectionHints = (Array.isArray(questions) ? questions : [])
+    .map((question) => ({
+      id: String(question?.sectionId || "").trim(),
+      title: String(question?.sectionTitle || "").trim(),
+      description: String(question?.sectionDescription || "").trim(),
+      order: typeof question?.sectionOrder === "number" ? question.sectionOrder : 0,
+      isActive:
+        question?.sectionIsActive !== undefined
+          ? question.sectionIsActive === true
+          : true,
+    }))
+    .filter((section) => section.id);
+
+  const hasMeaningfulHints = sectionHints.some(
+    (section) => section.id !== LEGACY_DEFAULT_SECTION_ID,
+  );
+
+  if (!hasMeaningfulHints) {
+    return [createLegacySection()];
+  }
+
+  return sectionHints
+    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .map((section, index) => ({
+      id: section.id,
+      title: section.title || LEGACY_DEFAULT_SECTION_TITLE,
+      description: section.description || "",
+      order: typeof section.order === "number" ? section.order : index,
+      isActive: section.isActive !== false,
+    }))
+    .sort((left, right) => left.order - right.order);
+};
+
+const groupQuestionsBySection = (questions = [], sections = []) => {
+  const normalizedSections = normalizeSections(sections, questions);
+  const sectionMap = new Map(
+    normalizedSections.map((section) => [
+      section.id,
+      { ...section, questions: [] },
+    ]),
+  );
+  const defaultSection =
+    sectionMap.get(LEGACY_DEFAULT_SECTION_ID) ||
+    sectionMap.values().next().value ||
+    { ...createLegacySection(), questions: [] };
+
+  if (!sectionMap.has(defaultSection.id)) {
+    sectionMap.set(defaultSection.id, defaultSection);
+  }
+
+  (Array.isArray(questions) ? questions : [])
+    .map((question, index) => normalizeQuestion(question, index))
+    .forEach((question) => {
+      const targetId = sectionMap.has(question.sectionId)
+        ? question.sectionId
+        : defaultSection.id;
+      const section = sectionMap.get(targetId) || defaultSection;
+      section.questions.push({
+        ...question,
+        sectionId: section.id,
+        sectionTitle: section.title,
+        sectionDescription: section.description,
+        sectionOrder: section.order,
+        sectionIsActive: section.isActive,
+      });
+    });
+
+  return Array.from(sectionMap.values())
+    .map((section) => ({
+      ...section,
+      questions: (section.questions || []).sort((left, right) => {
+        const leftOrder = typeof left.order === "number" ? left.order : 0;
+        const rightOrder = typeof right.order === "number" ? right.order : 0;
+        return leftOrder - rightOrder || String(left.id).localeCompare(String(right.id));
+      }),
+    }))
+    .sort((left, right) => left.order - right.order);
 };
 
 const createQuestion = () => ({
@@ -265,6 +385,11 @@ const createQuestion = () => ({
   conditionalFields: [],
   validation: normalizeNumberValidation(),
   order: 0,
+  sectionId: LEGACY_DEFAULT_SECTION_ID,
+  sectionTitle: LEGACY_DEFAULT_SECTION_TITLE,
+  sectionDescription: "",
+  sectionOrder: 0,
+  sectionIsActive: true,
 });
 
 const createQuestionOption = (label = "Option 1", order = 0) => ({
@@ -1181,6 +1306,25 @@ const buildQuestionValidationPayload = (question) => {
 
 const normalizeQuestion = (question, index) => ({
   id: question._id || question.id || crypto.randomUUID(),
+  sectionId:
+    String(question.sectionId || question.section?.id || "").trim() ||
+    LEGACY_DEFAULT_SECTION_ID,
+  sectionTitle:
+    String(question.sectionTitle || question.section?.title || "").trim() ||
+    LEGACY_DEFAULT_SECTION_TITLE,
+  sectionDescription: String(
+    question.sectionDescription || question.section?.description || "",
+  ).trim(),
+  sectionOrder:
+    typeof question.sectionOrder === "number"
+      ? question.sectionOrder
+      : typeof question.section?.order === "number"
+        ? question.section.order
+        : 0,
+  sectionIsActive:
+    question.sectionIsActive !== undefined
+      ? question.sectionIsActive === true
+      : question.section?.isActive !== false,
   label: question.label || "",
   type: question.type || "shortAnswer",
   placeholder: question.placeholder || "",
@@ -1237,6 +1381,7 @@ const normalizeForm = (form) => ({
     form?.notificationSettings,
     form,
   ),
+  sections: normalizeSections(form?.sections || [], form?.questions || []),
   questions: Array.isArray(form?.questions)
     ? form.questions.map(normalizeQuestion)
     : [],
@@ -1570,12 +1715,17 @@ const FormManagement = () => {
       }),
   );
   const recoveryHandledRef = useRef(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
   const draftState = useMemo(
     () => ({
       ...draft,
       selectedFormId,
     }),
     [draft, selectedFormId],
+  );
+  const draftSections = useMemo(
+    () => groupQuestionsBySection(draft.questions, draft.sections),
+    [draft.questions, draft.sections],
   );
   const {
     draftSnapshot,
@@ -1670,6 +1820,7 @@ const FormManagement = () => {
     setResponsesTab("list");
     setSlugTouched(false);
     setImportPreview(null);
+    setCollapsedSections({});
     draftResolutionRef.current = null;
     setDraft({
       ...EMPTY_FORM,
@@ -2562,14 +2713,36 @@ const FormManagement = () => {
     }
   };
 
-  const addQuestion = () => {
-    setDraft((prev) => ({
-      ...prev,
-      questions: [
-        ...prev.questions,
-        { ...createQuestion(), order: prev.questions.length },
-      ],
-    }));
+  const addQuestion = (sectionId = null) => {
+    setDraft((prev) => {
+      const sections = normalizeSections(prev.sections, prev.questions);
+      const targetSection =
+        sections.find((section) => section.id === sectionId) ||
+        sections[0] ||
+        createLegacySection();
+      const sectionQuestionCount = (prev.questions || []).filter(
+        (question) =>
+          String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
+          targetSection.id,
+      ).length;
+
+      return {
+        ...prev,
+        sections,
+        questions: [
+          ...prev.questions,
+          {
+            ...createQuestion(),
+            sectionId: targetSection.id,
+            sectionTitle: targetSection.title,
+            sectionDescription: targetSection.description,
+            sectionOrder: targetSection.order,
+            sectionIsActive: targetSection.isActive,
+            order: sectionQuestionCount,
+          },
+        ],
+      };
+    });
   };
 
   const handleImportFormFile = async (event) => {
@@ -2619,6 +2792,19 @@ const FormManagement = () => {
           ? data.questions.map((question, index) => ({
               id: crypto.randomUUID(),
               selected: true,
+              sectionId: question.sectionId || question.section?.id || "",
+              sectionTitle:
+                question.sectionTitle || question.section?.title || "",
+              sectionDescription:
+                question.sectionDescription ||
+                question.section?.description ||
+                "",
+              sectionOrder:
+                typeof question.sectionOrder === "number"
+                  ? question.sectionOrder
+                  : typeof question.section?.order === "number"
+                    ? question.section.order
+                    : 0,
               label: question.label || "",
               type: question.type || "shortAnswer",
               required: question.required === true,
@@ -2696,57 +2882,83 @@ const FormManagement = () => {
   const applyImportedForm = () => {
     if (!importPreview) return;
 
+    const importedSections = normalizeSections(
+      importPreview.sections || [],
+      importPreview.questions || [],
+    );
     const importedQuestions = (importPreview.questions || [])
       .filter((question) => question.selected)
-      .map((question) => ({
-        ...createQuestion(),
-        id: crypto.randomUUID(),
-        label: question.label || "Untitled question",
-        type: question.type || "shortAnswer",
-        required: question.required === true,
-        placeholder: question.placeholder || "",
-        helpText: question.helpText || "",
-        options:
-          Array.isArray(question.options) &&
-          question.options.some(
-            (option) =>
-              option &&
-              typeof option === "object" &&
-              (option.id || option.conditionalLogic),
-          )
-            ? question.options.map((option, optionIndex) =>
-                typeof option === "string"
-                  ? createQuestionOption(option, optionIndex)
-                  : {
-                      ...option,
-                      id: String(option.id || crypto.randomUUID()),
-                      label: String(option.label || option.value || "").trim(),
-                      value: String(option.value || option.label || "").trim(),
-                    },
-              )
-            : parseOptionsText(question.optionsText || "").map(
-                (option, optionIndex) =>
-                  createQuestionOption(option, optionIndex),
-              ),
-        conditionalFields: Array.isArray(question.conditionalFields)
-          ? question.conditionalFields.map((field, fieldIndex) => ({
-              ...createConditionalField(fieldIndex),
-              ...field,
-              id: String(field.id || crypto.randomUUID()),
-            }))
-          : [],
-        order: 0,
-      }))
+      .map((question) => {
+        const resolvedSection =
+          importedSections.find(
+            (section) =>
+              section.id ===
+              String(question.sectionId || question.section?.id || "").trim(),
+          ) || importedSections[0] || createLegacySection();
+        return {
+          ...createQuestion(),
+          id: crypto.randomUUID(),
+          label: question.label || "Untitled question",
+          type: question.type || "shortAnswer",
+          required: question.required === true,
+          placeholder: question.placeholder || "",
+          helpText: question.helpText || "",
+          sectionId: resolvedSection.id,
+          sectionTitle: resolvedSection.title,
+          sectionDescription: resolvedSection.description,
+          sectionOrder: resolvedSection.order,
+          sectionIsActive: resolvedSection.isActive,
+          options:
+            Array.isArray(question.options) &&
+            question.options.some(
+              (option) =>
+                option &&
+                typeof option === "object" &&
+                (option.id || option.conditionalLogic),
+            )
+              ? question.options.map((option, optionIndex) =>
+                  typeof option === "string"
+                    ? createQuestionOption(option, optionIndex)
+                    : {
+                        ...option,
+                        id: String(option.id || crypto.randomUUID()),
+                        label: String(option.label || option.value || "").trim(),
+                        value: String(option.value || option.label || "").trim(),
+                      },
+                )
+              : parseOptionsText(question.optionsText || "").map(
+                  (option, optionIndex) =>
+                    createQuestionOption(option, optionIndex),
+                ),
+          conditionalFields: Array.isArray(question.conditionalFields)
+            ? question.conditionalFields.map((field, fieldIndex) => ({
+                ...createConditionalField(fieldIndex),
+                ...field,
+                id: String(field.id || crypto.randomUUID()),
+              }))
+            : [],
+          order: typeof question.order === "number" ? question.order : 0,
+        };
+      })
       .filter((question) => question.label.trim());
 
     setDraft((prev) => {
       const existing = Array.isArray(prev.questions) ? [...prev.questions] : [];
+      const existingSections = normalizeSections(prev.sections, prev.questions);
+      const hasMeaningfulSections = existingSections.some(
+        (section) => section.id !== LEGACY_DEFAULT_SECTION_ID,
+      );
+      const mergedSections = hasMeaningfulSections ? [...existingSections] : [];
       const existingKeys = new Set(
         existing.map(
           (question) =>
             `${String(question.label || "")
               .trim()
               .toLowerCase()}::${String(question.type || "")
+              .trim()
+              .toLowerCase()}::${String(
+              question.sectionId || LEGACY_DEFAULT_SECTION_ID,
+            )
               .trim()
               .toLowerCase()}`,
         ),
@@ -2758,13 +2970,31 @@ const FormManagement = () => {
           .trim()
           .toLowerCase()}::${String(question.type || "")
           .trim()
+          .toLowerCase()}::${String(question.sectionId || LEGACY_DEFAULT_SECTION_ID)
+          .trim()
           .toLowerCase()}`;
         if (existingKeys.has(key)) {
           return;
         }
         existingKeys.add(key);
+        if (!mergedSections.some((section) => section.id === question.sectionId)) {
+          mergedSections.push({
+            id: question.sectionId,
+            title: question.sectionTitle || LEGACY_DEFAULT_SECTION_TITLE,
+            description: question.sectionDescription || "",
+            order:
+              typeof question.sectionOrder === "number"
+                ? question.sectionOrder
+                : mergedSections.length,
+            isActive: question.sectionIsActive !== false,
+          });
+        }
         merged.push(question);
       });
+
+      const nextSections = (mergedSections.length ? mergedSections : [createLegacySection()]).sort(
+        (left, right) => left.order - right.order,
+      );
 
       return {
         ...prev,
@@ -2794,6 +3024,7 @@ const FormManagement = () => {
         emailTemplate: importPreview.emailTemplate
           ? normalizeEmailTemplate(importPreview.emailTemplate, prev)
           : normalizeEmailTemplate(prev.emailTemplate, prev),
+        sections: nextSections,
         questions: merged.map((question, order) => ({ ...question, order })),
       };
     });
@@ -2810,13 +3041,26 @@ const FormManagement = () => {
     setDraft((prev) => {
       const source = prev.questions[index];
       if (!source) return prev;
+      const sections = normalizeSections(prev.sections, prev.questions);
+      const targetSection =
+        sections.find((section) => section.id === source.sectionId) ||
+        sections[0] ||
+        createLegacySection();
       const copy = cloneConditionalTree({
         ...source,
         id: crypto.randomUUID(),
         label: `${source.label} copy`,
-        order: prev.questions.length,
+        sectionId: targetSection.id,
+        sectionTitle: targetSection.title,
+        sectionDescription: targetSection.description,
+        sectionOrder: targetSection.order,
+        sectionIsActive: targetSection.isActive,
+        order:
+          (prev.questions || []).filter(
+            (question) => question.sectionId === targetSection.id,
+          ).length,
       });
-      return { ...prev, questions: [...prev.questions, copy] };
+      return { ...prev, sections, questions: [...prev.questions, copy] };
     });
   };
 
@@ -2832,12 +3076,189 @@ const FormManagement = () => {
   const moveQuestion = (index, direction) => {
     setDraft((prev) => {
       const next = [...prev.questions];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
+      const source = next[index];
+      if (!source) return prev;
+      const sameSectionIndexes = next
+        .map((question, currentIndex) =>
+          String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
+          String(source.sectionId || LEGACY_DEFAULT_SECTION_ID).trim()
+            ? currentIndex
+            : -1,
+        )
+        .filter((currentIndex) => currentIndex >= 0);
+      const position = sameSectionIndexes.indexOf(index);
+      const targetPosition = position + direction;
+      if (
+        targetPosition < 0 ||
+        targetPosition >= sameSectionIndexes.length
+      ) {
+        return prev;
+      }
+      const target = sameSectionIndexes[targetPosition];
       [next[index], next[target]] = [next[target], next[index]];
       return {
         ...prev,
         questions: next.map((question, order) => ({ ...question, order })),
+      };
+    });
+  };
+
+  const addSection = () => {
+    setDraft((prev) => {
+      const sections = normalizeSections(prev.sections, prev.questions);
+      const nextSections = [
+        ...sections,
+        createSection(sections.length, {
+          title: "Untitled Section",
+        }),
+      ].map((section, order) => ({ ...section, order }));
+
+      return {
+        ...prev,
+        sections: nextSections,
+      };
+    });
+  };
+
+  const updateSection = (sectionId, field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      sections: normalizeSections(prev.sections, prev.questions).map((section) =>
+        section.id === sectionId
+          ? { ...section, [field]: String(value ?? "") }
+          : section,
+      ),
+      questions: prev.questions.map((question) =>
+        String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
+        String(sectionId).trim()
+          ? {
+              ...question,
+              sectionId,
+              sectionTitle:
+                field === "title"
+                  ? String(value ?? "")
+                  : question.sectionTitle,
+              sectionDescription:
+                field === "description"
+                  ? String(value ?? "")
+                  : question.sectionDescription,
+            }
+          : question,
+      ),
+    }));
+  };
+
+  const toggleSectionCollapsed = (sectionId) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  const deleteSection = (sectionId) => {
+    const section = draftSections.find((item) => item.id === sectionId);
+    const confirmDelete = window.confirm(
+      `Delete section "${section?.title || "Untitled Section"}" and all of its questions?`,
+    );
+    if (!confirmDelete) return;
+
+    setDraft((prev) => ({
+      ...prev,
+      sections: normalizeSections(prev.sections, prev.questions).filter(
+        (item) => item.id !== sectionId,
+      ),
+      questions: prev.questions.filter(
+        (question) =>
+          String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() !==
+          String(sectionId).trim(),
+      ),
+    }));
+  };
+
+  const duplicateSection = (sectionId) => {
+    setDraft((prev) => {
+      const sections = normalizeSections(prev.sections, prev.questions);
+      const sourceSection = sections.find((item) => item.id === sectionId);
+      if (!sourceSection) return prev;
+      const sourceQuestions = prev.questions.filter(
+        (question) =>
+          String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
+          String(sectionId).trim(),
+      );
+      const nextSection = {
+        ...createSection(sourceSection.order + 1, {
+          title: `${sourceSection.title} copy`,
+          description: sourceSection.description,
+          isActive: sourceSection.isActive,
+        }),
+      };
+      const sectionInsertIndex = sections.findIndex(
+        (item) => item.id === sectionId,
+      );
+      const nextSections = [...sections];
+      nextSections.splice(sectionInsertIndex + 1, 0, nextSection);
+      const clonedQuestions = sourceQuestions.map((question, index) =>
+        cloneConditionalTree({
+          ...question,
+          id: crypto.randomUUID(),
+          sectionId: nextSection.id,
+          sectionTitle: nextSection.title,
+          sectionDescription: nextSection.description,
+          sectionOrder: nextSection.order,
+          sectionIsActive: nextSection.isActive,
+          label:
+            index === 0 && String(question.label || "").trim()
+              ? `${question.label} copy`
+              : question.label,
+          order: index,
+        }),
+      );
+      return {
+        ...prev,
+        sections: nextSections.map((section, order) => ({ ...section, order })),
+        questions: [
+          ...prev.questions,
+          ...clonedQuestions,
+        ].map((question, order) => ({ ...question, order })),
+      };
+    });
+  };
+
+  const moveSection = (sectionId, direction) => {
+    setDraft((prev) => {
+      const sections = normalizeSections(prev.sections, prev.questions);
+      const index = sections.findIndex((section) => section.id === sectionId);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= sections.length) return prev;
+      const nextSections = [...sections];
+      [nextSections[index], nextSections[target]] = [
+        nextSections[target],
+        nextSections[index],
+      ];
+      const normalizedSections = nextSections.map((section, order) => ({
+        ...section,
+        order,
+      }));
+      const sectionLookup = new Map(
+        normalizedSections.map((section) => [section.id, section]),
+      );
+      return {
+        ...prev,
+        sections: normalizedSections,
+        questions: prev.questions.map((question) => {
+          const section = sectionLookup.get(
+            String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim(),
+          );
+          if (!section) return question;
+          return {
+            ...question,
+            sectionId: section.id,
+            sectionTitle: section.title,
+            sectionDescription: section.description,
+            sectionOrder: section.order,
+            sectionIsActive: section.isActive,
+          };
+        }),
       };
     });
   };
@@ -2978,6 +3399,11 @@ const FormManagement = () => {
         logoAsset: null,
       },
     );
+    const normalizedSections = normalizeSections(draft.sections, draft.questions);
+    const groupedSections = groupQuestionsBySection(
+      draft.questions,
+      normalizedSections,
+    );
 
     const payload = {
       ...draft,
@@ -3015,6 +3441,166 @@ const FormManagement = () => {
         parsedExpiresAt && !Number.isNaN(parsedExpiresAt.getTime())
           ? parsedExpiresAt.toISOString()
           : null,
+      sections: groupedSections.map((section, sectionIndex) => ({
+        id: section.id,
+        title: String(section.title || "").trim() || "Untitled Section",
+        description: String(section.description || "").trim(),
+        order:
+          typeof section.order === "number" ? section.order : sectionIndex,
+        isActive: section.isActive !== false,
+        questions: (section.questions || []).map((question, questionIndex) => ({
+          id: question.id,
+          label: String(question.label || "").trim(),
+          type: question.type,
+          placeholder: String(question.placeholder || "").trim(),
+          helpText: String(question.helpText || "").trim(),
+          required: question.required === true,
+          validationEnabled: question.validationEnabled === true,
+          sectionId: String(question.sectionId || section.id || "").trim(),
+          sectionTitle:
+            String(question.sectionTitle || section.title || "").trim() ||
+            "Form Details",
+          sectionDescription: String(
+            question.sectionDescription || section.description || "",
+          ).trim(),
+          sectionOrder:
+            typeof question.sectionOrder === "number"
+              ? question.sectionOrder
+              : typeof section.order === "number"
+                ? section.order
+                : sectionIndex,
+          sectionIsActive:
+            question.sectionIsActive !== undefined
+              ? question.sectionIsActive === true
+              : section.isActive !== false,
+          options: Array.isArray(question.options)
+            ? question.options.map((option, optionIndex) => ({
+                id: String(option.id || crypto.randomUUID()),
+                label: String(option.label || option.value || "").trim(),
+                value: String(option.value || option.label || "").trim(),
+                order:
+                  typeof option.order === "number"
+                    ? option.order
+                    : optionIndex,
+                conditionalLogic: {
+                  enabled: option.conditionalLogic?.enabled === true,
+                  resetOnHide: option.conditionalLogic?.resetOnHide !== false,
+                  fields: Array.isArray(option.conditionalLogic?.fields)
+                    ? option.conditionalLogic.fields.map(
+                        (field, fieldIndex) => ({
+                          id: String(field.id || crypto.randomUUID()),
+                          label: String(field.label || "").trim(),
+                          type: String(field.type || "shortAnswer"),
+                          placeholder: String(field.placeholder || "").trim(),
+                          helpText: String(field.helpText || "").trim(),
+                          required: field.required === true,
+                          validationEnabled:
+                            field.validationEnabled === true,
+                          validation: normalizeNumberValidation(
+                            field.validation,
+                          ),
+                          options: Array.isArray(field.options)
+                            ? field.options
+                                .map((childOption, childIndex) => {
+                                  const optionSource =
+                                    typeof childOption === "string"
+                                      ? {
+                                          label: childOption,
+                                          value: childOption,
+                                        }
+                                      : childOption || {};
+                                  return {
+                                    ...optionSource,
+                                    id: String(
+                                      optionSource.id || crypto.randomUUID(),
+                                    ),
+                                    label: String(
+                                      optionSource.label ||
+                                        optionSource.value ||
+                                        "",
+                                    ).trim(),
+                                    value: String(
+                                      optionSource.value ||
+                                        optionSource.label ||
+                                        "",
+                                    ).trim(),
+                                    order:
+                                      typeof optionSource.order === "number"
+                                        ? optionSource.order
+                                        : childIndex,
+                                  };
+                                })
+                                .filter((childOption) =>
+                                  String(
+                                    childOption.label || childOption.value || "",
+                                  ).trim(),
+                                )
+                                .map((childOption, childIndex) => ({
+                                  ...childOption,
+                                  order: childIndex,
+                                }))
+                            : [],
+                          uploadConfig: field.uploadConfig || null,
+                          order:
+                            typeof field.order === "number"
+                              ? field.order
+                              : fieldIndex,
+                          isActive: field.isActive !== false,
+                        }),
+                      )
+                    : [],
+                },
+              }))
+            : [],
+          conditionalFields: Array.isArray(question.conditionalFields)
+            ? question.conditionalFields.map((field, fieldIndex) => ({
+                id: String(field.id || crypto.randomUUID()),
+                label: String(field.label || "").trim(),
+                type: String(field.type || "shortAnswer"),
+                placeholder: String(field.placeholder || "").trim(),
+                helpText: String(field.helpText || "").trim(),
+                required: field.required === true,
+                validationEnabled: field.validationEnabled === true,
+                validation: normalizeNumberValidation(field.validation),
+                options: Array.isArray(field.options)
+                  ? field.options
+                      .map((childOption, childIndex) => {
+                        const optionSource =
+                          typeof childOption === "string"
+                            ? { label: childOption, value: childOption }
+                            : childOption || {};
+                        return {
+                          ...optionSource,
+                          id: String(optionSource.id || crypto.randomUUID()),
+                          label: String(
+                            optionSource.label || optionSource.value || "",
+                          ).trim(),
+                          value: String(
+                            optionSource.value || optionSource.label || "",
+                          ).trim(),
+                          order:
+                            typeof optionSource.order === "number"
+                              ? optionSource.order
+                              : childIndex,
+                        };
+                      })
+                      .filter((childOption) =>
+                        String(childOption.label || childOption.value || "").trim(),
+                      )
+                      .map((childOption, childIndex) => ({
+                        ...childOption,
+                        order: childIndex,
+                      }))
+                  : [],
+                uploadConfig: field.uploadConfig || null,
+                order: typeof field.order === "number" ? field.order : fieldIndex,
+                isActive: field.isActive !== false,
+              }))
+            : [],
+          validation: buildQuestionValidationPayload(question),
+          order: questionIndex,
+        })),
+      })),
       questions: draft.questions.map((question, order) => ({
         id: question.id,
         label: String(question.label || "").trim(),
@@ -3023,6 +3609,17 @@ const FormManagement = () => {
         helpText: String(question.helpText || "").trim(),
         required: question.required === true,
         validationEnabled: question.validationEnabled === true,
+        sectionId: String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim(),
+        sectionTitle:
+          String(question.sectionTitle || LEGACY_DEFAULT_SECTION_TITLE).trim() ||
+          LEGACY_DEFAULT_SECTION_TITLE,
+        sectionDescription: String(question.sectionDescription || "").trim(),
+        sectionOrder:
+          typeof question.sectionOrder === "number" ? question.sectionOrder : 0,
+        sectionIsActive:
+          question.sectionIsActive !== undefined
+            ? question.sectionIsActive === true
+            : true,
         options: Array.isArray(question.options)
           ? question.options.map((option, optionIndex) => ({
               id: String(option.id || crypto.randomUUID()),
@@ -4440,16 +5037,16 @@ const FormManagement = () => {
                 <div>
                   <div className="font-semibold">Questions</div>
                   <div className="text-sm text-slate-400">
-                    Add unlimited questions.
+                    Organize questions into unlimited sections.
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={addQuestion}
+                    onClick={addSection}
                     className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white"
                   >
-                    <Plus size={16} /> Add Question
+                    <Plus size={16} /> Add Section
                   </button>
                   <button
                     type="button"
@@ -4473,386 +5070,549 @@ const FormManagement = () => {
               </div>
 
               <div className="space-y-4">
-                {draft.questions.map((question, index) => {
-                  const type = question.type;
-                  const isChoice = ["dropdown", "radio", "checkbox"].includes(
-                    type,
-                  );
+                {draftSections.map((section, sectionIndex) => {
+                  const sectionQuestions = section.questions || [];
+                  const isCollapsed = collapsedSections[section.id] === true;
                   return (
                     <div
-                      key={question.id}
-                      className="rounded-3xl border border-white/10 bg-slate-950/40 p-5"
+                      key={section.id}
+                      className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/50 p-5 shadow-[0_0_0_1px_rgba(34,211,238,0.04)]"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold">
-                            Question {index + 1}
-                          </div>
-                          <div className="text-xs text-slate-400">
-                            Drag-free reorder with arrows
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => moveQuestion(index, -1)}
-                            className="rounded-xl border border-white/10 p-2"
-                          >
-                            <ArrowUp size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveQuestion(index, 1)}
-                            className="rounded-xl border border-white/10 p-2"
-                          >
-                            <ArrowDown size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => duplicateQuestion(index)}
-                            className="rounded-xl border border-white/10 p-2"
-                          >
-                            <Duplicate size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeQuestion(index)}
-                            className="rounded-xl border border-red-500/30 p-2 text-red-300"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="mb-2 block text-sm font-semibold">
-                            Question Label
-                          </label>
-                          <input
-                            value={question.label}
-                            onChange={(e) =>
-                              updateQuestion(index, "label", e.target.value)
-                            }
-                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                            placeholder="Enter question text"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-sm font-semibold">
-                            Question Type
-                          </label>
-                          <select
-                            value={question.type}
-                            onChange={(e) =>
-                              updateQuestion(index, "type", e.target.value)
-                            }
-                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                          >
-                            {QUESTION_TYPES.map((item) => (
-                              <option key={item.value} value={item.value}>
-                                {item.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="mb-2 block text-sm font-semibold">
-                            Placeholder
-                          </label>
-                          <input
-                            value={question.placeholder}
-                            onChange={(e) =>
-                              updateQuestion(
-                                index,
-                                "placeholder",
-                                e.target.value,
-                              )
-                            }
-                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-sm font-semibold">
-                            Help Text
-                          </label>
-                          <input
-                            value={question.helpText}
-                            onChange={(e) =>
-                              updateQuestion(index, "helpText", e.target.value)
-                            }
-                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap items-center gap-4">
-                        <label className="inline-flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={question.required}
-                            onChange={(e) =>
-                              updateQuestion(
-                                index,
-                                "required",
-                                e.target.checked,
-                              )
-                            }
-                          />
-                          Required
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={question.validationEnabled === true}
-                            onChange={(e) =>
-                              updateQuestion(
-                                index,
-                                "validationEnabled",
-                                e.target.checked,
-                              )
-                            }
-                          />
-                          Enable Validation
-                        </label>
-                        <span className="text-xs text-slate-400">
-                          Type: {question.type}
-                        </span>
-                      </div>
-
-                      {type === "number" && (
-                        <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4">
-                          <div className="mb-4 text-sm font-semibold">
-                            Number Validation
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="space-y-3 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
+                            <span>Section {sectionIndex + 1}</span>
+                            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-[10px] normal-case tracking-normal text-cyan-100">
+                              {sectionQuestions.length} question
+                              {sectionQuestions.length === 1 ? "" : "s"}
+                            </span>
+                            {section.isActive === false && (
+                              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] normal-case tracking-normal text-amber-200">
+                                Inactive
+                              </span>
+                            )}
                           </div>
                           <div className="grid gap-4 md:grid-cols-2">
                             <div>
                               <label className="mb-2 block text-sm font-semibold">
-                                Minimum Value
+                                Section Title
                               </label>
                               <input
-                                type="number"
-                                step="1"
-                                value={question.validation?.minValue ?? ""}
+                                value={section.title}
                                 onChange={(e) =>
-                                  updateQuestionValidation(
-                                    index,
-                                    "minValue",
-                                    e.target.value,
-                                  )
+                                  updateSection(section.id, "title", e.target.value)
                                 }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                placeholder="18"
+                                placeholder="Untitled Section"
                               />
                             </div>
                             <div>
                               <label className="mb-2 block text-sm font-semibold">
-                                Maximum Value
+                                Section Actions
                               </label>
-                              <input
-                                type="number"
-                                step="1"
-                                value={question.validation?.maxValue ?? ""}
-                                onChange={(e) =>
-                                  updateQuestionValidation(
-                                    index,
-                                    "maxValue",
-                                    e.target.value,
-                                  )
-                                }
-                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                placeholder="60"
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-2 block text-sm font-semibold">
-                                Minimum Digit Length
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={question.validation?.minDigits ?? ""}
-                                onChange={(e) =>
-                                  updateQuestionValidation(
-                                    index,
-                                    "minDigits",
-                                    e.target.value,
-                                  )
-                                }
-                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                placeholder="2"
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-2 block text-sm font-semibold">
-                                Maximum Digit Length
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={question.validation?.maxDigits ?? ""}
-                                onChange={(e) =>
-                                  updateQuestionValidation(
-                                    index,
-                                    "maxDigits",
-                                    e.target.value,
-                                  )
-                                }
-                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                placeholder="2"
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="mb-2 block text-sm font-semibold">
-                                Custom Error Message
-                              </label>
-                              <textarea
-                                value={question.validation?.errorMessage ?? ""}
-                                onChange={(e) =>
-                                  updateQuestionValidation(
-                                    index,
-                                    "errorMessage",
-                                    e.target.value,
-                                  )
-                                }
-                                rows={3}
-                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
-                                placeholder="Please enter a valid age between 18 and 60."
-                              />
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => moveSection(section.id, -1)}
+                                  disabled={sectionIndex === 0}
+                                  className="rounded-2xl border border-white/10 p-3 disabled:cursor-not-allowed disabled:opacity-40"
+                                  aria-label="Move section up"
+                                >
+                                  <ArrowUp size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveSection(section.id, 1)}
+                                  disabled={sectionIndex === draftSections.length - 1}
+                                  className="rounded-2xl border border-white/10 p-3 disabled:cursor-not-allowed disabled:opacity-40"
+                                  aria-label="Move section down"
+                                >
+                                  <ArrowDown size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => duplicateSection(section.id)}
+                                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-3 py-3 text-xs font-semibold"
+                                >
+                                  <Duplicate size={14} /> Duplicate
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteSection(section.id)}
+                                  className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 px-3 py-3 text-xs font-semibold text-red-300"
+                                >
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSectionCollapsed(section.id)}
+                                  className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-3 text-xs font-semibold text-cyan-100"
+                                >
+                                  <ListPlus size={14} />
+                                  {isCollapsed ? "Expand" : "Collapse"}
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-
-                      {isChoice && (
-                        <div className="mt-4 space-y-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <label className="block text-sm font-semibold">
-                              Options
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Section Description
                             </label>
+                            <textarea
+                              value={section.description}
+                              onChange={(e) =>
+                                updateSection(
+                                  section.id,
+                                  "description",
+                                  e.target.value,
+                                )
+                              }
+                              rows={3}
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                              placeholder="Optional description"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isCollapsed && (
+                        <div className="mt-5 space-y-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-sm text-slate-400">
+                              Questions inside this section only.
+                            </div>
                             <button
                               type="button"
-                              onClick={() => addQuestionOption(index)}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                              onClick={() => addQuestion(section.id)}
+                              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100"
                             >
-                              <Plus size={14} /> Add Option
+                              <Plus size={16} /> Add Question
                             </button>
                           </div>
 
-                          <div className="space-y-3">
-                            {(question.options || []).map(
-                              (option, optionIndex) => (
-                                <div
-                                  key={option.id}
-                                  className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
-                                >
-                                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                                    <div>
-                                      <label className="mb-2 block text-xs font-semibold text-slate-300">
-                                        Option Label
-                                      </label>
-                                      <input
-                                        value={option.label || ""}
-                                        onChange={(e) =>
-                                          updateQuestionOption(
-                                            index,
-                                            option.id,
-                                            "label",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                        placeholder={`Option ${optionIndex + 1}`}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="mb-2 block text-xs font-semibold text-slate-300">
-                                        Option Value
-                                      </label>
-                                      <input
-                                        value={option.value || ""}
-                                        onChange={(e) =>
-                                          updateQuestionOption(
-                                            index,
-                                            option.id,
-                                            "value",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                        placeholder="Stable internal value"
-                                      />
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        removeQuestionOption(index, option.id)
-                                      }
-                                      className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
-                                    >
-                                      Remove
-                                    </button>
-                                  </div>
-
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        addConditionalFieldToOption(
-                                          index,
-                                          option.id,
-                                        )
-                                      }
-                                      className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
-                                    >
-                                      <ListPlus size={14} /> Configure
-                                      conditional fields
-                                    </button>
-                                    <span className="text-xs text-slate-400">
-                                      Stable ID: {option.id}
-                                    </span>
-                                  </div>
-
-                                  {option.conditionalLogic?.fields?.length >
-                                    0 && (
-                                    <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
-                                        Conditional Fields
+                          {sectionQuestions.length ? (
+                            <div className="space-y-4">
+                              {sectionQuestions.map((question, sectionQuestionIndex) => {
+                                const questionIndex = draft.questions.findIndex(
+                                  (item) => item.id === question.id,
+                                );
+                                const type = question.type;
+                                const isChoice = [
+                                  "dropdown",
+                                  "radio",
+                                  "checkbox",
+                                ].includes(type);
+                                return (
+                                  <div
+                                    key={question.id}
+                                    className="rounded-3xl border border-white/10 bg-white/5 p-5"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <div className="text-sm font-semibold">
+                                          Question {sectionQuestionIndex + 1}
+                                        </div>
+                                        <div className="text-xs text-slate-400">
+                                          Drag-free reorder within this section
+                                        </div>
                                       </div>
-                                      {option.conditionalLogic.fields.map(
-                                        (field, fieldIndex) =>
-                                          renderConditionalFieldEditor(
-                                            question.id,
-                                            index,
-                                            option.id,
-                                            field,
-                                            1,
-                                            [
-                                              question.label || "Question",
-                                              option.label || "Option",
-                                            ],
-                                          ),
-                                      )}
+                                      <div className="flex gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => moveQuestion(questionIndex, -1)}
+                                          className="rounded-xl border border-white/10 p-2"
+                                          disabled={
+                                            sectionQuestionIndex === 0 ||
+                                            questionIndex <= 0
+                                          }
+                                        >
+                                          <ArrowUp size={14} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => moveQuestion(questionIndex, 1)}
+                                          className="rounded-xl border border-white/10 p-2"
+                                          disabled={
+                                            sectionQuestionIndex ===
+                                            sectionQuestions.length - 1
+                                          }
+                                        >
+                                          <ArrowDown size={14} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => duplicateQuestion(questionIndex)}
+                                          className="rounded-xl border border-white/10 p-2"
+                                        >
+                                          <Duplicate size={14} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => removeQuestion(questionIndex)}
+                                          className="rounded-xl border border-red-500/30 p-2 text-red-300"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
-                              ),
-                            )}
-                          </div>
+
+                                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                      <div>
+                                        <label className="mb-2 block text-sm font-semibold">
+                                          Question Label
+                                        </label>
+                                        <input
+                                          value={question.label}
+                                          onChange={(e) =>
+                                            updateQuestion(
+                                              questionIndex,
+                                              "label",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                          placeholder="Enter question text"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="mb-2 block text-sm font-semibold">
+                                          Question Type
+                                        </label>
+                                        <select
+                                          value={question.type}
+                                          onChange={(e) =>
+                                            updateQuestion(
+                                              questionIndex,
+                                              "type",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                        >
+                                          {QUESTION_TYPES.map((item) => (
+                                            <option key={item.value} value={item.value}>
+                                              {item.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                      <div>
+                                        <label className="mb-2 block text-sm font-semibold">
+                                          Placeholder
+                                        </label>
+                                        <input
+                                          value={question.placeholder}
+                                          onChange={(e) =>
+                                            updateQuestion(
+                                              questionIndex,
+                                              "placeholder",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="mb-2 block text-sm font-semibold">
+                                          Help Text
+                                        </label>
+                                        <input
+                                          value={question.helpText}
+                                          onChange={(e) =>
+                                            updateQuestion(
+                                              questionIndex,
+                                              "helpText",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-wrap items-center gap-4">
+                                      <label className="inline-flex items-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          checked={question.required}
+                                          onChange={(e) =>
+                                            updateQuestion(
+                                              questionIndex,
+                                              "required",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                        Required
+                                      </label>
+                                      <label className="inline-flex items-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          checked={question.validationEnabled === true}
+                                          onChange={(e) =>
+                                            updateQuestion(
+                                              questionIndex,
+                                              "validationEnabled",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                        Enable Validation
+                                      </label>
+                                      <span className="text-xs text-slate-400">
+                                        Type: {question.type}
+                                      </span>
+                                    </div>
+
+                                    {type === "number" && (
+                                      <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+                                        <div className="mb-4 text-sm font-semibold">
+                                          Number Validation
+                                        </div>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                          <div>
+                                            <label className="mb-2 block text-sm font-semibold">
+                                              Minimum Value
+                                            </label>
+                                            <input
+                                              type="number"
+                                              step="1"
+                                              value={question.validation?.minValue ?? ""}
+                                              onChange={(e) =>
+                                                updateQuestionValidation(
+                                                  questionIndex,
+                                                  "minValue",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                              placeholder="18"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="mb-2 block text-sm font-semibold">
+                                              Maximum Value
+                                            </label>
+                                            <input
+                                              type="number"
+                                              step="1"
+                                              value={question.validation?.maxValue ?? ""}
+                                              onChange={(e) =>
+                                                updateQuestionValidation(
+                                                  questionIndex,
+                                                  "maxValue",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                              placeholder="60"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="mb-2 block text-sm font-semibold">
+                                              Minimum Digit Length
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              step="1"
+                                              value={question.validation?.minDigits ?? ""}
+                                              onChange={(e) =>
+                                                updateQuestionValidation(
+                                                  questionIndex,
+                                                  "minDigits",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                              placeholder="2"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="mb-2 block text-sm font-semibold">
+                                              Maximum Digit Length
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              step="1"
+                                              value={question.validation?.maxDigits ?? ""}
+                                              onChange={(e) =>
+                                                updateQuestionValidation(
+                                                  questionIndex,
+                                                  "maxDigits",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                              placeholder="2"
+                                            />
+                                          </div>
+                                          <div className="md:col-span-2">
+                                            <label className="mb-2 block text-sm font-semibold">
+                                              Custom Error Message
+                                            </label>
+                                            <textarea
+                                              value={
+                                                question.validation?.errorMessage ?? ""
+                                              }
+                                              onChange={(e) =>
+                                                updateQuestionValidation(
+                                                  questionIndex,
+                                                  "errorMessage",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              rows={3}
+                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                                              placeholder="Please enter a valid age between 18 and 60."
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {isChoice && (
+                                      <div className="mt-4 space-y-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <label className="block text-sm font-semibold">
+                                            Options
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => addQuestionOption(questionIndex)}
+                                            className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                          >
+                                            <Plus size={14} /> Add Option
+                                          </button>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          {(question.options || []).map(
+                                            (option, optionIndex) => (
+                                              <div
+                                                key={option.id}
+                                                className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
+                                              >
+                                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                                                  <div>
+                                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                                      Option Label
+                                                    </label>
+                                                    <input
+                                                      value={option.label || ""}
+                                                      onChange={(e) =>
+                                                        updateQuestionOption(
+                                                          questionIndex,
+                                                          option.id,
+                                                          "label",
+                                                          e.target.value,
+                                                        )
+                                                      }
+                                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                                      placeholder={`Option ${optionIndex + 1}`}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                                      Option Value
+                                                    </label>
+                                                    <input
+                                                      value={option.value || ""}
+                                                      onChange={(e) =>
+                                                        updateQuestionOption(
+                                                          questionIndex,
+                                                          option.id,
+                                                          "value",
+                                                          e.target.value,
+                                                        )
+                                                      }
+                                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                                      placeholder="Stable internal value"
+                                                    />
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      removeQuestionOption(
+                                                        questionIndex,
+                                                        option.id,
+                                                      )
+                                                    }
+                                                    className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                                                  >
+                                                    Remove
+                                                  </button>
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      addConditionalFieldToOption(
+                                                        questionIndex,
+                                                        option.id,
+                                                      )
+                                                    }
+                                                    className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                                  >
+                                                    <ListPlus size={14} /> Configure
+                                                    conditional fields
+                                                  </button>
+                                                  <span className="text-xs text-slate-400">
+                                                    Stable ID: {option.id}
+                                                  </span>
+                                                </div>
+
+                                                {option.conditionalLogic?.fields?.length >
+                                                  0 && (
+                                                  <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                                                      Conditional Fields
+                                                    </div>
+                                                    {option.conditionalLogic.fields.map(
+                                                      (field, fieldIndex) =>
+                                                        renderConditionalFieldEditor(
+                                                          question.id,
+                                                          questionIndex,
+                                                          option.id,
+                                                          field,
+                                                          1,
+                                                          [
+                                                            question.label || "Question",
+                                                            option.label || "Option",
+                                                          ],
+                                                        ),
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-400">
+                              Add a question to this section to get started.
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   );
                 })}
 
-                {!draft.questions.length && (
+                {!draftSections.length && (
                   <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-400">
-                    Add your first question to start building.
+                    Add a section to start building.
                   </div>
                 )}
               </div>

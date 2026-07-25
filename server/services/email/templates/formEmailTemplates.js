@@ -162,7 +162,11 @@ const replaceTokens = (value = "", context = {}) =>
 
 const getSubmissionRowLabel = (answer) => {
   if (!answer) return "Question";
-  return answer.fieldLabel || answer.question?.label || "Question";
+  const sectionTitle = String(answer.question?.sectionTitle || "").trim();
+  const label = answer.fieldLabel || answer.question?.label || "Question";
+  return sectionTitle && sectionTitle !== "Form Details"
+    ? `${sectionTitle} - ${label}`
+    : label;
 };
 
 const getSubmissionRowContext = (answer) => {

@@ -53,6 +53,30 @@ const formQuestionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    sectionId: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    sectionTitle: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    sectionDescription: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    sectionOrder: {
+      type: Number,
+      default: 0,
+    },
+    sectionIsActive: {
+      type: Boolean,
+      default: true,
+    },
     options: {
       type: [mongoose.Schema.Types.Mixed],
       default: [],
@@ -97,6 +121,7 @@ const formQuestionSchema = new mongoose.Schema(
 );
 
 formQuestionSchema.index({ formId: 1, order: 1 });
+formQuestionSchema.index({ formId: 1, sectionId: 1, order: 1 });
 
 const FormQuestion = mongoose.model("FormQuestion", formQuestionSchema);
 
