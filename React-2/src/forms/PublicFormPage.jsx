@@ -659,6 +659,7 @@ const PublicFormPage = () => {
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const submitLockRef = useRef(false);
+  const explicitSubmitRef = useRef(false);
   const sectionTopRef = useRef(null);
   const fileInputRefs = useRef({});
   const sections = useMemo(() => groupFormSections(form || {}), [form]);
@@ -1994,14 +1995,25 @@ const PublicFormPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Form tabhi submit hoga jab user Submit Response button click karega
+    if (!explicitSubmitRef.current) {
+      return;
+    }
+
+    // Ek click ke baad permission reset
+    explicitSubmitRef.current = false;
+
     if (
       !form ||
       !hasPublicQuestions ||
+      !isFinalPage ||
       submitLockRef.current ||
       submitting ||
       submitted
-    )
+    ) {
       return;
+    }
 
     submitLockRef.current = true;
     setSubmitting(true);
@@ -2237,7 +2249,19 @@ const PublicFormPage = () => {
             </h2>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                event.target.tagName !== "TEXTAREA"
+              ) {
+                event.preventDefault();
+              }
+            }}
+            noValidate
+            className="space-y-5"
+          >
             {!hasPublicQuestions ? (
               <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 text-sm text-slate-300">
                 This form currently has no questions.
@@ -2364,6 +2388,9 @@ const PublicFormPage = () => {
                 ) : (
                   <button
                     type="submit"
+                    onClick={() => {
+                      explicitSubmitRef.current = true;
+                    }}
                     disabled={submitting}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl disabled:opacity-60 sm:min-w-44"
                   >
