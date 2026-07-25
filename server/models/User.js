@@ -57,6 +57,11 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: undefined,
     },
+    lastActivityAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

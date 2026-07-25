@@ -102,6 +102,7 @@ exports.register = async (req, res) => {
       email: normalizedEmail,
       password,
       role,
+      lastActivityAt: new Date(),
     });
 
     // Log registration
@@ -226,6 +227,9 @@ exports.login = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid email or password" });
     }
+
+    user.lastActivityAt = new Date();
+    await user.save();
 
     // Log successful login
     try {

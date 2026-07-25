@@ -79,6 +79,7 @@ const QUESTION_TYPES = [
   { value: "phone", label: "Phone" },
   { value: "number", label: "Number" },
   { value: "date", label: "Date" },
+  { value: "time", label: "Time" },
   { value: "link", label: "Link" },
   { value: "password", label: "Password / Secret" },
   { value: "dropdown", label: "Dropdown" },
@@ -274,7 +275,9 @@ const createSection = (order = 0, overrides = {}) => ({
 });
 
 const normalizeSection = (section = {}, index = 0) => ({
-  id: String(section.id || section.sectionId || section.key || "").trim() || crypto.randomUUID(),
+  id:
+    String(section.id || section.sectionId || section.key || "").trim() ||
+    crypto.randomUUID(),
   title: (() => {
     const rawTitle = String(section.title || section.label || "");
     return rawTitle.trim() ? rawTitle : "Untitled Section";
@@ -287,7 +290,10 @@ const normalizeSection = (section = {}, index = 0) => ({
 const normalizeSections = (sections = [], questions = []) => {
   const normalized = (Array.isArray(sections) ? sections : [])
     .map((section, index) => normalizeSection(section, index))
-    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .filter(
+      (section, index, list) =>
+        list.findIndex((item) => item.id === section.id) === index,
+    )
     .sort((left, right) => left.order - right.order);
 
   if (normalized.length) {
@@ -299,7 +305,8 @@ const normalizeSections = (sections = [], questions = []) => {
       id: String(question?.sectionId || "").trim(),
       title: String(question?.sectionTitle || "").trim(),
       description: String(question?.sectionDescription || "").trim(),
-      order: typeof question?.sectionOrder === "number" ? question.sectionOrder : 0,
+      order:
+        typeof question?.sectionOrder === "number" ? question.sectionOrder : 0,
       isActive:
         question?.sectionIsActive !== undefined
           ? question.sectionIsActive === true
@@ -316,7 +323,10 @@ const normalizeSections = (sections = [], questions = []) => {
   }
 
   return sectionHints
-    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .filter(
+      (section, index, list) =>
+        list.findIndex((item) => item.id === section.id) === index,
+    )
     .map((section, index) => ({
       id: section.id,
       title: section.title || LEGACY_DEFAULT_SECTION_TITLE,
@@ -335,10 +345,11 @@ const groupQuestionsBySection = (questions = [], sections = []) => {
       { ...section, questions: [] },
     ]),
   );
-  const defaultSection =
-    sectionMap.get(LEGACY_DEFAULT_SECTION_ID) ||
-    sectionMap.values().next().value ||
-    { ...createLegacySection(), questions: [] };
+  const defaultSection = sectionMap.get(LEGACY_DEFAULT_SECTION_ID) ||
+    sectionMap.values().next().value || {
+      ...createLegacySection(),
+      questions: [],
+    };
 
   if (!sectionMap.has(defaultSection.id)) {
     sectionMap.set(defaultSection.id, defaultSection);
@@ -367,7 +378,10 @@ const groupQuestionsBySection = (questions = [], sections = []) => {
       questions: (section.questions || []).sort((left, right) => {
         const leftOrder = typeof left.order === "number" ? left.order : 0;
         const rightOrder = typeof right.order === "number" ? right.order : 0;
-        return leftOrder - rightOrder || String(left.id).localeCompare(String(right.id));
+        return (
+          leftOrder - rightOrder ||
+          String(left.id).localeCompare(String(right.id))
+        );
       }),
     }))
     .sort((left, right) => left.order - right.order);
@@ -391,6 +405,25 @@ const createQuestion = () => ({
   sectionOrder: 0,
   sectionIsActive: true,
 });
+
+const createInitialFormStructure = () => {
+  const section = createLegacySection();
+
+  const question = {
+    ...createQuestion(),
+    sectionId: section.id,
+    sectionTitle: section.title,
+    sectionDescription: section.description,
+    sectionOrder: section.order,
+    sectionIsActive: section.isActive,
+    order: 0,
+  };
+
+  return {
+    sections: [section],
+    questions: [question],
+  };
+};
 
 const createQuestionOption = (label = "Option 1", order = 0) => ({
   id: crypto.randomUUID(),
@@ -1419,11 +1452,49 @@ const maskSecretValue = () =>
 
 const getLinkHref = (value = "") => normalizeHttpUrl(value);
 
+const formatTimeTo12Hour = (value = "") => {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+
+  if (!match) return raw || "-";
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return raw;
+  }
+
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 || 12;
+
+  return `${displayHour}:${String(minutes).padStart(2, "0")} ${period}`;
+};
+
 const renderAnswerValue = (answer, options = {}) => {
   if (!answer) return "-";
   const answerType = String(
-    answer.fieldType || answer.question?.type || "",
+    answer.fieldType ||
+      answer.questionType ||
+      answer.type ||
+      answer.question?.type ||
+      "",
   ).toLowerCase();
+
+  if (answerType === "time") {
+    return (
+      <span className="font-semibold text-cyan-200">
+        {formatTimeTo12Hour(answer.value)}
+      </span>
+    );
+  }
 
   if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
     return (
@@ -1656,11 +1727,16 @@ const FormManagement = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("questions");
   const [selectedFormId, setSelectedFormId] = useState(null);
-  const [draft, setDraft] = useState(() => ({
-    ...EMPTY_FORM,
-    emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
-    notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
-  }));
+  const [draft, setDraft] = useState(() => {
+    const initialStructure = createInitialFormStructure();
+
+    return {
+      ...EMPTY_FORM,
+      ...initialStructure,
+      emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
+      notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
+    };
+  });
   const [responses, setResponses] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -1822,8 +1898,11 @@ const FormManagement = () => {
     setImportPreview(null);
     setCollapsedSections({});
     draftResolutionRef.current = null;
+    const initialStructure = createInitialFormStructure();
+
     setDraft({
       ...EMPTY_FORM,
+      ...initialStructure,
       emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
       notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
     });
@@ -2894,7 +2973,9 @@ const FormManagement = () => {
             (section) =>
               section.id ===
               String(question.sectionId || question.section?.id || "").trim(),
-          ) || importedSections[0] || createLegacySection();
+          ) ||
+          importedSections[0] ||
+          createLegacySection();
         return {
           ...createQuestion(),
           id: crypto.randomUUID(),
@@ -2922,8 +3003,12 @@ const FormManagement = () => {
                     : {
                         ...option,
                         id: String(option.id || crypto.randomUUID()),
-                        label: String(option.label || option.value || "").trim(),
-                        value: String(option.value || option.label || "").trim(),
+                        label: String(
+                          option.label || option.value || "",
+                        ).trim(),
+                        value: String(
+                          option.value || option.label || "",
+                        ).trim(),
                       },
                 )
               : parseOptionsText(question.optionsText || "").map(
@@ -2970,14 +3055,18 @@ const FormManagement = () => {
           .trim()
           .toLowerCase()}::${String(question.type || "")
           .trim()
-          .toLowerCase()}::${String(question.sectionId || LEGACY_DEFAULT_SECTION_ID)
+          .toLowerCase()}::${String(
+          question.sectionId || LEGACY_DEFAULT_SECTION_ID,
+        )
           .trim()
           .toLowerCase()}`;
         if (existingKeys.has(key)) {
           return;
         }
         existingKeys.add(key);
-        if (!mergedSections.some((section) => section.id === question.sectionId)) {
+        if (
+          !mergedSections.some((section) => section.id === question.sectionId)
+        ) {
           mergedSections.push({
             id: question.sectionId,
             title: question.sectionTitle || LEGACY_DEFAULT_SECTION_TITLE,
@@ -2992,9 +3081,9 @@ const FormManagement = () => {
         merged.push(question);
       });
 
-      const nextSections = (mergedSections.length ? mergedSections : [createLegacySection()]).sort(
-        (left, right) => left.order - right.order,
-      );
+      const nextSections = (
+        mergedSections.length ? mergedSections : [createLegacySection()]
+      ).sort((left, right) => left.order - right.order);
 
       return {
         ...prev,
@@ -3055,10 +3144,9 @@ const FormManagement = () => {
         sectionDescription: targetSection.description,
         sectionOrder: targetSection.order,
         sectionIsActive: targetSection.isActive,
-        order:
-          (prev.questions || []).filter(
-            (question) => question.sectionId === targetSection.id,
-          ).length,
+        order: (prev.questions || []).filter(
+          (question) => question.sectionId === targetSection.id,
+        ).length,
       });
       return { ...prev, sections, questions: [...prev.questions, copy] };
     });
@@ -3088,10 +3176,7 @@ const FormManagement = () => {
         .filter((currentIndex) => currentIndex >= 0);
       const position = sameSectionIndexes.indexOf(index);
       const targetPosition = position + direction;
-      if (
-        targetPosition < 0 ||
-        targetPosition >= sameSectionIndexes.length
-      ) {
+      if (targetPosition < 0 || targetPosition >= sameSectionIndexes.length) {
         return prev;
       }
       const target = sameSectionIndexes[targetPosition];
@@ -3106,16 +3191,108 @@ const FormManagement = () => {
   const addSection = () => {
     setDraft((prev) => {
       const sections = normalizeSections(prev.sections, prev.questions);
-      const nextSections = [
-        ...sections,
-        createSection(sections.length, {
-          title: "Untitled Section",
-        }),
-      ].map((section, order) => ({ ...section, order }));
+
+      const newSection = createSection(sections.length, {
+        title: "Untitled Section",
+      });
+
+      const nextSections = [...sections, newSection].map((section, order) => ({
+        ...section,
+        order,
+      }));
+
+      const defaultQuestion = {
+        ...createQuestion(),
+        sectionId: newSection.id,
+        sectionTitle: newSection.title,
+        sectionDescription: newSection.description,
+        sectionOrder: newSection.order,
+        sectionIsActive: newSection.isActive,
+        order: 0,
+      };
 
       return {
         ...prev,
         sections: nextSections,
+        questions: [...(prev.questions || []), defaultQuestion],
+      };
+    });
+  };
+
+  const addQuestionAfter = (sectionId, afterQuestionId) => {
+    setDraft((prev) => {
+      const sections = normalizeSections(prev.sections, prev.questions);
+
+      const targetSection =
+        sections.find((section) => section.id === sectionId) ||
+        sections[0] ||
+        createLegacySection();
+
+      const questions = [...(prev.questions || [])];
+
+      const currentQuestionIndex = questions.findIndex(
+        (question) => question.id === afterQuestionId,
+      );
+
+      const sameSectionQuestions = questions
+        .filter(
+          (question) =>
+            String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
+            targetSection.id,
+        )
+        .sort(
+          (left, right) =>
+            (Number(left.order) || 0) - (Number(right.order) || 0),
+        );
+
+      const currentSectionPosition = sameSectionQuestions.findIndex(
+        (question) => question.id === afterQuestionId,
+      );
+
+      const newQuestion = {
+        ...createQuestion(),
+        sectionId: targetSection.id,
+        sectionTitle: targetSection.title,
+        sectionDescription: targetSection.description,
+        sectionOrder: targetSection.order,
+        sectionIsActive: targetSection.isActive,
+        order: currentSectionPosition + 1,
+      };
+
+      if (currentQuestionIndex === -1) {
+        return {
+          ...prev,
+          sections,
+          questions: [...questions, newQuestion],
+        };
+      }
+
+      questions.splice(currentQuestionIndex + 1, 0, newQuestion);
+
+      const normalizedQuestions = questions.map((question) => {
+        if (
+          String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() !==
+          targetSection.id
+        ) {
+          return question;
+        }
+
+        return {
+          ...question,
+          order: questions
+            .filter(
+              (item) =>
+                String(item.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
+                targetSection.id,
+            )
+            .findIndex((item) => item.id === question.id),
+        };
+      });
+
+      return {
+        ...prev,
+        sections,
+        questions: normalizedQuestions,
       };
     });
   };
@@ -3123,10 +3300,11 @@ const FormManagement = () => {
   const updateSection = (sectionId, field, value) => {
     setDraft((prev) => ({
       ...prev,
-      sections: normalizeSections(prev.sections, prev.questions).map((section) =>
-        section.id === sectionId
-          ? { ...section, [field]: String(value ?? "") }
-          : section,
+      sections: normalizeSections(prev.sections, prev.questions).map(
+        (section) =>
+          section.id === sectionId
+            ? { ...section, [field]: String(value ?? "") }
+            : section,
       ),
       questions: prev.questions.map((question) =>
         String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim() ===
@@ -3135,9 +3313,7 @@ const FormManagement = () => {
               ...question,
               sectionId,
               sectionTitle:
-                field === "title"
-                  ? String(value ?? "")
-                  : question.sectionTitle,
+                field === "title" ? String(value ?? "") : question.sectionTitle,
               sectionDescription:
                 field === "description"
                   ? String(value ?? "")
@@ -3216,10 +3392,9 @@ const FormManagement = () => {
       return {
         ...prev,
         sections: nextSections.map((section, order) => ({ ...section, order })),
-        questions: [
-          ...prev.questions,
-          ...clonedQuestions,
-        ].map((question, order) => ({ ...question, order })),
+        questions: [...prev.questions, ...clonedQuestions].map(
+          (question, order) => ({ ...question, order }),
+        ),
       };
     });
   };
@@ -3399,7 +3574,10 @@ const FormManagement = () => {
         logoAsset: null,
       },
     );
-    const normalizedSections = normalizeSections(draft.sections, draft.questions);
+    const normalizedSections = normalizeSections(
+      draft.sections,
+      draft.questions,
+    );
     const groupedSections = groupQuestionsBySection(
       draft.questions,
       normalizedSections,
@@ -3445,8 +3623,7 @@ const FormManagement = () => {
         id: section.id,
         title: String(section.title || "").trim() || "Untitled Section",
         description: String(section.description || "").trim(),
-        order:
-          typeof section.order === "number" ? section.order : sectionIndex,
+        order: typeof section.order === "number" ? section.order : sectionIndex,
         isActive: section.isActive !== false,
         questions: (section.questions || []).map((question, questionIndex) => ({
           id: question.id,
@@ -3479,9 +3656,7 @@ const FormManagement = () => {
                 label: String(option.label || option.value || "").trim(),
                 value: String(option.value || option.label || "").trim(),
                 order:
-                  typeof option.order === "number"
-                    ? option.order
-                    : optionIndex,
+                  typeof option.order === "number" ? option.order : optionIndex,
                 conditionalLogic: {
                   enabled: option.conditionalLogic?.enabled === true,
                   resetOnHide: option.conditionalLogic?.resetOnHide !== false,
@@ -3494,8 +3669,7 @@ const FormManagement = () => {
                           placeholder: String(field.placeholder || "").trim(),
                           helpText: String(field.helpText || "").trim(),
                           required: field.required === true,
-                          validationEnabled:
-                            field.validationEnabled === true,
+                          validationEnabled: field.validationEnabled === true,
                           validation: normalizeNumberValidation(
                             field.validation,
                           ),
@@ -3532,7 +3706,9 @@ const FormManagement = () => {
                                 })
                                 .filter((childOption) =>
                                   String(
-                                    childOption.label || childOption.value || "",
+                                    childOption.label ||
+                                      childOption.value ||
+                                      "",
                                   ).trim(),
                                 )
                                 .map((childOption, childIndex) => ({
@@ -3585,7 +3761,9 @@ const FormManagement = () => {
                         };
                       })
                       .filter((childOption) =>
-                        String(childOption.label || childOption.value || "").trim(),
+                        String(
+                          childOption.label || childOption.value || "",
+                        ).trim(),
                       )
                       .map((childOption, childIndex) => ({
                         ...childOption,
@@ -3593,7 +3771,8 @@ const FormManagement = () => {
                       }))
                   : [],
                 uploadConfig: field.uploadConfig || null,
-                order: typeof field.order === "number" ? field.order : fieldIndex,
+                order:
+                  typeof field.order === "number" ? field.order : fieldIndex,
                 isActive: field.isActive !== false,
               }))
             : [],
@@ -3609,10 +3788,13 @@ const FormManagement = () => {
         helpText: String(question.helpText || "").trim(),
         required: question.required === true,
         validationEnabled: question.validationEnabled === true,
-        sectionId: String(question.sectionId || LEGACY_DEFAULT_SECTION_ID).trim(),
+        sectionId: String(
+          question.sectionId || LEGACY_DEFAULT_SECTION_ID,
+        ).trim(),
         sectionTitle:
-          String(question.sectionTitle || LEGACY_DEFAULT_SECTION_TITLE).trim() ||
-          LEGACY_DEFAULT_SECTION_TITLE,
+          String(
+            question.sectionTitle || LEGACY_DEFAULT_SECTION_TITLE,
+          ).trim() || LEGACY_DEFAULT_SECTION_TITLE,
         sectionDescription: String(question.sectionDescription || "").trim(),
         sectionOrder:
           typeof question.sectionOrder === "number" ? question.sectionOrder : 0,
@@ -5100,7 +5282,11 @@ const FormManagement = () => {
                               <input
                                 value={section.title}
                                 onChange={(e) =>
-                                  updateSection(section.id, "title", e.target.value)
+                                  updateSection(
+                                    section.id,
+                                    "title",
+                                    e.target.value,
+                                  )
                                 }
                                 className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
                                 placeholder="Untitled Section"
@@ -5123,7 +5309,9 @@ const FormManagement = () => {
                                 <button
                                   type="button"
                                   onClick={() => moveSection(section.id, 1)}
-                                  disabled={sectionIndex === draftSections.length - 1}
+                                  disabled={
+                                    sectionIndex === draftSections.length - 1
+                                  }
                                   className="rounded-2xl border border-white/10 p-3 disabled:cursor-not-allowed disabled:opacity-40"
                                   aria-label="Move section down"
                                 >
@@ -5145,7 +5333,9 @@ const FormManagement = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => toggleSectionCollapsed(section.id)}
+                                  onClick={() =>
+                                    toggleSectionCollapsed(section.id)
+                                  }
                                   className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-3 text-xs font-semibold text-cyan-100"
                                 >
                                   <ListPlus size={14} />
@@ -5177,431 +5367,488 @@ const FormManagement = () => {
 
                       {!isCollapsed && (
                         <div className="mt-5 space-y-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="text-sm text-slate-400">
-                              Questions inside this section only.
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => addQuestion(section.id)}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100"
-                            >
-                              <Plus size={16} /> Add Question
-                            </button>
+                          <div className="text-sm text-slate-400">
+                            Use the + button on a question to add another
+                            question below it.
                           </div>
 
                           {sectionQuestions.length ? (
                             <div className="space-y-4">
-                              {sectionQuestions.map((question, sectionQuestionIndex) => {
-                                const questionIndex = draft.questions.findIndex(
-                                  (item) => item.id === question.id,
-                                );
-                                const type = question.type;
-                                const isChoice = [
-                                  "dropdown",
-                                  "radio",
-                                  "checkbox",
-                                ].includes(type);
-                                return (
-                                  <div
-                                    key={question.id}
-                                    className="rounded-3xl border border-white/10 bg-white/5 p-5"
-                                  >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div>
-                                        <div className="text-sm font-semibold">
-                                          Question {sectionQuestionIndex + 1}
-                                        </div>
-                                        <div className="text-xs text-slate-400">
-                                          Drag-free reorder within this section
-                                        </div>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => moveQuestion(questionIndex, -1)}
-                                          className="rounded-xl border border-white/10 p-2"
-                                          disabled={
-                                            sectionQuestionIndex === 0 ||
-                                            questionIndex <= 0
-                                          }
-                                        >
-                                          <ArrowUp size={14} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => moveQuestion(questionIndex, 1)}
-                                          className="rounded-xl border border-white/10 p-2"
-                                          disabled={
-                                            sectionQuestionIndex ===
-                                            sectionQuestions.length - 1
-                                          }
-                                        >
-                                          <ArrowDown size={14} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => duplicateQuestion(questionIndex)}
-                                          className="rounded-xl border border-white/10 p-2"
-                                        >
-                                          <Duplicate size={14} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => removeQuestion(questionIndex)}
-                                          className="rounded-xl border border-red-500/30 p-2 text-red-300"
-                                        >
-                                          <Trash2 size={14} />
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                      <div>
-                                        <label className="mb-2 block text-sm font-semibold">
-                                          Question Label
-                                        </label>
-                                        <input
-                                          value={question.label}
-                                          onChange={(e) =>
-                                            updateQuestion(
-                                              questionIndex,
-                                              "label",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                          placeholder="Enter question text"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="mb-2 block text-sm font-semibold">
-                                          Question Type
-                                        </label>
-                                        <select
-                                          value={question.type}
-                                          onChange={(e) =>
-                                            updateQuestion(
-                                              questionIndex,
-                                              "type",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                        >
-                                          {QUESTION_TYPES.map((item) => (
-                                            <option key={item.value} value={item.value}>
-                                              {item.label}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </div>
-
-                                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                      <div>
-                                        <label className="mb-2 block text-sm font-semibold">
-                                          Placeholder
-                                        </label>
-                                        <input
-                                          value={question.placeholder}
-                                          onChange={(e) =>
-                                            updateQuestion(
-                                              questionIndex,
-                                              "placeholder",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="mb-2 block text-sm font-semibold">
-                                          Help Text
-                                        </label>
-                                        <input
-                                          value={question.helpText}
-                                          onChange={(e) =>
-                                            updateQuestion(
-                                              questionIndex,
-                                              "helpText",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="mt-4 flex flex-wrap items-center gap-4">
-                                      <label className="inline-flex items-center gap-2 text-sm">
-                                        <input
-                                          type="checkbox"
-                                          checked={question.required}
-                                          onChange={(e) =>
-                                            updateQuestion(
-                                              questionIndex,
-                                              "required",
-                                              e.target.checked,
-                                            )
-                                          }
-                                        />
-                                        Required
-                                      </label>
-                                      <label className="inline-flex items-center gap-2 text-sm">
-                                        <input
-                                          type="checkbox"
-                                          checked={question.validationEnabled === true}
-                                          onChange={(e) =>
-                                            updateQuestion(
-                                              questionIndex,
-                                              "validationEnabled",
-                                              e.target.checked,
-                                            )
-                                          }
-                                        />
-                                        Enable Validation
-                                      </label>
-                                      <span className="text-xs text-slate-400">
-                                        Type: {question.type}
-                                      </span>
-                                    </div>
-
-                                    {type === "number" && (
-                                      <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4">
-                                        <div className="mb-4 text-sm font-semibold">
-                                          Number Validation
-                                        </div>
-                                        <div className="grid gap-4 md:grid-cols-2">
-                                          <div>
-                                            <label className="mb-2 block text-sm font-semibold">
-                                              Minimum Value
-                                            </label>
-                                            <input
-                                              type="number"
-                                              step="1"
-                                              value={question.validation?.minValue ?? ""}
-                                              onChange={(e) =>
-                                                updateQuestionValidation(
-                                                  questionIndex,
-                                                  "minValue",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                              placeholder="18"
-                                            />
+                              {sectionQuestions.map(
+                                (question, sectionQuestionIndex) => {
+                                  const questionIndex =
+                                    draft.questions.findIndex(
+                                      (item) => item.id === question.id,
+                                    );
+                                  const type = question.type;
+                                  const isChoice = [
+                                    "dropdown",
+                                    "radio",
+                                    "checkbox",
+                                  ].includes(type);
+                                  return (
+                                    <div
+                                      key={question.id}
+                                      className="rounded-3xl border border-white/10 bg-white/5 p-5"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <div className="text-sm font-semibold">
+                                            Question {sectionQuestionIndex + 1}
                                           </div>
-                                          <div>
-                                            <label className="mb-2 block text-sm font-semibold">
-                                              Maximum Value
-                                            </label>
-                                            <input
-                                              type="number"
-                                              step="1"
-                                              value={question.validation?.maxValue ?? ""}
-                                              onChange={(e) =>
-                                                updateQuestionValidation(
-                                                  questionIndex,
-                                                  "maxValue",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                              placeholder="60"
-                                            />
-                                          </div>
-                                          <div>
-                                            <label className="mb-2 block text-sm font-semibold">
-                                              Minimum Digit Length
-                                            </label>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              step="1"
-                                              value={question.validation?.minDigits ?? ""}
-                                              onChange={(e) =>
-                                                updateQuestionValidation(
-                                                  questionIndex,
-                                                  "minDigits",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                              placeholder="2"
-                                            />
-                                          </div>
-                                          <div>
-                                            <label className="mb-2 block text-sm font-semibold">
-                                              Maximum Digit Length
-                                            </label>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              step="1"
-                                              value={question.validation?.maxDigits ?? ""}
-                                              onChange={(e) =>
-                                                updateQuestionValidation(
-                                                  questionIndex,
-                                                  "maxDigits",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
-                                              placeholder="2"
-                                            />
-                                          </div>
-                                          <div className="md:col-span-2">
-                                            <label className="mb-2 block text-sm font-semibold">
-                                              Custom Error Message
-                                            </label>
-                                            <textarea
-                                              value={
-                                                question.validation?.errorMessage ?? ""
-                                              }
-                                              onChange={(e) =>
-                                                updateQuestionValidation(
-                                                  questionIndex,
-                                                  "errorMessage",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              rows={3}
-                                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
-                                              placeholder="Please enter a valid age between 18 and 60."
-                                            />
+                                          <div className="text-xs text-slate-400">
+                                            Drag-free reorder within this
+                                            section
                                           </div>
                                         </div>
-                                      </div>
-                                    )}
-
-                                    {isChoice && (
-                                      <div className="mt-4 space-y-4">
-                                        <div className="flex items-center justify-between gap-3">
-                                          <label className="block text-sm font-semibold">
-                                            Options
-                                          </label>
+                                        <div className="flex gap-2">
                                           <button
                                             type="button"
-                                            onClick={() => addQuestionOption(questionIndex)}
-                                            className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                            onClick={() =>
+                                              addQuestionAfter(
+                                                section.id,
+                                                question.id,
+                                              )
+                                            }
+                                            className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-2 text-cyan-200 transition hover:bg-cyan-500/20"
+                                            title="Add question below"
+                                            aria-label="Add question below"
                                           >
-                                            <Plus size={14} /> Add Option
+                                            <Plus size={14} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              moveQuestion(questionIndex, -1)
+                                            }
+                                            className="rounded-xl border border-white/10 p-2"
+                                            disabled={
+                                              sectionQuestionIndex === 0 ||
+                                              questionIndex <= 0
+                                            }
+                                          >
+                                            <ArrowUp size={14} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              moveQuestion(questionIndex, 1)
+                                            }
+                                            className="rounded-xl border border-white/10 p-2"
+                                            disabled={
+                                              sectionQuestionIndex ===
+                                              sectionQuestions.length - 1
+                                            }
+                                          >
+                                            <ArrowDown size={14} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              duplicateQuestion(questionIndex)
+                                            }
+                                            className="rounded-xl border border-white/10 p-2"
+                                          >
+                                            <Duplicate size={14} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              removeQuestion(questionIndex)
+                                            }
+                                            className="rounded-xl border border-red-500/30 p-2 text-red-300"
+                                          >
+                                            <Trash2 size={14} />
                                           </button>
                                         </div>
+                                      </div>
 
-                                        <div className="space-y-3">
-                                          {(question.options || []).map(
-                                            (option, optionIndex) => (
-                                              <div
-                                                key={option.id}
-                                                className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
+                                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                        <div>
+                                          <label className="mb-2 block text-sm font-semibold">
+                                            Question Label
+                                          </label>
+                                          <input
+                                            value={question.label}
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "label",
+                                                e.target.value,
+                                              )
+                                            }
+                                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                            placeholder="Enter question text"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="mb-2 block text-sm font-semibold">
+                                            Question Type
+                                          </label>
+                                          <select
+                                            value={question.type}
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "type",
+                                                e.target.value,
+                                              )
+                                            }
+                                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                          >
+                                            {QUESTION_TYPES.map((item) => (
+                                              <option
+                                                key={item.value}
+                                                value={item.value}
                                               >
-                                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                                                  <div>
-                                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
-                                                      Option Label
-                                                    </label>
-                                                    <input
-                                                      value={option.label || ""}
-                                                      onChange={(e) =>
-                                                        updateQuestionOption(
-                                                          questionIndex,
-                                                          option.id,
-                                                          "label",
-                                                          e.target.value,
-                                                        )
-                                                      }
-                                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                                      placeholder={`Option ${optionIndex + 1}`}
-                                                    />
-                                                  </div>
-                                                  <div>
-                                                    <label className="mb-2 block text-xs font-semibold text-slate-300">
-                                                      Option Value
-                                                    </label>
-                                                    <input
-                                                      value={option.value || ""}
-                                                      onChange={(e) =>
-                                                        updateQuestionOption(
-                                                          questionIndex,
-                                                          option.id,
-                                                          "value",
-                                                          e.target.value,
-                                                        )
-                                                      }
-                                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
-                                                      placeholder="Stable internal value"
-                                                    />
-                                                  </div>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      removeQuestionOption(
-                                                        questionIndex,
-                                                        option.id,
-                                                      )
-                                                    }
-                                                    className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
-                                                  >
-                                                    Remove
-                                                  </button>
-                                                </div>
-
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      addConditionalFieldToOption(
-                                                        questionIndex,
-                                                        option.id,
-                                                      )
-                                                    }
-                                                    className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
-                                                  >
-                                                    <ListPlus size={14} /> Configure
-                                                    conditional fields
-                                                  </button>
-                                                  <span className="text-xs text-slate-400">
-                                                    Stable ID: {option.id}
-                                                  </span>
-                                                </div>
-
-                                                {option.conditionalLogic?.fields?.length >
-                                                  0 && (
-                                                  <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-                                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
-                                                      Conditional Fields
-                                                    </div>
-                                                    {option.conditionalLogic.fields.map(
-                                                      (field, fieldIndex) =>
-                                                        renderConditionalFieldEditor(
-                                                          question.id,
-                                                          questionIndex,
-                                                          option.id,
-                                                          field,
-                                                          1,
-                                                          [
-                                                            question.label || "Question",
-                                                            option.label || "Option",
-                                                          ],
-                                                        ),
-                                                    )}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ),
-                                          )}
+                                                {item.label}
+                                              </option>
+                                            ))}
+                                          </select>
                                         </div>
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+
+                                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                        <div>
+                                          <label className="mb-2 block text-sm font-semibold">
+                                            Placeholder
+                                          </label>
+                                          <input
+                                            value={question.placeholder}
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "placeholder",
+                                                e.target.value,
+                                              )
+                                            }
+                                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="mb-2 block text-sm font-semibold">
+                                            Help Text
+                                          </label>
+                                          <input
+                                            value={question.helpText}
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "helpText",
+                                                e.target.value,
+                                              )
+                                            }
+                                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div className="mt-4 flex flex-wrap items-center gap-4">
+                                        <label className="inline-flex items-center gap-2 text-sm">
+                                          <input
+                                            type="checkbox"
+                                            checked={question.required}
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "required",
+                                                e.target.checked,
+                                              )
+                                            }
+                                          />
+                                          Required
+                                        </label>
+                                        <label className="inline-flex items-center gap-2 text-sm">
+                                          <input
+                                            type="checkbox"
+                                            checked={
+                                              question.validationEnabled ===
+                                              true
+                                            }
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "validationEnabled",
+                                                e.target.checked,
+                                              )
+                                            }
+                                          />
+                                          Enable Validation
+                                        </label>
+                                        <span className="text-xs text-slate-400">
+                                          Type: {question.type}
+                                        </span>
+                                      </div>
+
+                                      {type === "number" && (
+                                        <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+                                          <div className="mb-4 text-sm font-semibold">
+                                            Number Validation
+                                          </div>
+                                          <div className="grid gap-4 md:grid-cols-2">
+                                            <div>
+                                              <label className="mb-2 block text-sm font-semibold">
+                                                Minimum Value
+                                              </label>
+                                              <input
+                                                type="number"
+                                                step="1"
+                                                value={
+                                                  question.validation
+                                                    ?.minValue ?? ""
+                                                }
+                                                onChange={(e) =>
+                                                  updateQuestionValidation(
+                                                    questionIndex,
+                                                    "minValue",
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                                placeholder="18"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="mb-2 block text-sm font-semibold">
+                                                Maximum Value
+                                              </label>
+                                              <input
+                                                type="number"
+                                                step="1"
+                                                value={
+                                                  question.validation
+                                                    ?.maxValue ?? ""
+                                                }
+                                                onChange={(e) =>
+                                                  updateQuestionValidation(
+                                                    questionIndex,
+                                                    "maxValue",
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                                placeholder="60"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="mb-2 block text-sm font-semibold">
+                                                Minimum Digit Length
+                                              </label>
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                value={
+                                                  question.validation
+                                                    ?.minDigits ?? ""
+                                                }
+                                                onChange={(e) =>
+                                                  updateQuestionValidation(
+                                                    questionIndex,
+                                                    "minDigits",
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                                placeholder="2"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="mb-2 block text-sm font-semibold">
+                                                Maximum Digit Length
+                                              </label>
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                value={
+                                                  question.validation
+                                                    ?.maxDigits ?? ""
+                                                }
+                                                onChange={(e) =>
+                                                  updateQuestionValidation(
+                                                    questionIndex,
+                                                    "maxDigits",
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                                                placeholder="2"
+                                              />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                              <label className="mb-2 block text-sm font-semibold">
+                                                Custom Error Message
+                                              </label>
+                                              <textarea
+                                                value={
+                                                  question.validation
+                                                    ?.errorMessage ?? ""
+                                                }
+                                                onChange={(e) =>
+                                                  updateQuestionValidation(
+                                                    questionIndex,
+                                                    "errorMessage",
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                rows={3}
+                                                className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                                                placeholder="Please enter a valid age between 18 and 60."
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {isChoice && (
+                                        <div className="mt-4 space-y-4">
+                                          <div className="flex items-center justify-between gap-3">
+                                            <label className="block text-sm font-semibold">
+                                              Options
+                                            </label>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                addQuestionOption(questionIndex)
+                                              }
+                                              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                            >
+                                              <Plus size={14} /> Add Option
+                                            </button>
+                                          </div>
+
+                                          <div className="space-y-3">
+                                            {(question.options || []).map(
+                                              (option, optionIndex) => (
+                                                <div
+                                                  key={option.id}
+                                                  className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4"
+                                                >
+                                                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                                                    <div>
+                                                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                                        Option Label
+                                                      </label>
+                                                      <input
+                                                        value={
+                                                          option.label || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateQuestionOption(
+                                                            questionIndex,
+                                                            option.id,
+                                                            "label",
+                                                            e.target.value,
+                                                          )
+                                                        }
+                                                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                                        placeholder={`Option ${optionIndex + 1}`}
+                                                      />
+                                                    </div>
+                                                    <div>
+                                                      <label className="mb-2 block text-xs font-semibold text-slate-300">
+                                                        Option Value
+                                                      </label>
+                                                      <input
+                                                        value={
+                                                          option.value || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateQuestionOption(
+                                                            questionIndex,
+                                                            option.id,
+                                                            "value",
+                                                            e.target.value,
+                                                          )
+                                                        }
+                                                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                                                        placeholder="Stable internal value"
+                                                      />
+                                                    </div>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        removeQuestionOption(
+                                                          questionIndex,
+                                                          option.id,
+                                                        )
+                                                      }
+                                                      className="mt-7 rounded-2xl border border-red-500/30 px-3 py-2 text-xs text-red-300"
+                                                    >
+                                                      Remove
+                                                    </button>
+                                                  </div>
+
+                                                  <div className="flex flex-wrap items-center gap-2">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        addConditionalFieldToOption(
+                                                          questionIndex,
+                                                          option.id,
+                                                        )
+                                                      }
+                                                      className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+                                                    >
+                                                      <ListPlus size={14} />{" "}
+                                                      Configure conditional
+                                                      fields
+                                                    </button>
+                                                    <span className="text-xs text-slate-400">
+                                                      Stable ID: {option.id}
+                                                    </span>
+                                                  </div>
+
+                                                  {option.conditionalLogic
+                                                    ?.fields?.length > 0 && (
+                                                    <div className="space-y-3 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                                                        Conditional Fields
+                                                      </div>
+                                                      {option.conditionalLogic.fields.map(
+                                                        (field, fieldIndex) =>
+                                                          renderConditionalFieldEditor(
+                                                            question.id,
+                                                            questionIndex,
+                                                            option.id,
+                                                            field,
+                                                            1,
+                                                            [
+                                                              question.label ||
+                                                                "Question",
+                                                              option.label ||
+                                                                "Option",
+                                                            ],
+                                                          ),
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ),
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                },
+                              )}
                             </div>
                           ) : (
-                            <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-400">
-                              Add a question to this section to get started.
+                            <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center">
+                              <p className="text-sm text-slate-400">
+                                This section currently has no questions.
+                              </p>
+
+                              <button
+                                type="button"
+                                onClick={() => addQuestion(section.id)}
+                                className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100"
+                              >
+                                <Plus size={16} />
+                                Create First Question
+                              </button>
                             </div>
                           )}
                         </div>
@@ -8023,6 +8270,23 @@ const FormManagement = () => {
                     answer.questionId?._id ||
                     answer.questionId ||
                     answer._id;
+
+                  const originalQuestion = (draft.questions || []).find(
+                    (question) =>
+                      String(question._id || question.id) ===
+                      String(questionId),
+                  );
+
+                  const answerForDisplay = {
+                    ...answer,
+                    questionType:
+                      answer.fieldType ||
+                      answer.questionType ||
+                      answer.type ||
+                      answer.question?.type ||
+                      originalQuestion?.type ||
+                      "",
+                  };
                   return (
                     <div
                       key={`${keyPrefix}-${answer._id || questionId}`}
@@ -8040,7 +8304,7 @@ const FormManagement = () => {
                         </div>
                       ) : null}
                       <div className="mt-2 text-sm text-slate-300">
-                        {renderAnswerValue(answer, {
+                       {renderAnswerValue(answerForDisplay, {
                           revealed: Boolean(revealedSecrets[questionId]),
                           revealedValue: revealedSecrets[questionId],
                           onReveal: () => revealSecret(questionId),

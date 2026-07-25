@@ -19,15 +19,15 @@ const SocialSidebar = () => {
 
       {/* Social Icons */}
       <div className="social-icons">
-        <a href="https://wa.me/9804545425" target="_blank">
+        <a href="https://wa.me/9477288288" target="_blank">
           <FaWhatsapp />
         </a>
 
-        <a href="https://www.linkedin.com/in/phool-chand-sharma-7027911b6" target="_blank">
+        <a href="https://www.linkedin.com/company/technosthan/" target="_blank">
           <FaLinkedin />
         </a>
 
-        <a href="https://instagram.com/technosthan7" target="_blank">
+        <a href="https://instagram.com/technosthan1" target="_blank">
           <FaInstagram />
         </a>
 

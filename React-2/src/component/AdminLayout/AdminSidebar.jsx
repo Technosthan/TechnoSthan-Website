@@ -7,6 +7,7 @@ import {
   LogOut,
   Megaphone,
   PanelsTopLeft,
+  Settings,
   Shapes,
   X,
   Users,
@@ -97,6 +98,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               label: "Daily Tasks",
               to: "/admin/daily-tasks",
               icon: CalendarCheck,
+            },
+            {
+              label: "Settings",
+              to: "/admin/settings",
+              icon: Settings,
             },
           ].filter(Boolean);
 

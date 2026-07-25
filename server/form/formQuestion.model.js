@@ -22,6 +22,7 @@ const formQuestionSchema = new mongoose.Schema(
         "phone",
         "number",
         "date",
+        "time",
         "dropdown",
         "radio",
         "checkbox",

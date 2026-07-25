@@ -6,6 +6,8 @@ const {
   getWorkspaceSettingsHistory,
   restoreWorkspaceSettingsDefaults,
   updateWorkspaceSettings,
+  getSessionTimeoutSettings,
+  updateSessionTimeoutSettings,
   getRolePermissions,
   updateRolePermissions,
   getUserPermissions,
@@ -24,6 +26,8 @@ router.post(
   restoreWorkspaceSettingsDefaults,
 );
 router.patch("/workspace-services", updateWorkspaceSettings);
+router.get("/settings/session-timeout", getSessionTimeoutSettings);
+router.patch("/settings/session-timeout", updateSessionTimeoutSettings);
 router.get("/workspace-services/roles/:role", getRolePermissions);
 router.patch("/workspace-services/roles/:role", updateRolePermissions);
 router.get("/workspace-services/users/:userId", getUserPermissions);

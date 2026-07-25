@@ -1,5 +1,10 @@
 const WorkspaceSettings = require("../models/WorkspaceSettings");
 const { ROLES, normalizeRole } = require("../constants/rbac");
+const {
+  DEFAULT_SESSION_TIMEOUT,
+  formatSessionTimeoutSummary,
+  normalizeSessionTimeoutSettings,
+} = require("../utils/sessionTimeout");
 
 const DEFAULT_SETTINGS = {
   assignmentsEnabled: true,
@@ -57,6 +62,11 @@ const DEFAULT_SETTINGS = {
   activityLogsEnabled: true,
   shareLogsEnabled: true,
   dashboardMetricsEnabled: true,
+
+  sessionTimeoutEnabled:
+    DEFAULT_SESSION_TIMEOUT.sessionTimeoutEnabled,
+  sessionTimeoutValue: DEFAULT_SESSION_TIMEOUT.sessionTimeoutValue,
+  sessionTimeoutUnit: DEFAULT_SESSION_TIMEOUT.sessionTimeoutUnit,
 };
 
 const FEATURE_FAMILIES = Object.freeze({
@@ -424,8 +434,12 @@ const serializePublicWorkspaceSettings = (settings = {}) => {
     assignmentsEnabled: normalized.assignmentsEnabled,
     usersCanSubmitAssignments: normalized.usersCanSubmitAssignments,
     reviewSystemEnabled: normalized.reviewSystemEnabled,
+    ...normalizeSessionTimeoutSettings(normalized),
   };
 };
+
+const getSessionTimeoutSettings = (settings = {}) =>
+  normalizeSessionTimeoutSettings(settings);
 
 const getUserOverrideDecision = (featureKey, settings = {}, user) => {
   const userId = String(user?.id || user?._id || user?.userId || "").trim();
@@ -704,6 +718,7 @@ module.exports = {
   refreshWorkspaceSettings,
   resolveWorkspaceFeatureAccess,
   serializePublicWorkspaceSettings,
+  getSessionTimeoutSettings,
   updateWorkspaceSettings,
   hasPermission,
 };

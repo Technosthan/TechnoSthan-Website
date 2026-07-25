@@ -3,25 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import AdminNavbar from "./AdminNavbar";
 import AdminSidebar from "./AdminSidebar";
-import { clearAuth } from "../../utils/auth";
-import api from "../../lib/api";
+import { performCentralLogout } from "../../lib/sessionTimeout";
 
 const AdminLayout = ({ title, subtitle, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // Notify server for logout audit trail, then clear local auth
-    (async () => {
-      try {
-        await api.post("/api/auth/logout");
-      } catch (err) {
-        // ignore
-      } finally {
-        clearAuth();
-        navigate("/login", { replace: true });
-      }
-    })();
+  const handleLogout = async () => {
+    await performCentralLogout({
+      reason: "logout",
+      message: "",
+    });
+    navigate("/login", { replace: true });
   };
 
   return (

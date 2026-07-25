@@ -48,6 +48,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const dataWorkRoutes = require("./routes/dataWorkRoutes");
 const loggingMiddleware = require("./middleware/loggingMiddleware");
 const settingsRoutes = require("./routes/settingsRoutes");
+const sessionRoutes = require("./routes/sessionRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const campaignRoutes = require("./routes/campaignRoutes");
 const businessVerticalRoutes = require("./routes/businessVerticalRoutes");
@@ -420,6 +421,8 @@ app.use(
 
   require("./routes/authRoutes"),
 );
+
+app.use("/api/session", sessionRoutes);
 
 // CONTACT ROUTES
 

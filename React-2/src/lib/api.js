@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearAuth, getStoredToken } from "../utils/auth";
+import { clearAuth, getStoredToken, SESSION_EVENT_TYPES } from "../utils/auth";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
@@ -25,7 +25,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      clearAuth();
+      const responseMessage = String(error.response?.data?.message || "");
+      const isSessionExpired =
+        error.response?.data?.code === "SESSION_EXPIRED" ||
+        /inactivity/i.test(responseMessage);
+
+      clearAuth({
+        reason: isSessionExpired
+          ? SESSION_EVENT_TYPES.SESSION_EXPIRED
+          : SESSION_EVENT_TYPES.AUTH_EXPIRED,
+        message: responseMessage,
+      });
     }
     return Promise.reject(error);
   },

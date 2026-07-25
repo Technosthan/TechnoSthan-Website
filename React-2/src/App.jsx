@@ -30,6 +30,7 @@ import AdminLayout from "./component/AdminLayout/AdminLayout";
 import AdminUsers from "./component/AdminLayout/AdminUsers";
 import ActivityLogs from "./component/AdminLayout/ActivityLogs";
 import WorkspaceServices from "./component/AdminLayout/WorkspaceServices";
+import AdminSettings from "./component/AdminLayout/AdminSettings";
 import DailyTasksManager from "./component/AdminLayout/DailyTasksManager";
 import DataWorkManager from "./component/AdminLayout/DataWorkManager";
 import DataWorkDetails from "./component/AdminLayout/DataWorkDetails";
@@ -71,6 +72,7 @@ import TechnoSthanInnovationsHub from "./component/Services/TechnoSthanInnovatio
 import TechnoSthanAgritech from "./component/Services/TechnoSthanAgritech";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import SessionTimeoutManager from "./component/SessionTimeoutManager";
 
 const FormManagement = lazy(() => import("./component/AdminLayout/FormManagement"));
 const PublicFormPage = lazy(() => import("./forms/PublicFormPage"));
@@ -83,6 +85,7 @@ function AppWrapper() {
         <ThemeProvider>
           <SettingsProvider>
             <WorkspaceAccessProvider>
+              <SessionTimeoutManager />
               <ScrollToTop />
               <App />
             </WorkspaceAccessProvider>
@@ -340,6 +343,15 @@ function App() {
           element={
             <ProtectedAdminRoute>
               <ActivityLogs />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedAdminRoute>
+              <AdminSettings />
             </ProtectedAdminRoute>
           }
         />

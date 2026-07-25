@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import api from "../lib/api";
+import { AUTH_STORAGE_KEYS } from "../utils/auth";
 
 const WorkspaceAccessContext = createContext(null);
 
@@ -44,6 +45,17 @@ export const WorkspaceAccessProvider = ({ children }) => {
 
     window.addEventListener("auth-change", handleAuthChange);
     return () => window.removeEventListener("auth-change", handleAuthChange);
+  }, [refreshAccess]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === AUTH_STORAGE_KEYS.workspaceSettingsUpdatedAt) {
+        refreshAccess();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, [refreshAccess]);
 
   const value = useMemo(

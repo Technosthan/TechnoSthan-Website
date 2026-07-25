@@ -2,6 +2,7 @@ const express = require("express");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
+const User = require("../models/User");
 
 const { register, login, logout } = require("../controllers/authController");
 const {
@@ -35,7 +36,7 @@ router.get(
 router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/login" }),
-  (req, res) => {
+  async (req, res) => {
     try {
       const role = normalizeRole(req.user.role);
       const token = jwt.sign(
@@ -48,6 +49,11 @@ router.get(
         },
         process.env.JWT_SECRET,
         { expiresIn: "7d" },
+      );
+
+      await User.updateOne(
+        { _id: req.user._id },
+        { $set: { lastActivityAt: new Date() } },
       );
 
       const userData = {

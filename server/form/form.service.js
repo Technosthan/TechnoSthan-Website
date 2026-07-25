@@ -1075,6 +1075,7 @@ const QUESTION_TYPES = new Set([
   "phone",
   "number",
   "date",
+  "time",
   "dropdown",
   "radio",
   "checkbox",

@@ -1,5 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import api from "../lib/api";
+import { AUTH_STORAGE_KEYS } from "../utils/auth";
 
 const defaultSettings = {
   websiteLanguage: "en",
@@ -15,7 +23,7 @@ export const SettingsProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(defaultSettings);
 
-  const refreshSettings = async () => {
+  const refreshSettings = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await api.get("/api/settings");
@@ -29,11 +37,22 @@ export const SettingsProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshSettings();
-  }, []);
+  }, [refreshSettings]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === AUTH_STORAGE_KEYS.workspaceSettingsUpdatedAt) {
+        refreshSettings();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [refreshSettings]);
 
   const value = useMemo(
     () => ({
@@ -41,7 +60,7 @@ export const SettingsProvider = ({ children }) => {
       settings,
       refreshSettings,
     }),
-    [loading, settings],
+    [loading, refreshSettings, settings],
   );
 
   return (

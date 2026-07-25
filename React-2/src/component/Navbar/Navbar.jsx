@@ -3,13 +3,12 @@ import "./Navbar.css";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import {
-  clearAuth,
   getDashboardPath,
   getStoredToken,
   getStoredUser,
   normalizeRole,
 } from "../../utils/auth";
-import api from "../../lib/api";
+import { performCentralLogout } from "../../lib/sessionTimeout";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -47,20 +46,15 @@ const Navbar = () => {
     setShowProfileMenu(false);
   };
 
-  const handleLogout = () => {
-    (async () => {
-      try {
-        await api.post("/api/auth/logout");
-      } catch (err) {
-        // ignore
-      } finally {
-        clearAuth();
-        setCurrentUser(null);
-        setShowProfileMenu(false);
-        setMenuOpen(false);
-        navigate("/login");
-      }
-    })();
+  const handleLogout = async () => {
+    await performCentralLogout({
+      reason: "logout",
+      message: "",
+    });
+    setCurrentUser(null);
+    setShowProfileMenu(false);
+    setMenuOpen(false);
+    navigate("/login");
   };
 
   const avatarLabel = (currentUser?.name || "U").trim().charAt(0).toUpperCase();

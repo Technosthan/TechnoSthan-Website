@@ -6,6 +6,12 @@ const {
   hasRole,
   normalizeRole,
 } = require("../constants/rbac");
+const {
+  getSessionTimeoutSettings,
+} = require("../services/workspaceSettingsService");
+const {
+  sessionTimeoutToMs,
+} = require("../utils/sessionTimeout");
 
 const buildAuthUser = (user) => {
   const role = normalizeRole(user.role);
@@ -35,10 +41,69 @@ const extractToken = (req) => {
   return null;
 };
 
+const validateSessionActivity = async (user, req) => {
+  const sessionTimeoutSettings = getSessionTimeoutSettings(
+    (req.workspaceSettings && req.workspaceSettings.settings) || {},
+  );
+
+  if (!sessionTimeoutSettings.sessionTimeoutEnabled) {
+    return { user, expired: false };
+  }
+
+  const now = Date.now();
+  const lastActivityAt = user.lastActivityAt
+    ? new Date(user.lastActivityAt).getTime()
+    : null;
+  const timeoutMs =
+    sessionTimeoutSettings.sessionTimeoutMs ||
+    sessionTimeoutToMs(
+      sessionTimeoutSettings.sessionTimeoutValue,
+      sessionTimeoutSettings.sessionTimeoutUnit,
+    );
+
+  if (!lastActivityAt) {
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { lastActivityAt: new Date(now) } },
+    );
+    return { user: { ...user, lastActivityAt: new Date(now) }, expired: false };
+  }
+
+  if (timeoutMs && now - lastActivityAt >= timeoutMs) {
+    return { user: null, expired: true };
+  }
+
+  return { user, expired: false };
+};
+
 exports.protect = async (req, res, next) => {
   try {
     if (req.user?._id) {
-      req.user = buildAuthUser(req.user);
+      const freshUser = await User.findById(req.user._id).lean();
+      if (!freshUser) {
+        return res.status(401).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      if (freshUser.isActive === false) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Account suspended" });
+      }
+
+      const validated = await validateSessionActivity(freshUser, req);
+      if (validated.expired) {
+        return res.status(401).json({
+          success: false,
+          code: "SESSION_EXPIRED",
+          message:
+            "Your session expired due to inactivity. Please log in again.",
+        });
+      }
+
+      req.user = buildAuthUser(validated.user);
       return next();
     }
 
@@ -61,7 +126,17 @@ exports.protect = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Account suspended" });
     }
 
-    req.user = buildAuthUser(user);
+    const validated = await validateSessionActivity(user, req);
+    if (validated.expired) {
+      return res.status(401).json({
+        success: false,
+        code: "SESSION_EXPIRED",
+        message:
+          "Your session expired due to inactivity. Please log in again.",
+      });
+    }
+
+    req.user = buildAuthUser(validated.user);
     return next();
   } catch (err) {
     console.error("Auth Error:", err.message);
@@ -75,7 +150,17 @@ exports.protect = async (req, res, next) => {
 exports.optionalAuth = async (req, res, next) => {
   try {
     if (req.user?._id) {
-      req.user = buildAuthUser(req.user);
+      const freshUser = await User.findById(req.user._id).lean();
+      if (!freshUser || freshUser.isActive === false) {
+        return next();
+      }
+
+      const validated = await validateSessionActivity(freshUser, req);
+      if (validated.expired) {
+        return next();
+      }
+
+      req.user = buildAuthUser(validated.user);
       return next();
     }
 
@@ -88,7 +173,10 @@ exports.optionalAuth = async (req, res, next) => {
     const user = await User.findById(decoded.userId || decoded.id).lean();
 
     if (user && user.isActive !== false) {
-      req.user = buildAuthUser(user);
+      const validated = await validateSessionActivity(user, req);
+      if (validated.user) {
+        req.user = buildAuthUser(validated.user);
+      }
     }
 
     return next();

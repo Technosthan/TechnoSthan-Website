@@ -86,20 +86,26 @@ const normalizePublicSection = (section = {}, index = 0) => ({
 });
 
 const groupFormSections = (form = {}) => {
-  const questions = Array.isArray(form.questions) && form.questions.length
-    ? form.questions
-    : flattenQuestionsFromSections(
-        Array.isArray(form.sections) ? form.sections : [],
-      );
+  const questions =
+    Array.isArray(form.questions) && form.questions.length
+      ? form.questions
+      : flattenQuestionsFromSections(
+          Array.isArray(form.sections) ? form.sections : [],
+        );
   const normalizedSections = (Array.isArray(form.sections) ? form.sections : [])
     .map((section, index) => normalizePublicSection(section, index))
-    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .filter(
+      (section, index, list) =>
+        list.findIndex((item) => item.id === section.id) === index,
+    )
     .sort((left, right) => left.order - right.order);
 
   const hints = questions
     .map((question) => ({
       id: String(question.sectionId || question.section?.id || "").trim(),
-      title: String(question.sectionTitle || question.section?.title || "").trim(),
+      title: String(
+        question.sectionTitle || question.section?.title || "",
+      ).trim(),
       description: String(
         question.sectionDescription || question.section?.description || "",
       ).trim(),
@@ -142,10 +148,8 @@ const groupFormSections = (form = {}) => {
   const sectionMap = new Map(
     sections.map((section) => [section.id, { ...section, questions: [] }]),
   );
-  const defaultSection =
-    sectionMap.get(LEGACY_DEFAULT_SECTION_ID) ||
-    sectionMap.values().next().value ||
-    {
+  const defaultSection = sectionMap.get(LEGACY_DEFAULT_SECTION_ID) ||
+    sectionMap.values().next().value || {
       ...normalizePublicSection({}, 0),
       questions: [],
     };
@@ -157,11 +161,11 @@ const groupFormSections = (form = {}) => {
     const questionSectionId = String(
       question.sectionId || question.section?.id || "",
     ).trim();
-    const targetSection =
-      sectionMap.get(questionSectionId) || defaultSection;
+    const targetSection = sectionMap.get(questionSectionId) || defaultSection;
     targetSection.questions.push({
       ...question,
-      id: getQuestionId(question) || String(question.id || question._id || index),
+      id:
+        getQuestionId(question) || String(question.id || question._id || index),
       sectionId: targetSection.id,
       sectionTitle: targetSection.title,
       sectionDescription: targetSection.description,
@@ -676,9 +680,9 @@ const PublicFormPage = () => {
         )
         .map((section) => ({
           ...section,
-          questions: [...section.questions].sort(
-            (left, right) => (left.order || 0) - (right.order || 0),
-          ).filter((question) => question.isActive !== false),
+          questions: [...section.questions]
+            .sort((left, right) => (left.order || 0) - (right.order || 0))
+            .filter((question) => question.isActive !== false),
         }))
         .filter(
           (section) =>
@@ -751,13 +755,21 @@ const PublicFormPage = () => {
   }, [activeConditionalDescriptors]);
 
   useEffect(() => {
-    if (publicSections.length > 0 && currentSectionIndex >= publicSections.length) {
+    if (
+      publicSections.length > 0 &&
+      currentSectionIndex >= publicSections.length
+    ) {
       setCurrentSectionIndex(0);
     }
     if (currentPageIndex >= currentSectionPages.length) {
       setCurrentPageIndex(Math.max(0, currentSectionPages.length - 1));
     }
-  }, [currentPageIndex, currentSectionIndex, currentSectionPages.length, publicSections.length]);
+  }, [
+    currentPageIndex,
+    currentSectionIndex,
+    currentSectionPages.length,
+    publicSections.length,
+  ]);
 
   useEffect(() => {
     let mounted = true;
@@ -772,7 +784,11 @@ const PublicFormPage = () => {
         const nextSections = groupFormSections(nextForm || {});
         setCurrentSectionIndex(0);
         setCurrentPageIndex(0);
-        setValues(initialValuesFromQuestions(flattenQuestionsFromSections(nextSections)));
+        setValues(
+          initialValuesFromQuestions(
+            flattenQuestionsFromSections(nextSections),
+          ),
+        );
         setVisiblePasswords({});
         setVerificationStates({});
         setVerificationTokens({});
@@ -1722,7 +1738,9 @@ const PublicFormPage = () => {
                       ? "number"
                       : question.type === "date"
                         ? "date"
-                        : "text"
+                        : question.type === "time"
+                          ? "time"
+                          : "text"
             }
             step={question.type === "number" ? "1" : undefined}
             inputMode={
@@ -1907,8 +1925,8 @@ const PublicFormPage = () => {
     const currentIds = new Set(
       (currentPageQuestions || []).map((question) => getQuestionId(question)),
     );
-    const sectionDescriptors = activeConditionalDescriptors.filter((descriptor) =>
-      currentIds.has(descriptor.questionId),
+    const sectionDescriptors = activeConditionalDescriptors.filter(
+      (descriptor) => currentIds.has(descriptor.questionId),
     );
     validateQuestionSet(currentPageQuestions, sectionDescriptors);
   };
@@ -1976,7 +1994,14 @@ const PublicFormPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form || !hasPublicQuestions || submitLockRef.current || submitting || submitted) return;
+    if (
+      !form ||
+      !hasPublicQuestions ||
+      submitLockRef.current ||
+      submitting ||
+      submitted
+    )
+      return;
 
     submitLockRef.current = true;
     setSubmitting(true);
@@ -2127,7 +2152,7 @@ const PublicFormPage = () => {
 
   return (
     <div className={`min-h-screen ${theme.bgGradient} ${theme.text}`}>
-     <div className="w-full px-4 py-6 sm:px-6 lg:px-10 xl:px-14">
+      <div className="mx-auto w-full max-w-4xl px-4 py-6">
         <div className="mb-6 flex items-center justify-between">
           <Link
             to="/"
@@ -2226,7 +2251,8 @@ const PublicFormPage = () => {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                       <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-                        Section {currentSectionIndex + 1} of {publicSections.length}
+                        Section {currentSectionIndex + 1} of{" "}
+                        {publicSections.length}
                       </div>
                       <h2 className="text-2xl font-black break-words">
                         {currentSection?.title || LEGACY_DEFAULT_SECTION_TITLE}
@@ -2243,7 +2269,8 @@ const PublicFormPage = () => {
                     <div className="w-full max-w-sm space-y-2">
                       <div className="flex items-center justify-between text-xs text-slate-400">
                         <span>
-                          Page {currentPageIndex + 1} of {currentSectionTotalPages}
+                          Page {currentPageIndex + 1} of{" "}
+                          {currentSectionTotalPages}
                         </span>
                         <span>
                           Step {overallStep} of {totalPages}

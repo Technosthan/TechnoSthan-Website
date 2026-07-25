@@ -12,8 +12,73 @@ const {
   FEATURE_ACCESS_MODES,
   normalizeUserOverrides,
   hasPermission,
+  getSessionTimeoutSettings: getWorkspaceSessionTimeoutSettings,
 } = require("../services/workspaceSettingsService");
 const User = require("../models/User");
+const {
+  formatSessionTimeoutSummary,
+  sessionTimeoutToMs,
+} = require("../utils/sessionTimeout");
+
+const SESSION_TIMEOUT_UNITS = new Set(["minute", "hour", "day", "week"]);
+
+const buildSessionTimeoutConfig = (source = {}, updates = {}) => {
+  const current = getWorkspaceSessionTimeoutSettings(source);
+  const next = {
+    sessionTimeoutEnabled:
+      updates.sessionTimeoutEnabled === undefined
+        ? current.sessionTimeoutEnabled
+        : updates.sessionTimeoutEnabled,
+    sessionTimeoutValue:
+      updates.sessionTimeoutValue === undefined
+        ? current.sessionTimeoutValue
+        : updates.sessionTimeoutValue,
+    sessionTimeoutUnit:
+      updates.sessionTimeoutUnit === undefined
+        ? current.sessionTimeoutUnit
+        : updates.sessionTimeoutUnit,
+  };
+
+  const sessionTimeoutValue = Number(next.sessionTimeoutValue);
+  if (!Number.isInteger(sessionTimeoutValue) || sessionTimeoutValue < 1) {
+    return {
+      error: "sessionTimeoutValue must be a positive integer",
+    };
+  }
+
+  if (typeof next.sessionTimeoutEnabled !== "boolean") {
+    return {
+      error: "sessionTimeoutEnabled must be a boolean",
+    };
+  }
+
+  const sessionTimeoutUnit = String(next.sessionTimeoutUnit || "").trim().toLowerCase();
+  if (!SESSION_TIMEOUT_UNITS.has(sessionTimeoutUnit)) {
+    return {
+      error: "sessionTimeoutUnit must be one of minute, hour, day, or week",
+    };
+  }
+
+  const sessionTimeoutMs = sessionTimeoutToMs(
+    sessionTimeoutValue,
+    sessionTimeoutUnit,
+  );
+
+  if (!sessionTimeoutMs) {
+    return {
+      error: "sessionTimeoutValue is too large",
+    };
+  }
+
+  return {
+    config: {
+      sessionTimeoutEnabled: next.sessionTimeoutEnabled,
+      sessionTimeoutValue,
+      sessionTimeoutUnit,
+      sessionTimeoutMs,
+    },
+  };
+};
 
 exports.getWorkspaceSettings = async (req, res) => {
   try {
@@ -184,6 +249,106 @@ exports.getPublicWorkspaceSettings = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Unable to load public workspace settings",
+    });
+  }
+};
+
+exports.getSessionTimeoutSettings = async (req, res) => {
+  try {
+    const workspaceSettings = await getWorkspaceSettings();
+    const sessionTimeoutSettings = getWorkspaceSessionTimeoutSettings(
+      workspaceSettings.settings || {},
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: sessionTimeoutSettings,
+      meta: {
+        summary: formatSessionTimeoutSummary(sessionTimeoutSettings),
+        updatedBy: workspaceSettings.updatedBy,
+        updatedAt: workspaceSettings.updatedAt,
+      },
+    });
+  } catch (err) {
+    console.error("Get session timeout settings error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load session timeout settings",
+    });
+  }
+};
+
+exports.updateSessionTimeoutSettings = async (req, res) => {
+  try {
+    const workspaceSettings = await getWorkspaceSettings();
+    const currentConfig = getWorkspaceSessionTimeoutSettings(
+      workspaceSettings.settings || {},
+    );
+    const payload = req.body || {};
+    const mergedConfig = buildSessionTimeoutConfig(currentConfig, payload);
+
+    if (mergedConfig.error) {
+      return res.status(400).json({
+        success: false,
+        message: mergedConfig.error,
+      });
+    }
+
+    const normalizedCurrent = JSON.stringify(currentConfig);
+    const normalizedNext = JSON.stringify(mergedConfig.config);
+
+    if (normalizedCurrent === normalizedNext) {
+      return res.status(200).json({
+        success: true,
+        message: "Session timeout settings unchanged",
+        data: currentConfig,
+        meta: {
+          summary: formatSessionTimeoutSummary(currentConfig),
+          updatedBy: workspaceSettings.updatedBy,
+          updatedAt: workspaceSettings.updatedAt,
+        },
+      });
+    }
+
+    const updated = await updateWorkspaceSettings(mergedConfig.config, {
+      id: req.user?.id,
+      name: req.user?.name,
+      role: req.user?.role,
+    });
+
+    const updatedConfig = getWorkspaceSessionTimeoutSettings(
+      updated.settings || {},
+    );
+
+    if (typeof req.logActivity === "function") {
+      req.logActivity({
+        action: "UPDATE_SETTINGS",
+        module: "SETTINGS",
+        description: `Admin updated session timeout settings from ${formatSessionTimeoutSummary(currentConfig)} to ${formatSessionTimeoutSummary(updatedConfig)}`,
+        entityId: updated._id?.toString?.() || null,
+        entityType: "WorkspaceSettings",
+        metadata: {
+          previous: currentConfig,
+          next: updatedConfig,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Session timeout settings updated successfully",
+      data: updatedConfig,
+      meta: {
+        summary: formatSessionTimeoutSummary(updatedConfig),
+        updatedBy: updated.updatedBy,
+        updatedAt: updated.updatedAt,
+      },
+    });
+  } catch (err) {
+    console.error("Update session timeout settings error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update session timeout settings",
     });
   }
 };
