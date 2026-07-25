@@ -2352,52 +2352,50 @@ const PublicFormPage = () => {
                 {error}
               </div>
             )}
-
             {currentSection && (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                {currentSectionIndex > 0 || currentPageIndex > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handlePreviousPage}
-                    className="inline-flex items-center bg-cyan-600  justify-center gap-2 rounded-2xl border border-white/10 px-6 py-4 text-sm font-semibold sm:min-w-36"
-                  >
-                    <ArrowLeft size={16} /> Previous
-                  </button>
-                ) : (
-                  <div />
-                )}
+              <div className="flex w-full items-center justify-between gap-4">
+                <div className="flex h-12 w-48 shrink-0 justify-start">
+                  {currentSectionIndex > 0 || currentPageIndex > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handlePreviousPage}
+                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-cyan-600 text-sm font-semibold text-white shadow-xl"
+                    >
+                      Previous
+                    </button>
+                  ) : null}
+                </div>
 
-                {hasNextPageInSection ? (
-                  <button
-                    type="button"
-                    onClick={handleNextPage}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl sm:min-w-36"
-                  >
-                    Next
-                    <Send size={16} />
-                  </button>
-                ) : hasNextSection ? (
-                  <button
-                    type="button"
-                    onClick={handleNextPage}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl sm:min-w-40"
-                  >
-                    Next Section
-                    <Send size={16} />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    onClick={() => {
-                      explicitSubmitRef.current = true;
-                    }}
-                    disabled={submitting}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-sm font-semibold text-white shadow-2xl disabled:opacity-60 sm:min-w-44"
-                  >
-                    <Send size={16} />
-                    {submitting ? "Submitting..." : "Submit Response"}
-                  </button>
-                )}
+                <div className="flex h-12 w-48 shrink-0 justify-end">
+                  {hasNextPageInSection ? (
+                    <button
+                      type="button"
+                      onClick={handleNextPage}
+                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl"
+                    >
+                      Next
+                    </button>
+                  ) : hasNextSection ? (
+                    <button
+                      type="button"
+                      onClick={handleNextPage}
+                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl"
+                    >
+                      Next Section
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      onClick={() => {
+                        explicitSubmitRef.current = true;
+                      }}
+                      disabled={submitting}
+                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {submitting ? "Submitting..." : "Submit Response"}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </form>
