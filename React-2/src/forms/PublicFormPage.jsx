@@ -72,6 +72,7 @@ const getQuestionId = (question = {}) =>
 const LEGACY_DEFAULT_SECTION_ID = "legacy-default-section";
 const LEGACY_DEFAULT_SECTION_TITLE = "Form Details";
 const QUESTIONS_PER_PAGE = 4;
+const MAX_REPEATABLE_QUESTION_ENTRIES = 5;
 
 const normalizePublicSection = (section = {}, index = 0) => ({
   id:
@@ -497,17 +498,25 @@ const EXPIRY_COPY = {
   },
 };
 
+const getEmptyQuestionValue = (question = {}) => {
+  if (question.type === "checkbox") return [];
+  if (question.type === "rating") return 0;
+  return "";
+};
+
 const initialValuesFromQuestions = (questions = []) =>
   questions.reduce((acc, question) => {
     const questionId = getQuestionId(question);
+
     if (!questionId) return acc;
-    if (question.type === "checkbox") {
-      acc[questionId] = [];
-    } else if (question.type === "rating") {
-      acc[questionId] = 0;
+
+    if (question.allowUserToAddMore === true) {
+      // Repeatable question hamesha ek original entry se start hoga
+      acc[questionId] = [getEmptyQuestionValue(question)];
     } else {
-      acc[questionId] = "";
+      acc[questionId] = getEmptyQuestionValue(question);
     }
+
     return acc;
   }, {});
 
@@ -818,6 +827,75 @@ const PublicFormPage = () => {
   const handleAnswer = (questionId, value) => {
     const normalizedQuestionId = String(questionId || "").trim();
     setValues((prev) => ({ ...prev, [normalizedQuestionId]: value }));
+  };
+
+  const getRepeatableEntries = (question) => {
+    const questionId = getQuestionId(question);
+    const currentValue = values[questionId];
+
+    if (Array.isArray(currentValue)) {
+      return currentValue;
+    }
+
+    return [getEmptyQuestionValue(question)];
+  };
+
+  const handleRepeatableAnswer = (question, entryIndex, nextValue) => {
+    const questionId = getQuestionId(question);
+
+    setValues((prev) => {
+      const currentEntries = Array.isArray(prev[questionId])
+        ? [...prev[questionId]]
+        : [getEmptyQuestionValue(question)];
+
+      currentEntries[entryIndex] = nextValue;
+
+      return {
+        ...prev,
+        [questionId]: currentEntries,
+      };
+    });
+  };
+
+  const addRepeatableQuestionEntry = (question) => {
+    const questionId = getQuestionId(question);
+
+    setValues((prev) => {
+      const currentEntries = Array.isArray(prev[questionId])
+        ? [...prev[questionId]]
+        : [getEmptyQuestionValue(question)];
+
+      if (currentEntries.length >= MAX_REPEATABLE_QUESTION_ENTRIES) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [questionId]: [...currentEntries, getEmptyQuestionValue(question)],
+      };
+    });
+  };
+
+  const removeRepeatableQuestionEntry = (question, entryIndex) => {
+    const questionId = getQuestionId(question);
+
+    // Original first input kabhi remove nahi hoga
+    if (entryIndex === 0) return;
+
+    setValues((prev) => {
+      const currentEntries = Array.isArray(prev[questionId])
+        ? [...prev[questionId]]
+        : [getEmptyQuestionValue(question)];
+
+      if (currentEntries.length <= 1) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [questionId]: currentEntries.filter((_, index) => index !== entryIndex),
+      };
+    });
   };
 
   const resetVerification = (questionId) => {
@@ -1430,8 +1508,22 @@ const PublicFormPage = () => {
       });
   };
 
-  const renderQuestion = (question) => {
+  const renderQuestion = (
+    question,
+    customValue,
+    customOnChange,
+    entryIndex = 0,
+  ) => {
     const questionId = getQuestionId(question);
+
+    const questionValue =
+      customValue !== undefined ? customValue : values[questionId] || "";
+
+    const changeQuestionValue =
+      typeof customOnChange === "function"
+        ? customOnChange
+        : (nextValue) => handleAnswer(questionId, nextValue);
+
     const commonProps = {
       className: `${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`,
     };
@@ -1440,6 +1532,7 @@ const PublicFormPage = () => {
       return (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
           <h2 className="text-2xl font-bold">{question.label}</h2>
+
           {question.helpText && (
             <p className={`mt-2 text-sm ${theme.textSecondary}`}>
               {question.helpText}
@@ -1454,6 +1547,7 @@ const PublicFormPage = () => {
         <div className="flex items-start justify-between gap-3">
           <label className="text-base font-semibold">
             {question.label}
+
             {question.required && <span className="ml-1 text-red-400">*</span>}
           </label>
         </div>
@@ -1461,19 +1555,20 @@ const PublicFormPage = () => {
         {question.type === "paragraph" || question.type === "address" ? (
           <textarea
             rows={4}
-            value={values[questionId] || ""}
-            onChange={(e) => handleAnswer(questionId, e.target.value)}
+            value={questionValue || ""}
+            onChange={(e) => changeQuestionValue(e.target.value)}
             placeholder={question.placeholder}
             {...commonProps}
             className={`${commonProps.className} resize-none`}
           />
         ) : question.type === "dropdown" ? (
           <select
-            value={values[questionId] || ""}
-            onChange={(e) => handleAnswer(questionId, e.target.value)}
+            value={questionValue || ""}
+            onChange={(e) => changeQuestionValue(e.target.value)}
             {...commonProps}
           >
             <option value="">Select an option</option>
+
             {getQuestionOptions(question).map((option) => (
               <option key={option.id} value={option.value}>
                 {option.label}
@@ -1491,10 +1586,11 @@ const PublicFormPage = () => {
                 <input
                   type="radio"
                   className="h-4 w-4 shrink-0 accent-cyan-500"
-                  name={questionId}
-                  checked={values[questionId] === option.value}
-                  onChange={() => handleAnswer(questionId, option.value)}
+                  name={`${questionId}-${entryIndex}`}
+                  checked={questionValue === option.value}
+                  onChange={() => changeQuestionValue(option.value)}
                 />
+
                 <span className="min-w-0 flex-1 break-words">
                   {option.label}
                 </span>
@@ -1512,9 +1608,13 @@ const PublicFormPage = () => {
                 <input
                   type="checkbox"
                   className="h-4 w-4 shrink-0 accent-cyan-500"
-                  checked={(values[questionId] || []).includes(option.value)}
+                  checked={
+                    Array.isArray(questionValue) &&
+                    questionValue.includes(option.value)
+                  }
                   onChange={() => handleCheckbox(questionId, option.value)}
                 />
+
                 <span className="min-w-0 flex-1 break-words">
                   {option.label}
                 </span>
@@ -1526,6 +1626,7 @@ const PublicFormPage = () => {
           <div className="space-y-3">
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold">
               <Upload size={16} />
+
               <input
                 type="file"
                 hidden
@@ -1548,16 +1649,19 @@ const PublicFormPage = () => {
                   )
                 }
               />
+
               {form?.allowFileUpload
                 ? getSelectionLabel(files[questionId]) || "Choose file"
                 : "Uploads disabled"}
             </label>
+
             {renderSelectedFileList(
               files[questionId],
               questionId,
               fileInputRefs.current[questionId],
               question.type,
             )}
+
             {!form?.allowFileUpload && (
               <p className="text-xs text-amber-300">
                 File uploads are currently disabled for this form.
@@ -1570,9 +1674,9 @@ const PublicFormPage = () => {
               <button
                 key={rating}
                 type="button"
-                onClick={() => handleAnswer(questionId, rating)}
+                onClick={() => changeQuestionValue(rating)}
                 className={`h-11 w-11 rounded-2xl border ${
-                  values[questionId] === rating
+                  questionValue === rating
                     ? "border-cyan-500 bg-cyan-500 text-white"
                     : "border-white/10 bg-white/5"
                 }`}
@@ -1587,12 +1691,13 @@ const PublicFormPage = () => {
               type={visiblePasswords[questionId] ? "text" : "password"}
               autoComplete="new-password"
               spellCheck={false}
-              value={values[questionId] || ""}
-              onChange={(e) => handleAnswer(questionId, e.target.value)}
+              value={questionValue || ""}
+              onChange={(e) => changeQuestionValue(e.target.value)}
               placeholder={question.placeholder}
               {...commonProps}
               className={`${commonProps.className} pr-12`}
             />
+
             <button
               type="button"
               onClick={() => togglePasswordVisibility(questionId)}
@@ -1617,7 +1722,7 @@ const PublicFormPage = () => {
                 pattern={question.type === "phone" ? "[0-9]*" : undefined}
                 maxLength={question.type === "phone" ? 10 : undefined}
                 autoComplete={question.type === "phone" ? "tel" : "email"}
-                value={values[questionId] || ""}
+                value={questionValue || ""}
                 onChange={(e) =>
                   handleVerifiedInputChange(
                     question,
@@ -1631,21 +1736,25 @@ const PublicFormPage = () => {
                 {...commonProps}
                 className={`${commonProps.className} sm:flex-1`}
               />
+
               {question.validationEnabled === true ? (
                 <button
                   type="button"
                   onClick={() => {
-                    const current = values[questionId] || "";
+                    const current = questionValue || "";
+
                     if (question.type === "email" && !validateEmail(current)) {
                       toast.error("Please enter a valid email.");
                       return;
                     }
+
                     if (question.type === "phone" && !validatePhone(current)) {
                       toast.error(
                         "Please enter a valid 10-digit mobile number.",
                       );
                       return;
                     }
+
                     if (
                       (verificationStates[questionId]?.status || "idle") ===
                       "verified"
@@ -1664,17 +1773,19 @@ const PublicFormPage = () => {
                   {(verificationStates[questionId]?.status || "idle") ===
                   "sending" ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> Sending
-                      OTP...
+                      <Loader2 size={16} className="animate-spin" />
+                      Sending OTP...
                     </>
                   ) : (verificationStates[questionId]?.status || "idle") ===
                     "verified" ? (
                     <>
-                      <ShieldCheck size={16} /> Verified
+                      <ShieldCheck size={16} />
+                      Verified
                     </>
                   ) : (
                     <>
-                      <Send size={16} /> Verify Now
+                      <Send size={16} />
+                      Verify Now
                     </>
                   )}
                 </button>
@@ -1701,19 +1812,23 @@ const PublicFormPage = () => {
                     inputMode="numeric"
                     maxLength={6}
                   />
+
                   <button
                     type="button"
                     onClick={() => verifyOtp(question)}
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white sm:w-40"
                   >
-                    <ShieldCheck size={16} /> Verify OTP
+                    <ShieldCheck size={16} />
+                    Verify OTP
                   </button>
+
                   <button
                     type="button"
                     onClick={() => sendVerificationCode(question)}
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold sm:w-40"
                   >
-                    <RefreshCcw size={16} /> Resend OTP
+                    <RefreshCcw size={16} />
+                    Resend OTP
                   </button>
                 </div>
               )}
@@ -1722,7 +1837,8 @@ const PublicFormPage = () => {
               (verificationStates[questionId]?.status || "idle") ===
                 "verified" && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  <CheckCircle2 size={14} /> Verified
+                  <CheckCircle2 size={14} />
+                  Verified
                 </div>
               )}
           </div>
@@ -1763,10 +1879,9 @@ const PublicFormPage = () => {
                 ? question.validation.maxValue
                 : undefined
             }
-            value={values[questionId] || ""}
+            value={questionValue || ""}
             onChange={(e) =>
-              handleAnswer(
-                questionId,
+              changeQuestionValue(
                 question.type === "number"
                   ? sanitizeNumberInput(e.target.value)
                   : question.type === "phone"
@@ -1790,8 +1905,9 @@ const PublicFormPage = () => {
               question.type === "link"
                 ? (e) => {
                     const normalized = normalizeHttpUrl(e.target.value);
+
                     if (normalized) {
-                      handleAnswer(questionId, normalized);
+                      changeQuestionValue(normalized);
                     }
                   }
                 : undefined
@@ -1807,6 +1923,86 @@ const PublicFormPage = () => {
     );
   };
 
+  const renderQuestionWithRepeatSupport = (question) => {
+    const questionId = getQuestionId(question);
+    const isRepeatable = question.allowUserToAddMore === true;
+
+    if (!isRepeatable) {
+      return (
+        <>
+          {renderQuestion(question)}
+
+          {question.type !== "sectionHeading" &&
+            renderConditionalBlocks(question)}
+        </>
+      );
+    }
+
+    const entries = getRepeatableEntries(question);
+
+    return (
+      <div className="space-y-4">
+        {entries.map((entryValue, entryIndex) => (
+          <div
+            key={`${questionId}-entry-${entryIndex}`}
+            className="relative space-y-3"
+          >
+            {entryIndex > 0 && (
+              <div className="flex items-center justify-between rounded-2xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3">
+                <span className="text-sm font-semibold text-cyan-100">
+                  {question.label} {entryIndex + 1}
+                  {question.required && (
+                    <span className="ml-1 text-red-400">*</span>
+                  )}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    removeRepeatableQuestionEntry(question, entryIndex)
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
+                >
+                  <X size={14} />
+                  Remove
+                </button>
+              </div>
+            )}
+
+            {renderQuestion(
+              {
+                ...question,
+
+                // Additional copy me main label duplicate na ho
+                label:
+                  entryIndex === 0
+                    ? question.label
+                    : `${question.label} ${entryIndex + 1}`,
+              },
+              entryValue,
+              (nextValue) =>
+                handleRepeatableAnswer(question, entryIndex, nextValue),
+              entryIndex,
+            )}
+          </div>
+        ))}
+
+        {entries.length < MAX_REPEATABLE_QUESTION_ENTRIES ? (
+          <button
+            type="button"
+            onClick={() => addRepeatableQuestionEntry(question)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20"
+          >
+            <span className="text-lg leading-none">+</span>
+            Add Question
+          </button>
+        ) : (
+          <p className="text-xs text-slate-400">Maximum 5 questions allowed.</p>
+        )}
+      </div>
+    );
+  };
+
   const validateQuestionSet = (
     questionsToValidate = [],
     conditionalDescriptors = [],
@@ -1817,22 +2013,68 @@ const PublicFormPage = () => {
       const value = values[questionId];
       const file = files[questionId];
       const selectedFiles = getSelectionList(file);
-      const empty =
-        value === undefined ||
-        value === null ||
-        value === "" ||
-        (Array.isArray(value) && value.length === 0);
 
-      if (question.required && empty && !selectedFiles.length) {
+      const isRepeatable = question.allowUserToAddMore === true;
+
+      const repeatableValues = isRepeatable
+        ? Array.isArray(value)
+          ? value
+          : [value]
+        : null;
+
+      const isEntryEmpty = (entryValue) =>
+        entryValue === undefined ||
+        entryValue === null ||
+        entryValue === "" ||
+        (Array.isArray(entryValue) && entryValue.length === 0);
+
+      const empty = isRepeatable
+        ? repeatableValues.every(isEntryEmpty)
+        : isEntryEmpty(value);
+
+      if (question.required && isRepeatable) {
+        const hasEmptyAddedEntry =
+          repeatableValues.length === 0 || repeatableValues.some(isEntryEmpty);
+
+        if (hasEmptyAddedEntry) {
+          throw new Error(
+            `Please complete all added entries for "${question.label}".`,
+          );
+        }
+      } else if (question.required && empty && !selectedFiles.length) {
         throw new Error(`${question.label} is required`);
       }
 
-      if (question.type === "email" && value && !validateEmail(value)) {
-        throw new Error(`${question.label} must be a valid email`);
-      }
-      if (question.type === "phone" && value && !validatePhone(value)) {
-        throw new Error("Please enter a valid 10-digit mobile number.");
-      }
+      if (question.type === "email") {
+  const emailValues = isRepeatable
+    ? repeatableValues
+    : [value];
+
+  const hasInvalidEmail = emailValues
+    .filter((entry) => String(entry || "").trim())
+    .some((entry) => !validateEmail(entry));
+
+  if (hasInvalidEmail) {
+    throw new Error(
+      `${question.label} must contain valid email addresses`,
+    );
+  }
+}
+     if (question.type === "phone") {
+  const phoneValues = isRepeatable
+    ? repeatableValues
+    : [value];
+
+  const hasInvalidPhone = phoneValues
+    .filter((entry) => String(entry || "").trim())
+    .some((entry) => !validatePhone(entry));
+
+  if (hasInvalidPhone) {
+    throw new Error(
+      "Please enter valid 10-digit mobile numbers.",
+    );
+  }
+}
       if (
         question.validationEnabled === true &&
         (question.type === "email" || question.type === "phone") &&
@@ -1840,18 +2082,36 @@ const PublicFormPage = () => {
       ) {
         throw new Error(`Please verify ${question.label} before submitting.`);
       }
-      if (question.type === "number") {
-        const validationMessage = getNumberValidationMessage(question, value);
-        if (validationMessage) {
-          throw new Error(validationMessage);
-        }
-      }
-      if (question.type === "link" && value) {
-        const normalized = normalizeHttpUrl(value);
-        if (!normalized) {
-          throw new Error("Please enter a valid link.");
-        }
-      }
+    if (question.type === "number") {
+  const numberValues = isRepeatable
+    ? repeatableValues
+    : [value];
+
+  for (const numberValue of numberValues) {
+    const validationMessage =
+      getNumberValidationMessage(
+        question,
+        numberValue,
+      );
+
+    if (validationMessage) {
+      throw new Error(validationMessage);
+    }
+  }
+}
+     if (question.type === "link") {
+  const linkValues = isRepeatable
+    ? repeatableValues
+    : [value];
+
+  const hasInvalidLink = linkValues
+    .filter((entry) => String(entry || "").trim())
+    .some((entry) => !normalizeHttpUrl(entry));
+
+  if (hasInvalidLink) {
+    throw new Error("Please enter valid links.");
+  }
+}
 
       if (selectedFiles.length) {
         const validationMessage = selectedFiles
@@ -2274,10 +2534,10 @@ const PublicFormPage = () => {
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+                      {/* <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
                         Section {currentSectionIndex + 1} of{" "}
                         {publicSections.length}
-                      </div>
+                      </div> */}
                       <h2 className="text-2xl font-black break-words">
                         {currentSection?.title || LEGACY_DEFAULT_SECTION_TITLE}
                       </h2>
@@ -2336,10 +2596,7 @@ const PublicFormPage = () => {
 
                     return (
                       <div key={questionKey} className="space-y-5">
-                        {renderQuestion(question)}
-
-                        {question.type !== "sectionHeading" &&
-                          renderConditionalBlocks(question)}
+                        {renderQuestionWithRepeatSupport(question)}
                       </div>
                     );
                   })}

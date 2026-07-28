@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -29,7 +29,6 @@ import DraftsButton from "./drafts/DraftsButton";
 import DraftsPanel from "./drafts/DraftsPanel";
 import {
   buildDraftKey,
-  clearDraft,
   findLatestDraftKeyForModule,
   getCurrentDraftUserId,
 } from "../../shared/lib/draftPersistence";
@@ -195,6 +194,14 @@ const DEFAULT_EMAIL_TEMPLATE = {
   headerMinHeight: 220,
   headerTextAlign: "left",
   headerTextColor: "",
+  emailBodyBackgroundType: "color",
+  emailBodyBackgroundImageUrl: "",
+  emailBodyBackgroundImagePublicId: "",
+  emailBodyBackgroundImageAsset: null,
+  emailBodyBackgroundPosition: "center",
+  emailBodyBackgroundSize: "cover",
+  emailBodyOverlayColor: "#ffffff",
+  emailBodyOverlayOpacity: 0.9,
   bodyBackgroundColor: "#f0fdf4",
   cardBackgroundColor: "#ffffff",
   accentColor: "#16a34a",
@@ -207,7 +214,55 @@ const DEFAULT_EMAIL_TEMPLATE = {
   bannerImageUrl: "",
   bannerImageAsset: null,
   headerBackgroundImageAsset: null,
+
+  footerBackgroundType: "color",
+  footerBackgroundColor: "#166534",
+  footerBackgroundImageUrl: "",
+  footerBackgroundImagePublicId: "",
+  footerBackgroundImageAsset: null,
+  footerBackgroundPosition: "center",
+  footerBackgroundSize: "cover",
+  footerOverlayColor: "#000000",
+  footerOverlayOpacity: 0.45,
+  footerMinHeight: 220,
+  footerTextColor: "#ffffff",
+  footerTextAlign: "left",
+
+  submissionIntroText:
+    "Thank you for completing this form. Please review your submitted information below.",
   footerButtons: [],
+};
+
+const EMAIL_TEMPLATE_IMAGE_FIELDS = {
+  logoUrl: {
+    assetField: "logoAsset",
+    publicIdField: "",
+    successMessage: "Email logo uploaded successfully",
+  },
+
+  bannerImageUrl: {
+    assetField: "bannerImageAsset",
+    publicIdField: "",
+    successMessage: "Email banner uploaded successfully",
+  },
+
+  headerBackgroundImageUrl: {
+    assetField: "headerBackgroundImageAsset",
+    publicIdField: "headerBackgroundImagePublicId",
+    successMessage: "Header background uploaded successfully",
+  },
+
+  emailBodyBackgroundImageUrl: {
+    assetField: "emailBodyBackgroundImageAsset",
+    publicIdField: "emailBodyBackgroundImagePublicId",
+    successMessage: "Complete email background uploaded successfully",
+  },
+
+  footerBackgroundImageUrl: {
+    assetField: "footerBackgroundImageAsset",
+    publicIdField: "footerBackgroundImagePublicId",
+    successMessage: "Footer background uploaded successfully",
+  },
 };
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -395,6 +450,7 @@ const createQuestion = () => ({
   helpText: "",
   required: false,
   validationEnabled: false,
+  allowUserToAddMore: false,
   options: [],
   conditionalFields: [],
   validation: normalizeNumberValidation(),
@@ -556,6 +612,7 @@ const sanitizeExportQuestion = (question = {}, index = 0) => ({
   placeholder: String(question.placeholder || "").trim(),
   required: question.required === true,
   validationEnabled: question.validationEnabled === true,
+  allowUserToAddMore: question.allowUserToAddMore === true,
   options: normalizeQuestionOptions(question),
   conditionalFields: Array.isArray(question.conditionalFields)
     ? question.conditionalFields.map((field, fieldIndex) =>
@@ -692,10 +749,27 @@ const normalizeConditionalValidation = (validation = {}) => ({
 
 const normalizeConditionalField = (field = {}, index = 0) => ({
   id: String(field.id || field.fieldId || crypto.randomUUID()),
-  label: String(field.label || field.title || "Untitled field"),
+
+  label:
+    field.label !== undefined && field.label !== null
+      ? String(field.label)
+      : field.title !== undefined && field.title !== null
+        ? String(field.title)
+        : "Untitled field",
+
   type: String(field.type || "shortAnswer"),
-  placeholder: String(field.placeholder || ""),
-  helpText: String(field.helpText || field.description || ""),
+
+  placeholder:
+    field.placeholder !== undefined && field.placeholder !== null
+      ? String(field.placeholder)
+      : "",
+
+  helpText:
+    field.helpText !== undefined && field.helpText !== null
+      ? String(field.helpText)
+      : field.description !== undefined && field.description !== null
+        ? String(field.description)
+        : "",
   required: field.required === true,
   validationEnabled: field.validationEnabled === true,
   validation: normalizeConditionalValidation(field.validation),
@@ -705,8 +779,19 @@ const normalizeConditionalField = (field = {}, index = 0) => ({
           ? createQuestionOption(option, optionIndex)
           : {
               id: String(option.id || crypto.randomUUID()),
-              label: String(option.label || option.value || ""),
-              value: String(option.value || option.label || ""),
+              label:
+                option.label !== undefined && option.label !== null
+                  ? String(option.label)
+                  : option.value !== undefined && option.value !== null
+                    ? String(option.value)
+                    : "",
+
+              value:
+                option.value !== undefined && option.value !== null
+                  ? String(option.value)
+                  : option.label !== undefined && option.label !== null
+                    ? String(option.label)
+                    : "",
               order:
                 typeof option.order === "number" ? option.order : optionIndex,
               conditionalLogic: {
@@ -761,28 +846,43 @@ const normalizeConditionalField = (field = {}, index = 0) => ({
 
 const normalizeQuestionOptions = (question = {}) =>
   (Array.isArray(question.options) ? question.options : []).map(
-    (option, index) =>
-      typeof option === "string"
-        ? createQuestionOption(option, index)
-        : {
-            id: String(option.id || option.optionId || crypto.randomUUID()),
-            label: String(
-              option.label || option.value || `Option ${index + 1}`,
-            ),
-            value: String(
-              option.value || option.label || `option-${index + 1}`,
-            ),
-            order: typeof option.order === "number" ? option.order : index,
-            conditionalLogic: {
-              enabled: option.conditionalLogic?.enabled === true,
-              resetOnHide: option.conditionalLogic?.resetOnHide !== false,
-              fields: Array.isArray(option.conditionalLogic?.fields)
-                ? option.conditionalLogic.fields.map((field, fieldIndex) =>
-                    normalizeConditionalField(field, fieldIndex),
-                  )
-                : [],
-            },
-          },
+    (option, index) => {
+      if (typeof option === "string") {
+        return createQuestionOption(option, index);
+      }
+
+      return {
+        id: String(option.id || option.optionId || crypto.randomUUID()),
+
+        label:
+          option.label !== undefined && option.label !== null
+            ? String(option.label)
+            : option.value !== undefined && option.value !== null
+              ? String(option.value)
+              : `Option ${index + 1}`,
+
+        value:
+          option.value !== undefined && option.value !== null
+            ? String(option.value)
+            : option.label !== undefined && option.label !== null
+              ? String(option.label)
+              : `option-${index + 1}`,
+
+        order: typeof option.order === "number" ? option.order : index,
+
+        conditionalLogic: {
+          enabled: option.conditionalLogic?.enabled === true,
+
+          resetOnHide: option.conditionalLogic?.resetOnHide !== false,
+
+          fields: Array.isArray(option.conditionalLogic?.fields)
+            ? option.conditionalLogic.fields.map((field, fieldIndex) =>
+                normalizeConditionalField(field, fieldIndex),
+              )
+            : [],
+        },
+      };
+    },
   );
 
 const normalizeNumberValidation = (validation = {}) => ({
@@ -808,6 +908,17 @@ const normalizeNumberValidation = (validation = {}) => ({
 const normalizeHttpsUrl = (value = "") => {
   const normalized = normalizeHttpUrl(value);
   return normalized.startsWith("https://") ? normalized : "";
+};
+
+const resolveEmailTemplateImageUrl = (url, asset) => {
+  const rawValue =
+    url ||
+    asset?.secureUrl ||
+    asset?.secure_url ||
+    asset?.url ||
+    "";
+
+  return normalizeHttpsUrl(rawValue);
 };
 
 const resolveHeaderBackgroundImageUrl = (template = {}) =>
@@ -951,6 +1062,54 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
     ["color", "image"],
     headerBackgroundImageUrl || headerBackgroundImageAsset ? "image" : "color",
   );
+  const emailBodyBackgroundImageAsset = toAssetPayload(
+    source.emailBodyBackgroundImageAsset ??
+      legacy.emailTemplate?.emailBodyBackgroundImageAsset ??
+      null,
+    source.emailBodyBackgroundImageUrl ??
+      legacy.emailTemplate?.emailBodyBackgroundImageUrl ??
+      "",
+  );
+
+  const emailBodyBackgroundImageUrl = normalizeHttpsUrl(
+    source.emailBodyBackgroundImageUrl ??
+      legacy.emailTemplate?.emailBodyBackgroundImageUrl ??
+      emailBodyBackgroundImageAsset?.secureUrl ??
+      emailBodyBackgroundImageAsset?.url ??
+      "",
+  );
+  const emailBodyBackgroundType = normalizeChoice(
+    source.emailBodyBackgroundType ??
+      legacy.emailTemplate?.emailBodyBackgroundType ??
+      "",
+    ["color", "image"],
+    emailBodyBackgroundImageUrl ? "image" : "color",
+  );
+
+  const footerBackgroundImageAsset = toAssetPayload(
+    source.footerBackgroundImageAsset ??
+      legacy.emailTemplate?.footerBackgroundImageAsset ??
+      null,
+    source.footerBackgroundImageUrl ??
+      legacy.emailTemplate?.footerBackgroundImageUrl ??
+      "",
+  );
+
+  const footerBackgroundImageUrl = normalizeHttpsUrl(
+    source.footerBackgroundImageUrl ??
+      legacy.emailTemplate?.footerBackgroundImageUrl ??
+      footerBackgroundImageAsset?.secureUrl ??
+      footerBackgroundImageAsset?.url ??
+      "",
+  );
+
+  const footerBackgroundType = normalizeChoice(
+    source.footerBackgroundType ??
+      legacy.emailTemplate?.footerBackgroundType ??
+      "",
+    ["color", "image"],
+    footerBackgroundImageUrl ? "image" : "color",
+  );
   return {
     preset:
       source.preset ||
@@ -973,6 +1132,77 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       source.footerText ??
       legacy.emailTemplate?.footerText ??
       DEFAULT_EMAIL_TEMPLATE.footerText,
+    footerBackgroundType,
+
+    footerBackgroundColor:
+      source.footerBackgroundColor ??
+      legacy.emailTemplate?.footerBackgroundColor ??
+      DEFAULT_EMAIL_TEMPLATE.footerBackgroundColor,
+
+    footerBackgroundImageUrl,
+
+    footerBackgroundImagePublicId: toTrimmed(
+      source.footerBackgroundImagePublicId ??
+        legacy.emailTemplate?.footerBackgroundImagePublicId ??
+        footerBackgroundImageAsset?.publicId ??
+        "",
+    ),
+
+    footerBackgroundPosition: normalizeChoice(
+      source.footerBackgroundPosition ??
+        legacy.emailTemplate?.footerBackgroundPosition ??
+        DEFAULT_EMAIL_TEMPLATE.footerBackgroundPosition,
+      ["center", "top", "bottom", "left", "right"],
+      DEFAULT_EMAIL_TEMPLATE.footerBackgroundPosition,
+    ),
+
+    footerBackgroundSize: normalizeChoice(
+      source.footerBackgroundSize ??
+        legacy.emailTemplate?.footerBackgroundSize ??
+        DEFAULT_EMAIL_TEMPLATE.footerBackgroundSize,
+      ["cover", "contain", "auto"],
+      DEFAULT_EMAIL_TEMPLATE.footerBackgroundSize,
+    ),
+
+    footerOverlayColor: toTrimmed(
+      source.footerOverlayColor ??
+        legacy.emailTemplate?.footerOverlayColor ??
+        DEFAULT_EMAIL_TEMPLATE.footerOverlayColor,
+    ),
+
+    footerOverlayOpacity: clampOpacity(
+      source.footerOverlayOpacity ??
+        legacy.emailTemplate?.footerOverlayOpacity ??
+        DEFAULT_EMAIL_TEMPLATE.footerOverlayOpacity,
+      DEFAULT_EMAIL_TEMPLATE.footerOverlayOpacity,
+    ),
+
+    footerMinHeight: clampMinHeight(
+      source.footerMinHeight ??
+        legacy.emailTemplate?.footerMinHeight ??
+        legacy.footerMinHeight ??
+        DEFAULT_EMAIL_TEMPLATE.footerMinHeight,
+      DEFAULT_EMAIL_TEMPLATE.footerMinHeight,
+    ),
+
+    footerTextColor: toTrimmed(
+      source.footerTextColor ??
+        legacy.emailTemplate?.footerTextColor ??
+        DEFAULT_EMAIL_TEMPLATE.footerTextColor,
+    ),
+
+    footerTextAlign: normalizeChoice(
+      source.footerTextAlign ??
+        legacy.emailTemplate?.footerTextAlign ??
+        DEFAULT_EMAIL_TEMPLATE.footerTextAlign,
+      ["left", "center", "right"],
+      DEFAULT_EMAIL_TEMPLATE.footerTextAlign,
+    ),
+
+    submissionIntroText:
+      source.submissionIntroText ??
+      legacy.emailTemplate?.submissionIntroText ??
+      DEFAULT_EMAIL_TEMPLATE.submissionIntroText,
     companyName:
       source.companyName ??
       legacy.emailTemplate?.companyName ??
@@ -1053,6 +1283,44 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       source.bodyBackgroundColor ??
       legacy.emailTemplate?.bodyBackgroundColor ??
       DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor,
+    emailBodyBackgroundType,
+    emailBodyBackgroundImageUrl,
+
+    emailBodyBackgroundImagePublicId: toTrimmed(
+      source.emailBodyBackgroundImagePublicId ??
+        legacy.emailTemplate?.emailBodyBackgroundImagePublicId ??
+        emailBodyBackgroundImageAsset?.publicId ??
+        "",
+    ),
+
+    emailBodyBackgroundPosition: normalizeChoice(
+      source.emailBodyBackgroundPosition ??
+        legacy.emailTemplate?.emailBodyBackgroundPosition ??
+        DEFAULT_EMAIL_TEMPLATE.emailBodyBackgroundPosition,
+      ["center", "top", "bottom", "left", "right"],
+      DEFAULT_EMAIL_TEMPLATE.emailBodyBackgroundPosition,
+    ),
+
+    emailBodyBackgroundSize: normalizeChoice(
+      source.emailBodyBackgroundSize ??
+        legacy.emailTemplate?.emailBodyBackgroundSize ??
+        DEFAULT_EMAIL_TEMPLATE.emailBodyBackgroundSize,
+      ["cover", "contain", "auto"],
+      DEFAULT_EMAIL_TEMPLATE.emailBodyBackgroundSize,
+    ),
+
+    emailBodyOverlayColor: toTrimmed(
+      source.emailBodyOverlayColor ??
+        legacy.emailTemplate?.emailBodyOverlayColor ??
+        DEFAULT_EMAIL_TEMPLATE.emailBodyOverlayColor,
+    ),
+
+    emailBodyOverlayOpacity: clampOpacity(
+      source.emailBodyOverlayOpacity ??
+        legacy.emailTemplate?.emailBodyOverlayOpacity ??
+        DEFAULT_EMAIL_TEMPLATE.emailBodyOverlayOpacity,
+      DEFAULT_EMAIL_TEMPLATE.emailBodyOverlayOpacity,
+    ),
     cardBackgroundColor:
       source.cardBackgroundColor ??
       legacy.emailTemplate?.cardBackgroundColor ??
@@ -1073,8 +1341,10 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       source.borderRadius ??
       legacy.emailTemplate?.borderRadius ??
       DEFAULT_EMAIL_TEMPLATE.borderRadius,
-    logoUrl: source.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
-    logoAsset: source.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
+    logoUrl:
+      source.logoUrl ?? legacy.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
+    logoAsset:
+      source.logoAsset ?? legacy.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
     bannerUrl:
       source.bannerUrl ??
       legacy.emailTemplate?.bannerUrl ??
@@ -1095,11 +1365,19 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
       legacy.bannerImageAsset ??
       null,
     headerBackgroundImageAsset,
+    emailBodyBackgroundImageAsset,
+    footerBackgroundImageAsset,
+
     footerButtons: normalizeFooterButtons(
       source.footerButtons ??
         legacy.emailTemplate?.footerButtons ??
         (legacy.websiteButtonText && legacy.websiteButtonUrl
-          ? [{ text: legacy.websiteButtonText, url: legacy.websiteButtonUrl }]
+          ? [
+              {
+                text: legacy.websiteButtonText,
+                url: legacy.websiteButtonUrl,
+              },
+            ]
           : []),
     ),
   };
@@ -1267,7 +1545,29 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     resolved.bannerImageUrl ||
     "";
   const logoUrl = resolved.logoAsset || resolved.logoUrl || "";
-  const headerBackgroundImageUrl = resolveHeaderBackgroundImageUrl(resolved);
+  const headerBackgroundImageUrl = resolveEmailTemplateImageUrl(
+    resolved.headerBackgroundImageUrl,
+    resolved.headerBackgroundImageAsset,
+  );
+
+  const emailBodyBackgroundImageUrl = resolveEmailTemplateImageUrl(
+    resolved.emailBodyBackgroundImageUrl,
+    resolved.emailBodyBackgroundImageAsset,
+  );
+
+  const footerBackgroundImageUrl = resolveEmailTemplateImageUrl(
+    resolved.footerBackgroundImageUrl,
+    resolved.footerBackgroundImageAsset,
+  );
+
+  const submissionIntroText = interpolateTemplateText(
+    resolved.submissionIntroText,
+    context,
+  );
+  const footerSectionHeight = Math.max(
+    Number(resolved.headerMinHeight) || 220,
+    Number(resolved.footerMinHeight) || 220,
+  );
   const tableRows = [
     { question: "Full Name", answer: "John Doe" },
     { question: "Email", answer: "john@example.com" },
@@ -1277,8 +1577,7 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
   return {
     resolved,
     headerBackgroundType:
-      (resolved.headerBackgroundType === "image" || headerBackgroundImageUrl) &&
-      headerBackgroundImageUrl
+      resolved.headerBackgroundType === "image" && headerBackgroundImageUrl
         ? "image"
         : "color",
     headerBackgroundImageUrl,
@@ -1295,6 +1594,51 @@ const buildTemplatePreview = (template = {}, formTitle = "") => {
     headerTextColor:
       resolved.headerTextColor ||
       (isLightHexColor(resolved.headerBackgroundColor) ? "#0f172a" : "#ffffff"),
+    emailBodyBackgroundType: resolved.emailBodyBackgroundType || "color",
+    emailBodyBackgroundImageUrl,
+
+    emailBodyBackgroundPosition:
+      resolved.emailBodyBackgroundPosition || "center",
+
+    emailBodyBackgroundSize: resolved.emailBodyBackgroundSize || "cover",
+
+    emailBodyOverlayColor: resolved.emailBodyOverlayColor || "#ffffff",
+
+    emailBodyOverlayOpacity: Number.isFinite(
+      Number(resolved.emailBodyOverlayOpacity),
+    )
+      ? Math.min(1, Math.max(0, Number(resolved.emailBodyOverlayOpacity)))
+      : 0.9,
+
+    footerBackgroundColor:
+      resolved.footerBackgroundColor ||
+      resolved.headerBackgroundColor ||
+      "#166534",
+
+    footerBackgroundImageUrl,
+
+    footerBackgroundPosition: resolved.footerBackgroundPosition || "center",
+
+    footerBackgroundSize: resolved.footerBackgroundSize || "cover",
+
+    footerOverlayColor: resolved.footerOverlayColor || "#000000",
+
+    footerOverlayOpacity: Number.isFinite(Number(resolved.footerOverlayOpacity))
+      ? Math.min(1, Math.max(0, Number(resolved.footerOverlayOpacity)))
+      : 0.45,
+
+    footerMinHeight: Number(resolved.footerMinHeight) || 220,
+    footerSectionHeight,
+
+    footerTextColor: resolved.footerTextColor || "#ffffff",
+
+    footerTextAlign: resolved.footerTextAlign || "left",
+    footerBackgroundType:
+      resolved.footerBackgroundType === "image" && footerBackgroundImageUrl
+        ? "image"
+        : "color",
+
+    submissionIntroText,
     headerTitle,
     headerSubtitle,
     successMessage,
@@ -1364,6 +1708,7 @@ const normalizeQuestion = (question, index) => ({
   helpText: question.helpText || "",
   required: question.required === true,
   validationEnabled: question.validationEnabled === true,
+  allowUserToAddMore: question.allowUserToAddMore === true,
   options: normalizeQuestionOptions(question),
   optionsText: normalizeQuestionOptions(question)
     .map((option) => option.label)
@@ -1758,6 +2103,7 @@ const FormManagement = () => {
     {},
   );
   const lastSavedFormRef = useRef(null);
+  const [lastSavedFormSnapshot, setLastSavedFormSnapshot] = useState(null);
   const draftResolutionRef = useRef(null);
   const [draftsOpen, setDraftsOpen] = useState(false);
   const sessionUploadedAssetsRef = useRef([]);
@@ -1772,6 +2118,8 @@ const FormManagement = () => {
   const emailLogoInputRef = useRef(null);
   const emailBannerInputRef = useRef(null);
   const emailHeaderBackgroundInputRef = useRef(null);
+  const emailBodyBackgroundInputRef = useRef(null);
+  const emailFooterBackgroundInputRef = useRef(null);
   const [uploadingEmailTemplateField, setUploadingEmailTemplateField] =
     useState("");
   const [formLogoPreviewFailed, setFormLogoPreviewFailed] = useState(false);
@@ -1779,6 +2127,10 @@ const FormManagement = () => {
   const [bannerPreviewFailed, setBannerPreviewFailed] = useState(false);
   const [headerBackgroundPreviewFailed, setHeaderBackgroundPreviewFailed] =
     useState(false);
+  const [bodyBackgroundPreviewFailed, setBodyBackgroundPreviewFailed] =
+    useState(false);
+
+  const [, setFooterBackgroundPreviewFailed] = useState(false);
   const [revealedSecrets, setRevealedSecrets] = useState({});
   const [draftKey, setDraftKey] = useState(
     () =>
@@ -1799,29 +2151,58 @@ const FormManagement = () => {
     }),
     [draft, selectedFormId],
   );
+  const hasMeaningfulCreateDraft = useMemo(() => {
+    const title = String(draft.title || "").trim();
+    const description = String(draft.description || "").trim();
+
+    const hasQuestionChanges = Array.isArray(draft.questions)
+      ? draft.questions.some((question) => {
+          const label = String(question?.label || "").trim();
+
+          return label && label !== "Untitled question";
+        })
+      : false;
+
+    return Boolean(title || description || hasQuestionChanges);
+  }, [draft]);
+
+  const hasEditDraftChanges = useMemo(() => {
+    if (!selectedFormId || !lastSavedFormSnapshot) {
+      return false;
+    }
+
+    const currentValue = {
+      ...draft,
+      selectedFormId,
+    };
+
+    const savedValue = {
+      ...lastSavedFormSnapshot,
+      selectedFormId,
+    };
+
+    return JSON.stringify(currentValue) !== JSON.stringify(savedValue);
+  }, [draft, selectedFormId, lastSavedFormSnapshot]);
+
+  const shouldAutoSaveDraft = selectedFormId
+    ? hasEditDraftChanges
+    : hasMeaningfulCreateDraft;
   const draftSections = useMemo(
     () => groupQuestionsBySection(draft.questions, draft.sections),
     [draft.questions, draft.sections],
   );
-  const {
-    draftSnapshot,
-    draftStatus,
-    draftError,
-    restoreDraft,
-    discardDraft,
-    markRecoveryHandled,
-  } = useAutoDraft({
+  const { draftStatus, draftError } = useAutoDraft({
     key: draftKey,
     data: draftState,
-    enabled: true,
+    enabled: shouldAutoSaveDraft,
     module: "form-builder",
     mode: selectedFormId ? "edit" : "create",
     recordId: selectedFormId || "new",
     userId: draftUserId,
   });
-  const { drafts, count, removeDraft } = useModuleDrafts({
+  const { drafts, count, removeDraft, refreshDrafts } = useModuleDrafts({
     module: "form-builder",
-    userId: getStoredUser(),
+    userId: draftUserId,
   });
 
   useEffect(() => {
@@ -1841,7 +2222,11 @@ const FormManagement = () => {
   };
 
   useEffect(() => {
-    loadForms();
+    const timeoutId = window.setTimeout(() => {
+      void loadForms();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const selectForm = async (form, nextTab = "questions") => {
@@ -1872,6 +2257,7 @@ const FormManagement = () => {
       ]);
       const normalized = normalizeForm(detailRes.data?.data || form);
       lastSavedFormRef.current = normalized;
+      setLastSavedFormSnapshot(normalized);
       if (draftResolutionRef.current !== "restore") {
         setDraft(normalized);
       }
@@ -1907,6 +2293,7 @@ const FormManagement = () => {
       notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
     });
     lastSavedFormRef.current = null;
+    setLastSavedFormSnapshot(null);
     sessionUploadedAssetsRef.current = [];
     setUploadingEmailTemplateField("");
     setUploadingFormLogoImage(false);
@@ -2005,6 +2392,20 @@ const FormManagement = () => {
       version: uploadData.version ?? uploadData.asset?.version ?? null,
       folder: uploadData.folder || uploadData.asset?.folder || defaultFolder,
     };
+  };
+
+  const deleteAssetIfExists = async (asset) => {
+    const publicId = getAssetPublicId(asset);
+    if (!publicId) return;
+
+    try {
+      await deleteCloudinaryAsset({
+        publicId,
+        resourceType: asset?.resourceType || "image",
+      });
+    } catch (error) {
+      console.warn("Failed to delete Cloudinary asset:", error.message);
+    }
   };
 
   const updateFooterButton = (index, field, value) => {
@@ -2243,25 +2644,30 @@ const FormManagement = () => {
     optionId,
     fieldId,
     fieldOptionId,
+    fieldName,
     value,
   ) => {
     setDraft((prev) => ({
       ...prev,
+
       questions: prev.questions.map((question, currentIndex) => {
-        if (currentIndex !== questionIndex) return question;
+        if (currentIndex !== questionIndex) {
+          return question;
+        }
+
         return mapQuestionConditionalTree(question, (entry) => {
-          if (entry.kind !== "option" || entry.node.id !== fieldOptionId)
+          if (entry.kind !== "option" || entry.node.id !== fieldOptionId) {
             return entry.node;
+          }
+
           return {
             ...entry.node,
-            label: value,
-            value,
+            [fieldName]: value,
           };
         });
       }),
     }));
   };
-
   const addConditionalFieldOption = (questionIndex, optionId, fieldId) => {
     setDraft((prev) => ({
       ...prev,
@@ -2443,10 +2849,13 @@ const FormManagement = () => {
   };
 
   const handleFormLogoFile = (file) => {
+    const previousAsset = draft.logoAsset;
+
     if (!file) {
       if (formLogoInputRef.current) {
         formLogoInputRef.current.value = "";
       }
+      deleteAssetIfExists(previousAsset);
       updateDraft("logoUrl", "");
       updateDraft("logoAsset", null);
       setFormLogoPreviewFailed(false);
@@ -2495,6 +2904,7 @@ const FormManagement = () => {
             "technosthan/form-builder/email-assets/logos",
           ),
         );
+        await deleteAssetIfExists(previousAsset);
         setFormLogoPreviewFailed(false);
         registerSessionAsset(
           uploadData.asset ||
@@ -2525,10 +2935,13 @@ const FormManagement = () => {
   };
 
   const handleBannerImageFile = (file) => {
+    const previousAsset = draft.bannerImageAsset;
+
     if (!file) {
       if (bannerImageInputRef.current) {
         bannerImageInputRef.current.value = "";
       }
+      deleteAssetIfExists(previousAsset);
       updateDraft("bannerImageUrl", "");
       updateDraft("bannerImage", "");
       updateDraft("bannerImageAsset", null);
@@ -2579,6 +2992,7 @@ const FormManagement = () => {
             "technosthan/form-builder/email-assets/banners",
           ),
         );
+        await deleteAssetIfExists(previousAsset);
         registerSessionAsset(
           uploadData.asset ||
             buildUploadedAsset(
@@ -2608,132 +3022,114 @@ const FormManagement = () => {
   };
 
   const handleEmailTemplateImageFile = (field, file) => {
-    const isHeaderField = field === "headerBackgroundImageUrl";
-    const isLogoField = field === "logoUrl";
-    const isBannerField = field === "bannerImageUrl";
+    if (!file) return;
 
-    if (!file) {
-      updateEmailTemplate(field, "");
-      updateEmailTemplate(
-        isLogoField
-          ? "logoAsset"
-          : isHeaderField
-            ? "headerBackgroundImageAsset"
-            : "bannerImageAsset",
-        null,
-      );
-      if (!isLogoField) {
-        updateEmailTemplate(
-          isHeaderField ? "headerBackgroundImageUrl" : "bannerUrl",
-          "",
-        );
-      }
-      if (isHeaderField) {
-        updateEmailTemplate("headerBackgroundImagePublicId", "");
-        updateEmailTemplate("headerBackgroundType", "color");
-        setHeaderBackgroundPreviewFailed(false);
-        if (emailHeaderBackgroundInputRef.current) {
-          emailHeaderBackgroundInputRef.current.value = "";
-        }
-      } else if (isLogoField) {
-        setLogoPreviewFailed(false);
-        if (emailLogoInputRef.current) {
-          emailLogoInputRef.current.value = "";
-        }
-      } else {
-        setBannerPreviewFailed(false);
-        if (emailBannerInputRef.current) {
-          emailBannerInputRef.current.value = "";
-        }
-      }
+    const config = EMAIL_TEMPLATE_IMAGE_FIELDS[field];
+    const previousAsset = config
+      ? normalizeEmailTemplate(draft.emailTemplate, draft)[config.assetField]
+      : null;
+
+    if (!config) {
+      toast.error("Unsupported email template image field");
       return;
     }
 
-    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-    const maxImageSizeBytes = 5 * 1024 * 1024;
-
-    if (!allowedTypes.has(file.type)) {
-      toast.error("Please choose a valid image file");
-      if (isLogoField && emailLogoInputRef.current) {
-        emailLogoInputRef.current.value = "";
-      }
-      if (isBannerField && emailBannerInputRef.current) {
-        emailBannerInputRef.current.value = "";
-      }
-      if (isHeaderField && emailHeaderBackgroundInputRef.current) {
-        emailHeaderBackgroundInputRef.current.value = "";
-      }
+    if (!file.type?.startsWith("image/")) {
+      toast.error("Please select a valid image file.");
       return;
     }
 
-    if (file.size > maxImageSizeBytes) {
+    if (file.size > 5 * 1024 * 1024) {
       toast.error(IMAGE_SIZE_LIMIT_MESSAGE);
-      if (isLogoField && emailLogoInputRef.current) {
-        emailLogoInputRef.current.value = "";
-      }
-      if (isBannerField && emailBannerInputRef.current) {
-        emailBannerInputRef.current.value = "";
-      }
-      if (isHeaderField && emailHeaderBackgroundInputRef.current) {
-        emailHeaderBackgroundInputRef.current.value = "";
-      }
       return;
     }
 
     const upload = async () => {
       setUploadingEmailTemplateField(field);
+
       try {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append(
-          "assetType",
-          isLogoField ? "logo" : isHeaderField ? "header-background" : "banner",
-        );
+        formData.append("image", file);
+
         const response = await uploadWithTimeout(
           uploadFormBannerImage(formData),
         );
-        const uploadData = response.data?.data || {};
-        const imageUrl =
+
+        const uploadData = response?.data?.data || response?.data || {};
+
+        const secureUrl =
           uploadData.secureUrl || uploadData.secure_url || uploadData.url || "";
-        if (!imageUrl) {
-          throw new Error("Image upload failed");
+
+        if (!secureUrl) {
+          throw new Error("Image uploaded, but image URL was not returned.");
         }
 
-        const folder = isLogoField
-          ? "technosthan/form-builder/email-assets/logos"
-          : isHeaderField
-            ? "technosthan/form-builder/email-assets/header-backgrounds"
-            : "technosthan/form-builder/email-assets/banners";
-        const asset = buildUploadedAsset(uploadData, file, folder);
+        const uploadedAsset = buildUploadedAsset(
+          uploadData,
+          file,
+          "form-email-template",
+        );
 
-        updateEmailTemplate(field, imageUrl);
-        if (isLogoField) {
-          updateEmailTemplate("logoAsset", asset);
-          setLogoPreviewFailed(false);
-        } else if (isHeaderField) {
-          updateEmailTemplate("headerBackgroundType", "image");
-          updateEmailTemplate("headerBackgroundImageUrl", imageUrl);
-          updateEmailTemplate(
-            "headerBackgroundImagePublicId",
-            asset.publicId || "",
+        setDraft((prev) => {
+          const currentTemplate = normalizeEmailTemplate(
+            prev.emailTemplate,
+            prev,
           );
-          updateEmailTemplate("headerBackgroundImageAsset", asset);
-          setHeaderBackgroundPreviewFailed(false);
-        } else {
-          updateEmailTemplate("bannerUrl", imageUrl);
-          updateEmailTemplate("bannerImageUrl", imageUrl);
-          updateEmailTemplate("bannerImageAsset", asset);
+
+          return {
+            ...prev,
+
+            emailTemplate: {
+              ...currentTemplate,
+
+              [field]: secureUrl,
+
+              [config.assetField]: uploadedAsset,
+
+              ...(config.publicIdField
+                ? {
+                    [config.publicIdField]: uploadedAsset.publicId || "",
+                  }
+                : {}),
+
+              ...(field === "headerBackgroundImageUrl"
+                ? {
+                    headerBackgroundType: "image",
+                  }
+                : {}),
+
+              ...(field === "footerBackgroundImageUrl"
+                ? {
+                    footerBackgroundType: "image",
+                  }
+                : {}),
+            },
+          };
+        });
+
+        await deleteAssetIfExists(previousAsset);
+
+        if (field === "logoUrl") {
+          setLogoPreviewFailed(false);
+        }
+
+        if (field === "bannerImageUrl") {
           setBannerPreviewFailed(false);
         }
 
-        registerSessionAsset(uploadData.asset || asset);
-        toast.success(
-          isLogoField
-            ? "Email logo uploaded successfully"
-            : isHeaderField
-              ? "Header background uploaded successfully"
-              : "Email banner uploaded successfully",
-        );
+        if (field === "headerBackgroundImageUrl") {
+          setHeaderBackgroundPreviewFailed(false);
+        }
+
+        if (field === "emailBodyBackgroundImageUrl") {
+          setBodyBackgroundPreviewFailed(false);
+        }
+
+        if (field === "footerBackgroundImageUrl") {
+          setFooterBackgroundPreviewFailed(false);
+        }
+
+        toast.success(config.successMessage);
       } catch (error) {
         toast.error(
           error.response?.data?.message ||
@@ -2742,14 +3138,19 @@ const FormManagement = () => {
         );
       } finally {
         setUploadingEmailTemplateField("");
-        if (isLogoField && emailLogoInputRef.current) {
-          emailLogoInputRef.current.value = "";
-        }
-        if (isBannerField && emailBannerInputRef.current) {
-          emailBannerInputRef.current.value = "";
-        }
-        if (isHeaderField && emailHeaderBackgroundInputRef.current) {
-          emailHeaderBackgroundInputRef.current.value = "";
+
+        const inputRefs = {
+          logoUrl: emailLogoInputRef,
+          bannerImageUrl: emailBannerInputRef,
+          headerBackgroundImageUrl: emailHeaderBackgroundInputRef,
+          emailBodyBackgroundImageUrl: emailBodyBackgroundInputRef,
+          footerBackgroundImageUrl: emailFooterBackgroundInputRef,
+        };
+
+        const inputRef = inputRefs[field];
+
+        if (inputRef?.current) {
+          inputRef.current.value = "";
         }
       }
     };
@@ -2757,37 +3158,102 @@ const FormManagement = () => {
     upload();
   };
 
-  const clearEmailTemplateImage = (field) => {
-    const isHeaderField = field === "headerBackgroundImageUrl";
-    const isLogoField = field === "logoUrl";
-    updateEmailTemplate(field, "");
-    updateEmailTemplate(
-      isLogoField
-        ? "logoAsset"
-        : isHeaderField
-          ? "headerBackgroundImageAsset"
-          : "bannerImageAsset",
-      null,
-    );
-    if (isLogoField) {
+  const clearEmailTemplateImage = async (field) => {
+    const config = EMAIL_TEMPLATE_IMAGE_FIELDS[field];
+
+    if (!config) {
+      toast.error("Unsupported email template image field");
+      return;
+    }
+
+    const currentTemplate = normalizeEmailTemplate(draft.emailTemplate, draft);
+
+    const currentAsset = currentTemplate[config.assetField];
+
+    const publicId =
+      currentAsset?.publicId ||
+      currentAsset?.public_id ||
+      (config.publicIdField ? currentTemplate[config.publicIdField] : "") ||
+      "";
+
+    if (publicId) {
+      try {
+        await deleteCloudinaryAsset(publicId);
+      } catch (error) {
+        console.error("Failed to delete Cloudinary email image:", error);
+      }
+    }
+
+    setDraft((prev) => {
+      const current = normalizeEmailTemplate(prev.emailTemplate, prev);
+
+      return {
+        ...prev,
+
+        emailTemplate: {
+          ...current,
+
+          [field]: "",
+          [config.assetField]: null,
+
+          ...(config.publicIdField
+            ? {
+                [config.publicIdField]: "",
+              }
+            : {}),
+
+          ...(field === "headerBackgroundImageUrl"
+            ? {
+                headerBackgroundType: "color",
+              }
+            : {}),
+
+          ...(field === "footerBackgroundImageUrl"
+            ? {
+                footerBackgroundType: "color",
+              }
+            : {}),
+        },
+      };
+    });
+
+    if (field === "logoUrl") {
       setLogoPreviewFailed(false);
+
       if (emailLogoInputRef.current) {
         emailLogoInputRef.current.value = "";
       }
-    } else if (isHeaderField) {
-      updateEmailTemplate("headerBackgroundImageUrl", "");
-      updateEmailTemplate("headerBackgroundImagePublicId", "");
-      updateEmailTemplate("headerBackgroundType", "color");
+    }
+
+    if (field === "bannerImageUrl") {
+      setBannerPreviewFailed(false);
+
+      if (emailBannerInputRef.current) {
+        emailBannerInputRef.current.value = "";
+      }
+    }
+
+    if (field === "headerBackgroundImageUrl") {
       setHeaderBackgroundPreviewFailed(false);
+
       if (emailHeaderBackgroundInputRef.current) {
         emailHeaderBackgroundInputRef.current.value = "";
       }
-    } else {
-      updateEmailTemplate("bannerUrl", "");
-      updateEmailTemplate("bannerImageUrl", "");
-      setBannerPreviewFailed(false);
-      if (emailBannerInputRef.current) {
-        emailBannerInputRef.current.value = "";
+    }
+
+    if (field === "emailBodyBackgroundImageUrl") {
+      setBodyBackgroundPreviewFailed(false);
+
+      if (emailBodyBackgroundInputRef.current) {
+        emailBodyBackgroundInputRef.current.value = "";
+      }
+    }
+
+    if (field === "footerBackgroundImageUrl") {
+      setFooterBackgroundPreviewFailed(false);
+
+      if (emailFooterBackgroundInputRef.current) {
+        emailFooterBackgroundInputRef.current.value = "";
       }
     }
   };
@@ -3003,12 +3469,15 @@ const FormManagement = () => {
                     : {
                         ...option,
                         id: String(option.id || crypto.randomUUID()),
-                        label: String(
-                          option.label || option.value || "",
-                        ).trim(),
-                        value: String(
-                          option.value || option.label || "",
-                        ).trim(),
+                        label:
+                          option.label !== undefined && option.label !== null
+                            ? String(option.label).trim()
+                            : "",
+
+                        value:
+                          option.value !== undefined && option.value !== null
+                            ? String(option.value).trim()
+                            : "",
                       },
                 )
               : parseOptionsText(question.optionsText || "").map(
@@ -3230,9 +3699,10 @@ const FormManagement = () => {
 
       const questions = [...(prev.questions || [])];
 
-      const currentQuestionIndex = questions.findIndex(
-        (question) => question.id === afterQuestionId,
-      );
+      const currentQuestionIndex = questions.findIndex((question) => {
+        const questionId = String(question?.id || question?._id || "");
+        return questionId === afterQuestionId;
+      });
 
       const sameSectionQuestions = questions
         .filter(
@@ -3246,7 +3716,10 @@ const FormManagement = () => {
         );
 
       const currentSectionPosition = sameSectionQuestions.findIndex(
-        (question) => question.id === afterQuestionId,
+        (question) => {
+          const questionId = String(question?.id || question?._id || "");
+          return questionId === afterQuestionId;
+        },
       );
 
       const newQuestion = {
@@ -3460,9 +3933,14 @@ const FormManagement = () => {
       [
         form?.logoAsset,
         form?.bannerImageAsset,
+        form?.headerBackgroundImageAsset,
+        form?.emailBodyBackgroundImageAsset,
+        form?.footerBackgroundImageAsset,
         form?.emailTemplate?.logoAsset,
         form?.emailTemplate?.bannerImageAsset,
         form?.emailTemplate?.headerBackgroundImageAsset,
+        form?.emailTemplate?.emailBodyBackgroundImageAsset,
+        form?.emailTemplate?.footerBackgroundImageAsset,
       ]
         .filter(Boolean)
         .map((asset) => getAssetPublicId(asset))
@@ -3500,16 +3978,36 @@ const FormManagement = () => {
     const nextFormLogo = nextForm?.logoAsset || null;
     const previousBanner = previousForm?.bannerImageAsset || null;
     const nextBanner = nextForm?.bannerImageAsset || null;
+    const previousHeaderBackground =
+      previousForm?.headerBackgroundImageAsset ||
+      previousForm?.emailTemplate?.headerBackgroundImageAsset ||
+      null;
+    const nextHeaderBackground =
+      nextForm?.headerBackgroundImageAsset ||
+      nextForm?.emailTemplate?.headerBackgroundImageAsset ||
+      null;
+    const previousBodyBackground =
+      previousForm?.emailBodyBackgroundImageAsset ||
+      previousForm?.emailTemplate?.emailBodyBackgroundImageAsset ||
+      null;
+    const nextBodyBackground =
+      nextForm?.emailBodyBackgroundImageAsset ||
+      nextForm?.emailTemplate?.emailBodyBackgroundImageAsset ||
+      null;
+    const previousFooterBackground =
+      previousForm?.footerBackgroundImageAsset ||
+      previousForm?.emailTemplate?.footerBackgroundImageAsset ||
+      null;
+    const nextFooterBackground =
+      nextForm?.footerBackgroundImageAsset ||
+      nextForm?.emailTemplate?.footerBackgroundImageAsset ||
+      null;
     const previousLogo = previousForm?.emailTemplate?.logoAsset || null;
     const nextLogo = nextForm?.emailTemplate?.logoAsset || null;
     const previousTemplateBanner =
       previousForm?.emailTemplate?.bannerImageAsset || null;
     const nextTemplateBanner =
       nextForm?.emailTemplate?.bannerImageAsset || null;
-    const previousHeaderBackground =
-      previousForm?.emailTemplate?.headerBackgroundImageAsset || null;
-    const nextHeaderBackground =
-      nextForm?.emailTemplate?.headerBackgroundImageAsset || null;
 
     const assetsToDelete = [
       {
@@ -3531,6 +4029,14 @@ const FormManagement = () => {
       {
         previous: previousHeaderBackground,
         current: nextHeaderBackground,
+      },
+      {
+        previous: previousBodyBackground,
+        current: nextBodyBackground,
+      },
+      {
+        previous: previousFooterBackground,
+        current: nextFooterBackground,
       },
     ]
       .filter(({ previous, current }) => {
@@ -3633,6 +4139,7 @@ const FormManagement = () => {
           helpText: String(question.helpText || "").trim(),
           required: question.required === true,
           validationEnabled: question.validationEnabled === true,
+          allowUserToAddMore: question.allowUserToAddMore === true,
           sectionId: String(question.sectionId || section.id || "").trim(),
           sectionTitle:
             String(question.sectionTitle || section.title || "").trim() ||
@@ -3653,8 +4160,15 @@ const FormManagement = () => {
           options: Array.isArray(question.options)
             ? question.options.map((option, optionIndex) => ({
                 id: String(option.id || crypto.randomUUID()),
-                label: String(option.label || option.value || "").trim(),
-                value: String(option.value || option.label || "").trim(),
+                label:
+                  option.label !== undefined && option.label !== null
+                    ? String(option.label).trim()
+                    : "",
+
+                value:
+                  option.value !== undefined && option.value !== null
+                    ? String(option.value).trim()
+                    : "",
                 order:
                   typeof option.order === "number" ? option.order : optionIndex,
                 conditionalLogic: {
@@ -3788,6 +4302,7 @@ const FormManagement = () => {
         helpText: String(question.helpText || "").trim(),
         required: question.required === true,
         validationEnabled: question.validationEnabled === true,
+        allowUserToAddMore: question.allowUserToAddMore === true,
         sectionId: String(
           question.sectionId || LEGACY_DEFAULT_SECTION_ID,
         ).trim(),
@@ -3805,8 +4320,15 @@ const FormManagement = () => {
         options: Array.isArray(question.options)
           ? question.options.map((option, optionIndex) => ({
               id: String(option.id || crypto.randomUUID()),
-              label: String(option.label || option.value || "").trim(),
-              value: String(option.value || option.label || "").trim(),
+              label:
+                option.label !== undefined && option.label !== null
+                  ? String(option.label).trim()
+                  : "",
+
+              value:
+                option.value !== undefined && option.value !== null
+                  ? String(option.value).trim()
+                  : "",
               order:
                 typeof option.order === "number" ? option.order : optionIndex,
               conditionalLogic: {
@@ -3939,19 +4461,40 @@ const FormManagement = () => {
         ...saved,
         emailTemplate: saved?.emailTemplate || payload.emailTemplate,
       });
-      lastSavedFormRef.current = normalizeForm(saved || payload);
-      clearDraft(draftKey);
+      const normalizedSavedForm = normalizeForm(saved || payload);
+      const savedFormId = saved?._id || selectedFormId;
+
+      lastSavedFormRef.current = normalizedSavedForm;
+      setLastSavedFormSnapshot(normalizedSavedForm);
+
+      // Current create/edit draft remove karo
+      removeDraft(draftKey);
+
+      // Saved form ke naam se bana stale edit draft bhi remove karo
+      if (savedFormId) {
+        const savedEditDraftKey = buildDraftKey({
+          module: "form-builder",
+          mode: "edit",
+          recordId: savedFormId,
+          userId: draftUserId,
+        });
+
+        if (savedEditDraftKey !== draftKey) {
+          removeDraft(savedEditDraftKey);
+        }
+      }
+
+      refreshDrafts();
+
       toast.success(selectedFormId ? "Form updated" : "Form created");
+
       await loadForms();
+
       if (saved?._id) {
         await selectForm(saved);
       } else {
         startNewForm();
       }
-      setDraft((prev) => ({
-        ...prev,
-        status: nextStatus,
-      }));
     } catch (error) {
       await cleanupSessionUploads(lastSavedFormRef.current);
       toast.error(error.response?.data?.message || "Failed to save form");
@@ -3966,10 +4509,27 @@ const FormManagement = () => {
 
   const deleteForm = async (formId) => {
     if (!window.confirm("Delete this form permanently?")) return;
+
     try {
       await deleteAdminForm(formId);
+
+      const editDraftKey = buildDraftKey({
+        module: "form-builder",
+        mode: "edit",
+        recordId: formId,
+        userId: draftUserId,
+      });
+
+      removeDraft(editDraftKey);
+
+      if (selectedFormId === formId) {
+        removeDraft(draftKey);
+        startNewForm();
+      }
+
+      refreshDrafts();
       toast.success("Form deleted");
-      if (selectedFormId === formId) startNewForm();
+
       await loadForms();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to delete form");
@@ -4058,12 +4618,12 @@ const FormManagement = () => {
     try {
       const res = await getAdminFormResponse(selectedFormId, response._id);
       setSelectedResponse(res.data?.data || response);
-    } catch (error) {
+    } catch {
       setSelectedResponse(response);
     }
   };
 
-  const clearSecretReveal = (questionId) => {
+  const clearSecretReveal = useCallback((questionId) => {
     const timer = secretRevealTimersRef.current[questionId];
     if (timer) {
       window.clearTimeout(timer);
@@ -4074,38 +4634,41 @@ const FormManagement = () => {
       delete next[questionId];
       return next;
     });
-  };
+  }, []);
 
-  const revealSecret = async (questionId) => {
-    if (!selectedFormId || !selectedResponse?._id || !questionId) return;
+  const revealSecret = useCallback(
+    async (questionId) => {
+      if (!selectedFormId || !selectedResponse?._id || !questionId) return;
 
-    try {
-      const response = await revealAdminFormResponseSecret(
-        selectedFormId,
-        selectedResponse._id,
-        questionId,
-      );
-      const data = response.data;
-      if (!data?.success) {
-        throw new Error(data?.message || "Failed to reveal secret");
+      try {
+        const response = await revealAdminFormResponseSecret(
+          selectedFormId,
+          selectedResponse._id,
+          questionId,
+        );
+        const data = response.data;
+        if (!data?.success) {
+          throw new Error(data?.message || "Failed to reveal secret");
+        }
+
+        setRevealedSecrets((prev) => ({
+          ...prev,
+          [questionId]: data.data?.value || "",
+        }));
+
+        if (secretRevealTimersRef.current[questionId]) {
+          window.clearTimeout(secretRevealTimersRef.current[questionId]);
+        }
+
+        secretRevealTimersRef.current[questionId] = window.setTimeout(() => {
+          clearSecretReveal(questionId);
+        }, 30000);
+      } catch (error) {
+        toast.error(error.message || "Failed to reveal secret");
       }
-
-      setRevealedSecrets((prev) => ({
-        ...prev,
-        [questionId]: data.data?.value || "",
-      }));
-
-      if (secretRevealTimersRef.current[questionId]) {
-        window.clearTimeout(secretRevealTimersRef.current[questionId]);
-      }
-
-      secretRevealTimersRef.current[questionId] = window.setTimeout(() => {
-        clearSecretReveal(questionId);
-      }, 30000);
-    } catch (error) {
-      toast.error(error.message || "Failed to reveal secret");
-    }
-  };
+    },
+    [clearSecretReveal, selectedFormId, selectedResponse?._id],
+  );
 
   const deleteResponse = async (responseId) => {
     if (!selectedFormId) return;
@@ -4296,8 +4859,101 @@ const FormManagement = () => {
   );
   const emailFooterButtons = useMemo(
     () => normalizeEditableFooterButtons(draft.emailTemplate, draft),
-    [draft.emailTemplate, draft],
+    [draft],
   );
+  const responseAnswerSections = useMemo(() => {
+    if (!selectedResponse) return null;
+
+    const answers = Array.isArray(selectedResponse.answers)
+      ? selectedResponse.answers
+      : [];
+    const mainAnswers = answers.filter((answer) => !answer.conditional);
+    const conditionalAnswers = answers.filter((answer) => answer.conditional);
+
+    const renderAnswerCard = (answer, keyPrefix) => {
+      const questionId =
+        answer.question?._id ||
+        answer.questionId?._id ||
+        answer.questionId ||
+        answer._id;
+
+      const originalQuestion = (draft.questions || []).find(
+        (question) =>
+          String(question._id || question.id) === String(questionId),
+      );
+
+      const answerForDisplay = {
+        ...answer,
+        questionType:
+          answer.fieldType ||
+          answer.questionType ||
+          answer.type ||
+          answer.question?.type ||
+          originalQuestion?.type ||
+          "",
+      };
+
+      return (
+        <div
+          key={`${keyPrefix}-${answer._id || questionId}`}
+          className="rounded-3xl border border-white/10 bg-white/5 p-4"
+        >
+          <div className="text-sm font-semibold">
+            {answer.displayLabel ||
+              answer.fieldLabel ||
+              answer.question?.label ||
+              "Question"}
+          </div>
+          {answer.displayContext ? (
+            <div className="mt-1 text-xs text-cyan-200/80">
+              {answer.displayContext}
+            </div>
+          ) : null}
+          <div className="mt-2 text-sm text-slate-300">
+            {renderAnswerValue(answerForDisplay, {
+              revealed: Boolean(revealedSecrets[questionId]),
+              revealedValue: revealedSecrets[questionId],
+              onReveal: () => revealSecret(questionId),
+              onCopy: async () => {
+                const secret = revealedSecrets[questionId];
+                if (!secret) return;
+                await navigator.clipboard.writeText(secret);
+                toast.success("Secret copied");
+              },
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {mainAnswers.length > 0 && (
+          <section className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Submission Details
+            </div>
+            <div className="space-y-3">
+              {mainAnswers.map((answer) => renderAnswerCard(answer, "main"))}
+            </div>
+          </section>
+        )}
+
+        {conditionalAnswers.length > 0 && (
+          <section className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Conditional Answers
+            </div>
+            <div className="space-y-3">
+              {conditionalAnswers.map((answer) =>
+                renderAnswerCard(answer, "conditional"),
+              )}
+            </div>
+          </section>
+        )}
+      </>
+    );
+  }, [draft.questions, revealedSecrets, revealSecret, selectedResponse]);
   const toggleConditionalPanel = (panelKey) => {
     setExpandedConditionalPanels((prev) => ({
       ...prev,
@@ -4355,7 +5011,7 @@ const FormManagement = () => {
               Field Label
             </label>
             <input
-              value={field.label || ""}
+              value={field.label ?? ""}
               onChange={(e) =>
                 updateConditionalField(
                   questionIndex,
@@ -4398,7 +5054,7 @@ const FormManagement = () => {
               Placeholder
             </label>
             <input
-              value={field.placeholder || ""}
+              value={field.placeholder ?? ""}
               onChange={(e) =>
                 updateConditionalField(
                   questionIndex,
@@ -4416,7 +5072,7 @@ const FormManagement = () => {
               Help Text
             </label>
             <input
-              value={field.helpText || ""}
+              value={field.helpText ?? ""}
               onChange={(e) =>
                 updateConditionalField(
                   questionIndex,
@@ -4519,13 +5175,14 @@ const FormManagement = () => {
                           Option Label
                         </label>
                         <input
-                          value={fieldOption.label || ""}
+                          value={fieldOption.label ?? ""}
                           onChange={(e) =>
                             updateConditionalFieldOption(
                               questionIndex,
                               optionId,
                               field.id,
                               fieldOption.id,
+                              "label",
                               e.target.value,
                             )
                           }
@@ -4538,13 +5195,14 @@ const FormManagement = () => {
                           Option Value
                         </label>
                         <input
-                          value={fieldOption.value || ""}
+                          value={fieldOption.value ?? ""}
                           onChange={(e) =>
                             updateConditionalFieldOption(
                               questionIndex,
                               optionId,
                               field.id,
                               fieldOption.id,
+                              "value",
                               e.target.value,
                             )
                           }
@@ -5575,6 +6233,26 @@ const FormManagement = () => {
                                           />
                                           Enable Validation
                                         </label>
+                                        <label className="inline-flex items-center gap-2 text-sm">
+                                          <input
+                                            type="checkbox"
+                                            checked={
+                                              question.allowUserToAddMore ===
+                                              true
+                                            }
+                                            onChange={(e) =>
+                                              updateQuestion(
+                                                questionIndex,
+                                                "allowUserToAddMore",
+                                                e.target.checked,
+                                              )
+                                            }
+                                          />
+
+                                          <span>
+                                            Allow User to Add Question
+                                          </span>
+                                        </label>
                                         <span className="text-xs text-slate-400">
                                           Type: {question.type}
                                         </span>
@@ -5732,7 +6410,7 @@ const FormManagement = () => {
                                                       </label>
                                                       <input
                                                         value={
-                                                          option.label || ""
+                                                          option.label ?? ""
                                                         }
                                                         onChange={(e) =>
                                                           updateQuestionOption(
@@ -5752,7 +6430,7 @@ const FormManagement = () => {
                                                       </label>
                                                       <input
                                                         value={
-                                                          option.value || ""
+                                                          option.value ?? ""
                                                         }
                                                         onChange={(e) =>
                                                           updateQuestionOption(
@@ -5807,7 +6485,7 @@ const FormManagement = () => {
                                                         Conditional Fields
                                                       </div>
                                                       {option.conditionalLogic.fields.map(
-                                                        (field, fieldIndex) =>
+                                                        (field) =>
                                                           renderConditionalFieldEditor(
                                                             question.id,
                                                             questionIndex,
@@ -5964,7 +6642,8 @@ const FormManagement = () => {
                         {(draft.logoUrl || draft.logoAsset) && (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
+                              await deleteAssetIfExists(draft.logoAsset);
                               updateDraft("logoUrl", "");
                               updateDraft("logoAsset", null);
                               setFormLogoPreviewFailed(false);
@@ -6048,7 +6727,8 @@ const FormManagement = () => {
                       {(draft.bannerImage || draft.bannerImageUrl) && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
+                            await deleteAssetIfExists(draft.bannerImageAsset);
                             updateDraft("bannerImage", "");
                             updateDraft("bannerImageUrl", "");
                             updateDraft("bannerImageAsset", null);
@@ -6490,6 +7170,24 @@ const FormManagement = () => {
                   </div>
 
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-5 space-y-4">
+                    <label className="mb-2 block text-sm font-semibold">
+                      Submission Introduction Text
+                    </label>
+                    <div className="mb-3 text-xs text-slate-400">
+                      This appears above the submission summary in the preview
+                      and email.
+                    </div>
+                    <RichTextEditor
+                      value={draft.emailTemplate?.submissionIntroText || ""}
+                      onChange={(html) =>
+                        updateEmailTemplate("submissionIntroText", html)
+                      }
+                      placeholder="Add a short introduction before the submitted details..."
+                      minHeight="220px"
+                    />
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="text-sm font-semibold">
@@ -6918,6 +7616,276 @@ const FormManagement = () => {
                     )}
                   </div>
 
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <label className="block text-sm font-semibold">
+                          Email Body Background
+                        </label>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Choose a solid color or a full email body image.
+                        </p>
+                      </div>
+                      <div className="inline-flex rounded-2xl border border-white/10 bg-black/20 p-1">
+                        {[
+                          { value: "color", label: "Color" },
+                          { value: "image", label: "Image" },
+                        ].map((option) => {
+                          const active =
+                            (draft.emailTemplate?.emailBodyBackgroundType ||
+                              "color") === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() =>
+                                updateEmailTemplate(
+                                  "emailBodyBackgroundType",
+                                  option.value,
+                                )
+                              }
+                              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                                active
+                                  ? "bg-cyan-500 text-white"
+                                  : "text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {(draft.emailTemplate?.emailBodyBackgroundType ||
+                      "color") === "color" ? (
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Email Body Background Color
+                        </label>
+                        <input
+                          value={draft.emailTemplate?.bodyBackgroundColor || ""}
+                          onChange={(e) =>
+                            updateEmailTemplate(
+                              "bodyBackgroundColor",
+                              e.target.value,
+                            )
+                          }
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          placeholder="#f0fdf4"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Email Body Background Image URL
+                          </label>
+                          <input
+                            value={
+                              draft.emailTemplate
+                                ?.emailBodyBackgroundImageUrl || ""
+                            }
+                            onChange={(e) => {
+                              const normalized = normalizeHttpsUrl(
+                                e.target.value,
+                              );
+                              updateEmailTemplate(
+                                "emailBodyBackgroundType",
+                                normalized ? "image" : "color",
+                              );
+                              updateEmailTemplate(
+                                "emailBodyBackgroundImageUrl",
+                                normalized,
+                              );
+                              updateEmailTemplate(
+                                "emailBodyBackgroundImagePublicId",
+                                "",
+                              );
+                              updateEmailTemplate(
+                                "emailBodyBackgroundImageAsset",
+                                null,
+                              );
+                              setBodyBackgroundPreviewFailed(false);
+                            }}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            placeholder="https://res.cloudinary.com/..."
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            ref={emailBodyBackgroundInputRef}
+                            type="file"
+                            hidden
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) =>
+                              handleEmailTemplateImageFile(
+                                "emailBodyBackgroundImageUrl",
+                                e.target.files?.[0] || null,
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              emailBodyBackgroundInputRef.current?.click()
+                            }
+                            disabled={!!uploadingEmailTemplateField}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Upload size={16} />
+                            {uploadingEmailTemplateField ===
+                            "emailBodyBackgroundImageUrl"
+                              ? "Uploading..."
+                              : draft.emailTemplate?.emailBodyBackgroundImageUrl
+                                ? "Change Image"
+                                : "Upload Body Image"}
+                          </button>
+                          {draft.emailTemplate?.emailBodyBackgroundImageUrl && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                clearEmailTemplateImage(
+                                  "emailBodyBackgroundImageUrl",
+                                )
+                              }
+                              className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                            >
+                              Clear Image
+                            </button>
+                          )}
+                        </div>
+                        {(draft.emailTemplate?.emailBodyBackgroundImageUrl ||
+                          draft.emailTemplate?.emailBodyBackgroundImageAsset) &&
+                        !bodyBackgroundPreviewFailed ? (
+                          <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+                            <img
+                              src={getOptimizedImageUrl(
+                                draft.emailTemplate
+                                  .emailBodyBackgroundImageAsset ||
+                                  draft.emailTemplate
+                                    .emailBodyBackgroundImageUrl,
+                              )}
+                              alt="Email body background preview"
+                              onError={() =>
+                                setBodyBackgroundPreviewFailed(true)
+                              }
+                              className="h-40 w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="rounded-3xl border border-dashed border-white/10 bg-black/10 p-4 text-xs text-slate-400">
+                            No body image selected
+                          </div>
+                        )}
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Overlay Color
+                            </label>
+                            <input
+                              value={
+                                draft.emailTemplate?.emailBodyOverlayColor || ""
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "emailBodyOverlayColor",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="#ffffff"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Overlay Opacity
+                            </label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="0.9"
+                              step="0.05"
+                              value={
+                                draft.emailTemplate?.emailBodyOverlayOpacity ??
+                                0.9
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "emailBodyOverlayOpacity",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full"
+                            />
+                            <div className="mt-2 text-xs text-slate-400">
+                              {Math.round(
+                                (Number(
+                                  draft.emailTemplate
+                                    ?.emailBodyOverlayOpacity ?? 0.9,
+                                ) || 0) * 100,
+                              )}
+                              %
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Background Position
+                            </label>
+                            <select
+                              value={
+                                draft.emailTemplate
+                                  ?.emailBodyBackgroundPosition || "center"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "emailBodyBackgroundPosition",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_BACKGROUND_POSITION_OPTIONS.map(
+                                (option) => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Background Size
+                            </label>
+                            <select
+                              value={
+                                draft.emailTemplate?.emailBodyBackgroundSize ||
+                                "cover"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "emailBodyBackgroundSize",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_BACKGROUND_SIZE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <label className="mb-2 block text-sm font-semibold">
@@ -7006,6 +7974,315 @@ const FormManagement = () => {
                         placeholder="24"
                       />
                     </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <label className="block text-sm font-semibold">
+                          Footer Background
+                        </label>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Choose a color or image for the footer section.
+                        </p>
+                      </div>
+                      <div className="inline-flex rounded-2xl border border-white/10 bg-black/20 p-1">
+                        {[
+                          { value: "color", label: "Color" },
+                          { value: "image", label: "Image" },
+                        ].map((option) => {
+                          const active =
+                            (draft.emailTemplate?.footerBackgroundType ||
+                              "color") === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() =>
+                                updateEmailTemplate(
+                                  "footerBackgroundType",
+                                  option.value,
+                                )
+                              }
+                              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                                active
+                                  ? "bg-cyan-500 text-white"
+                                  : "text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {(draft.emailTemplate?.footerBackgroundType || "color") ===
+                    "color" ? (
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Footer Background Color
+                        </label>
+                        <input
+                          value={
+                            draft.emailTemplate?.footerBackgroundColor || ""
+                          }
+                          onChange={(e) =>
+                            updateEmailTemplate(
+                              "footerBackgroundColor",
+                              e.target.value,
+                            )
+                          }
+                          className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                          placeholder="#166534"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold">
+                            Footer Background Image URL
+                          </label>
+                          <input
+                            value={
+                              draft.emailTemplate?.footerBackgroundImageUrl ||
+                              ""
+                            }
+                            onChange={(e) => {
+                              const normalized = normalizeHttpsUrl(
+                                e.target.value,
+                              );
+                              updateEmailTemplate(
+                                "footerBackgroundType",
+                                normalized ? "image" : "color",
+                              );
+                              updateEmailTemplate(
+                                "footerBackgroundImageUrl",
+                                normalized,
+                              );
+                              updateEmailTemplate(
+                                "footerBackgroundImagePublicId",
+                                "",
+                              );
+                              updateEmailTemplate(
+                                "footerBackgroundImageAsset",
+                                null,
+                              );
+                              setFooterBackgroundPreviewFailed(false);
+                            }}
+                            className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            placeholder="https://res.cloudinary.com/..."
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            ref={emailFooterBackgroundInputRef}
+                            type="file"
+                            hidden
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) =>
+                              handleEmailTemplateImageFile(
+                                "footerBackgroundImageUrl",
+                                e.target.files?.[0] || null,
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              emailFooterBackgroundInputRef.current?.click()
+                            }
+                            disabled={!!uploadingEmailTemplateField}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Upload size={16} />
+                            {uploadingEmailTemplateField ===
+                            "footerBackgroundImageUrl"
+                              ? "Uploading..."
+                              : draft.emailTemplate?.footerBackgroundImageUrl
+                                ? "Change Image"
+                                : "Upload Footer Image"}
+                          </button>
+                          {draft.emailTemplate?.footerBackgroundImageUrl && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                clearEmailTemplateImage(
+                                  "footerBackgroundImageUrl",
+                                )
+                              }
+                              className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                            >
+                              Clear Image
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Overlay Color
+                            </label>
+                            <input
+                              value={
+                                draft.emailTemplate?.footerOverlayColor || ""
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerOverlayColor",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="#000000"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Overlay Opacity
+                            </label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="0.9"
+                              step="0.05"
+                              value={
+                                draft.emailTemplate?.footerOverlayOpacity ??
+                                0.45
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerOverlayOpacity",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full"
+                            />
+                            <div className="mt-2 text-xs text-slate-400">
+                              {Math.round(
+                                (Number(
+                                  draft.emailTemplate?.footerOverlayOpacity ??
+                                    0.45,
+                                ) || 0) * 100,
+                              )}
+                              %
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Footer Text Color
+                            </label>
+                            <input
+                              value={draft.emailTemplate?.footerTextColor || ""}
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerTextColor",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="#ffffff"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Background Position
+                            </label>
+                            <select
+                              value={
+                                draft.emailTemplate?.footerBackgroundPosition ||
+                                "center"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerBackgroundPosition",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_BACKGROUND_POSITION_OPTIONS.map(
+                                (option) => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Background Size
+                            </label>
+                            <select
+                              value={
+                                draft.emailTemplate?.footerBackgroundSize ||
+                                "cover"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerBackgroundSize",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_BACKGROUND_SIZE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Text Alignment
+                            </label>
+                            <select
+                              value={
+                                draft.emailTemplate?.footerTextAlign || "left"
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerTextAlign",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                            >
+                              {HEADER_TEXT_ALIGN_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold">
+                              Minimum Footer Height
+                            </label>
+                            <input
+                              type="number"
+                              min="120"
+                              step="10"
+                              value={
+                                draft.emailTemplate?.footerMinHeight ?? 220
+                              }
+                              onChange={(e) =>
+                                updateEmailTemplate(
+                                  "footerMinHeight",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`}
+                              placeholder="220"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
@@ -7183,249 +8460,339 @@ const FormManagement = () => {
                       Live Preview
                     </div>
                     <div
-                      className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
+                      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
                       style={{
                         backgroundColor:
                           emailTemplatePreview.resolved.bodyBackgroundColor,
+
+                        backgroundImage:
+                          emailTemplatePreview.emailBodyBackgroundImageUrl
+                            ? `url("${emailTemplatePreview.emailBodyBackgroundImageUrl}")`
+                            : "none",
+
+                        backgroundSize:
+                          emailTemplatePreview.emailBodyBackgroundSize ||
+                          "cover",
+
+                        backgroundPosition:
+                          emailTemplatePreview.emailBodyBackgroundPosition ||
+                          "center",
+
+                        backgroundRepeat: "no-repeat",
                       }}
                     >
-                      <div
-                        className="relative overflow-hidden"
-                        style={{
-                          minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
-                          backgroundColor:
-                            emailTemplatePreview.resolved.headerBackgroundColor,
-                          color: emailTemplatePreview.headerTextColor,
-                        }}
-                      >
-                        {emailTemplatePreview.headerBackgroundType ===
-                          "image" &&
-                        emailTemplatePreview.headerBackgroundImageUrl &&
-                        !headerBackgroundPreviewFailed ? (
-                          <img
-                            src={getOptimizedImageUrl(
-                              emailTemplatePreview.headerBackgroundImageUrl,
-                            )}
-                            alt="Header background preview"
-                            onError={() =>
-                              setHeaderBackgroundPreviewFailed(true)
-                            }
-                            className="absolute inset-0 h-full w-full"
-                            style={{
-                              objectFit:
-                                emailTemplatePreview.headerBackgroundSize ||
-                                "cover",
-                              objectPosition:
-                                emailTemplatePreview.headerBackgroundPosition ||
-                                "center",
-                            }}
-                          />
-                        ) : null}
-                        {emailTemplatePreview.headerBackgroundType ===
-                          "image" &&
-                        emailTemplatePreview.headerBackgroundImageUrl &&
-                        !headerBackgroundPreviewFailed ? (
-                          <div
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                              backgroundColor: hexToRgba(
-                                emailTemplatePreview.headerOverlayColor,
-                                emailTemplatePreview.headerOverlayOpacity ??
-                                  0.45,
-                              ),
-                            }}
-                          />
-                        ) : null}
+                      {emailTemplatePreview.emailBodyBackgroundImageUrl ? (
                         <div
-                          className="relative z-10 flex h-full min-h-[220px] flex-col justify-center gap-2 p-5"
+                          className="pointer-events-none absolute inset-0 z-0"
+                          style={{
+                            backgroundColor: hexToRgba(
+                              emailTemplatePreview.emailBodyOverlayColor ||
+                                "#ffffff",
+                              emailTemplatePreview.emailBodyOverlayOpacity ??
+                                0.9,
+                            ),
+                          }}
+                        />
+                      ) : null}
+                      <div className="relative z-10">
+                        <div
+                          className="relative overflow-hidden"
                           style={{
                             minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
-                            textAlign:
-                              emailTemplatePreview.headerTextAlign || "left",
+                            backgroundColor:
+                              emailTemplatePreview.resolved.headerBackgroundColor,
+                            backgroundImage:
+                              emailTemplatePreview.headerBackgroundType ===
+                                "image" &&
+                              emailTemplatePreview.headerBackgroundImageUrl
+                                ? `url("${emailTemplatePreview.headerBackgroundImageUrl}")`
+                                : "none",
+                            backgroundPosition:
+                              emailTemplatePreview.headerBackgroundPosition ||
+                              "center",
+                            backgroundSize:
+                              emailTemplatePreview.headerBackgroundSize ||
+                              "cover",
+                            backgroundRepeat: "no-repeat",
                             color: emailTemplatePreview.headerTextColor,
                           }}
                         >
-                          {emailTemplatePreview.logoUrl &&
-                          !logoPreviewFailed ? (
-                            <img
-                              src={getOptimizedImageUrl(
-                                emailTemplatePreview.logoUrl,
-                              )}
-                              alt="Email preview logo"
-                              onError={() => setLogoPreviewFailed(true)}
-                              className={`mb-2 h-12 w-full object-contain ${
-                                emailTemplatePreview.headerTextAlign ===
-                                "center"
-                                  ? "object-center"
-                                  : emailTemplatePreview.headerTextAlign ===
-                                      "right"
-                                    ? "object-right"
-                                    : "object-left"
-                              }`}
+                          {emailTemplatePreview.headerBackgroundType ===
+                            "image" &&
+                          emailTemplatePreview.headerBackgroundImageUrl ? (
+                            <div
+                              className="pointer-events-none absolute inset-0 z-0"
+                              style={{
+                                backgroundColor: hexToRgba(
+                                  emailTemplatePreview.headerOverlayColor,
+                                  emailTemplatePreview.headerOverlayOpacity ??
+                                    0.45,
+                                ),
+                              }}
                             />
-                          ) : (
-                            <div className="mb-2 text-lg font-black">
+                          ) : null}
+                          <div
+                            className="relative z-10 flex h-full min-h-[220px] flex-col justify-center gap-2 p-5"
+                            style={{
+                              minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
+                              textAlign:
+                                emailTemplatePreview.headerTextAlign || "left",
+                              color: emailTemplatePreview.headerTextColor,
+                            }}
+                          >
+                            {emailTemplatePreview.logoUrl &&
+                            !logoPreviewFailed ? (
+                              <img
+                                src={getOptimizedImageUrl(
+                                  emailTemplatePreview.logoUrl,
+                                )}
+                                alt="Email preview logo"
+                                onError={() => setLogoPreviewFailed(true)}
+                                className={`mb-2 h-12 w-full object-contain ${
+                                  emailTemplatePreview.headerTextAlign ===
+                                  "center"
+                                    ? "object-center"
+                                    : emailTemplatePreview.headerTextAlign ===
+                                        "right"
+                                      ? "object-right"
+                                      : "object-left"
+                                }`}
+                              />
+                            ) : (
+                              <div className="mb-2 text-lg font-black">
+                                {emailTemplatePreview.context.companyName}
+                              </div>
+                            )}
+                            <div className="text-xs uppercase tracking-[0.25em] opacity-80">
                               {emailTemplatePreview.context.companyName}
                             </div>
-                          )}
-                          <div className="text-xs uppercase tracking-[0.25em] opacity-80">
-                            {emailTemplatePreview.context.companyName}
-                          </div>
-                          <div className="mt-2 text-2xl font-black">
-                            {emailTemplatePreview.headerTitle}
-                          </div>
-                          <p className="mt-2 text-sm leading-6 opacity-90">
-                            {emailTemplatePreview.headerSubtitle}
-                          </p>
-                        </div>
-                      </div>
-                      {headerBackgroundPreviewFailed &&
-                      emailTemplatePreview.headerBackgroundType === "image" &&
-                      emailTemplatePreview.headerBackgroundImageUrl ? (
-                        <div className="px-5 pt-4">
-                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-100">
-                            Unable to load this image URL. The fallback header
-                            color is shown instead.
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {emailTemplatePreview.bannerUrl &&
-                      !bannerPreviewFailed ? (
-                        <div className="px-5 pt-5">
-                          <img
-                            src={getOptimizedImageUrl(
-                              emailTemplatePreview.bannerUrl,
-                            )}
-                            alt="Email banner preview"
-                            onError={() => setBannerPreviewFailed(true)}
-                            className="h-40 w-full rounded-3xl object-contain"
-                          />
-                        </div>
-                      ) : emailTemplatePreview.bannerUrl ? (
-                        <div className="px-5 pt-5">
-                          <div className="flex h-40 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-black/10 text-sm text-slate-300">
-                            Banner preview unavailable
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <div
-                        className="p-5"
-                        style={{
-                          color: emailTemplatePreview.resolved.textColor,
-                        }}
-                      >
-                        <div
-                          className="rounded-3xl border p-4"
-                          style={{
-                            backgroundColor:
-                              emailTemplatePreview.resolved.bodyBackgroundColor,
-                            borderColor:
-                              emailTemplatePreview.resolved.accentColor,
-                          }}
-                        >
-                          <div className="text-sm font-bold">
-                            {emailTemplatePreview.successMessage}
-                          </div>
-                          <div className="mt-3 space-y-1 text-xs leading-6 opacity-80">
-                            <div>
-                              <strong>Form:</strong>{" "}
-                              {draft.title || "Sample Form"}
+                            <div className="mt-2 text-2xl font-black">
+                              {emailTemplatePreview.headerTitle}
                             </div>
-                            <div>
-                              <strong>Submitted at:</strong>{" "}
-                              {emailTemplatePreview.context.submissionDate}
+                            <p className="mt-2 text-sm leading-6 opacity-90">
+                              {emailTemplatePreview.headerSubtitle}
+                            </p>
+                          </div>
+                        </div>
+
+                        {emailTemplatePreview.bannerUrl &&
+                        !bannerPreviewFailed ? (
+                          <div className="px-5 pt-5">
+                            <img
+                              src={getOptimizedImageUrl(
+                                emailTemplatePreview.bannerUrl,
+                              )}
+                              alt="Email banner preview"
+                              onError={() => setBannerPreviewFailed(true)}
+                              className="h-40 w-full rounded-3xl object-contain"
+                            />
+                          </div>
+                        ) : emailTemplatePreview.bannerUrl ? (
+                          <div className="px-5 pt-5">
+                            <div className="flex h-40 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-black/10 text-sm text-slate-300">
+                              Banner preview unavailable
                             </div>
                           </div>
-                        </div>
+                        ) : null}
 
                         <div
-                          className="mt-4 overflow-hidden rounded-3xl border"
+                          className="p-5"
                           style={{
-                            borderColor: "rgba(148,163,184,0.18)",
-                            backgroundColor:
-                              emailTemplatePreview.resolved.cardBackgroundColor,
+                            color: emailTemplatePreview.resolved.textColor,
                           }}
                         >
-                          <table className="min-w-full text-left text-sm">
-                            <tbody>
-                              {emailTemplatePreview.tableRows.map((row) => (
-                                <tr
-                                  key={row.question}
-                                  className="border-t first:border-t-0"
-                                  style={{
-                                    borderColor: "rgba(148,163,184,0.18)",
-                                  }}
-                                >
-                                  <td
-                                    className="w-1/3 px-4 py-3 font-semibold"
-                                    style={{
-                                      color:
-                                        emailTemplatePreview.resolved.textColor,
-                                      backgroundColor: "rgba(0,0,0,0.02)",
-                                    }}
-                                  >
-                                    {row.question}
-                                  </td>
-                                  <td
-                                    className="px-4 py-3"
-                                    style={{
-                                      color:
-                                        emailTemplatePreview.resolved.textColor,
-                                    }}
-                                  >
-                                    {row.answer}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                          <div
+                            className="rounded-3xl border p-4"
+                            style={{
+                              backgroundColor:
+                                emailTemplatePreview.resolved.bodyBackgroundColor,
+                              borderColor:
+                                emailTemplatePreview.resolved.accentColor,
+                            }}
+                          >
+                            <div className="text-sm font-bold">
+                              {emailTemplatePreview.successMessage}
+                            </div>
+                            <div className="mt-3 space-y-1 text-xs leading-6 opacity-80">
+                              <div>
+                                <strong>Form:</strong>{" "}
+                                {draft.title || "Sample Form"}
+                              </div>
+                              <div>
+                                <strong>Submitted at:</strong>{" "}
+                                {emailTemplatePreview.context.submissionDate}
+                              </div>
+                            </div>
+                          </div>
 
-                        <div className="mt-4 space-y-3">
-                          {(emailTemplatePreview.footerButtons || []).length ? (
-                            emailTemplatePreview.footerButtons.map((button) => (
+                          <div
+                            className="mt-4 overflow-hidden rounded-3xl border"
+                            style={{
+                              borderColor: "rgba(148,163,184,0.18)",
+                              backgroundColor:
+                                emailTemplatePreview.resolved.cardBackgroundColor,
+                            }}
+                          >
+                            <table className="min-w-full text-left text-sm">
+                              <tbody>
+                                {emailTemplatePreview.tableRows.map((row) => (
+                                  <tr
+                                    key={row.question}
+                                    className="border-t first:border-t-0"
+                                    style={{
+                                      borderColor: "rgba(148,163,184,0.18)",
+                                    }}
+                                  >
+                                    <td
+                                      className="w-1/3 px-4 py-3 font-semibold"
+                                      style={{
+                                        color:
+                                          emailTemplatePreview.resolved.textColor,
+                                        backgroundColor: "rgba(0,0,0,0.02)",
+                                      }}
+                                    >
+                                      {row.question}
+                                    </td>
+                                    <td
+                                      className="px-4 py-3"
+                                      style={{
+                                        color:
+                                          emailTemplatePreview.resolved.textColor,
+                                      }}
+                                    >
+                                      {row.answer}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {emailTemplatePreview.submissionIntroText ? (
+                            <div
+                              className="mt-4 rounded-3xl border p-4"
+                              style={{
+                                borderColor: "rgba(148,163,184,0.18)",
+                                backgroundColor: "rgba(255,255,255,0.8)",
+                                color: emailTemplatePreview.resolved.textColor,
+                              }}
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeRichTextHtml(
+                                  emailTemplatePreview.submissionIntroText,
+                                ),
+                              }}
+                            />
+                          ) : null}
+
+                          {!(emailTemplatePreview.footerButtons || []).length &&
+                          emailTemplatePreview.buttonUrl ? (
+                            <div className="mt-4">
                               <a
-                                key={button.id}
-                                href={button.url}
+                                href={emailTemplatePreview.buttonUrl || "#"}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white"
+                                className="inline-flex rounded-2xl px-4 py-3 text-sm font-semibold text-white"
                                 style={{
                                   backgroundColor:
                                     emailTemplatePreview.resolved.buttonColor ||
                                     emailTemplatePreview.resolved.accentColor,
                                 }}
                               >
-                                {button.text}
+                                {emailTemplatePreview.buttonText}
                               </a>
-                            ))
-                          ) : (
-                            <a
-                              href={emailTemplatePreview.buttonUrl || "#"}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex rounded-2xl px-4 py-3 text-sm font-semibold text-white"
+                            </div>
+                          ) : null}
+
+                          <div
+                            className="relative mt-5 overflow-hidden rounded-3xl border"
+                            style={{
+                              borderColor: "rgba(148,163,184,0.18)",
+                              backgroundColor:
+                                emailTemplatePreview.resolved.footerBackgroundColor,
+                              backgroundImage:
+                                emailTemplatePreview.footerBackgroundType ===
+                                  "image" &&
+                                emailTemplatePreview.footerBackgroundImageUrl
+                                  ? `url("${emailTemplatePreview.footerBackgroundImageUrl}")`
+                                  : "none",
+                              backgroundPosition:
+                                emailTemplatePreview.footerBackgroundPosition ||
+                                "center",
+                              backgroundSize:
+                                emailTemplatePreview.footerBackgroundSize ||
+                                "cover",
+                              backgroundRepeat: "no-repeat",
+                              color: emailTemplatePreview.footerTextColor,
+                              minHeight: `${emailTemplatePreview.footerSectionHeight || Math.max(emailTemplatePreview.headerMinHeight || 220, emailTemplatePreview.footerMinHeight || 220)}px`,
+                            }}
+                          >
+                            {emailTemplatePreview.footerBackgroundType ===
+                              "image" &&
+                            emailTemplatePreview.footerBackgroundImageUrl ? (
+                              <div
+                                className="pointer-events-none absolute inset-0 z-0"
+                                style={{
+                                  backgroundColor: hexToRgba(
+                                    emailTemplatePreview.footerOverlayColor ||
+                                      "#000000",
+                                    emailTemplatePreview.footerOverlayOpacity ??
+                                      0.45,
+                                  ),
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="relative z-10 flex h-full flex-col justify-center gap-3 p-5"
                               style={{
-                                backgroundColor:
-                                  emailTemplatePreview.resolved.buttonColor ||
-                                  emailTemplatePreview.resolved.accentColor,
+                                textAlign:
+                                  emailTemplatePreview.footerTextAlign || "left",
                               }}
                             >
-                              {emailTemplatePreview.buttonText}
-                            </a>
-                          )}
-                        </div>
-
-                        {emailTemplatePreview.footerText && (
-                          <div
-                            className="mt-5 border-t pt-4 text-xs leading-6 opacity-80"
-                            style={{ borderColor: "rgba(148,163,184,0.18)" }}
-                          >
-                            {emailTemplatePreview.footerText}
+                              {emailTemplatePreview.footerText && (
+                                <div className="text-xs leading-6 opacity-90">
+                                  {emailTemplatePreview.footerText}
+                                </div>
+                              )}
+                              {(emailTemplatePreview.footerButtons || [])
+                                .length ? (
+                                <div
+                                  className="flex flex-wrap gap-2"
+                                  style={{
+                                    justifyContent:
+                                      emailTemplatePreview.footerTextAlign ===
+                                      "center"
+                                        ? "center"
+                                        : emailTemplatePreview.footerTextAlign ===
+                                            "right"
+                                          ? "flex-end"
+                                          : "flex-start",
+                                  }}
+                                >
+                                  {emailTemplatePreview.footerButtons.map(
+                                    (button) => (
+                                      <a
+                                        key={button.id}
+                                        href={button.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="rounded-2xl px-4 py-3 text-sm font-semibold text-white"
+                                        style={{
+                                          backgroundColor:
+                                            emailTemplatePreview.resolved
+                                              .buttonColor ||
+                                            emailTemplatePreview.resolved
+                                              .accentColor,
+                                        }}
+                                      >
+                                        {button.text}
+                                      </a>
+                                    ),
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -8252,105 +9619,7 @@ const FormManagement = () => {
               </button>
             </div>
 
-            <div className="space-y-6">
-              {(() => {
-                const answers = Array.isArray(selectedResponse.answers)
-                  ? selectedResponse.answers
-                  : [];
-                const mainAnswers = answers.filter(
-                  (answer) => !answer.conditional,
-                );
-                const conditionalAnswers = answers.filter(
-                  (answer) => answer.conditional,
-                );
-
-                const renderAnswerCard = (answer, keyPrefix) => {
-                  const questionId =
-                    answer.question?._id ||
-                    answer.questionId?._id ||
-                    answer.questionId ||
-                    answer._id;
-
-                  const originalQuestion = (draft.questions || []).find(
-                    (question) =>
-                      String(question._id || question.id) ===
-                      String(questionId),
-                  );
-
-                  const answerForDisplay = {
-                    ...answer,
-                    questionType:
-                      answer.fieldType ||
-                      answer.questionType ||
-                      answer.type ||
-                      answer.question?.type ||
-                      originalQuestion?.type ||
-                      "",
-                  };
-                  return (
-                    <div
-                      key={`${keyPrefix}-${answer._id || questionId}`}
-                      className="rounded-3xl border border-white/10 bg-white/5 p-4"
-                    >
-                      <div className="text-sm font-semibold">
-                        {answer.displayLabel ||
-                          answer.fieldLabel ||
-                          answer.question?.label ||
-                          "Question"}
-                      </div>
-                      {answer.displayContext ? (
-                        <div className="mt-1 text-xs text-cyan-200/80">
-                          {answer.displayContext}
-                        </div>
-                      ) : null}
-                      <div className="mt-2 text-sm text-slate-300">
-                       {renderAnswerValue(answerForDisplay, {
-                          revealed: Boolean(revealedSecrets[questionId]),
-                          revealedValue: revealedSecrets[questionId],
-                          onReveal: () => revealSecret(questionId),
-                          onCopy: async () => {
-                            const secret = revealedSecrets[questionId];
-                            if (!secret) return;
-                            await navigator.clipboard.writeText(secret);
-                            toast.success("Secret copied");
-                          },
-                        })}
-                      </div>
-                    </div>
-                  );
-                };
-
-                return (
-                  <>
-                    {mainAnswers.length > 0 && (
-                      <section className="space-y-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          Submission Details
-                        </div>
-                        <div className="space-y-3">
-                          {mainAnswers.map((answer) =>
-                            renderAnswerCard(answer, "main"),
-                          )}
-                        </div>
-                      </section>
-                    )}
-
-                    {conditionalAnswers.length > 0 && (
-                      <section className="space-y-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          Conditional Answers
-                        </div>
-                        <div className="space-y-3">
-                          {conditionalAnswers.map((answer) =>
-                            renderAnswerCard(answer, "conditional"),
-                          )}
-                        </div>
-                      </section>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+            <div className="space-y-6">{responseAnswerSections}</div>
           </div>
         </div>
       )}
@@ -8360,7 +9629,7 @@ const FormManagement = () => {
         onClose={() => setDraftsOpen(false)}
         drafts={drafts}
         moduleLabel="Form Builder"
-        hasUnsavedChanges={false}
+        hasUnsavedChanges={shouldAutoSaveDraft}
         titleResolver={(draftItem) =>
           draftItem.data?.title ||
           draftItem.data?.emailTemplate?.headerTitle ||
@@ -8387,19 +9656,39 @@ const FormManagement = () => {
           ].join(" • ");
         }}
         onRestore={(draftItem) => {
+          if (!draftItem?.key) return;
+
           const nextData = {
             ...EMPTY_FORM,
             emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
             notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
             ...(draftItem.data || {}),
           };
-          setSelectedFormId(nextData.selectedFormId || null);
-          setDraft(nextData);
-          setSlugTouched(Boolean(nextData.slug));
+
+          const restoredFormId =
+            nextData.selectedFormId || draftItem.recordId || null;
+
+          const normalizedDraft = normalizeForm(nextData);
+
+          draftResolutionRef.current = "restore";
+
+          setSelectedFormId(
+            restoredFormId && restoredFormId !== "new" ? restoredFormId : null,
+          );
+
+          setDraftKey(draftItem.key);
+          setDraft(normalizedDraft);
+          setSlugTouched(Boolean(normalizedDraft.slug));
           setDraftsOpen(false);
         }}
         onDelete={(draftItem) => {
+          if (!draftItem?.key) return;
+
           removeDraft(draftItem.key);
+
+          if (draftItem.key === draftKey) {
+            startNewForm();
+          }
         }}
       />
     </div>

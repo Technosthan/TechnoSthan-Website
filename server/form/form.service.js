@@ -12,9 +12,7 @@ const {
   DEFAULT_TITLE_STYLE,
   normalizeTypographyStyle,
 } = require("./formTypography.js");
-const {
-  sanitizeRichTextHtml,
-} = require("./formHtml.js");
+const { sanitizeRichTextHtml } = require("./formHtml.js");
 const User = require("../auth/user.model.js");
 const Settings = require("../admin/settings.model.js");
 const { createLog } = require("../services/activityLogService.js");
@@ -69,19 +67,27 @@ const createConditionalId = (prefix = "cond") =>
 
 const normalizeConditionalValidation = (validation = {}) => ({
   minValue:
-    validation.minValue === undefined || validation.minValue === null || validation.minValue === ""
+    validation.minValue === undefined ||
+    validation.minValue === null ||
+    validation.minValue === ""
       ? null
       : Number(validation.minValue),
   maxValue:
-    validation.maxValue === undefined || validation.maxValue === null || validation.maxValue === ""
+    validation.maxValue === undefined ||
+    validation.maxValue === null ||
+    validation.maxValue === ""
       ? null
       : Number(validation.maxValue),
   minDigits:
-    validation.minDigits === undefined || validation.minDigits === null || validation.minDigits === ""
+    validation.minDigits === undefined ||
+    validation.minDigits === null ||
+    validation.minDigits === ""
       ? null
       : Number.parseInt(validation.minDigits, 10),
   maxDigits:
-    validation.maxDigits === undefined || validation.maxDigits === null || validation.maxDigits === ""
+    validation.maxDigits === undefined ||
+    validation.maxDigits === null ||
+    validation.maxDigits === ""
       ? null
       : Number.parseInt(validation.maxDigits, 10),
   errorMessage: String(validation.errorMessage || "").trim(),
@@ -133,7 +139,9 @@ function normalizeQuestionOption(option, index = 0) {
   }
 
   const source = option && typeof option === "object" ? option : {};
-  const label = String(source.label || source.title || source.value || "").trim();
+  const label = String(
+    source.label || source.title || source.value || "",
+  ).trim();
   const value = String(source.value || label || "").trim();
   const id =
     String(source.id || source.optionId || source.valueId || "").trim() ||
@@ -150,7 +158,8 @@ function normalizeQuestionOption(option, index = 0) {
     conditionalLogic: {
       enabled:
         conditionalSource.enabled === true ||
-        Array.isArray(conditionalSource.fields) && conditionalSource.fields.length > 0,
+        (Array.isArray(conditionalSource.fields) &&
+          conditionalSource.fields.length > 0),
       resetOnHide: conditionalSource.resetOnHide !== false,
       fields: normalizeConditionalFields(
         conditionalSource.fields || source.fields || [],
@@ -169,11 +178,14 @@ function normalizeConditionalField(field, index = 0, depth = 1) {
     return null;
   }
 
-  const fieldType = String(field.type || field.fieldType || "shortAnswer").trim();
+  const fieldType = String(
+    field.type || field.fieldType || "shortAnswer",
+  ).trim();
   const id =
     String(field.id || field.fieldId || "").trim() ||
     createConditionalId(`field-${index}`);
-  const label = String(field.label || field.title || "").trim() || "Untitled field";
+  const label =
+    String(field.label || field.title || "").trim() || "Untitled field";
   const options = normalizeConditionalFieldOptions(field.options || []);
   const nestedDepth = Number.isInteger(depth) ? depth : 1;
   const nestedConditionalFields = normalizeConditionalFields(
@@ -200,15 +212,18 @@ function normalizeConditionalField(field, index = 0, depth = 1) {
         field.uploadConfig.maxFiles > 0
           ? field.uploadConfig.maxFiles
           : 1,
-      maxFileSize:
-        Number.isFinite(Number(field.uploadConfig?.maxFileSize))
-          ? Number(field.uploadConfig.maxFileSize)
-          : null,
+      maxFileSize: Number.isFinite(Number(field.uploadConfig?.maxFileSize))
+        ? Number(field.uploadConfig.maxFileSize)
+        : null,
       allowedExtensions: Array.isArray(field.uploadConfig?.allowedExtensions)
-        ? field.uploadConfig.allowedExtensions.map((item) => String(item).trim()).filter(Boolean)
+        ? field.uploadConfig.allowedExtensions
+            .map((item) => String(item).trim())
+            .filter(Boolean)
         : [],
       allowedMimeTypes: Array.isArray(field.uploadConfig?.allowedMimeTypes)
-        ? field.uploadConfig.allowedMimeTypes.map((item) => String(item).trim()).filter(Boolean)
+        ? field.uploadConfig.allowedMimeTypes
+            .map((item) => String(item).trim())
+            .filter(Boolean)
         : [],
       previewEnabled: field.uploadConfig?.previewEnabled !== false,
       downloadEnabled: field.uploadConfig?.downloadEnabled !== false,
@@ -237,7 +252,10 @@ function normalizeConditionalFields(fields = [], depth = 1) {
       order: typeof field.order === "number" ? field.order : index,
       conditionalLogic: {
         ...(field.conditionalLogic || {}),
-        fields: normalizeConditionalFields(field.conditionalLogic?.fields || [], depth + 1),
+        fields: normalizeConditionalFields(
+          field.conditionalLogic?.fields || [],
+          depth + 1,
+        ),
       },
       conditionalFields: normalizeConditionalFields(
         field.conditionalLogic?.fields || field.conditionalFields || [],
@@ -274,13 +292,20 @@ const normalizeSection = (section = {}, index = 0) => ({
 const normalizeSectionsPayload = (sections = []) => {
   const normalized = (Array.isArray(sections) ? sections : [])
     .map((section, index) => normalizeSection(section, index))
-    .filter((section, index, list) => list.findIndex((item) => item.id === section.id) === index)
+    .filter(
+      (section, index, list) =>
+        list.findIndex((item) => item.id === section.id) === index,
+    )
     .sort((left, right) => left.order - right.order);
 
   return normalized.length ? normalized : [createLegacySection()];
 };
 
-const normalizeQuestionForSection = (question = {}, index = 0, fallbackSection = null) => {
+const normalizeQuestionForSection = (
+  question = {},
+  index = 0,
+  fallbackSection = null,
+) => {
   const sourceSection = fallbackSection || {};
   const sectionId = normalizeSectionId(
     question.sectionId ||
@@ -318,6 +343,7 @@ const normalizeQuestionForSection = (question = {}, index = 0, fallbackSection =
     placeholder: String(question.placeholder || "").trim(),
     helpText: String(question.helpText || "").trim(),
     required: question.required === true,
+    allowUserToAddMore: question.allowUserToAddMore === true,
     validationEnabled: question.validationEnabled === true,
     sectionId,
     sectionTitle,
@@ -336,7 +362,9 @@ const normalizeQuestionForSection = (question = {}, index = 0, fallbackSection =
             maxValue: parseOptionalNumber(question.validation?.maxValue),
             minDigits: parseOptionalInteger(question.validation?.minDigits),
             maxDigits: parseOptionalInteger(question.validation?.maxDigits),
-            errorMessage: String(question.validation?.errorMessage || "").trim(),
+            errorMessage: String(
+              question.validation?.errorMessage || "",
+            ).trim(),
           }
         : undefined,
     order: typeof question.order === "number" ? question.order : index,
@@ -385,11 +413,10 @@ const buildSectionsDto = (sections = [], questions = []) => {
     ]),
   );
 
-  const defaultSection =
-    sectionMap.get(LEGACY_DEFAULT_SECTION_ID) || {
-      ...createLegacySection(),
-      questions: [],
-    };
+  const defaultSection = sectionMap.get(LEGACY_DEFAULT_SECTION_ID) || {
+    ...createLegacySection(),
+    questions: [],
+  };
   if (!sectionMap.has(defaultSection.id)) {
     sectionMap.set(defaultSection.id, defaultSection);
   }
@@ -429,7 +456,9 @@ const buildSectionsDto = (sections = [], questions = []) => {
     .map((section) => ({
       ...section,
       questions: [...(section.questions || [])].sort(
-        (left, right) => left.order - right.order || String(left.id).localeCompare(String(right.id)),
+        (left, right) =>
+          left.order - right.order ||
+          String(left.id).localeCompare(String(right.id)),
       ),
     }))
     .sort((left, right) => left.order - right.order);
@@ -450,7 +479,10 @@ const validateConditionalFieldOptionConfig = (questions = []) => {
   const inspectFields = (fields = []) => {
     for (const field of Array.isArray(fields) ? fields : []) {
       if (!field || field.isActive === false) continue;
-      if (isOptionBasedConditionalFieldType(field.type) && !getConditionalFieldOptionValues(field.options).length) {
+      if (
+        isOptionBasedConditionalFieldType(field.type) &&
+        !getConditionalFieldOptionValues(field.options).length
+      ) {
         throw new Error(
           `Conditional field "${String(field.label || "Untitled field")}" needs at least one option.`,
         );
@@ -464,12 +496,16 @@ const validateConditionalFieldOptionConfig = (questions = []) => {
   };
 
   for (const question of Array.isArray(questions) ? questions : []) {
-    const questionOptions = Array.isArray(question?.options) ? question.options : [];
+    const questionOptions = Array.isArray(question?.options)
+      ? question.options
+      : [];
     for (const option of questionOptions) {
       inspectFields(option?.conditionalLogic?.fields || []);
     }
 
-    inspectFields(question?.conditionalFields || question?.followUpFields || []);
+    inspectFields(
+      question?.conditionalFields || question?.followUpFields || [],
+    );
   }
 };
 
@@ -483,7 +519,10 @@ const normalizeQuestionOptions = (question = {}) =>
     }));
 
 const normalizeQuestionConditionalFields = (question = {}) =>
-  normalizeConditionalFields(question.conditionalFields || question.followUpFields || [], 1);
+  normalizeConditionalFields(
+    question.conditionalFields || question.followUpFields || [],
+    1,
+  );
 
 const getQuestionSelectedOptionIds = (question = {}, submittedValue) => {
   const options = normalizeQuestionOptions(question);
@@ -491,7 +530,9 @@ const getQuestionSelectedOptionIds = (question = {}, submittedValue) => {
 
   const values = Array.isArray(submittedValue)
     ? submittedValue.map((item) => String(item).trim()).filter(Boolean)
-    : submittedValue === undefined || submittedValue === null || submittedValue === ""
+    : submittedValue === undefined ||
+        submittedValue === null ||
+        submittedValue === ""
       ? []
       : [String(submittedValue).trim()];
 
@@ -500,16 +541,38 @@ const getQuestionSelectedOptionIds = (question = {}, submittedValue) => {
   const valueLookup = new Map();
   const labelLookup = new Map();
   options.forEach((option) => {
-    valueLookup.set(String(option.value || "").trim().toLowerCase(), option.id);
-    labelLookup.set(String(option.label || "").trim().toLowerCase(), option.id);
-    valueLookup.set(String(option.id || "").trim().toLowerCase(), option.id);
+    valueLookup.set(
+      String(option.value || "")
+        .trim()
+        .toLowerCase(),
+      option.id,
+    );
+    labelLookup.set(
+      String(option.label || "")
+        .trim()
+        .toLowerCase(),
+      option.id,
+    );
+    valueLookup.set(
+      String(option.id || "")
+        .trim()
+        .toLowerCase(),
+      option.id,
+    );
   });
 
-  return [...new Set(values.flatMap((value) => {
-    const normalized = String(value || "").trim().toLowerCase();
-    const matchedId = valueLookup.get(normalized) || labelLookup.get(normalized);
-    return matchedId ? [matchedId] : [];
-  }))];
+  return [
+    ...new Set(
+      values.flatMap((value) => {
+        const normalized = String(value || "")
+          .trim()
+          .toLowerCase();
+        const matchedId =
+          valueLookup.get(normalized) || labelLookup.get(normalized);
+        return matchedId ? [matchedId] : [];
+      }),
+    ),
+  ];
 };
 
 const normalizeConditionalPayload = (payload = {}) => {
@@ -533,8 +596,15 @@ const buildConditionalFieldPath = (segments = []) =>
     .filter(Boolean)
     .join("::");
 
-const resolveConditionalPayloadEntry = (conditionalAnswers = {}, pathSegments = []) => {
-  const segments = (Array.isArray(pathSegments) ? pathSegments : String(pathSegments || "").split("::"))
+const resolveConditionalPayloadEntry = (
+  conditionalAnswers = {},
+  pathSegments = [],
+) => {
+  const segments = (
+    Array.isArray(pathSegments)
+      ? pathSegments
+      : String(pathSegments || "").split("::")
+  )
     .map((segment) => String(segment || "").trim())
     .filter(Boolean);
   if (!segments.length) {
@@ -562,12 +632,13 @@ const resolveConditionalPayloadEntry = (conditionalAnswers = {}, pathSegments = 
   return current && typeof current === "object" ? current : null;
 };
 
-const getConditionalFieldNodePathSegments = (context = {}) => [
-  ...(Array.isArray(context.ancestors) ? context.ancestors : []),
-  context.questionId,
-  context.optionId,
-  context.fieldId,
-].filter(Boolean);
+const getConditionalFieldNodePathSegments = (context = {}) =>
+  [
+    ...(Array.isArray(context.ancestors) ? context.ancestors : []),
+    context.questionId,
+    context.optionId,
+    context.fieldId,
+  ].filter(Boolean);
 
 const getConditionalFileEntriesByKey = (files = []) => {
   const map = new Map();
@@ -675,13 +746,18 @@ const extractTextFromPdfBuffer = (buffer) => {
     });
   }
 
-  const fallbackSegments = source
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]+/g, " ")
-    .match(/[A-Za-z0-9][A-Za-z0-9\s,.;:'"()@&\/\-]{16,}/g) || [];
+  const fallbackSegments =
+    source
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]+/g, " ")
+      .match(/[A-Za-z0-9][A-Za-z0-9\s,.;:'"()@&\/\-]{16,}/g) || [];
   matches.push(...fallbackSegments);
 
   return matches
-    .map((value) => String(value || "").replace(/\s+/g, " ").trim())
+    .map((value) =>
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
     .filter(Boolean)
     .join("\n");
 };
@@ -700,7 +776,8 @@ const extractTextFromImportBuffer = async (file) => {
   }
 
   if (
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     originalName.endsWith(".docx")
   ) {
     try {
@@ -780,7 +857,9 @@ const normalizeChoiceValue = (line = "") => cleanImportLabel(line);
 
 const detectImportedQuestionType = ({ label = "", options = [] } = {}) => {
   const lower = String(label || "").toLowerCase();
-  const normalizedOptions = options.map((option) => String(option).toLowerCase().trim()).filter(Boolean);
+  const normalizedOptions = options
+    .map((option) => String(option).toLowerCase().trim())
+    .filter(Boolean);
 
   if (/section|heading/.test(lower)) {
     return "sectionHeading";
@@ -790,10 +869,13 @@ const detectImportedQuestionType = ({ label = "", options = [] } = {}) => {
   if (/website|portfolio|linkedin|github|url|link/.test(lower)) return "link";
   if (/date of birth|\bdob\b|\bdate\b/.test(lower)) return "date";
   if (/address|location/.test(lower)) return "address";
-  if (/upload|resume|cv|portfolio file|attachment|document/.test(lower)) return "fileUpload";
+  if (/upload|resume|cv|portfolio file|attachment|document/.test(lower))
+    return "fileUpload";
   if (/rating|star/.test(lower)) return "rating";
-  if (/paragraph|describe|explain|details|tell us|why/.test(lower)) return "paragraph";
-  if (/number|age|quantity|count|years|salary|experience/.test(lower)) return "number";
+  if (/paragraph|describe|explain|details|tell us|why/.test(lower))
+    return "paragraph";
+  if (/number|age|quantity|count|years|salary|experience/.test(lower))
+    return "number";
 
   if (normalizedOptions.includes("yes") && normalizedOptions.includes("no")) {
     return "radio";
@@ -802,7 +884,9 @@ const detectImportedQuestionType = ({ label = "", options = [] } = {}) => {
     return "dropdown";
   }
   if (normalizedOptions.length > 1) {
-    return lower.includes("select all") || lower.includes("multiple") || lower.includes("choose all")
+    return lower.includes("select all") ||
+      lower.includes("multiple") ||
+      lower.includes("choose all")
       ? "checkbox"
       : "radio";
   }
@@ -830,9 +914,19 @@ const parseImportedQuestions = (text = "") => {
       continue;
     }
 
-    if (descriptionLines.length < 4 && !isSectionHeadingLine(line) && !/[?:]$/.test(line) && line.length <= 140) {
+    if (
+      descriptionLines.length < 4 &&
+      !isSectionHeadingLine(line) &&
+      !/[?:]$/.test(line) &&
+      line.length <= 140
+    ) {
       const nextLine = lines[index + 1] || "";
-      if (!isOptionsLine(nextLine) && !/[?:]$/.test(nextLine) && descriptionLines.length < 2 && index < 5) {
+      if (
+        !isOptionsLine(nextLine) &&
+        !/[?:]$/.test(nextLine) &&
+        descriptionLines.length < 2 &&
+        index < 5
+      ) {
         descriptionLines.push(line);
         index += 1;
         continue;
@@ -859,6 +953,7 @@ const parseImportedQuestions = (text = "") => {
       label: questionLabel,
       type: detectedType,
       required,
+      allowUserToAddMore: false,
       placeholder:
         detectedType === "email"
           ? "name@example.com"
@@ -888,6 +983,7 @@ const parseImportedQuestions = (text = "") => {
         label: line,
         type: "sectionHeading",
         required: false,
+        allowUserToAddMore: false,
         placeholder: "",
         helpText: "",
         options: [],
@@ -909,7 +1005,11 @@ const parseImportedQuestions = (text = "") => {
         line.length <= 120
       ) {
         flushPending();
-      } else if (!isOptionsLine(nextRaw) && !/[?:]$/.test(nextRaw) && line.length <= 120) {
+      } else if (
+        !isOptionsLine(nextRaw) &&
+        !/[?:]$/.test(nextRaw) &&
+        line.length <= 120
+      ) {
         flushPending();
       }
     }
@@ -920,11 +1020,11 @@ const parseImportedQuestions = (text = "") => {
       const candidateLabel = cleanImportLabel(label.replace(/\*+$/g, ""));
       const likelyQuestion =
         candidateLabel.length <= 160 &&
-        (
-          /[?]$/.test(candidateLabel) ||
-          /\b(email|phone|mobile|website|portfolio|linkedin|github|date|dob|address|resume|upload|name|company|city|state|country|gender|age|choice|select|choose|interest|available|rating|comment|feedback|details|description|password|secret)\b/i.test(candidateLabel) ||
-          candidateLabel.length <= 60
-        );
+        (/[?]$/.test(candidateLabel) ||
+          /\b(email|phone|mobile|website|portfolio|linkedin|github|date|dob|address|resume|upload|name|company|city|state|country|gender|age|choice|select|choose|interest|available|rating|comment|feedback|details|description|password|secret)\b/i.test(
+            candidateLabel,
+          ) ||
+          candidateLabel.length <= 60);
 
       if (!likelyQuestion) {
         continue;
@@ -996,7 +1096,9 @@ const importFormFile = async (file) => {
           questions: flattenQuestionsFromSections([
             {
               ...normalizeSection(section, index),
-              questions: Array.isArray(section.questions) ? section.questions : [],
+              questions: Array.isArray(section.questions)
+                ? section.questions
+                : [],
             },
           ]),
         }))
@@ -1019,8 +1121,13 @@ const importFormFile = async (file) => {
       title: String(importedForm.title || "").trim(),
       description: String(importedForm.description || "").trim(),
       titleStyle: normalizeTitleStyle(importedForm.titleStyle),
-      descriptionStyle: normalizeDescriptionStyle(importedForm.descriptionStyle),
-      emailTemplate: normalizeEmailTemplate(importedForm.emailTemplate, importedForm),
+      descriptionStyle: normalizeDescriptionStyle(
+        importedForm.descriptionStyle,
+      ),
+      emailTemplate: normalizeEmailTemplate(
+        importedForm.emailTemplate,
+        importedForm,
+      ),
       sections: derivedSections.map((section, index) => ({
         id: section.id,
         title: section.title,
@@ -1102,6 +1209,7 @@ const DEFAULT_EMAIL_TEMPLATE = {
   headerBackgroundType: "color",
   headerBackgroundImageUrl: "",
   headerBackgroundImagePublicId: "",
+  headerBackgroundImageAsset: null,
   headerBackgroundPosition: "center",
   headerBackgroundSize: "cover",
   headerOverlayColor: "#000000",
@@ -1110,6 +1218,14 @@ const DEFAULT_EMAIL_TEMPLATE = {
   headerTextAlign: "left",
   headerTextColor: "",
   bodyBackgroundColor: "#f3f4f6",
+  emailBodyBackgroundType: "color",
+  emailBodyBackgroundImageUrl: "",
+  emailBodyBackgroundImagePublicId: "",
+  emailBodyBackgroundImageAsset: null,
+  emailBodyBackgroundPosition: "center",
+  emailBodyBackgroundSize: "cover",
+  emailBodyOverlayColor: "#ffffff",
+  emailBodyOverlayOpacity: 0.9,
   cardBackgroundColor: "#ffffff",
   accentColor: "#16a34a",
   textColor: "#0f172a",
@@ -1120,7 +1236,20 @@ const DEFAULT_EMAIL_TEMPLATE = {
   bannerUrl: "",
   bannerImageUrl: "",
   bannerImageAsset: null,
-  headerBackgroundImageAsset: null,
+  footerBackgroundType: "color",
+  footerBackgroundColor: "#166534",
+  footerBackgroundImageUrl: "",
+  footerBackgroundImagePublicId: "",
+  footerBackgroundImageAsset: null,
+  footerBackgroundPosition: "center",
+  footerBackgroundSize: "cover",
+  footerOverlayColor: "#000000",
+  footerOverlayOpacity: 0.45,
+  footerMinHeight: 220,
+  footerTextColor: "#ffffff",
+  footerTextAlign: "left",
+  submissionIntroText:
+    "Thank you for completing this form. Please review your submitted information below.",
   footerButtons: [],
 };
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -1240,8 +1369,15 @@ const encryptSecretValue = (value = "") => {
   if (!plaintext) return null;
 
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", getSecretEncryptionKey(), iv);
-  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const cipher = crypto.createCipheriv(
+    "aes-256-gcm",
+    getSecretEncryptionKey(),
+    iv,
+  );
+  const ciphertext = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
   const authTag = cipher.getAuthTag();
 
   return {
@@ -1271,16 +1407,24 @@ const decryptSecretValue = (secret = {}) => {
 };
 
 const getVerificationSecret = () =>
-  String(process.env.FORM_VERIFICATION_TOKEN_SECRET || process.env.JWT_SECRET || "")
-    .trim();
+  String(
+    process.env.FORM_VERIFICATION_TOKEN_SECRET || process.env.JWT_SECRET || "",
+  ).trim();
 
 const hashVerificationOtp = (otp = "") =>
-  crypto.createHash("sha256").update(String(otp || "")).digest("hex");
+  crypto
+    .createHash("sha256")
+    .update(String(otp || ""))
+    .digest("hex");
 
-const generateOtp = () =>
-  String(crypto.randomInt(100000, 1000000));
+const generateOtp = () => String(crypto.randomInt(100000, 1000000));
 
-const generateVerificationToken = ({ formId, questionId, destination, type }) => {
+const generateVerificationToken = ({
+  formId,
+  questionId,
+  destination,
+  type,
+}) => {
   const secret = getVerificationSecret();
   if (!secret) {
     throw new Error("Verification token secret is not configured");
@@ -1297,7 +1441,13 @@ const generateVerificationToken = ({ formId, questionId, destination, type }) =>
   );
 };
 
-const verifyVerificationToken = ({ token, formId, questionId, destination, type }) => {
+const verifyVerificationToken = ({
+  token,
+  formId,
+  questionId,
+  destination,
+  type,
+}) => {
   const secret = getVerificationSecret();
   if (!secret || !token) return false;
   try {
@@ -1342,14 +1492,17 @@ const sendOtpSms = async ({ to, otp }) => {
     Body: `Your verification code is ${otp}. It expires in 5 minutes.`,
   });
 
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+  const response = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
     },
-    body,
-  });
+  );
 
   if (!response.ok) {
     throw new Error("Failed to send SMS verification code");
@@ -1358,7 +1511,9 @@ const sendOtpSms = async ({ to, otp }) => {
 
 const normalizeVerificationDestination = (type, value = "") => {
   if (type === "email") {
-    return String(value || "").trim().toLowerCase();
+    return String(value || "")
+      .trim()
+      .toLowerCase();
   }
   if (type === "phone") {
     return normalizePhoneValue(value);
@@ -1366,10 +1521,22 @@ const normalizeVerificationDestination = (type, value = "") => {
   return String(value || "").trim();
 };
 
-const createOrRefreshVerification = async ({ form, question, type, destination }) => {
-  const normalizedDestination = normalizeVerificationDestination(type, destination);
+const createOrRefreshVerification = async ({
+  form,
+  question,
+  type,
+  destination,
+}) => {
+  const normalizedDestination = normalizeVerificationDestination(
+    type,
+    destination,
+  );
   if (!normalizedDestination) {
-    throw new Error(type === "email" ? "Please enter a valid email." : "Please enter a valid 10-digit mobile number.");
+    throw new Error(
+      type === "email"
+        ? "Please enter a valid email."
+        : "Please enter a valid 10-digit mobile number.",
+    );
   }
 
   if (type === "email") {
@@ -1393,7 +1560,10 @@ const createOrRefreshVerification = async ({ form, question, type, destination }
     type,
     destination: normalizedDestination,
   }).lean();
-  if (existing?.resendAvailableAt && new Date(existing.resendAvailableAt).getTime() > now.getTime()) {
+  if (
+    existing?.resendAvailableAt &&
+    new Date(existing.resendAvailableAt).getTime() > now.getTime()
+  ) {
     const error = new Error("Please wait before requesting another code.");
     error.statusCode = 429;
     throw error;
@@ -1438,8 +1608,17 @@ const createOrRefreshVerification = async ({ form, question, type, destination }
   };
 };
 
-const verifyChallengeOtp = async ({ form, question, type, destination, otp }) => {
-  const normalizedDestination = normalizeVerificationDestination(type, destination);
+const verifyChallengeOtp = async ({
+  form,
+  question,
+  type,
+  destination,
+  otp,
+}) => {
+  const normalizedDestination = normalizeVerificationDestination(
+    type,
+    destination,
+  );
   const record = await FormVerification.findOne({
     formId: form._id,
     questionId: question._id,
@@ -1536,10 +1715,13 @@ const normalizeQuestion = (question, index) => {
       ? "shortAnswer"
       : question.type
     : "shortAnswer";
+
   const base = normalizeQuestionForSection(question, index);
+
   return {
     ...base,
     type,
+    allowUserToAddMore: question.allowUserToAddMore === true,
     validation:
       type === "number"
         ? {
@@ -1547,7 +1729,9 @@ const normalizeQuestion = (question, index) => {
             maxValue: parseOptionalNumber(question.validation?.maxValue),
             minDigits: parseOptionalInteger(question.validation?.minDigits),
             maxDigits: parseOptionalInteger(question.validation?.maxDigits),
-            errorMessage: String(question.validation?.errorMessage || "").trim(),
+            errorMessage: String(
+              question.validation?.errorMessage || "",
+            ).trim(),
           }
         : undefined,
     options: normalizeQuestionOptions(question),
@@ -1577,7 +1761,9 @@ const normalizeFormPayload = async (
 
   const status =
     payload.status === "live" || payload.active === true ? "live" : "draft";
-  const sourceSections = Array.isArray(payload.sections) ? payload.sections : [];
+  const sourceSections = Array.isArray(payload.sections)
+    ? payload.sections
+    : [];
   const normalizedSections = normalizeSectionsPayload(sourceSections);
   const sectionQuestionsMap = new Map();
   sourceSections.forEach((rawSection, index) => {
@@ -1633,7 +1819,9 @@ const normalizeFormPayload = async (
         ? payload.logoUrl
         : payload.emailTemplate?.logoUrl,
     ),
-    bannerImage: String(payload.bannerImage || payload.bannerImageUrl || "").trim(),
+    bannerImage: String(
+      payload.bannerImage || payload.bannerImageUrl || "",
+    ).trim(),
     bannerImageUrl: String(
       payload.bannerImageUrl || payload.bannerImage || "",
     ).trim(),
@@ -1649,8 +1837,9 @@ const normalizeFormPayload = async (
     notificationEmail: String(payload.notificationEmail || "").trim(),
     confirmationEmailEnabled: payload.confirmationEmailEnabled === true,
     allowFileUpload: payload.allowFileUpload === true,
-    expiresAt:
-      parseDateValue(payload.expiresAt || payload.expiryDate || payload.expiresOn),
+    expiresAt: parseDateValue(
+      payload.expiresAt || payload.expiryDate || payload.expiresOn,
+    ),
     themeColor: String(payload.themeColor || "").trim() || DEFAULT_THEME_COLOR,
   };
 };
@@ -1698,7 +1887,9 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       ? String(value).trim()
       : fallbackValue;
   const normalizeBackgroundPosition = (value, fallbackValue = "center") =>
-    ["center", "top", "bottom", "left", "right"].includes(String(value || "").trim())
+    ["center", "top", "bottom", "left", "right"].includes(
+      String(value || "").trim(),
+    )
       ? String(value).trim()
       : fallbackValue;
   const normalizeBackgroundSize = (value, fallbackValue = "cover") =>
@@ -1706,7 +1897,9 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       ? String(value).trim()
       : fallbackValue;
   const normalizeHeaderType = (value, imageUrl = "", imageAsset = null) => {
-    const candidate = String(value || "").trim().toLowerCase();
+    const candidate = String(value || "")
+      .trim()
+      .toLowerCase();
     if (candidate === "image") return "image";
     if (candidate === "color") return "color";
     return imageUrl || imageAsset ? "image" : "color";
@@ -1756,20 +1949,106 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
     headerBackgroundImageUrl,
     headerBackgroundImageAsset,
   );
+  const emailBodyBackgroundImageAsset = toAssetPayload(
+    pick(
+      "emailBodyBackgroundImageAsset",
+      legacy.emailBodyBackgroundImageAsset,
+      legacy.emailTemplate?.emailBodyBackgroundImageAsset,
+      null,
+    ),
+    pick(
+      "emailBodyBackgroundImageUrl",
+      legacy.emailBodyBackgroundImageUrl ||
+        legacy.emailTemplate?.emailBodyBackgroundImageUrl ||
+        "",
+    ),
+  );
+  const emailBodyBackgroundImageUrl = normalizeHttpsUrl(
+    String(
+      pick(
+        "emailBodyBackgroundImageUrl",
+        legacy.emailBodyBackgroundImageUrl ||
+          legacy.emailTemplate?.emailBodyBackgroundImageUrl ||
+          emailBodyBackgroundImageAsset?.secureUrl ||
+          emailBodyBackgroundImageAsset?.url ||
+          "",
+      ),
+    ).trim(),
+  );
+  const emailBodyBackgroundType = normalizeHeaderType(
+    pick(
+      "emailBodyBackgroundType",
+      legacy.emailBodyBackgroundType,
+      legacy.emailTemplate?.emailBodyBackgroundType,
+      "",
+    ),
+    emailBodyBackgroundImageUrl,
+    emailBodyBackgroundImageAsset,
+  );
+  const footerBackgroundImageAsset = toAssetPayload(
+    pick(
+      "footerBackgroundImageAsset",
+      legacy.footerBackgroundImageAsset,
+      legacy.emailTemplate?.footerBackgroundImageAsset,
+      null,
+    ),
+    pick(
+      "footerBackgroundImageUrl",
+      legacy.footerBackgroundImageUrl ||
+        legacy.emailTemplate?.footerBackgroundImageUrl ||
+        "",
+    ),
+  );
+  const footerBackgroundImageUrl = normalizeHttpsUrl(
+    String(
+      pick(
+        "footerBackgroundImageUrl",
+        legacy.footerBackgroundImageUrl ||
+          legacy.emailTemplate?.footerBackgroundImageUrl ||
+          footerBackgroundImageAsset?.secureUrl ||
+          footerBackgroundImageAsset?.url ||
+          "",
+      ),
+    ).trim(),
+  );
+  const footerBackgroundType = normalizeHeaderType(
+    pick(
+      "footerBackgroundType",
+      legacy.footerBackgroundType,
+      legacy.emailTemplate?.footerBackgroundType,
+      "",
+    ),
+    footerBackgroundImageUrl,
+    footerBackgroundImageAsset,
+  );
 
   return {
-    preset: String(pick("preset", legacy.preset, DEFAULT_EMAIL_TEMPLATE.preset)).trim(),
+    preset: String(
+      pick("preset", legacy.preset, DEFAULT_EMAIL_TEMPLATE.preset),
+    ).trim(),
     headerTitle: String(pick("headerTitle", legacy.headerTitle, "")).trim(),
-    headerSubtitle: String(pick("headerSubtitle", legacy.headerSubtitle, "")).trim(),
+    headerSubtitle: String(
+      pick("headerSubtitle", legacy.headerSubtitle, ""),
+    ).trim(),
     successMessage: String(
-      pick("successMessage", legacy.emailTemplate?.successMessage || legacy.successMessage || ""),
+      pick(
+        "successMessage",
+        legacy.emailTemplate?.successMessage || legacy.successMessage || "",
+      ),
     ).trim(),
     footerText: String(pick("footerText", legacy.footerText, "")).trim(),
     companyName: String(
-      pick("companyName", legacy.companyName || legacy.emailTemplate?.companyName || ""),
+      pick(
+        "companyName",
+        legacy.companyName || legacy.emailTemplate?.companyName || "",
+      ),
     ).trim(),
-    websiteButtonText: String(pick("websiteButtonText", legacy.websiteButtonText, "")).trim(),
-    websiteButtonUrl: normalizeHttpUrl(String(pick("websiteButtonUrl", legacy.websiteButtonUrl, "")).trim()),
+    websiteButtonText: String(
+      pick("websiteButtonText", legacy.websiteButtonText, ""),
+    ).trim(),
+    websiteButtonUrl: normalizeHttpUrl(
+      String(pick("websiteButtonUrl", legacy.websiteButtonUrl, "")).trim(),
+    ),
     footerButtons: normalizeFooterButtons(
       pick(
         "footerButtons",
@@ -1865,27 +2144,173 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       ),
     ),
     bodyBackgroundColor: toTrimmed(
-      pick("bodyBackgroundColor", legacy.bodyBackgroundColor, DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor),
+      pick(
+        "bodyBackgroundColor",
+        legacy.bodyBackgroundColor,
+        DEFAULT_EMAIL_TEMPLATE.bodyBackgroundColor,
+      ),
+    ),
+    emailBodyBackgroundType,
+    emailBodyBackgroundImageUrl,
+    emailBodyBackgroundImagePublicId: toTrimmed(
+      pick(
+        "emailBodyBackgroundImagePublicId",
+        legacy.emailBodyBackgroundImagePublicId,
+        legacy.emailTemplate?.emailBodyBackgroundImagePublicId,
+        emailBodyBackgroundImageAsset?.publicId,
+        "",
+      ),
+    ),
+    emailBodyBackgroundPosition: normalizeBackgroundPosition(
+      pick(
+        "emailBodyBackgroundPosition",
+        legacy.emailBodyBackgroundPosition,
+        legacy.emailTemplate?.emailBodyBackgroundPosition,
+        DEFAULT_EMAIL_TEMPLATE.emailBodyBackgroundPosition,
+      ),
+    ),
+    emailBodyBackgroundSize: normalizeBackgroundSize(
+      pick(
+        "emailBodyBackgroundSize",
+        legacy.emailBodyBackgroundSize,
+        legacy.emailTemplate?.emailBodyBackgroundSize,
+        DEFAULT_EMAIL_TEMPLATE.emailBodyBackgroundSize,
+      ),
+    ),
+    emailBodyOverlayColor: toTrimmed(
+      pick(
+        "emailBodyOverlayColor",
+        legacy.emailBodyOverlayColor,
+        legacy.emailTemplate?.emailBodyOverlayColor,
+        DEFAULT_EMAIL_TEMPLATE.emailBodyOverlayColor,
+      ),
+    ),
+    emailBodyOverlayOpacity: clampOpacity(
+      pick(
+        "emailBodyOverlayOpacity",
+        legacy.emailBodyOverlayOpacity,
+        legacy.emailTemplate?.emailBodyOverlayOpacity,
+        DEFAULT_EMAIL_TEMPLATE.emailBodyOverlayOpacity,
+      ),
+      DEFAULT_EMAIL_TEMPLATE.emailBodyOverlayOpacity,
     ),
     cardBackgroundColor: toTrimmed(
-      pick("cardBackgroundColor", legacy.cardBackgroundColor, DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor),
+      pick(
+        "cardBackgroundColor",
+        legacy.cardBackgroundColor,
+        DEFAULT_EMAIL_TEMPLATE.cardBackgroundColor,
+      ),
     ),
     accentColor: toTrimmed(
-      pick("accentColor", legacy.accentColor, DEFAULT_EMAIL_TEMPLATE.accentColor),
+      pick(
+        "accentColor",
+        legacy.accentColor,
+        DEFAULT_EMAIL_TEMPLATE.accentColor,
+      ),
     ),
     textColor: toTrimmed(
       pick("textColor", legacy.textColor, DEFAULT_EMAIL_TEMPLATE.textColor),
     ),
     buttonColor: toTrimmed(
-      pick("buttonColor", legacy.buttonColor, DEFAULT_EMAIL_TEMPLATE.buttonColor),
+      pick(
+        "buttonColor",
+        legacy.buttonColor,
+        DEFAULT_EMAIL_TEMPLATE.buttonColor,
+      ),
     ),
     borderRadius:
       parseOptionalInteger(source.borderRadius ?? legacy.borderRadius) ??
       DEFAULT_EMAIL_TEMPLATE.borderRadius,
-    logoUrl: String(pick("logoUrl", legacy.emailTemplate?.logoUrl, "")).trim(),
+    footerBackgroundType,
+    footerBackgroundColor: toTrimmed(
+      pick(
+        "footerBackgroundColor",
+        legacy.footerBackgroundColor,
+        DEFAULT_EMAIL_TEMPLATE.footerBackgroundColor,
+      ),
+    ),
+    footerBackgroundImageUrl,
+    footerBackgroundImagePublicId: toTrimmed(
+      pick(
+        "footerBackgroundImagePublicId",
+        legacy.footerBackgroundImagePublicId,
+        legacy.emailTemplate?.footerBackgroundImagePublicId,
+        footerBackgroundImageAsset?.publicId,
+        "",
+      ),
+    ),
+    footerBackgroundPosition: normalizeBackgroundPosition(
+      pick(
+        "footerBackgroundPosition",
+        legacy.footerBackgroundPosition,
+        legacy.emailTemplate?.footerBackgroundPosition,
+        DEFAULT_EMAIL_TEMPLATE.footerBackgroundPosition,
+      ),
+    ),
+    footerBackgroundSize: normalizeBackgroundSize(
+      pick(
+        "footerBackgroundSize",
+        legacy.footerBackgroundSize,
+        legacy.emailTemplate?.footerBackgroundSize,
+        DEFAULT_EMAIL_TEMPLATE.footerBackgroundSize,
+      ),
+    ),
+    footerOverlayColor: toTrimmed(
+      pick(
+        "footerOverlayColor",
+        legacy.footerOverlayColor,
+        legacy.emailTemplate?.footerOverlayColor,
+        DEFAULT_EMAIL_TEMPLATE.footerOverlayColor,
+      ),
+    ),
+    footerOverlayOpacity: clampOpacity(
+      pick(
+        "footerOverlayOpacity",
+        legacy.footerOverlayOpacity,
+        legacy.emailTemplate?.footerOverlayOpacity,
+        DEFAULT_EMAIL_TEMPLATE.footerOverlayOpacity,
+      ),
+      DEFAULT_EMAIL_TEMPLATE.footerOverlayOpacity,
+    ),
+    footerMinHeight: clampMinHeight(
+      pick(
+        "footerMinHeight",
+        legacy.footerMinHeight,
+        legacy.emailTemplate?.footerMinHeight,
+        DEFAULT_EMAIL_TEMPLATE.footerMinHeight,
+      ),
+      DEFAULT_EMAIL_TEMPLATE.footerMinHeight,
+    ),
+    footerTextColor: toTrimmed(
+      pick(
+        "footerTextColor",
+        legacy.footerTextColor,
+        legacy.emailTemplate?.footerTextColor,
+        DEFAULT_EMAIL_TEMPLATE.footerTextColor,
+      ),
+    ),
+    footerTextAlign: normalizeAlignment(
+      pick(
+        "footerTextAlign",
+        legacy.footerTextAlign,
+        legacy.emailTemplate?.footerTextAlign,
+        DEFAULT_EMAIL_TEMPLATE.footerTextAlign,
+      ),
+    ),
+    submissionIntroText: String(
+      pick(
+        "submissionIntroText",
+        legacy.submissionIntroText,
+        legacy.emailTemplate?.submissionIntroText,
+        DEFAULT_EMAIL_TEMPLATE.submissionIntroText,
+      ),
+    ).trim(),
+    logoUrl: String(
+      pick("logoUrl", legacy.logoUrl, legacy.emailTemplate?.logoUrl, ""),
+    ).trim(),
     logoAsset: toAssetPayload(
-      pick("logoAsset", legacy.emailTemplate?.logoAsset, null),
-      pick("logoUrl", legacy.emailTemplate?.logoUrl, ""),
+      pick("logoAsset", legacy.logoAsset, legacy.emailTemplate?.logoAsset, null),
+      pick("logoUrl", legacy.logoUrl, legacy.emailTemplate?.logoUrl, ""),
     ),
     bannerUrl: String(
       pick(
@@ -1926,6 +2351,8 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       ),
     ),
     headerBackgroundImageAsset,
+    emailBodyBackgroundImageAsset,
+    footerBackgroundImageAsset,
   };
 };
 
@@ -1937,19 +2364,47 @@ const normalizeNotificationSettings = (settings = {}, fallback = {}) => {
     hasOwn(key) ? source[key] : values.find((value) => value !== undefined);
   return {
     sendEmailNotification:
-      pick("sendEmailNotification", legacy.sendEmailNotification, DEFAULT_NOTIFICATION_SETTINGS.sendEmailNotification) === true,
+      pick(
+        "sendEmailNotification",
+        legacy.sendEmailNotification,
+        DEFAULT_NOTIFICATION_SETTINGS.sendEmailNotification,
+      ) === true,
     sendDashboardNotification:
-      pick("sendDashboardNotification", legacy.sendDashboardNotification, DEFAULT_NOTIFICATION_SETTINGS.sendDashboardNotification) === true,
+      pick(
+        "sendDashboardNotification",
+        legacy.sendDashboardNotification,
+        DEFAULT_NOTIFICATION_SETTINGS.sendDashboardNotification,
+      ) === true,
     sendTelegramNotification:
-      pick("sendTelegramNotification", legacy.sendTelegramNotification, DEFAULT_NOTIFICATION_SETTINGS.sendTelegramNotification) === true,
-    telegramBotToken: String(pick("telegramBotToken", legacy.telegramBotToken, "")).trim(),
-    telegramChatId: String(pick("telegramChatId", legacy.telegramChatId, "")).trim(),
+      pick(
+        "sendTelegramNotification",
+        legacy.sendTelegramNotification,
+        DEFAULT_NOTIFICATION_SETTINGS.sendTelegramNotification,
+      ) === true,
+    telegramBotToken: String(
+      pick("telegramBotToken", legacy.telegramBotToken, ""),
+    ).trim(),
+    telegramChatId: String(
+      pick("telegramChatId", legacy.telegramChatId, ""),
+    ).trim(),
     sendWhatsAppNotification:
-      pick("sendWhatsAppNotification", legacy.sendWhatsAppNotification, DEFAULT_NOTIFICATION_SETTINGS.sendWhatsAppNotification) === true,
-    whatsappAccessToken: String(pick("whatsappAccessToken", legacy.whatsappAccessToken, "")).trim(),
-    whatsappPhoneNumberId: String(pick("whatsappPhoneNumberId", legacy.whatsappPhoneNumberId, "")).trim(),
-    whatsappVerifyToken: String(pick("whatsappVerifyToken", legacy.whatsappVerifyToken, "")).trim(),
-    whatsappBusinessNumber: String(pick("whatsappBusinessNumber", legacy.whatsappBusinessNumber, "")).trim(),
+      pick(
+        "sendWhatsAppNotification",
+        legacy.sendWhatsAppNotification,
+        DEFAULT_NOTIFICATION_SETTINGS.sendWhatsAppNotification,
+      ) === true,
+    whatsappAccessToken: String(
+      pick("whatsappAccessToken", legacy.whatsappAccessToken, ""),
+    ).trim(),
+    whatsappPhoneNumberId: String(
+      pick("whatsappPhoneNumberId", legacy.whatsappPhoneNumberId, ""),
+    ).trim(),
+    whatsappVerifyToken: String(
+      pick("whatsappVerifyToken", legacy.whatsappVerifyToken, ""),
+    ).trim(),
+    whatsappBusinessNumber: String(
+      pick("whatsappBusinessNumber", legacy.whatsappBusinessNumber, ""),
+    ).trim(),
   };
 };
 
@@ -1958,8 +2413,13 @@ const getBrandingSettings = async (form = {}) => {
   const settings = settingsDoc?.settings || settingsDoc || {};
   return {
     companyName: settings?.appName || settings?.companyName || "TechnoSthan",
-    logoUrl:
-      resolveAssetUrl(settings?.logoAsset || settings?.logoUrl || form?.logoAsset || form?.logoUrl || ""),
+    logoUrl: resolveAssetUrl(
+      settings?.logoAsset ||
+        settings?.logoUrl ||
+        form?.logoAsset ||
+        form?.logoUrl ||
+        "",
+    ),
     brandWebsiteUrl:
       settings?.brandWebsiteUrl ||
       process.env.FRONTEND_URL ||
@@ -2011,9 +2471,7 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
     ),
     logoAsset:
       normalizeStoredAsset(
-        plainForm.logoAsset ||
-          plainForm.emailTemplate?.logoAsset ||
-          null,
+        plainForm.logoAsset || plainForm.emailTemplate?.logoAsset || null,
         plainForm.logoUrl || plainForm.emailTemplate?.logoUrl || "",
       ) || null,
     emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
@@ -2034,6 +2492,7 @@ const buildQuestionExportDto = (question, index = 0) => ({
   description: question.helpText || "",
   placeholder: question.placeholder || "",
   required: question.required === true,
+  allowUserToAddMore: question.allowUserToAddMore === true,
   validationEnabled: question.validationEnabled === true,
   sectionId: normalizeSectionId(question.sectionId),
   sectionTitle: normalizeSectionTitle(question.sectionTitle),
@@ -2079,18 +2538,19 @@ const buildFormExportDto = (form, questions = []) => {
       ),
     )
     .sort((a, b) => a.order - b.order);
-  const sections = buildSectionsDto(plainForm.sections || [], sortedQuestions).map(
-    (section) => ({
-      id: section.id,
-      title: section.title,
-      description: section.description,
-      order: section.order,
-      isActive: section.isActive,
-      questions: section.questions.map((question, index) =>
-        buildQuestionExportDto(question, index),
-      ),
-    }),
-  );
+  const sections = buildSectionsDto(
+    plainForm.sections || [],
+    sortedQuestions,
+  ).map((section) => ({
+    id: section.id,
+    title: section.title,
+    description: section.description,
+    order: section.order,
+    isActive: section.isActive,
+    questions: section.questions.map((question, index) =>
+      buildQuestionExportDto(question, index),
+    ),
+  }));
 
   return {
     exportVersion: "2.0",
@@ -2101,9 +2561,12 @@ const buildFormExportDto = (form, questions = []) => {
       titleStyle: normalizeTitleStyle(plainForm.titleStyle),
       descriptionStyle: normalizeDescriptionStyle(plainForm.descriptionStyle),
       slug: plainForm.slug || plainForm.publicSlug || slugify(plainForm.title),
-      status: plainForm.status || (plainForm.active === true ? "live" : "draft"),
+      status:
+        plainForm.status || (plainForm.active === true ? "live" : "draft"),
       successMessage: plainForm.successMessage || "",
-      expiresAt: plainForm.expiresAt ? new Date(plainForm.expiresAt).toISOString() : null,
+      expiresAt: plainForm.expiresAt
+        ? new Date(plainForm.expiresAt).toISOString()
+        : null,
       themeColor: plainForm.themeColor || "",
       logoUrl: plainForm.logoUrl || plainForm.emailTemplate?.logoUrl || "",
       bannerUrl:
@@ -2172,7 +2635,9 @@ const collectResponses = async (formId) => {
         .lean()
     : [];
 
-  const questionMap = new Map(questions.map((question) => [String(question._id), question]));
+  const questionMap = new Map(
+    questions.map((question) => [String(question._id), question]),
+  );
   const grouped = new Map();
   for (const answer of relatedAnswers) {
     const key = String(answer.responseId);
@@ -2202,14 +2667,19 @@ const collectResponses = async (formId) => {
 const isConditionalResponseAnswer = (answer = {}) =>
   Boolean(
     answer.fieldId ||
-      answer.parentQuestionId ||
-      answer.parentOptionId ||
-      answer.conditionalPath ||
-      answer.conditionalDepth,
+    answer.parentQuestionId ||
+    answer.parentOptionId ||
+    answer.conditionalPath ||
+    answer.conditionalDepth,
   );
 
 const getResponseAnswerLabel = (answer = {}) =>
-  String(answer.fieldLabel || answer.question?.label || answer.questionLabel || "Question").trim();
+  String(
+    answer.fieldLabel ||
+      answer.question?.label ||
+      answer.questionLabel ||
+      "Question",
+  ).trim();
 
 const getResponseAnswerContext = (answer = {}) => {
   const breadcrumb = String(answer.conditionalMeta?.breadcrumb || "").trim();
@@ -2219,7 +2689,9 @@ const getResponseAnswerContext = (answer = {}) => {
 
   const trail = [];
   if (answer.question?.label || answer.questionLabel) {
-    trail.push(String(answer.question?.label || answer.questionLabel || "").trim());
+    trail.push(
+      String(answer.question?.label || answer.questionLabel || "").trim(),
+    );
   }
   if (answer.parentOptionLabel) {
     trail.push(String(answer.parentOptionLabel).trim());
@@ -2243,9 +2715,11 @@ const getResponseAnswerDisplayValue = (answer = {}) => {
   if (answer.fileUrl) {
     return [
       {
-        type: /^image\//i.test(String(answer.fileType || "")) || answer.fieldType === "imageUpload"
-          ? "image"
-          : "file",
+        type:
+          /^image\//i.test(String(answer.fileType || "")) ||
+          answer.fieldType === "imageUpload"
+            ? "image"
+            : "file",
         url: answer.fileUrl,
         label: answer.fileName || answer.fileUrl,
         mimeType: answer.fileType || "",
@@ -2268,12 +2742,21 @@ const buildResponseAnswerView = (answer = {}) => ({
   value: answer.value,
   displayValue: getResponseAnswerDisplayValue(answer),
   conditional: isConditionalResponseAnswer(answer),
-  parentQuestionId: String(answer.parentQuestionId || answer.questionId?._id || answer.questionId || ""),
+  parentQuestionId: String(
+    answer.parentQuestionId ||
+      answer.questionId?._id ||
+      answer.questionId ||
+      "",
+  ),
   parentOptionId: String(answer.parentOptionId || ""),
   parentOptionLabel: String(answer.parentOptionLabel || "").trim(),
   conditionalPath: String(answer.conditionalPath || "").trim(),
-  conditionalDepth: Number.isFinite(Number(answer.conditionalDepth)) ? Number(answer.conditionalDepth) : 0,
-  conditionalOrder: Number.isFinite(Number(answer.conditionalOrder)) ? Number(answer.conditionalOrder) : 0,
+  conditionalDepth: Number.isFinite(Number(answer.conditionalDepth))
+    ? Number(answer.conditionalDepth)
+    : 0,
+  conditionalOrder: Number.isFinite(Number(answer.conditionalOrder))
+    ? Number(answer.conditionalOrder)
+    : 0,
   context: getResponseAnswerContext(answer),
   fileUrl: answer.fileUrl || "",
   fileUrls: Array.isArray(answer.fileUrls) ? answer.fileUrls : [],
@@ -2288,10 +2771,10 @@ const buildResponseSubmissionRows = (answers = []) => {
     ? [...answers]
         .map((answer, index) => ({
           ...answer,
-          __order:
-            Number.isFinite(Number(answer.conditionalDepth))
-              ? Number(answer.conditionalDepth) * 1000 + Number(answer.conditionalOrder || index)
-              : index,
+          __order: Number.isFinite(Number(answer.conditionalDepth))
+            ? Number(answer.conditionalDepth) * 1000 +
+              Number(answer.conditionalOrder || index)
+            : index,
         }))
         .sort((left, right) => left.__order - right.__order)
     : [];
@@ -2377,7 +2860,10 @@ const extractSummary = (answers = []) => {
     if (!email && emailRegex.test(value)) {
       email = value.match(emailRegex)?.[0] || "";
     }
-    if (!phone && (questionType === "phone" || /phone|mobile|contact/.test(questionLabel))) {
+    if (
+      !phone &&
+      (questionType === "phone" || /phone|mobile|contact/.test(questionLabel))
+    ) {
       phone = value || "";
     }
     if (!phone && phoneRegex.test(value.replace(/\s+/g, ""))) {
@@ -2404,9 +2890,14 @@ const matchesResponseSearch = (response, search = "") => {
 
   const answerTexts = (response.answers || [])
     .flatMap((answer) => {
-      const label = answer.displayLabel || answer.fieldLabel || answer.question?.label || "";
+      const label =
+        answer.displayLabel ||
+        answer.fieldLabel ||
+        answer.question?.label ||
+        "";
       const context = answer.displayContext || answer.parentOptionLabel || "";
-      if (answer.fileName) return [label, context, answer.fileName, answer.fileUrl || ""];
+      if (answer.fileName)
+        return [label, context, answer.fileName, answer.fileUrl || ""];
       if (Array.isArray(answer.value)) return [label, context, ...answer.value];
       return [label, context, answer.value ?? ""];
     })
@@ -2433,7 +2924,8 @@ const normalizeComparableText = (value) =>
 const canonicalYesNo = (value) => {
   const text = normalizeComparableText(value);
   if (!text) return null;
-  if (/^(yes|y|true|interested|available|available to join)$/.test(text)) return "yes";
+  if (/^(yes|y|true|interested|available|available to join)$/.test(text))
+    return "yes";
   if (/^(no|n|false)$/.test(text)) return "no";
   return null;
 };
@@ -2473,12 +2965,20 @@ const detectInterestSignals = (answers = []) => {
     const value = getAnswerText(answer);
     const yesNo = canonicalYesNo(value);
 
-    if (!interestedAnswer && (questionType === "radio" || questionType === "dropdown" || /interested/.test(questionLabel))) {
+    if (
+      !interestedAnswer &&
+      (questionType === "radio" ||
+        questionType === "dropdown" ||
+        /interested/.test(questionLabel))
+    ) {
       interestedAnswer = value;
       interestedYes = yesNo === "yes";
     }
 
-    if (!availableAnswer && /available to join|available|join|join us|seminar/.test(questionLabel)) {
+    if (
+      !availableAnswer &&
+      /available to join|available|join|join us|seminar/.test(questionLabel)
+    ) {
       availableAnswer = value;
       availableYes = yesNo === "yes";
     }
@@ -2495,24 +2995,21 @@ const detectInterestSignals = (answers = []) => {
 const buildResponseAnalysis = (response) => {
   const answers = Array.isArray(response.answers) ? response.answers : [];
   const ratingValue = detectRatingValue(answers);
-  const {
-    interestedAnswer,
-    availableAnswer,
-    interestedYes,
-    availableYes,
-  } = detectInterestSignals(answers);
+  const { interestedAnswer, availableAnswer, interestedYes, availableYes } =
+    detectInterestSignals(answers);
   const hasEmail = Boolean(response.email);
   const hasPhone = Boolean(response.phone);
 
   const score =
-    (ratingValue ? { 5: 100, 4: 80, 3: 60, 2: 40, 1: 20 }[ratingValue] || 0 : 0) +
+    (ratingValue
+      ? { 5: 100, 4: 80, 3: 60, 2: 40, 1: 20 }[ratingValue] || 0
+      : 0) +
     (interestedYes ? 20 : 0) +
     (availableYes ? 20 : 0) +
     (hasPhone ? 10 : 0) +
     (hasEmail ? 10 : 0);
 
-  const leadCategory =
-    score >= 80 ? "hot" : score >= 50 ? "warm" : "cold";
+  const leadCategory = score >= 80 ? "hot" : score >= 50 ? "warm" : "cold";
 
   return {
     ...response,
@@ -2550,8 +3047,10 @@ const matchesAnalysisFilters = (response, options = {}) => {
   const scoreFilter = normalizeComparableText(options.score);
   if (scoreFilter) {
     if (scoreFilter === "hot" && response.leadCategory !== "hot") return false;
-    if (scoreFilter === "warm" && response.leadCategory !== "warm") return false;
-    if (scoreFilter === "cold" && response.leadCategory !== "cold") return false;
+    if (scoreFilter === "warm" && response.leadCategory !== "warm")
+      return false;
+    if (scoreFilter === "cold" && response.leadCategory !== "cold")
+      return false;
     if (/^\d+\+?$/.test(scoreFilter)) {
       const minScore = Number.parseInt(scoreFilter, 10);
       if (response.score < minScore) return false;
@@ -2575,21 +3074,23 @@ const paginateArray = (items = [], options = {}) => {
   };
 };
 
-const escapeCsv = (value) =>
-  `"${String(value ?? "").replace(/"/g, '""')}"`;
+const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
 const formatExportAnswerValue = (answer = {}) => {
   if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
     return answer.fileUrls
       .map((url, index) => {
-        const fileName = answer.fileNames?.[index] || answer.fileName || `File ${index + 1}`;
+        const fileName =
+          answer.fileNames?.[index] || answer.fileName || `File ${index + 1}`;
         return url ? `${fileName} (${url})` : fileName;
       })
       .join(" | ");
   }
 
   if (answer.fileUrl) {
-    return answer.fileName ? `${answer.fileName} (${answer.fileUrl})` : answer.fileUrl;
+    return answer.fileName
+      ? `${answer.fileName} (${answer.fileUrl})`
+      : answer.fileUrl;
   }
 
   if (Array.isArray(answer.value)) {
@@ -2605,7 +3106,10 @@ const buildCsv = (form, questions, responses) => {
   for (const response of responses) {
     for (const answer of response.answers || []) {
       if (!answer.fieldId && !answer.parentOptionId) continue;
-      const key = answer.conditionalPath || answer.fieldId || `${answer.parentOptionId}:${answer.fieldLabel}`;
+      const key =
+        answer.conditionalPath ||
+        answer.fieldId ||
+        `${answer.parentOptionId}:${answer.fieldLabel}`;
       if (conditionalColumnMap.has(key)) continue;
       const header = answer.displayContext
         ? answer.displayContext
@@ -2638,7 +3142,10 @@ const buildCsv = (form, questions, responses) => {
     const conditionalMap = new Map();
     for (const answer of response.answers || []) {
       if (answer.fieldId || answer.parentOptionId) {
-        const key = answer.conditionalPath || answer.fieldId || `${answer.parentOptionId}:${answer.fieldLabel}`;
+        const key =
+          answer.conditionalPath ||
+          answer.fieldId ||
+          `${answer.parentOptionId}:${answer.fieldLabel}`;
         conditionalMap.set(key, answer);
       }
     }
@@ -2672,11 +3179,7 @@ const buildCsv = (form, questions, responses) => {
 
 const parseAnswersPayload = (body = {}) => {
   const raw =
-    body.answers ??
-    body.submittedData ??
-    body.values ??
-    body.response ??
-    body;
+    body.answers ?? body.submittedData ?? body.values ?? body.response ?? body;
 
   if (typeof raw === "string") {
     try {
@@ -2695,7 +3198,10 @@ const parseAnswersPayload = (body = {}) => {
 
 const parseConditionalAnswersPayload = (body = {}) =>
   normalizeConditionalPayload(
-    body.conditionalAnswers ?? body.conditionalValues ?? body.dependentAnswers ?? {},
+    body.conditionalAnswers ??
+      body.conditionalValues ??
+      body.dependentAnswers ??
+      {},
   );
 
 const parseVerificationTokensPayload = (body = {}) => {
@@ -2721,7 +3227,9 @@ const parseVerificationTokensPayload = (body = {}) => {
 };
 
 const normalizeEmailValue = (value = "") =>
-  String(value || "").trim().toLowerCase();
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const normalizePhoneValue = (value = "") => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -2757,7 +3265,10 @@ const extractSubmissionContact = (questions = [], answersPayload = {}) => {
     if (!email && emailRegex.test(value)) {
       email = value.match(emailRegex)?.[0] || "";
     }
-    if (!phone && (questionType === "phone" || /phone|mobile|contact/.test(questionLabel))) {
+    if (
+      !phone &&
+      (questionType === "phone" || /phone|mobile|contact/.test(questionLabel))
+    ) {
       phone = value || "";
     }
     if (!phone && phoneRegex.test(value.replace(/\s+/g, ""))) {
@@ -2816,7 +3327,12 @@ const validateQuestionValue = (question, value, fileList = []) => {
     (Array.isArray(value) && value.length === 0);
   const hasFile = Array.isArray(fileList) && fileList.length > 0;
 
-  if (question.required && !hasFile && isEmpty && question.type !== "sectionHeading") {
+  if (
+    question.required &&
+    !hasFile &&
+    isEmpty &&
+    question.type !== "sectionHeading"
+  ) {
     throw new Error(`Question "${question.label}" is required`);
   }
 
@@ -2824,7 +3340,9 @@ const validateQuestionValue = (question, value, fileList = []) => {
     return;
   }
 
-  const stringValue = Array.isArray(value) ? value.join(", ") : String(value || "");
+  const stringValue = Array.isArray(value)
+    ? value.join(", ")
+    : String(value || "");
 
   if (question.type === "number") {
     const validation = question.validation || {};
@@ -2916,14 +3434,14 @@ const validateUploadedFiles = (question, fileEntries = []) => {
     }
     return raw < 1024 * 1024 ? raw * 1024 * 1024 : raw;
   };
-  const maxFileSize =
-    normalizeMaxSizeBytes(uploadConfig.maxFileSize);
+  const maxFileSize = normalizeMaxSizeBytes(uploadConfig.maxFileSize);
   const multipleAllowed = uploadConfig.multiple === true;
-  const maxFiles = Number.isInteger(uploadConfig.maxFiles) && uploadConfig.maxFiles > 0
-    ? uploadConfig.maxFiles
-    : multipleAllowed
-      ? fileEntries.length
-      : 1;
+  const maxFiles =
+    Number.isInteger(uploadConfig.maxFiles) && uploadConfig.maxFiles > 0
+      ? uploadConfig.maxFiles
+      : multipleAllowed
+        ? fileEntries.length
+        : 1;
 
   if (fileEntries.length > maxFiles) {
     throw new Error(`Maximum ${maxFiles} files are allowed.`);
@@ -2936,21 +3454,34 @@ const validateUploadedFiles = (question, fileEntries = []) => {
       );
     }
 
-    const uploadType = String(uploadConfig.uploadType || question.type || "").toLowerCase();
-    const allowedMimeTypes = Array.isArray(uploadConfig.allowedMimeTypes) && uploadConfig.allowedMimeTypes.length
-      ? uploadConfig.allowedMimeTypes
-      : null;
-    const allowedExtensions = Array.isArray(uploadConfig.allowedExtensions) && uploadConfig.allowedExtensions.length
-      ? uploadConfig.allowedExtensions
-      : null;
+    const uploadType = String(
+      uploadConfig.uploadType || question.type || "",
+    ).toLowerCase();
+    const allowedMimeTypes =
+      Array.isArray(uploadConfig.allowedMimeTypes) &&
+      uploadConfig.allowedMimeTypes.length
+        ? uploadConfig.allowedMimeTypes
+        : null;
+    const allowedExtensions =
+      Array.isArray(uploadConfig.allowedExtensions) &&
+      uploadConfig.allowedExtensions.length
+        ? uploadConfig.allowedExtensions
+        : null;
     const fileName = String(file.originalname || "").toLowerCase();
 
     if (allowedMimeTypes && !allowedMimeTypes.includes(file.mimetype)) {
       throw new Error(`"${file.originalname}" is not an allowed file type.`);
     }
 
-    if (allowedExtensions && !allowedExtensions.some((extension) => fileName.endsWith(String(extension).toLowerCase()))) {
-      throw new Error(`"${file.originalname}" does not match an allowed extension.`);
+    if (
+      allowedExtensions &&
+      !allowedExtensions.some((extension) =>
+        fileName.endsWith(String(extension).toLowerCase()),
+      )
+    ) {
+      throw new Error(
+        `"${file.originalname}" does not match an allowed extension.`,
+      );
     }
 
     if (uploadType === "image" || question.type === "imageUpload") {
@@ -2963,9 +3494,7 @@ const validateUploadedFiles = (question, fileEntries = []) => {
 
     if (uploadType === "pdf" || question.type === "pdfUpload") {
       if (file.mimetype !== "application/pdf" && !allowedMimeTypes) {
-        throw new Error(
-          `Question "${question.label}" only accepts PDF files`,
-        );
+        throw new Error(`Question "${question.label}" only accepts PDF files`);
       }
     }
 
@@ -2979,7 +3508,12 @@ const validateUploadedFiles = (question, fileEntries = []) => {
   }
 };
 
-const validateQuestionVerification = (question, submittedValue, verificationTokens = {}, form = {}) => {
+const validateQuestionVerification = (
+  question,
+  submittedValue,
+  verificationTokens = {},
+  form = {},
+) => {
   if (!question.validationEnabled) {
     return;
   }
@@ -2988,7 +3522,10 @@ const validateQuestionVerification = (question, submittedValue, verificationToke
     return;
   }
 
-  const token = verificationTokens[String(question._id)] || verificationTokens[question.label] || "";
+  const token =
+    verificationTokens[String(question._id)] ||
+    verificationTokens[question.label] ||
+    "";
   if (!token) {
     throw new Error(`Please verify ${question.label} before submitting.`);
   }
@@ -3029,7 +3566,10 @@ const getConditionalFieldDescriptors = ({
   const descriptors = [];
   const questionId = String(question?._id || question?.id || "");
   const optionMap = new Map(
-    normalizeQuestionOptions(question).map((option) => [String(option.id), option]),
+    normalizeQuestionOptions(question).map((option) => [
+      String(option.id),
+      option,
+    ]),
   );
 
   const walkOptionBranch = ({ option, pathSegments = [], breadcrumb = [] }) => {
@@ -3044,7 +3584,10 @@ const getConditionalFieldDescriptors = ({
     for (const field of fields) {
       if (!field || field.isActive === false) continue;
       const fieldPathSegments = [...pathSegments, field.id];
-      const payloadEntry = resolveConditionalPayloadEntry(conditionalAnswers, fieldPathSegments);
+      const payloadEntry = resolveConditionalPayloadEntry(
+        conditionalAnswers,
+        fieldPathSegments,
+      );
       const fieldBreadcrumb = [...breadcrumb, field.label].filter(Boolean);
       const fieldPath = buildConditionalFieldPath(fieldPathSegments);
       descriptors.push({
@@ -3060,7 +3603,10 @@ const getConditionalFieldDescriptors = ({
         fieldLabel: field.label,
         fieldType: field.type,
         fieldOrder: field.order || 0,
-        conditionalDepth: Math.max(1, Math.floor((fieldPathSegments.length - 1) / 2)),
+        conditionalDepth: Math.max(
+          1,
+          Math.floor((fieldPathSegments.length - 1) / 2),
+        ),
         path: fieldPath,
         breadcrumb: fieldBreadcrumb.join(" → "),
         payloadEntry,
@@ -3095,7 +3641,10 @@ const getConditionalFieldDescriptors = ({
     }
   };
 
-  const selectedOptionIds = getQuestionSelectedOptionIds(question, submittedValue);
+  const selectedOptionIds = getQuestionSelectedOptionIds(
+    question,
+    submittedValue,
+  );
   for (const optionId of selectedOptionIds) {
     const option = optionMap.get(String(optionId));
     if (!option) continue;
@@ -3107,7 +3656,8 @@ const getConditionalFieldDescriptors = ({
   }
 
   return descriptors.sort(
-    (a, b) => a.conditionalDepth - b.conditionalDepth || a.fieldOrder - b.fieldOrder,
+    (a, b) =>
+      a.conditionalDepth - b.conditionalDepth || a.fieldOrder - b.fieldOrder,
   );
 };
 
@@ -3116,11 +3666,18 @@ const getConditionalFieldSubmissionValue = (
   fieldPath = "",
   answersPayload = {},
 ) => {
-  const directValue = payloadEntry?.value ?? payloadEntry?.answer ?? payloadEntry?.response ?? null;
+  const directValue =
+    payloadEntry?.value ??
+    payloadEntry?.answer ??
+    payloadEntry?.response ??
+    null;
   if (directValue !== null && directValue !== undefined) {
     return directValue;
   }
-  if (fieldPath && Object.prototype.hasOwnProperty.call(answersPayload, fieldPath)) {
+  if (
+    fieldPath &&
+    Object.prototype.hasOwnProperty.call(answersPayload, fieldPath)
+  ) {
     return answersPayload[fieldPath];
   }
   return null;
@@ -3137,18 +3694,24 @@ const resolveSelectedOptionSummary = (question, submittedValue) => {
   }
 
   const selectedOptions = selectedIds
-    .map((optionId) => options.find((option) => String(option.id) === String(optionId)))
+    .map((optionId) =>
+      options.find((option) => String(option.id) === String(optionId)),
+    )
     .filter(Boolean);
 
   return {
     selectedOptionId:
       selectedOptions.length === 1
         ? String(selectedOptions[0].id || "")
-        : selectedOptions.map((option) => String(option.id || "")).filter(Boolean),
+        : selectedOptions
+            .map((option) => String(option.id || ""))
+            .filter(Boolean),
     selectedOptionLabel:
       selectedOptions.length === 1
         ? String(selectedOptions[0].label || selectedOptions[0].value || "")
-        : selectedOptions.map((option) => String(option.label || option.value || "")).filter(Boolean),
+        : selectedOptions
+            .map((option) => String(option.label || option.value || ""))
+            .filter(Boolean),
   };
 };
 
@@ -3176,7 +3739,10 @@ const prepareAnswerRecord = async (
   fileEntries = [],
   uploadContext = {},
 ) => {
-  const resolvedSelection = resolveSelectedOptionSummary(question, submittedValue);
+  const resolvedSelection = resolveSelectedOptionSummary(
+    question,
+    submittedValue,
+  );
   const normalizedValue = Array.isArray(submittedValue)
     ? submittedValue.map((item) => String(item))
     : submittedValue;
@@ -3199,7 +3765,9 @@ const prepareAnswerRecord = async (
 
     return {
       value: normalizedValue ?? fileNames,
-      scalarValue: Array.isArray(normalizedValue) ? null : (normalizedValue ?? fileNames[0] ?? ""),
+      scalarValue: Array.isArray(normalizedValue)
+        ? null
+        : (normalizedValue ?? fileNames[0] ?? ""),
       arrayValue: fileNames,
       fileUrl: primaryAsset?.secureUrl || "",
       fileUrls,
@@ -3307,7 +3875,8 @@ const prepareConditionalAnswerRecord = async ({
       ]);
   const breadcrumb = String(descriptor?.breadcrumb || "").trim();
   const conditionalDepth =
-    descriptor?.conditionalDepth || Math.max(1, Math.floor((conditionalPath.split("::").length - 1) / 2));
+    descriptor?.conditionalDepth ||
+    Math.max(1, Math.floor((conditionalPath.split("::").length - 1) / 2));
 
   if (fileEntries.length > 0) {
     const folder = getCloudinaryFolder(
@@ -3328,7 +3897,9 @@ const prepareConditionalAnswerRecord = async ({
 
     return {
       value: normalizedValue ?? fileNames,
-      scalarValue: Array.isArray(normalizedValue) ? null : (normalizedValue ?? fileNames[0] ?? ""),
+      scalarValue: Array.isArray(normalizedValue)
+        ? null
+        : (normalizedValue ?? fileNames[0] ?? ""),
       arrayValue: fileNames,
       fileUrl: primaryAsset?.secureUrl || "",
       fileUrls,
@@ -3357,7 +3928,12 @@ const prepareConditionalAnswerRecord = async ({
     };
   }
 
-  const prepared = await prepareAnswerRecord(effectiveQuestion, submittedValue, [], uploadContext);
+  const prepared = await prepareAnswerRecord(
+    effectiveQuestion,
+    submittedValue,
+    [],
+    uploadContext,
+  );
   return {
     ...prepared,
     fieldId: String(field.id || field.fieldId || ""),
@@ -3516,7 +4092,9 @@ const sendSubmissionNotifications = async ({
 
   const emailAnswer =
     answers.find((answer) => answer.question?.type === "email") ||
-    answers.find((answer) => /[^\s@]+@[^\s@]+\.[^\s@]+/.test(String(answer.value || "")));
+    answers.find((answer) =>
+      /[^\s@]+@[^\s@]+\.[^\s@]+/.test(String(answer.value || "")),
+    );
   if (form.confirmationEmailEnabled && emailAnswer?.value) {
     try {
       await sendEmail({
@@ -3743,8 +4321,7 @@ const getAdminForms = async () => {
     slug: form.slug || form.publicSlug || slugify(form.title),
     publicSlug: form.slug || form.publicSlug || slugify(form.title),
     status: form.status || (form.active ? "live" : "draft"),
-    active:
-      (form.status || (form.active ? "live" : "draft")) === "live",
+    active: (form.status || (form.active ? "live" : "draft")) === "live",
     titleStyle: normalizeTitleStyle(form.titleStyle),
     description: normalizeDescriptionHtml(form.description || ""),
     descriptionStyle: normalizeDescriptionStyle(form.descriptionStyle),
@@ -3793,8 +4370,15 @@ const updateForm = async (formId, payload) => {
   existing.sections = formPayload.sections;
 
   await existing.save();
-  const questions = await syncQuestions(existing._id, getQuestionsPayload(payload));
-  return buildFormDto(existing, questions, await FormResponse.countDocuments({ formId: existing._id }));
+  const questions = await syncQuestions(
+    existing._id,
+    getQuestionsPayload(payload),
+  );
+  return buildFormDto(
+    existing,
+    questions,
+    await FormResponse.countDocuments({ formId: existing._id }),
+  );
 };
 
 const deleteForm = async (formId) => {
@@ -3831,7 +4415,8 @@ const getFormResponses = async (formId, options = {}) => {
       response.submittedAt || response.createdAt,
     );
     if (fromTime && submittedTime < fromTime) return false;
-    if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1) return false;
+    if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1)
+      return false;
     return matchesResponseSearch(response, options.search);
   });
 
@@ -3839,7 +4424,9 @@ const getFormResponses = async (formId, options = {}) => {
   const limit = Math.max(1, Number.parseInt(options.limit, 10) || 20);
   const total = filtered.length;
   const start = (page - 1) * limit;
-  const items = filtered.slice(start, start + limit).map(sanitizeResponseForApi);
+  const items = filtered
+    .slice(start, start + limit)
+    .map(sanitizeResponseForApi);
 
   return {
     items,
@@ -3863,7 +4450,8 @@ const getFormResponseAnalysis = async (formId, options = {}) => {
     const fromTime = options.from ? new Date(options.from).getTime() : null;
     const toTime = options.to ? new Date(options.to).getTime() : null;
     if (fromTime && submittedTime < fromTime) return false;
-    if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1) return false;
+    if (toTime && submittedTime > toTime + 24 * 60 * 60 * 1000 - 1)
+      return false;
     return matchesAnalysisFilters(response, options);
   });
 
@@ -3903,7 +4491,10 @@ const getFormResponseAnalysis = async (formId, options = {}) => {
 };
 
 const getFormResponseById = async (formId, responseId) => {
-  const response = await FormResponse.findOne({ _id: responseId, formId }).lean();
+  const response = await FormResponse.findOne({
+    _id: responseId,
+    formId,
+  }).lean();
   if (!response) return null;
   const answers = await FormResponseAnswer.find({ responseId })
     .sort({ createdAt: 1 })
@@ -3943,13 +4534,13 @@ const exportFormResponses = async (formId, options = {}) => {
     .sort({ order: 1 })
     .lean();
   const usesAnalysisFilters =
-    options.rating != null ||
-    options.interest != null ||
-    options.score != null;
+    options.rating != null || options.interest != null || options.score != null;
   const responses = usesAnalysisFilters
     ? await getFormResponseAnalysis(formId, options)
     : await getFormResponses(formId, options);
-  const exportRows = Array.isArray(responses) ? responses : responses.items || [];
+  const exportRows = Array.isArray(responses)
+    ? responses
+    : responses.items || [];
   return buildCsv(form, questions, exportRows);
 };
 
@@ -3965,7 +4556,11 @@ const getFormBySlug = async (slug) => {
   const questions = await FormQuestion.find({ formId: form._id })
     .sort({ order: 1, createdAt: 1 })
     .lean();
-  return buildFormDto(form, questions, await FormResponse.countDocuments({ formId: form._id }));
+  return buildFormDto(
+    form,
+    questions,
+    await FormResponse.countDocuments({ formId: form._id }),
+  );
 };
 
 const getFormAndQuestionBySlug = async (slug, questionId) => {
@@ -3988,7 +4583,12 @@ const getFormAndQuestionBySlug = async (slug, questionId) => {
   return { form, question };
 };
 
-const sendFormVerification = async ({ slug, questionId, destination, type }) => {
+const sendFormVerification = async ({
+  slug,
+  questionId,
+  destination,
+  type,
+}) => {
   const pair = await getFormAndQuestionBySlug(slug, questionId);
   if (!pair) {
     throw new Error("Form or question not found");
@@ -4001,7 +4601,13 @@ const sendFormVerification = async ({ slug, questionId, destination, type }) => 
   });
 };
 
-const verifyFormVerification = async ({ slug, questionId, destination, type, otp }) => {
+const verifyFormVerification = async ({
+  slug,
+  questionId,
+  destination,
+  type,
+  otp,
+}) => {
   const pair = await getFormAndQuestionBySlug(slug, questionId);
   if (!pair) {
     throw new Error("Form or question not found");
@@ -4023,7 +4629,10 @@ const revealFormResponseSecret = async ({
   ipAddress = "",
   userAgent = "",
 }) => {
-  const response = await FormResponse.findOne({ _id: responseId, formId }).lean();
+  const response = await FormResponse.findOne({
+    _id: responseId,
+    formId,
+  }).lean();
   if (!response) {
     throw new Error("Response not found");
   }
@@ -4122,14 +4731,60 @@ const submitForm = async ({
       answersPayload[slugKey] ??
       answersPayload[question.label] ??
       null;
+
+    /*
+     * Repeatable question security validation
+     * Frontend ke bahar direct API se 5 se jyada values submit nahi ho sakti.
+     */
+    if (question.allowUserToAddMore === true) {
+      if (!Array.isArray(submittedValue)) {
+        throw new Error(
+          `Question "${question.label}" must be submitted as a list.`,
+        );
+      }
+
+      if (submittedValue.length > 5) {
+        throw new Error(
+          `Question "${question.label}" allows maximum 5 entries.`,
+        );
+      }
+
+      if (submittedValue.length === 0) {
+        throw new Error(
+          `Question "${question.label}" must contain at least one entry.`,
+        );
+      }
+
+      if (question.required === true) {
+        const hasEmptyEntry = submittedValue.some((entry) => {
+          if (Array.isArray(entry)) {
+            return entry.length === 0;
+          }
+
+          return (
+            entry === undefined || entry === null || String(entry).trim() === ""
+          );
+        });
+
+        if (hasEmptyEntry) {
+          throw new Error(
+            `Please complete all added entries for "${question.label}".`,
+          );
+        }
+      }
+    }
+
     const fileEntries =
-      fileEntriesByKey.get(questionKey) ||
-      fileEntriesByKey.get(slugKey) ||
-      [];
+      fileEntriesByKey.get(questionKey) || fileEntriesByKey.get(slugKey) || [];
 
     validateUploadedFiles(question, fileEntries);
     validateQuestionValue(question, submittedValue, fileEntries);
-    validateQuestionVerification(question, submittedValue, verificationTokens, form);
+    validateQuestionVerification(
+      question,
+      submittedValue,
+      verificationTokens,
+      form,
+    );
     answersToInsert.push({
       kind: "question",
       question,
@@ -4155,10 +4810,15 @@ const submitForm = async ({
         descriptor.path,
         conditionalAnswersPayload,
       );
-      const conditionalFileEntries = fileEntriesByKey.get(descriptor.path) || [];
+      const conditionalFileEntries =
+        fileEntriesByKey.get(descriptor.path) || [];
 
       validateUploadedFiles(descriptor.field, conditionalFileEntries);
-      validateQuestionValue(descriptor.field, conditionalValue, conditionalFileEntries);
+      validateQuestionValue(
+        descriptor.field,
+        conditionalValue,
+        conditionalFileEntries,
+      );
 
       answersToInsert.push({
         kind: "conditional",
@@ -4172,14 +4832,23 @@ const submitForm = async ({
     }
   }
 
-  const invalidConditionalKeys = Object.keys(conditionalAnswersPayload || {}).filter(
-    (key) => String(key || "").includes("::") && !activeConditionalKeys.has(String(key)),
+  const invalidConditionalKeys = Object.keys(
+    conditionalAnswersPayload || {},
+  ).filter(
+    (key) =>
+      String(key || "").includes("::") &&
+      !activeConditionalKeys.has(String(key)),
   );
   if (invalidConditionalKeys.length) {
-    throw new Error("One or more conditional answers do not belong to the active form branch.");
+    throw new Error(
+      "One or more conditional answers do not belong to the active form branch.",
+    );
   }
 
-  const duplicateSubmission = await findDuplicateFormResponse(form._id, contact);
+  const duplicateSubmission = await findDuplicateFormResponse(
+    form._id,
+    contact,
+  );
   const legacyDuplicateSubmission = duplicateSubmission
     ? null
     : await findLegacyDuplicateFormResponse(form._id, contact);
@@ -4284,23 +4953,25 @@ const submitForm = async ({
     );
 
     if (createdAnswerIds.length) {
-      await FormResponseAnswer.deleteMany({ _id: { $in: createdAnswerIds } }).catch(
+      await FormResponseAnswer.deleteMany({
+        _id: { $in: createdAnswerIds },
+      }).catch((cleanupError) => {
+        console.warn(
+          "[submitForm] Failed to clean up partial answers after error:",
+          cleanupError.message,
+        );
+      });
+    }
+
+    if (response?._id) {
+      await FormResponse.deleteOne({ _id: response._id }).catch(
         (cleanupError) => {
           console.warn(
-            "[submitForm] Failed to clean up partial answers after error:",
+            "[submitForm] Failed to clean up partial response after error:",
             cleanupError.message,
           );
         },
       );
-    }
-
-    if (response?._id) {
-      await FormResponse.deleteOne({ _id: response._id }).catch((cleanupError) => {
-        console.warn(
-          "[submitForm] Failed to clean up partial response after error:",
-          cleanupError.message,
-        );
-      });
     }
 
     throw error;

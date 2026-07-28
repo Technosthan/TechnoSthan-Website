@@ -50,6 +50,12 @@ const formQuestionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    allowUserToAddMore: {
+      type: Boolean,
+      default: false,
+    },
+
     validationEnabled: {
       type: Boolean,
       default: false,

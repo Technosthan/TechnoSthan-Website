@@ -12,11 +12,34 @@ import {
   X,
   Users,
 } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
 import { useWorkspaceAccess } from "../../context/WorkspaceAccessContext";
 
 const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
+
+    const sidebarNavRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const savedScrollPosition = Number(
+      sessionStorage.getItem("adminSidebarScrollPosition") || 0,
+    );
+
+    if (sidebarNavRef.current) {
+      sidebarNavRef.current.scrollTop = savedScrollPosition;
+    }
+  }, []);
+
+  const saveSidebarScrollPosition = () => {
+    if (sidebarNavRef.current) {
+      sessionStorage.setItem(
+        "adminSidebarScrollPosition",
+        String(sidebarNavRef.current.scrollTop),
+      );
+    }
+  };
+
   const role = normalizeRole(getStoredUser()?.role);
   const { canAccessFeature } = useWorkspaceAccess();
   const basePath =
@@ -139,7 +162,11 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
         </button>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden px-3 py-4 pb-8">
+      <nav
+  ref={sidebarNavRef}
+  onScroll={saveSidebarScrollPosition}
+  className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden px-3 py-4 pb-8"
+>
         {items.map((item) => {
           const IconComponent = item.icon;
           return (
@@ -149,17 +176,18 @@ const AdminSidebar = ({ onLogout, isOpen, onClose }) => {
               end={item.to === basePath}
               onClick={onClose}
               className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-medium transition ${
+                `group flex min-h-[58px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-sm font-medium ${
                   isActive
-                    ? "border border-indigo-400/20 bg-gradient-to-r from-indigo-500/20 to-cyan-500/10 text-white shadow-lg shadow-indigo-500/10"
-                    : "border border-transparent text-slate-300 hover:border-white/10 hover:bg-white/5 hover:text-white"
+                    ? "border-indigo-400/20 bg-indigo-500/15 text-white"
+                    : "border-transparent bg-transparent text-slate-300 hover:border-white/10 hover:bg-white/5 hover:text-white"
                 }`
               }
             >
-              <span className="rounded-xl bg-white/[0.04] p-2 text-slate-300 transition group-hover:text-white">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-slate-300 group-hover:text-white">
                 <IconComponent size={16} />
               </span>
-              <span>{item.label}</span>
+
+              <span className="min-w-0 truncate">{item.label}</span>
             </NavLink>
           );
         })}
