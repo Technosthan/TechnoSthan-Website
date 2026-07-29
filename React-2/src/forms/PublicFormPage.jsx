@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import {
@@ -71,7 +72,7 @@ const getQuestionId = (question = {}) =>
 
 const LEGACY_DEFAULT_SECTION_ID = "legacy-default-section";
 const LEGACY_DEFAULT_SECTION_TITLE = "Form Details";
-const QUESTIONS_PER_PAGE = 4;
+const QUESTION_PAGE_CAPACITY = 4;
 const MAX_REPEATABLE_QUESTION_ENTRIES = 5;
 
 const normalizePublicSection = (section = {}, index = 0) => ({
@@ -85,6 +86,18 @@ const normalizePublicSection = (section = {}, index = 0) => ({
   order: typeof section.order === "number" ? section.order : index,
   isActive: section.isActive !== false,
 });
+
+const normalizeDeclarationSettings = (settings = {}) => {
+  const source = settings && typeof settings === "object" ? settings : {};
+  const text = String(source.text || "").trim();
+  const enabledValue = source.enabled;
+
+  return {
+    enabled: enabledValue === true || enabledValue === "true" || Boolean(text),
+    text,
+    required: source.required !== false,
+  };
+};
 
 const groupFormSections = (form = {}) => {
   const questions =
@@ -198,13 +211,79 @@ const flattenQuestionsFromSections = (sections = []) =>
         : [],
   );
 
-const chunkQuestions = (questions = [], pageSize = QUESTIONS_PER_PAGE) => {
-  const size = Math.max(1, Number(pageSize) || QUESTIONS_PER_PAGE);
+const QUESTION_WEIGHT_MAP = {
+  shortAnswer: 1,
+  email: 1,
+  phone: 1,
+  number: 1,
+  date: 1,
+  time: 1,
+  link: 1,
+  dropdown: 1.25,
+  radio: 1.25,
+  rating: 1.25,
+  paragraph: 1.5,
+  address: 1.5,
+  checkbox: 1.5,
+  fileUpload: 2,
+  imageUpload: 2,
+};
+
+const hasConditionalQuestionFlow = (question = {}) =>
+  Boolean(
+    (Array.isArray(question.conditionalFields) &&
+      question.conditionalFields.length > 0) ||
+    (Array.isArray(question.options) &&
+      question.options.some(
+        (option) =>
+          Array.isArray(option?.conditionalLogic?.fields) &&
+          option.conditionalLogic.fields.length > 0,
+      )),
+  );
+
+const getQuestionPageWeight = (question = {}) => {
+  const baseWeight =
+    QUESTION_WEIGHT_MAP[String(question.type || "").trim()] || 1;
+  return hasConditionalQuestionFlow(question)
+    ? Math.max(baseWeight, 2)
+    : baseWeight;
+};
+
+const buildBalancedQuestionPages = (
+  questions = [],
+  capacity = QUESTION_PAGE_CAPACITY,
+) => {
   const list = Array.isArray(questions) ? questions : [];
+  const pageCapacity = Math.max(1, Number(capacity) || QUESTION_PAGE_CAPACITY);
   const pages = [];
-  for (let index = 0; index < list.length; index += size) {
-    pages.push(list.slice(index, index + size));
+  let currentPage = [];
+  let currentWeight = 0;
+
+  list.forEach((question) => {
+    const weight = getQuestionPageWeight(question);
+    const wouldOverflow =
+      currentPage.length > 0 && currentWeight + weight > pageCapacity;
+
+    if (wouldOverflow) {
+      pages.push(currentPage);
+      currentPage = [];
+      currentWeight = 0;
+    }
+
+    currentPage.push(question);
+    currentWeight += weight;
+
+    if (currentWeight >= pageCapacity) {
+      pages.push(currentPage);
+      currentPage = [];
+      currentWeight = 0;
+    }
+  });
+
+  if (currentPage.length) {
+    pages.push(currentPage);
   }
+
   return pages.length ? pages : [[]];
 };
 
@@ -302,6 +381,12 @@ const collectConditionalDescriptorsFromOption = ({
       Boolean,
     );
     const payloadEntry = conditionalAnswers[fieldKey] || null;
+    const fieldValue =
+      payloadEntry?.value ??
+      payloadEntry?.answer ??
+      payloadEntry?.response ??
+      values[fieldKey] ??
+      null;
 
     descriptors.push({
       question,
@@ -317,14 +402,51 @@ const collectConditionalDescriptorsFromOption = ({
       return;
     }
 
-    const fieldValue =
-      payloadEntry?.value ??
-      payloadEntry?.answer ??
-      payloadEntry?.response ??
-      values[fieldKey] ??
-      null;
-    const selectedChildOptionIds = getSelectedOptionIds(field, fieldValue);
     const fieldOptions = getQuestionOptions(field);
+
+    if (
+      field.allowUserToAddMore === true ||
+      field.allowUserToAddMore === "true"
+    ) {
+      const entries = Array.isArray(fieldValue)
+        ? fieldValue
+        : [getEmptyConditionalFieldValue(field)];
+
+      entries.forEach((entryValue, entryIndex) => {
+        const selectedChildOptionIds = getSelectedOptionIds(field, entryValue);
+
+        selectedChildOptionIds.forEach((childOptionId) => {
+          const childOption = fieldOptions.find(
+            (item) => item.id === childOptionId,
+          );
+          if (!childOption || childOption.isActive === false) return;
+
+          descriptors.push(
+            ...collectConditionalDescriptorsFromOption({
+              question,
+              questionId,
+              option: childOption,
+              pathSegments: [
+                ...fieldPathSegments,
+                `entry-${entryIndex}`,
+                childOption.id,
+              ],
+              breadcrumbSegments: [
+                ...fieldBreadcrumb,
+                `${field.label || "Conditional field"} ${entryIndex + 1}`,
+                childOption.label,
+              ],
+              values,
+              conditionalAnswers,
+            }),
+          );
+        });
+      });
+
+      return;
+    }
+
+    const selectedChildOptionIds = getSelectedOptionIds(field, fieldValue);
 
     selectedChildOptionIds.forEach((childOptionId) => {
       const childOption = fieldOptions.find(
@@ -504,6 +626,18 @@ const getEmptyQuestionValue = (question = {}) => {
   return "";
 };
 
+const getEmptyConditionalFieldValue = (field = {}) => {
+  if (field.type === "checkbox" || field.type === "multipleSelect") {
+    return [];
+  }
+
+  if (field.type === "rating") {
+    return 0;
+  }
+
+  return "";
+};
+
 const initialValuesFromQuestions = (questions = []) =>
   questions.reduce((acc, question) => {
     const questionId = getQuestionId(question);
@@ -664,12 +798,12 @@ const PublicFormPage = () => {
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [verificationStates, setVerificationStates] = useState({});
   const [verificationTokens, setVerificationTokens] = useState({});
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const submitLockRef = useRef(false);
   const explicitSubmitRef = useRef(false);
-  const sectionTopRef = useRef(null);
   const fileInputRefs = useRef({});
   const sections = useMemo(() => groupFormSections(form || {}), [form]);
   const allQuestions = useMemo(
@@ -697,14 +831,22 @@ const PublicFormPage = () => {
         .filter(
           (section) =>
             Array.isArray(section.questions) && section.questions.length > 0,
-        ),
+    ),
     [sections],
+  );
+  const declarationSettings = useMemo(
+    () => normalizeDeclarationSettings(form?.declarationSettings),
+    [form?.declarationSettings],
   );
   const currentSection =
     publicSections[currentSectionIndex] || publicSections[0] || null;
   const currentSectionQuestions = currentSection?.questions || [];
   const currentSectionPages = useMemo(
-    () => chunkQuestions(currentSectionQuestions, QUESTIONS_PER_PAGE),
+    () =>
+      buildBalancedQuestionPages(
+        currentSectionQuestions,
+        QUESTION_PAGE_CAPACITY,
+      ),
     [currentSectionQuestions],
   );
   const currentPageQuestions =
@@ -716,7 +858,10 @@ const PublicFormPage = () => {
       publicSections.reduce(
         (count, section) =>
           count +
-          chunkQuestions(section.questions || [], QUESTIONS_PER_PAGE).length,
+          buildBalancedQuestionPages(
+            section.questions || [],
+            QUESTION_PAGE_CAPACITY,
+          ).length,
         0,
       ),
     [publicSections],
@@ -725,7 +870,10 @@ const PublicFormPage = () => {
     let step = 1;
     for (let i = 0; i < publicSections.length; i += 1) {
       const section = publicSections[i];
-      const pages = chunkQuestions(section.questions || [], QUESTIONS_PER_PAGE);
+      const pages = buildBalancedQuestionPages(
+        section.questions || [],
+        QUESTION_PAGE_CAPACITY,
+      );
       if (i < currentSectionIndex) {
         step += pages.length;
         continue;
@@ -765,6 +913,10 @@ const PublicFormPage = () => {
   }, [activeConditionalDescriptors]);
 
   useEffect(() => {
+    setDeclarationAccepted(false);
+  }, [slug]);
+
+  useEffect(() => {
     if (
       publicSections.length > 0 &&
       currentSectionIndex >= publicSections.length
@@ -802,6 +954,7 @@ const PublicFormPage = () => {
         setVisiblePasswords({});
         setVerificationStates({});
         setVerificationTokens({});
+        setDeclarationAccepted(false);
       } catch (err) {
         if (!mounted) return;
         setError(err.response?.data?.message || "Form not found.");
@@ -898,6 +1051,100 @@ const PublicFormPage = () => {
     });
   };
 
+  const getRepeatableConditionalEntries = (field, fieldKey) => {
+    const currentValue = values[fieldKey];
+
+    if (Array.isArray(currentValue)) {
+      return currentValue;
+    }
+
+    return [getEmptyConditionalFieldValue(field)];
+  };
+
+  const handleRepeatableConditionalAnswer = (
+    field,
+    fieldKey,
+    entryIndex,
+    nextValue,
+  ) => {
+    setValues((prev) => {
+      const currentEntries = Array.isArray(prev[fieldKey])
+        ? [...prev[fieldKey]]
+        : [getEmptyConditionalFieldValue(field)];
+
+      currentEntries[entryIndex] = nextValue;
+
+      return {
+        ...prev,
+        [fieldKey]: currentEntries,
+      };
+    });
+  };
+
+  const addRepeatableConditionalEntry = (field, fieldKey) => {
+    setValues((prev) => {
+      const currentEntries = Array.isArray(prev[fieldKey])
+        ? [...prev[fieldKey]]
+        : [getEmptyConditionalFieldValue(field)];
+
+      if (currentEntries.length >= MAX_REPEATABLE_QUESTION_ENTRIES) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [fieldKey]: [...currentEntries, getEmptyConditionalFieldValue(field)],
+      };
+    });
+  };
+
+  const removeRepeatableConditionalEntry = (fieldKey, entryIndex) => {
+    if (entryIndex === 0) return;
+
+    setValues((prev) => {
+      const currentEntries = Array.isArray(prev[fieldKey])
+        ? [...prev[fieldKey]]
+        : [];
+
+      if (currentEntries.length <= 1) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [fieldKey]: currentEntries.filter((_, index) => index !== entryIndex),
+      };
+    });
+
+    const removedEntryPrefix = buildConditionalFieldKey(
+      fieldKey,
+      `entry-${entryIndex}`,
+    );
+
+    setValues((prev) => {
+      const next = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if (!key.startsWith(`${removedEntryPrefix}::`)) {
+          next[key] = value;
+        }
+      });
+      return next;
+    });
+
+    setFiles((prev) => {
+      const next = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if (
+          key !== removedEntryPrefix &&
+          !key.startsWith(`${removedEntryPrefix}::`)
+        ) {
+          next[key] = value;
+        }
+      });
+      return next;
+    });
+  };
+
   const resetVerification = (questionId) => {
     setVerificationStates((prev) => {
       const next = { ...prev };
@@ -938,12 +1185,28 @@ const PublicFormPage = () => {
   const sendVerificationCode = async (question) => {
     const questionId = getQuestionId(question);
     const destination = String(values[questionId] || "").trim();
+    const existingVerification = verificationStates[questionId] || {};
+
+    if (
+      existingVerification.status === "verified" &&
+      existingVerification.destination === destination &&
+      verificationTokens[questionId]
+    ) {
+      toast.success(
+        question.type === "email"
+          ? "Email is already verified."
+          : "Phone number is already verified.",
+      );
+
+      return;
+    }
     if (!destination) {
       toast.error(
         question.type === "email"
           ? "Please enter a valid email."
           : "Please enter a valid 10-digit mobile number.",
       );
+
       return;
     }
 
@@ -998,6 +1261,17 @@ const PublicFormPage = () => {
     const questionId = getQuestionId(question);
     const state = verificationStates[questionId] || {};
     const destination = String(values[questionId] || "").trim();
+    if (state.destination !== destination) {
+      resetVerification(questionId);
+
+      toast.error(
+        question.type === "email"
+          ? "Email changed. Please request a new OTP."
+          : "Phone number changed. Please request a new OTP.",
+      );
+
+      return;
+    }
     if (!state.otp) {
       toast.error("Enter the OTP first.");
       return;
@@ -1034,6 +1308,8 @@ const PublicFormPage = () => {
           ...state,
           status: "verified",
           destination,
+          otp: "",
+          resendAvailableAt: null,
           verifiedAt:
             response.data?.data?.verifiedAt || new Date().toISOString(),
         },
@@ -1250,16 +1526,38 @@ const PublicFormPage = () => {
     );
   };
 
-  const renderConditionalField = (field, fieldKey, level = 1) => {
+  const renderSingleConditionalField = (
+    field,
+    fieldKey,
+    level = 1,
+    customValue,
+    customOnChange,
+    entryIndex = 0,
+  ) => {
     const commonProps = {
       className: `${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3`,
     };
 
     const value =
-      values[fieldKey] ||
-      (field.type === "checkbox" || field.type === "multipleSelect" ? [] : "");
+      customValue !== undefined
+        ? customValue
+        : (values[fieldKey] ?? getEmptyConditionalFieldValue(field));
 
-    const file = files[fieldKey];
+    const updateValue = (nextValue) => {
+      if (typeof customOnChange === "function") {
+        customOnChange(nextValue);
+        return;
+      }
+
+      handleAnswer(fieldKey, nextValue);
+    };
+
+    const entryStorageKey =
+      field.allowUserToAddMore === true
+        ? buildConditionalFieldKey(fieldKey, `entry-${entryIndex}`)
+        : fieldKey;
+
+    const file = files[entryStorageKey];
     const fieldLabel = field.label || field.title || "Conditional field";
     const fieldHelpText = field.helpText || field.description || "";
     const fieldOptions = getQuestionOptions(field);
@@ -1273,14 +1571,23 @@ const PublicFormPage = () => {
       .map((optionId) => fieldOptions.find((option) => option.id === optionId))
       .filter(Boolean);
 
+    const updateMultiSelectValue = (optionValue) => {
+      const currentValues = Array.isArray(value) ? value : [];
+      const nextValues = currentValues.includes(optionValue)
+        ? currentValues.filter((item) => item !== optionValue)
+        : [...currentValues, optionValue];
+      updateValue(nextValues);
+    };
+
     return (
       <>
-        {/* Current conditional question card */}
-        <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5">
+        <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5 pr-16">
           <div className="flex items-start justify-between gap-3">
             <label className="text-base font-semibold">
               {fieldLabel}
-              {field.required && <span className="ml-1 text-red-400">*</span>}
+              {(field.required === true || field.required === "true") && (
+                <span className="ml-1 text-red-400">*</span>
+              )}
             </label>
           </div>
 
@@ -1289,16 +1596,16 @@ const PublicFormPage = () => {
           field.type === "longText" ? (
             <textarea
               rows={4}
-              value={value}
-              onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+              value={value ?? ""}
+              onChange={(event) => updateValue(event.target.value)}
               placeholder={field.placeholder}
               {...commonProps}
               className={`${commonProps.className} resize-none`}
             />
           ) : field.type === "dropdown" ? (
             <select
-              value={value}
-              onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+              value={value ?? ""}
+              onChange={(event) => updateValue(event.target.value)}
               {...commonProps}
             >
               <option value="">Select an option</option>
@@ -1320,9 +1627,9 @@ const PublicFormPage = () => {
                   <input
                     type="radio"
                     className="h-4 w-4 shrink-0 accent-cyan-500"
-                    name={fieldKey}
+                    name={`${fieldKey}-${entryIndex}`}
                     checked={value === option.value}
-                    onChange={() => handleAnswer(fieldKey, option.value)}
+                    onChange={() => updateValue(option.value)}
                   />
 
                   <span className="min-w-0 flex-1 break-words">
@@ -1345,9 +1652,7 @@ const PublicFormPage = () => {
                     checked={(Array.isArray(value) ? value : []).includes(
                       option.value,
                     )}
-                    onChange={() =>
-                      handleCheckbox(fieldKey, option.value, fieldKey)
-                    }
+                    onChange={() => updateMultiSelectValue(option.value)}
                   />
 
                   <span className="min-w-0 flex-1 break-words">
@@ -1369,10 +1674,15 @@ const PublicFormPage = () => {
                   accept={getConditionalFieldAccept(field)}
                   multiple={field.uploadConfig?.multiple === true}
                   ref={(node) => {
-                    fileInputRefs.current[fieldKey] = node;
+                    fileInputRefs.current[entryStorageKey] = node;
                   }}
-                  onChange={(e) =>
-                    handleFile(field, e.target.files, fieldKey, e.currentTarget)
+                  onChange={(event) =>
+                    handleFile(
+                      field,
+                      event.target.files,
+                      entryStorageKey,
+                      event.currentTarget,
+                    )
                   }
                 />
 
@@ -1383,8 +1693,8 @@ const PublicFormPage = () => {
 
               {renderSelectedFileList(
                 file,
-                fieldKey,
-                fileInputRefs.current[fieldKey],
+                entryStorageKey,
+                fileInputRefs.current[entryStorageKey],
                 field.type,
               )}
             </div>
@@ -1394,7 +1704,7 @@ const PublicFormPage = () => {
                 <button
                   key={rating}
                   type="button"
-                  onClick={() => handleAnswer(fieldKey, rating)}
+                  onClick={() => updateValue(rating)}
                   className={`h-11 w-11 rounded-2xl border ${
                     value === rating
                       ? "border-cyan-500 bg-cyan-500 text-white"
@@ -1408,9 +1718,9 @@ const PublicFormPage = () => {
           ) : field.type === "password" ? (
             <div className="relative">
               <input
-                type={visiblePasswords[fieldKey] ? "text" : "password"}
-                value={value}
-                onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+                type={visiblePasswords[entryStorageKey] ? "text" : "password"}
+                value={value ?? ""}
+                onChange={(event) => updateValue(event.target.value)}
                 placeholder={field.placeholder}
                 autoComplete="new-password"
                 spellCheck={false}
@@ -1420,13 +1730,15 @@ const PublicFormPage = () => {
 
               <button
                 type="button"
-                onClick={() => togglePasswordVisibility(fieldKey)}
+                onClick={() => togglePasswordVisibility(entryStorageKey)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-slate-950/60 p-2 text-slate-300"
                 aria-label={
-                  visiblePasswords[fieldKey] ? "Hide secret" : "Show secret"
+                  visiblePasswords[entryStorageKey]
+                    ? "Hide secret"
+                    : "Show secret"
                 }
               >
-                {visiblePasswords[fieldKey] ? (
+                {visiblePasswords[entryStorageKey] ? (
                   <EyeOff size={16} />
                 ) : (
                   <Eye size={16} />
@@ -1450,8 +1762,24 @@ const PublicFormPage = () => {
                             ? "time"
                             : "text"
               }
-              value={value}
-              onChange={(e) => handleAnswer(fieldKey, e.target.value)}
+              value={value ?? ""}
+              onChange={(event) =>
+                updateValue(
+                  field.type === "number"
+                    ? sanitizeNumberInput(event.target.value)
+                    : field.type === "phone"
+                      ? sanitizePhoneInput(event.target.value)
+                      : event.target.value,
+                )
+              }
+              onBlur={
+                field.type === "link"
+                  ? (event) => {
+                      const normalized = normalizeHttpUrl(event.target.value);
+                      if (normalized) updateValue(normalized);
+                    }
+                  : undefined
+              }
               placeholder={field.placeholder}
               {...commonProps}
             />
@@ -1462,14 +1790,16 @@ const PublicFormPage = () => {
           )}
         </div>
 
-        {/* Child conditional questions outside current card */}
         {optionBasedField &&
           selectedOptions.map((option) => {
             const childFields = getConditionalBranchFields(option);
 
             if (!childFields.length) return null;
 
-            const branchPath = buildConditionalFieldKey(fieldKey, option.id);
+            const branchPath = buildConditionalFieldKey(
+              entryStorageKey,
+              option.id,
+            );
 
             return (
               <div key={branchPath} className="mt-5">
@@ -1482,6 +1812,85 @@ const PublicFormPage = () => {
             );
           })}
       </>
+    );
+  };
+
+  const renderConditionalField = (field, fieldKey, level = 1) => {
+    if (field.allowUserToAddMore !== true) {
+      return renderSingleConditionalField(
+        field,
+        fieldKey,
+        level,
+        values[fieldKey] ?? getEmptyConditionalFieldValue(field),
+        (nextValue) => handleAnswer(fieldKey, nextValue),
+        0,
+      );
+    }
+
+    const entries = getRepeatableConditionalEntries(field, fieldKey);
+    const canAddMore = entries.length < MAX_REPEATABLE_QUESTION_ENTRIES;
+
+    return (
+      <div className="space-y-4">
+        {entries.map((entryValue, entryIndex) => (
+          <div key={`${fieldKey}-entry-${entryIndex}`} className="relative">
+            {entryIndex === 0 && canAddMore ? (
+              <button
+                type="button"
+                onClick={() => addRepeatableConditionalEntry(field, fieldKey)}
+                aria-label={`Add another ${field.label || "conditional field"}`}
+                title="Add another"
+                className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-500/40 bg-cyan-500/15 text-xl font-semibold leading-none text-cyan-100 transition hover:bg-cyan-500/25 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+              >
+                +
+              </button>
+            ) : null}
+
+            {entryIndex > 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  removeRepeatableConditionalEntry(fieldKey, entryIndex)
+                }
+                aria-label={`Remove ${field.label || "conditional field"} ${
+                  entryIndex + 1
+                }`}
+                title="Remove"
+                className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-500/40 bg-red-500/15 text-xl font-semibold leading-none text-red-200 transition hover:bg-red-500/25 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+              >
+                −
+              </button>
+            ) : null}
+
+            {renderSingleConditionalField(
+              {
+                ...field,
+                label:
+                  entryIndex === 0
+                    ? field.label
+                    : `${field.label || "Conditional field"} ${entryIndex + 1}`,
+              },
+              fieldKey,
+              level,
+              entryValue,
+              (nextValue) =>
+                handleRepeatableConditionalAnswer(
+                  field,
+                  fieldKey,
+                  entryIndex,
+                  nextValue,
+                ),
+              entryIndex,
+            )}
+          </div>
+        ))}
+
+        {!canAddMore ? (
+          <p className="px-1 text-xs text-slate-400">
+            Maximum 5 entries allowed.
+          </p>
+        ) : null}
+      </div>
     );
   };
 
@@ -1519,6 +1928,15 @@ const PublicFormPage = () => {
     const questionValue =
       customValue !== undefined ? customValue : values[questionId] || "";
 
+    const verificationState = verificationStates[questionId] || {};
+
+    const currentDestination = String(questionValue || "").trim();
+
+    const isVerified =
+      verificationState.status === "verified" &&
+      verificationState.destination === currentDestination &&
+      Boolean(verificationTokens[questionId]);
+
     const changeQuestionValue =
       typeof customOnChange === "function"
         ? customOnChange
@@ -1543,7 +1961,7 @@ const PublicFormPage = () => {
     }
 
     return (
-      <div className="space-y-2 rounded-3xl border border-white/10 bg-white/5 p-5">
+      <div className="space-y-2 rounded-3xl border border-white/10 bg-white/5 p-5 pr-16">
         <div className="flex items-start justify-between gap-3">
           <label className="text-base font-semibold">
             {question.label}
@@ -1737,50 +2155,22 @@ const PublicFormPage = () => {
                 className={`${commonProps.className} sm:flex-1`}
               />
 
-              {question.validationEnabled === true ? (
+              {question.validationEnabled === true &&
+              (question.type === "email" || question.type === "phone") &&
+              !isVerified ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    const current = questionValue || "";
-
-                    if (question.type === "email" && !validateEmail(current)) {
-                      toast.error("Please enter a valid email.");
-                      return;
-                    }
-
-                    if (question.type === "phone" && !validatePhone(current)) {
-                      toast.error(
-                        "Please enter a valid 10-digit mobile number.",
-                      );
-                      return;
-                    }
-
-                    if (
-                      (verificationStates[questionId]?.status || "idle") ===
-                      "verified"
-                    ) {
-                      resetVerification(questionId);
-                    } else {
-                      sendVerificationCode(question);
-                    }
-                  }}
+                  onClick={() => sendVerificationCode(question)}
                   disabled={
-                    (verificationStates[questionId]?.status || "idle") ===
-                    "sending"
+                    verificationState.status === "sending" ||
+                    verificationState.status === "verifying"
                   }
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 disabled:opacity-60 sm:w-40"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-40"
                 >
-                  {(verificationStates[questionId]?.status || "idle") ===
-                  "sending" ? (
+                  {verificationState.status === "sending" ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
                       Sending OTP...
-                    </>
-                  ) : (verificationStates[questionId]?.status || "idle") ===
-                    "verified" ? (
-                    <>
-                      <ShieldCheck size={16} />
-                      Verified
                     </>
                   ) : (
                     <>
@@ -1793,7 +2183,8 @@ const PublicFormPage = () => {
             </div>
 
             {question.validationEnabled === true &&
-              (verificationStates[questionId]?.status || "idle") === "otp" && (
+              !isVerified &&
+              verificationState.status === "otp" && (
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <input
                     value={verificationStates[questionId]?.otp || ""}
@@ -1816,16 +2207,27 @@ const PublicFormPage = () => {
                   <button
                     type="button"
                     onClick={() => verifyOtp(question)}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white sm:w-40"
+                    disabled={verificationState.status === "verifying"}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-40"
                   >
-                    <ShieldCheck size={16} />
-                    Verify OTP
+                    {verificationState.status === "verifying" ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={16} />
+                        Verify OTP
+                      </>
+                    )}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => sendVerificationCode(question)}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold sm:w-40"
+                    disabled={verificationState.status === "verifying"}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 sm:w-40"
                   >
                     <RefreshCcw size={16} />
                     Resend OTP
@@ -1833,14 +2235,15 @@ const PublicFormPage = () => {
                 </div>
               )}
 
-            {question.validationEnabled === true &&
-              (verificationStates[questionId]?.status || "idle") ===
-                "verified" && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  <CheckCircle2 size={14} />
-                  Verified
-                </div>
-              )}
+            {question.validationEnabled === true && isVerified ? (
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-300">
+                <CheckCircle2 size={16} />
+
+                {question.type === "email"
+                  ? "Email Verified"
+                  : "Phone Verified"}
+              </div>
+            ) : null}
           </div>
         ) : (
           <input
@@ -1939,41 +2342,43 @@ const PublicFormPage = () => {
     }
 
     const entries = getRepeatableEntries(question);
+    const canAddMore = entries.length < MAX_REPEATABLE_QUESTION_ENTRIES;
 
     return (
       <div className="space-y-4">
         {entries.map((entryValue, entryIndex) => (
-          <div
-            key={`${questionId}-entry-${entryIndex}`}
-            className="relative space-y-3"
-          >
-            {entryIndex > 0 && (
-              <div className="flex items-center justify-between rounded-2xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3">
-                <span className="text-sm font-semibold text-cyan-100">
-                  {question.label} {entryIndex + 1}
-                  {question.required && (
-                    <span className="ml-1 text-red-400">*</span>
-                  )}
-                </span>
+          <div key={`${questionId}-entry-${entryIndex}`} className="relative">
+            {/* First/original question ke top-right me + button */}
+            {entryIndex === 0 && canAddMore ? (
+              <button
+                type="button"
+                onClick={() => addRepeatableQuestionEntry(question)}
+                aria-label={`Add another ${question.label}`}
+                title="Add another"
+                className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-500/40 bg-cyan-500/15 text-xl font-semibold leading-none text-cyan-100 transition hover:bg-cyan-500/25 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+              >
+                +
+              </button>
+            ) : null}
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    removeRepeatableQuestionEntry(question, entryIndex)
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
-                >
-                  <X size={14} />
-                  Remove
-                </button>
-              </div>
-            )}
+            {/* Added questions ke top-right me - button */}
+            {entryIndex > 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  removeRepeatableQuestionEntry(question, entryIndex)
+                }
+                aria-label={`Remove ${question.label} ${entryIndex + 1}`}
+                title="Remove"
+                className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-500/40 bg-red-500/15 text-xl font-semibold leading-none text-red-200 transition hover:bg-red-500/25 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+              >
+                −
+              </button>
+            ) : null}
 
             {renderQuestion(
               {
                 ...question,
-
-                // Additional copy me main label duplicate na ho
                 label:
                   entryIndex === 0
                     ? question.label
@@ -1987,18 +2392,11 @@ const PublicFormPage = () => {
           </div>
         ))}
 
-        {entries.length < MAX_REPEATABLE_QUESTION_ENTRIES ? (
-          <button
-            type="button"
-            onClick={() => addRepeatableQuestionEntry(question)}
-            className="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20"
-          >
-            <span className="text-lg leading-none">+</span>
-            Add Question
-          </button>
-        ) : (
-          <p className="text-xs text-slate-400">Maximum 5 questions allowed.</p>
-        )}
+        {!canAddMore ? (
+          <p className="px-1 text-xs text-slate-400">
+            Maximum 5 entries allowed.
+          </p>
+        ) : null}
       </div>
     );
   };
@@ -2022,96 +2420,108 @@ const PublicFormPage = () => {
           : [value]
         : null;
 
-      const isEntryEmpty = (entryValue) =>
-        entryValue === undefined ||
-        entryValue === null ||
-        entryValue === "" ||
-        (Array.isArray(entryValue) && entryValue.length === 0);
+      const isEmptyValue = (val) => {
+        if (val === undefined || val === null) return true;
 
-      const empty = isRepeatable
-        ? repeatableValues.every(isEntryEmpty)
-        : isEntryEmpty(value);
-
-      if (question.required && isRepeatable) {
-        const hasEmptyAddedEntry =
-          repeatableValues.length === 0 || repeatableValues.some(isEntryEmpty);
-
-        if (hasEmptyAddedEntry) {
-          throw new Error(
-            `Please complete all added entries for "${question.label}".`,
-          );
+        if (typeof val === "string") {
+          return val.trim() === "";
         }
-      } else if (question.required && empty && !selectedFiles.length) {
-        throw new Error(`${question.label} is required`);
+
+        if (Array.isArray(val)) {
+          return val.length === 0 || val.every((item) => isEmptyValue(item));
+        }
+
+        return false;
+      };
+
+      const required =
+        question.required === true || question.required === "true";
+
+      if (required) {
+        if (question.type === "fileUpload" || question.type === "imageUpload") {
+          if (!selectedFiles.length) {
+            throw new Error(`${question.label} is required.`);
+          }
+        } else if (isRepeatable) {
+          if (
+            repeatableValues.length === 0 ||
+            repeatableValues.some((item) => isEmptyValue(item))
+          ) {
+            throw new Error(
+              `Please complete all entries of "${question.label}".`,
+            );
+          }
+        } else if (isEmptyValue(value)) {
+          throw new Error(`${question.label} is required.`);
+        }
       }
 
       if (question.type === "email") {
-  const emailValues = isRepeatable
-    ? repeatableValues
-    : [value];
+        const emailValues = isRepeatable ? repeatableValues : [value];
 
-  const hasInvalidEmail = emailValues
-    .filter((entry) => String(entry || "").trim())
-    .some((entry) => !validateEmail(entry));
+        const hasInvalidEmail = emailValues
+          .filter((entry) => String(entry || "").trim())
+          .some((entry) => !validateEmail(entry));
 
-  if (hasInvalidEmail) {
-    throw new Error(
-      `${question.label} must contain valid email addresses`,
-    );
-  }
-}
-     if (question.type === "phone") {
-  const phoneValues = isRepeatable
-    ? repeatableValues
-    : [value];
+        if (hasInvalidEmail) {
+          throw new Error(
+            `${question.label} must contain valid email addresses`,
+          );
+        }
+      }
+      if (question.type === "phone") {
+        const phoneValues = isRepeatable ? repeatableValues : [value];
 
-  const hasInvalidPhone = phoneValues
-    .filter((entry) => String(entry || "").trim())
-    .some((entry) => !validatePhone(entry));
+        const hasInvalidPhone = phoneValues
+          .filter((entry) => String(entry || "").trim())
+          .some((entry) => !validatePhone(entry));
 
-  if (hasInvalidPhone) {
-    throw new Error(
-      "Please enter valid 10-digit mobile numbers.",
-    );
-  }
-}
+        if (hasInvalidPhone) {
+          throw new Error("Please enter valid 10-digit mobile numbers.");
+        }
+      }
       if (
         question.validationEnabled === true &&
-        (question.type === "email" || question.type === "phone") &&
-        !verificationTokens[questionId]
+        (question.type === "email" || question.type === "phone")
       ) {
-        throw new Error(`Please verify ${question.label} before submitting.`);
+        const verificationState = verificationStates[questionId] || {};
+
+        const currentDestination = String(value || "").trim();
+
+        const verified =
+          verificationState.status === "verified" &&
+          verificationState.destination === currentDestination &&
+          Boolean(verificationTokens[questionId]);
+
+        if (!verified) {
+          throw new Error(`Please verify ${question.label} before submitting.`);
+        }
       }
-    if (question.type === "number") {
-  const numberValues = isRepeatable
-    ? repeatableValues
-    : [value];
+      if (question.type === "number") {
+        const numberValues = isRepeatable ? repeatableValues : [value];
 
-  for (const numberValue of numberValues) {
-    const validationMessage =
-      getNumberValidationMessage(
-        question,
-        numberValue,
-      );
+        for (const numberValue of numberValues) {
+          const validationMessage = getNumberValidationMessage(
+            question,
+            numberValue,
+          );
 
-    if (validationMessage) {
-      throw new Error(validationMessage);
-    }
-  }
-}
-     if (question.type === "link") {
-  const linkValues = isRepeatable
-    ? repeatableValues
-    : [value];
+          if (validationMessage) {
+            throw new Error(validationMessage);
+          }
+        }
+      }
+      if (question.type === "link") {
+        const linkValues = isRepeatable ? repeatableValues : [value];
 
-  const hasInvalidLink = linkValues
-    .filter((entry) => String(entry || "").trim())
-    .some((entry) => !normalizeHttpUrl(entry));
+        const hasInvalidLink = linkValues
+          .filter((entry) => String(entry || "").trim())
+          .some((entry) => !normalizeHttpUrl(entry));
 
-  if (hasInvalidLink) {
-    throw new Error("Please enter valid links.");
-  }
-}
+        if (hasInvalidLink) {
+          throw new Error("Please enter valid links.");
+        }
+      }
 
       if (selectedFiles.length) {
         const validationMessage = selectedFiles
@@ -2131,42 +2541,140 @@ const PublicFormPage = () => {
 
     for (const descriptor of conditionalDescriptors || []) {
       const field = descriptor.field || {};
-      const value = values[descriptor.key];
-      const file = files[descriptor.key];
-      const selectedFiles = getSelectionList(file);
-      const empty =
-        value === undefined ||
-        value === null ||
-        value === "" ||
-        (Array.isArray(value) && value.length === 0);
+      const fieldKey = descriptor.key;
 
-      if (field.required && empty && !selectedFiles.length) {
-        throw new Error(`${field.label || "Conditional field"} is required`);
+      const fieldRequired =
+        field.required === true || field.required === "true";
+
+      const isRepeatableConditional =
+        field.allowUserToAddMore === true ||
+        field.allowUserToAddMore === "true";
+
+      const isUploadField =
+        field.type === "fileUpload" ||
+        field.type === "imageUpload" ||
+        field.type === "pdfUpload";
+
+      const rawValue = values[fieldKey];
+
+      const conditionalValues = isRepeatableConditional
+        ? Array.isArray(rawValue)
+          ? rawValue
+          : rawValue === undefined || rawValue === null
+            ? [getEmptyConditionalFieldValue(field)]
+            : [rawValue]
+        : [rawValue];
+
+      const isConditionalValueEmpty = (input) => {
+        if (input === undefined || input === null) {
+          return true;
+        }
+
+        if (typeof input === "string") {
+          return input.trim() === "";
+        }
+
+        if (Array.isArray(input)) {
+          return (
+            input.length === 0 ||
+            input.every((item) => isConditionalValueEmpty(item))
+          );
+        }
+
+        if (field.type === "rating" && Number(input) <= 0) {
+          return true;
+        }
+
+        return false;
+      };
+
+      const conditionalFiles = [];
+
+      if (isRepeatableConditional) {
+        conditionalValues.forEach((_, entryIndex) => {
+          const entryStorageKey = buildConditionalFieldKey(
+            fieldKey,
+            `entry-${entryIndex}`,
+          );
+
+          conditionalFiles.push(...getSelectionList(files[entryStorageKey]));
+        });
+      } else {
+        conditionalFiles.push(...getSelectionList(files[fieldKey]));
       }
 
-      if (field.type === "email" && value && !validateEmail(value)) {
-        throw new Error(
-          `${field.label || "Conditional field"} must be a valid email`,
-        );
-      }
-      if (field.type === "phone" && value && !validatePhone(value)) {
-        throw new Error("Please enter a valid 10-digit mobile number.");
-      }
-      if (field.type === "number") {
-        const validationMessage = getNumberValidationMessage(field, value);
-        if (validationMessage) {
-          throw new Error(validationMessage);
+      if (fieldRequired) {
+        if (isUploadField) {
+          if (!conditionalFiles.length) {
+            throw new Error(
+              `${field.label || "Conditional field"} is required.`,
+            );
+          }
+        } else if (isRepeatableConditional) {
+          const hasEmptyEntry =
+            conditionalValues.length === 0 ||
+            conditionalValues.some((entry) => isConditionalValueEmpty(entry));
+
+          if (hasEmptyEntry) {
+            throw new Error(
+              `Please complete all added entries for "${
+                field.label || "Conditional field"
+              }".`,
+            );
+          }
+        } else if (isConditionalValueEmpty(rawValue)) {
+          throw new Error(`${field.label || "Conditional field"} is required.`);
         }
       }
-      if (field.type === "link" && value) {
-        const normalized = normalizeHttpUrl(value);
-        if (!normalized) {
+
+      const nonEmptyValues = conditionalValues.filter(
+        (entry) => !isConditionalValueEmpty(entry),
+      );
+
+      if (field.type === "email") {
+        const hasInvalidEmail = nonEmptyValues.some(
+          (entry) => !validateEmail(entry),
+        );
+
+        if (hasInvalidEmail) {
+          throw new Error(
+            `${field.label || "Conditional field"} must contain a valid email.`,
+          );
+        }
+      }
+
+      if (field.type === "phone") {
+        const hasInvalidPhone = nonEmptyValues.some(
+          (entry) => !validatePhone(entry),
+        );
+
+        if (hasInvalidPhone) {
+          throw new Error("Please enter a valid 10-digit mobile number.");
+        }
+      }
+
+      if (field.type === "number") {
+        for (const entry of nonEmptyValues) {
+          const validationMessage = getNumberValidationMessage(field, entry);
+
+          if (validationMessage) {
+            throw new Error(validationMessage);
+          }
+        }
+      }
+
+      if (field.type === "link") {
+        const hasInvalidLink = nonEmptyValues.some(
+          (entry) => !normalizeHttpUrl(entry),
+        );
+
+        if (hasInvalidLink) {
           throw new Error("Please enter a valid link.");
         }
       }
 
-      if (selectedFiles.length) {
-        const validationMessage = selectedFiles
+      if (conditionalFiles.length) {
+        const validationMessage = conditionalFiles
           .map((entry) =>
             validateSelectedFile(
               field.type,
@@ -2175,6 +2683,7 @@ const PublicFormPage = () => {
             ),
           )
           .find(Boolean);
+
         if (validationMessage) {
           throw new Error(validationMessage);
         }
@@ -2182,76 +2691,61 @@ const PublicFormPage = () => {
     }
   };
 
-  const validateCurrentPage = () => {
-    const currentIds = new Set(
-      (currentPageQuestions || []).map((question) => getQuestionId(question)),
-    );
-    const sectionDescriptors = activeConditionalDescriptors.filter(
-      (descriptor) => currentIds.has(descriptor.questionId),
-    );
-    validateQuestionSet(currentPageQuestions, sectionDescriptors);
-  };
-
   const validateAllSections = () => {
-    validateQuestionSet(allQuestions, activeConditionalDescriptors);
-  };
+    const questions = publicSections.flatMap((section) =>
+      (section.questions || []).filter(
+        (question) =>
+          question &&
+          question.type !== "sectionHeading" &&
+          question.isActive !== false,
+      ),
+    );
 
-  const goToSectionTop = () => {
-    sectionTopRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    // Submit ke exact time par active conditional fields dobara nikalo
+    const latestConditionalDescriptors = getActiveConditionalFieldDescriptors(
+      questions,
+      values,
+    );
+
+    validateQuestionSet(questions, latestConditionalDescriptors);
   };
 
   const handlePreviousPage = () => {
+    setError("");
+
     if (currentPageIndex > 0) {
       setCurrentPageIndex((prev) => Math.max(0, prev - 1));
-      window.requestAnimationFrame(() => goToSectionTop());
       return;
     }
 
     if (currentSectionIndex > 0) {
       const previousSectionIndex = currentSectionIndex - 1;
       const previousSection = publicSections[previousSectionIndex];
-      const previousPages = chunkQuestions(
+      const previousPages = buildBalancedQuestionPages(
         previousSection?.questions || [],
-        QUESTIONS_PER_PAGE,
+        QUESTION_PAGE_CAPACITY,
       );
       setCurrentSectionIndex(previousSectionIndex);
       setCurrentPageIndex(Math.max(0, previousPages.length - 1));
     }
-    window.requestAnimationFrame(() => goToSectionTop());
   };
 
   const handleNextPage = () => {
-    try {
-      validateCurrentPage();
-      setError("");
+    setError("");
 
-      if (currentPageIndex < currentSectionTotalPages - 1) {
-        setCurrentPageIndex((prev) => prev + 1);
-      } else if (currentSectionIndex < publicSections.length - 1) {
-        setCurrentSectionIndex((prev) => prev + 1);
-        setCurrentPageIndex(0);
-      }
-
-      window.requestAnimationFrame(() => goToSectionTop());
-      return true;
-    } catch (validationError) {
-      const message =
-        validationError?.message || "Please complete the current page.";
-      setError(message);
-      toast.error(message);
-      window.requestAnimationFrame(() => goToSectionTop());
-      return false;
+    if (currentPageIndex < currentSectionTotalPages - 1) {
+      setCurrentPageIndex((prev) => prev + 1);
+    } else if (currentSectionIndex < publicSections.length - 1) {
+      setCurrentSectionIndex((prev) => prev + 1);
+      setCurrentPageIndex(0);
     }
+
+    return true;
   };
 
   const isFinalPage =
     currentSectionIndex === publicSections.length - 1 &&
     currentPageIndex === currentSectionTotalPages - 1;
-  const hasNextPageInSection = currentPageIndex < currentSectionTotalPages - 1;
-  const hasNextSection = currentSectionIndex < publicSections.length - 1;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -2279,11 +2773,29 @@ const PublicFormPage = () => {
     setSubmitting(true);
     try {
       validateAllSections();
+      if (
+        declarationSettings.enabled === true &&
+        declarationSettings.required !== false &&
+        !declarationAccepted
+      ) {
+        throw new Error("Please accept the declaration before submitting.");
+      }
       setError("");
       const payload = new FormData();
+      const activeConditionalDescriptors = getActiveConditionalFieldDescriptors(
+        allQuestions,
+        values,
+      );
+      const activeConditionalKeys = activeConditionalDescriptors.map(
+        (descriptor) => descriptor.key,
+      );
+      const activeConditionalValues = pruneConditionalState(
+        values,
+        activeConditionalKeys,
+      );
       const topLevelAnswers = {};
       const conditionalAnswers = {};
-      Object.entries(values).forEach(([key, value]) => {
+      Object.entries(activeConditionalValues).forEach(([key, value]) => {
         if (isConditionalFieldKey(key)) {
           conditionalAnswers[key] = { value };
         } else {
@@ -2294,6 +2806,8 @@ const PublicFormPage = () => {
       payload.append("answers", JSON.stringify(topLevelAnswers));
       payload.append("conditionalAnswers", JSON.stringify(conditionalAnswers));
       payload.append("verificationTokens", JSON.stringify(verificationTokens));
+      payload.append("declarationAccepted", String(declarationAccepted));
+      payload.append("declarationText", declarationSettings.text || "");
       Object.entries(files).forEach(([questionId, selection]) => {
         getSelectionList(selection).forEach((entry) => {
           if (entry?.file) {
@@ -2310,7 +2824,9 @@ const PublicFormPage = () => {
       setVisiblePasswords({});
       setVerificationStates({});
       setVerificationTokens({});
+      setDeclarationAccepted(false);
       setCurrentSectionIndex(0);
+      setCurrentPageIndex(0);
       setSubmitting(false);
       toast.success(
         getSuccessMessage(form, response.data?.data || response.data),
@@ -2528,16 +3044,9 @@ const PublicFormPage = () => {
               </div>
             ) : (
               <>
-                <div
-                  ref={sectionTopRef}
-                  className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-xl"
-                >
+                <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-xl">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                      {/* <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-                        Section {currentSectionIndex + 1} of{" "}
-                        {publicSections.length}
-                      </div> */}
                       <h2 className="text-2xl font-black break-words">
                         {currentSection?.title || LEGACY_DEFAULT_SECTION_TITLE}
                       </h2>
@@ -2589,18 +3098,49 @@ const PublicFormPage = () => {
                   )}
                 </div>
 
-                <div className="space-y-5">
-                  {currentPageQuestions.map((question, index) => {
-                    const questionKey =
-                      question._id || question.id || `question-${index}`;
+                <div className="relative min-h-[420px]">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={`${currentSectionIndex}-${currentPageIndex}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="space-y-5"
+                    >
+                      {currentPageQuestions.map((question, index) => {
+                        const questionKey =
+                          question._id || question.id || `question-${index}`;
 
-                    return (
-                      <div key={questionKey} className="space-y-5">
-                        {renderQuestionWithRepeatSupport(question)}
-                      </div>
-                    );
-                  })}
+                        return (
+                          <div key={questionKey} className="space-y-5">
+                            {renderQuestionWithRepeatSupport(question)}
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
+
+                {declarationSettings.enabled === true && isFinalPage && (
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={declarationAccepted}
+                        onChange={(event) =>
+                          setDeclarationAccepted(event.target.checked)
+                        }
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 accent-cyan-500"
+                      />
+
+                      <span className="whitespace-pre-wrap text-sm leading-7 text-slate-200">
+                        {declarationSettings.text ||
+                          "I hereby declare that the information provided above is true and correct to the best of my knowledge."}
+                      </span>
+                    </label>
+                  </div>
+                )}
               </>
             )}
 
@@ -2610,46 +3150,40 @@ const PublicFormPage = () => {
               </div>
             )}
             {currentSection && (
-              <div className="flex w-full items-center justify-between gap-4">
-                <div className="flex h-12 w-48 shrink-0 justify-start">
+              <div className="mt-6 grid grid-cols-2 gap-4 items-center">
+                <div>
                   {currentSectionIndex > 0 || currentPageIndex > 0 ? (
                     <button
                       type="button"
                       onClick={handlePreviousPage}
-                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-cyan-600 text-sm font-semibold text-white shadow-xl"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-cyan-600 text-sm font-semibold text-white shadow-xl"
                     >
                       Previous
                     </button>
-                  ) : null}
+                  ) : (
+                    <div aria-hidden="true" className="h-12 w-full" />
+                  )}
                 </div>
 
-                <div className="flex h-12 w-48 shrink-0 justify-end">
-                  {hasNextPageInSection ? (
-                    <button
-                      type="button"
-                      onClick={handleNextPage}
-                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl"
-                    >
-                      Next
-                    </button>
-                  ) : hasNextSection ? (
-                    <button
-                      type="button"
-                      onClick={handleNextPage}
-                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl"
-                    >
-                      Next Section
-                    </button>
-                  ) : (
+                <div>
+                  {isFinalPage ? (
                     <button
                       type="submit"
                       onClick={() => {
                         explicitSubmitRef.current = true;
                       }}
                       disabled={submitting}
-                      className="inline-flex h-12 w-48 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {submitting ? "Submitting..." : "Submit Response"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleNextPage}
+                      className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-cyan-600 text-sm font-semibold text-white shadow-2xl"
+                    >
+                      Next
                     </button>
                   )}
                 </div>

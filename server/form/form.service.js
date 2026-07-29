@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const zlib = require("zlib");
+const XLSX = require("xlsx");
 const Form = require("./form.model.js");
 const FormQuestion = require("./formQuestion.model.js");
 const FormResponse = require("./formResponse.model.js");
@@ -17,6 +18,9 @@ const User = require("../auth/user.model.js");
 const Settings = require("../admin/settings.model.js");
 const { createLog } = require("../services/activityLogService.js");
 const { sendEmail } = require("../services/email/sendEmail.js");
+const {
+  parseUploadedDataFile,
+} = require("../services/documentExtractionService.js");
 const {
   buildAdminFormSubmissionEmail,
   buildUserConfirmationEmail,
@@ -200,7 +204,11 @@ function normalizeConditionalField(field, index = 0, depth = 1) {
     placeholder: String(field.placeholder || "").trim(),
     helpText: String(field.helpText || field.description || "").trim(),
     required: field.required === true,
+
     validationEnabled: field.validationEnabled === true,
+
+    allowUserToAddMore: field.allowUserToAddMore === true,
+
     validation: normalizeConditionalValidation(field.validation || {}),
     options,
     uploadConfig: {
@@ -1128,6 +1136,10 @@ const importFormFile = async (file) => {
         importedForm.emailTemplate,
         importedForm,
       ),
+      declarationSettings: normalizeDeclarationSettings(
+        importedForm.declarationSettings,
+        importedForm,
+      ),
       sections: derivedSections.map((section, index) => ({
         id: section.id,
         title: section.title,
@@ -1168,6 +1180,7 @@ const importFormFile = async (file) => {
     titleStyle: normalizeTitleStyle(),
     descriptionStyle: normalizeDescriptionStyle(),
     emailTemplate: normalizeEmailTemplate(),
+    declarationSettings: normalizeDeclarationSettings(),
     sections: parsed.sections,
     questions: parsed.questions,
   };
@@ -1263,6 +1276,12 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   whatsappPhoneNumberId: "",
   whatsappVerifyToken: "",
   whatsappBusinessNumber: "",
+};
+
+const DEFAULT_DECLARATION_SETTINGS = {
+  enabled: false,
+  text: "",
+  required: true,
 };
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -1834,6 +1853,10 @@ const normalizeFormPayload = async (
       payload.notificationSettings,
       payload,
     ),
+    declarationSettings: normalizeDeclarationSettings(
+      payload.declarationSettings,
+      payload,
+    ),
     notificationEmail: String(payload.notificationEmail || "").trim(),
     confirmationEmailEnabled: payload.confirmationEmailEnabled === true,
     allowFileUpload: payload.allowFileUpload === true,
@@ -2309,7 +2332,12 @@ const normalizeEmailTemplate = (template = {}, fallback = {}) => {
       pick("logoUrl", legacy.logoUrl, legacy.emailTemplate?.logoUrl, ""),
     ).trim(),
     logoAsset: toAssetPayload(
-      pick("logoAsset", legacy.logoAsset, legacy.emailTemplate?.logoAsset, null),
+      pick(
+        "logoAsset",
+        legacy.logoAsset,
+        legacy.emailTemplate?.logoAsset,
+        null,
+      ),
       pick("logoUrl", legacy.logoUrl, legacy.emailTemplate?.logoUrl, ""),
     ),
     bannerUrl: String(
@@ -2408,6 +2436,32 @@ const normalizeNotificationSettings = (settings = {}, fallback = {}) => {
   };
 };
 
+const normalizeDeclarationSettings = (settings = {}, fallback = {}) => {
+  const source = settings && typeof settings === "object" ? settings : {};
+  const legacy = fallback && typeof fallback === "object" ? fallback : {};
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(source, key);
+  const pick = (key, ...values) =>
+    hasOwn(key) ? source[key] : values.find((value) => value !== undefined);
+
+  return {
+    enabled:
+      pick(
+        "enabled",
+        legacy.declarationSettings?.enabled,
+        DEFAULT_DECLARATION_SETTINGS.enabled,
+      ) === true,
+    text: String(
+      pick("text", legacy.declarationSettings?.text, "") ?? "",
+    ).trim(),
+    required:
+      pick(
+        "required",
+        legacy.declarationSettings?.required,
+        DEFAULT_DECLARATION_SETTINGS.required,
+      ) !== false,
+  };
+};
+
 const getBrandingSettings = async (form = {}) => {
   const settingsDoc = await Settings.findOne().lean();
   const settings = settingsDoc?.settings || settingsDoc || {};
@@ -2477,6 +2531,10 @@ const buildFormDto = (form, questions = [], responseCount = 0) => {
     emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
     notificationSettings: normalizeNotificationSettings(
       plainForm.notificationSettings,
+      plainForm,
+    ),
+    declarationSettings: normalizeDeclarationSettings(
+      plainForm.declarationSettings,
       plainForm,
     ),
     sections: buildSectionsDto(plainForm.sections || [], sortedQuestions),
@@ -2576,6 +2634,10 @@ const buildFormExportDto = (form, questions = []) => {
         "",
       bannerImage: plainForm.bannerImage || plainForm.bannerImageUrl || "",
       emailTemplate: normalizeEmailTemplate(plainForm.emailTemplate, plainForm),
+      declarationSettings: normalizeDeclarationSettings(
+        plainForm.declarationSettings,
+        plainForm,
+      ),
       sections,
       questions: sortedQuestions.map((question, index) =>
         buildQuestionExportDto(question, index),
@@ -2827,6 +2889,7 @@ const sanitizeAnswerForApi = (answer) => {
 
 const sanitizeResponseForApi = (response) => ({
   ...response,
+  ...getResponseContactFromAnswers(response),
   answers: Array.isArray(response.answers)
     ? response.answers.map(sanitizeAnswerForApi)
     : [],
@@ -2997,8 +3060,9 @@ const buildResponseAnalysis = (response) => {
   const ratingValue = detectRatingValue(answers);
   const { interestedAnswer, availableAnswer, interestedYes, availableYes } =
     detectInterestSignals(answers);
-  const hasEmail = Boolean(response.email);
-  const hasPhone = Boolean(response.phone);
+  const contact = getResponseContactFromAnswers(response);
+  const hasEmail = Boolean(response.email || contact.email);
+  const hasPhone = Boolean(response.phone || contact.phone);
 
   const score =
     (ratingValue
@@ -3074,9 +3138,493 @@ const paginateArray = (items = [], options = {}) => {
   };
 };
 
-const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+const normalizeResponseSourceFilter = (value = "") => {
+  const normalized = String(value || "all").trim().toLowerCase();
+  if (["all", "manual", "imported"].includes(normalized)) {
+    return normalized;
+  }
+  return "all";
+};
 
-const formatExportAnswerValue = (answer = {}) => {
+const sanitizeCsvCell = (value) => {
+  const text = String(value ?? "");
+  const trimmed = text.trimStart();
+  if (/^[=+\-@]/.test(trimmed) || /^[\t\r]/.test(trimmed)) {
+    return `'${text}`;
+  }
+  return text;
+};
+
+const escapeCsv = (value) =>
+  `"${sanitizeCsvCell(value).replace(/"/g, '""')}"`;
+
+const getResponseExportSheetName = (form = {}) => {
+  const base = String(form.title || form.name || "Responses")
+    .replace(/[\\/?*\[\]:]/g, " ")
+    .trim();
+  return (base || "Responses").slice(0, 31) || "Responses";
+};
+
+const getResponseContactFromAnswers = (response = {}) => {
+  const answers = Array.isArray(response.answers) ? response.answers : [];
+  let email = String(response.email || "").trim();
+  let phone = String(response.phone || "").trim();
+  let name = String(response.name || "").trim();
+
+  for (const answer of answers) {
+    const label = normalizeComparableText(answer.displayLabel || answer.fieldLabel || answer.question?.label);
+    const value = Array.isArray(answer.value)
+      ? answer.value.join(", ")
+      : String(answer.value || "");
+
+    if (!name && (answer.question?.type === "shortAnswer" || /name/.test(label))) {
+      name = value;
+    }
+    if (!email && (answer.question?.type === "email" || /email/.test(label))) {
+      email = value;
+    }
+    if (!phone && (answer.question?.type === "phone" || /phone|mobile|contact/.test(label))) {
+      phone = value;
+    }
+  }
+
+  return {
+    name,
+    email,
+    phone,
+  };
+};
+
+const getResponseSummaryValue = (response = {}, key = "") => {
+  const contact = getResponseContactFromAnswers(response);
+  return contact[key] || "";
+};
+
+const getConditionalExportColumns = (responses = []) => {
+  const columns = [];
+  const seen = new Map();
+
+  for (const response of responses) {
+    for (const answer of response.answers || []) {
+      if (!answer.fieldId && !answer.parentOptionId) continue;
+      const key =
+        answer.conditionalPath ||
+        answer.fieldId ||
+        `${answer.parentOptionId}:${answer.fieldLabel}`;
+      if (seen.has(key)) continue;
+      const header = answer.displayContext
+        ? answer.displayContext
+        : answer.parentOptionLabel
+          ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional Field"}`
+          : answer.fieldLabel || answer.question?.label || "Conditional Field";
+      seen.set(key, true);
+      columns.push({ key, header });
+    }
+  }
+
+  return columns;
+};
+
+const buildResponseExportTable = (form, questions, responses) => {
+  const baseColumns = [
+    { key: "referenceId", header: "Reference ID" },
+    { key: "submittedAt", header: "Submitted At" },
+    { key: "name", header: "Name" },
+    { key: "email", header: "Email" },
+    { key: "phone", header: "Phone" },
+    { key: "imported", header: "Imported" },
+    { key: "importedBy", header: "Imported By" },
+    { key: "importedAt", header: "Imported At" },
+    { key: "sourceFile", header: "Source File" },
+    { key: "originalRowNumber", header: "Original Row Number" },
+    { key: "importBatchId", header: "Import Batch ID" },
+  ];
+  const normalizedQuestions = Array.isArray(questions)
+    ? questions.map((question) => ({
+        question,
+        key: String(question._id || question.id || ""),
+        header: String(question.label || "Question"),
+        aliases: getExportQuestionAliases(question),
+      }))
+    : [];
+  const dynamicColumnMap = new Map();
+  for (const response of responses || []) {
+    for (const answer of response.answers || []) {
+      const matchedQuestion = normalizedQuestions.find(
+        (column) => matchesExportQuestion(answer, column.question),
+      );
+      if (matchedQuestion) {
+        continue;
+      }
+
+      const key = getExportAnswerColumnKey(answer);
+      if (!key || dynamicColumnMap.has(key)) {
+        continue;
+      }
+
+      dynamicColumnMap.set(key, {
+        key,
+        header:
+          String(answer.displayContext || "").trim() ||
+          (answer.parentOptionLabel
+            ? `${String(answer.parentOptionLabel).trim()} - ${getExportAnswerLabel(answer)}`
+            : getExportAnswerLabel(answer)) ||
+          "Conditional Field",
+      });
+    }
+  }
+  const dynamicColumns = Array.from(dynamicColumnMap.values());
+  const headers = [
+    ...baseColumns.map((column) => column.header),
+    ...normalizedQuestions.map((column) => column.header),
+    ...dynamicColumns.map((column) => column.header),
+    "Response Snapshot",
+  ];
+
+  const rows = responses.map((response) => {
+    const questionBuckets = new Map(
+      normalizedQuestions.map((column) => [column.key, []]),
+    );
+    const dynamicBuckets = new Map(
+      dynamicColumns.map((column) => [column.key, []]),
+    );
+
+    for (const answer of response.answers || []) {
+      const matchedQuestion = normalizedQuestions.find((column) =>
+        matchesExportQuestion(answer, column.question),
+      );
+      if (matchedQuestion) {
+        questionBuckets.get(matchedQuestion.key)?.push(answer);
+        continue;
+      }
+
+      const dynamicKey = getExportAnswerColumnKey(answer);
+      if (dynamicKey && dynamicBuckets.has(dynamicKey)) {
+        dynamicBuckets.get(dynamicKey)?.push(answer);
+      }
+    }
+
+    const contact = getResponseContactFromAnswers(response);
+    const joinAnswerValues = (items = []) =>
+      items
+        .map((item) => getExportAnswerValueText(item))
+        .filter((item) => String(item ?? "").trim() !== "")
+        .join(" | ");
+
+    return [
+      response.referenceId || "",
+      response.submittedAt || response.createdAt || "",
+      contact.name || "",
+      contact.email || "",
+      contact.phone || "",
+      response.imported === true ? "Yes" : "No",
+      response.importedBy || "",
+      response.importedAt || "",
+      response.sourceFile || "",
+      response.originalRowNumber || "",
+      response.importBatchId || "",
+      ...normalizedQuestions.map((column) => {
+        const values = questionBuckets.get(column.key) || [];
+        const filteredValues = values.filter(
+          (answer) => answer.question?.type !== "password",
+        );
+        return joinAnswerValues(filteredValues);
+      }),
+      ...dynamicColumns.map((column) => {
+        const values = dynamicBuckets.get(column.key) || [];
+        return joinAnswerValues(values);
+      }),
+      buildExportAnswerSnapshot(response),
+    ];
+  });
+
+  return { headers, rows, baseColumns, questionColumns: normalizedQuestions, dynamicColumns };
+};
+
+const workbookColumnWidth = (value = "") => {
+  const length = Math.max(String(value ?? "").length, 12);
+  return Math.min(60, Math.max(10, length + 2));
+};
+
+const buildXlsxBuffer = (form, questions, responses) => {
+  const { headers, rows } = buildResponseExportTable(form, questions, responses);
+  const sheetRows = [headers, ...rows];
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
+  const columnWidths = headers.map((header, index) => {
+    const longest = Math.max(
+      workbookColumnWidth(header),
+      ...rows.map((row) => workbookColumnWidth(row[index])),
+    );
+    return { wch: longest };
+  });
+  worksheet["!cols"] = columnWidths;
+  worksheet["!freeze"] = {
+    xSplit: 0,
+    ySplit: 1,
+    topLeftCell: "A2",
+    activePane: "bottomLeft",
+    state: "frozen",
+  };
+  if (worksheet.A1) {
+    worksheet.A1.s = {
+      font: { bold: true },
+    };
+  }
+  for (let col = 0; col < headers.length; col += 1) {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: col })];
+    if (cell) {
+      cell.s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "1F2937" } },
+        fontColor: { rgb: "FFFFFF" },
+      };
+    }
+  }
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    getResponseExportSheetName(form),
+  );
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+};
+
+const wrapTextLines = (text = "", width = 90) => {
+  const words = String(text ?? "").split(/\s+/).filter(Boolean);
+  if (!words.length) return [""];
+  const lines = [];
+  let current = words.shift();
+  for (const word of words) {
+    if ((current + " " + word).length > width) {
+      lines.push(current);
+      current = word;
+    } else {
+      current += ` ${word}`;
+    }
+  }
+  lines.push(current);
+  return lines;
+};
+
+const escapePdfText = (value = "") =>
+  String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+
+const buildPdfBuffer = (form, questions, responses) => {
+  const { headers, rows } = buildResponseExportTable(form, questions, responses);
+  const title = String(form.title || "Responses").trim() || "Responses";
+  const generatedAt = new Date().toLocaleString();
+  const totalResponses = rows.length;
+  const pageWidth = 792;
+  const pageHeight = 612;
+  const marginX = 36;
+  const marginTop = 36;
+  const marginBottom = 42;
+  const lineHeight = 13;
+  const maxLinesPerPage =
+    Math.floor((pageHeight - marginTop - marginBottom) / lineHeight) - 8;
+  const tableLines = [
+    `Form: ${title}`,
+    `Generated Date: ${generatedAt}`,
+    `Total Responses: ${totalResponses}`,
+    "",
+    headers.join(" | "),
+    headers.map(() => "----").join(" | "),
+  ];
+
+  if (rows.length) {
+    for (const row of rows) {
+      tableLines.push(row.map((cell) => String(cell ?? "")).join(" | "));
+    }
+  } else {
+    tableLines.push("No responses found");
+  }
+
+  const wrappedLines = tableLines.flatMap((line) => wrapTextLines(line, 120));
+  const pages = [];
+  for (let index = 0; index < wrappedLines.length; index += maxLinesPerPage) {
+    pages.push(wrappedLines.slice(index, index + maxLinesPerPage));
+  }
+  if (!pages.length) {
+    pages.push(["No responses found"]);
+  }
+
+  const catalogObjectId = 1;
+  const pagesObjectId = 2;
+  const fontObjectId = 3;
+  const contentObjectIds = pages.map((_, index) => 4 + index);
+  const pageObjectIds = pages.map((_, index) => 4 + pages.length + index);
+
+  const pageObjects = pages.map((pageLines, index) => {
+    const contentObjectId = contentObjectIds[index];
+    const pageNumber = index + 1;
+    const contentLines = [
+      "BT",
+      "/F1 10 Tf",
+      `1 0 0 1 ${marginX} ${pageHeight - marginTop} Tm`,
+      `(${escapePdfText(title)}) Tj`,
+      "T* /F1 8 Tf",
+      `(${escapePdfText(`Generated Date: ${generatedAt}`)}) Tj`,
+      "T*",
+      `(${escapePdfText(`Total Responses: ${totalResponses}`)}) Tj`,
+      "T*",
+      "T* /F1 7 Tf",
+      ...pageLines.flatMap((line) => [
+        `(${escapePdfText(line)}) Tj`,
+        "T*",
+      ]),
+      `(${escapePdfText(`Page ${pageNumber} of ${pages.length}`)}) Tj`,
+      "ET",
+    ];
+    const contentStream = contentLines.join("\n");
+    return [
+      `${contentObjectId} 0 obj`,
+      `<< /Length ${Buffer.byteLength(contentStream, "utf8")} >>`,
+      "stream",
+      contentStream,
+      "endstream",
+      "endobj",
+      `${pageObjectIds[index]} 0 obj`,
+      `<< /Type /Page /Parent ${pagesObjectId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontObjectId} 0 R >> >> /Contents ${contentObjectId} 0 R >>`,
+      "endobj",
+    ].join("\n");
+  });
+
+  const objects = [
+    `${catalogObjectId} 0 obj\n<< /Type /Catalog /Pages ${pagesObjectId} 0 R >>\nendobj\n`,
+    `${pagesObjectId} 0 obj\n<< /Type /Pages /Kids [ ${pageObjectIds.map((id) => `${id} 0 R`).join(" ")} ] /Count ${pageObjectIds.length} >>\nendobj\n`,
+    `${fontObjectId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`,
+    ...pageObjects,
+  ];
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = ["0000000000 65535 f \n"];
+  for (const object of objects) {
+    offsets.push(`${String(Buffer.byteLength(pdf, "utf8")).padStart(10, "0")} 00000 n \n`);
+    pdf += `${object}\n`;
+  }
+  const xrefStart = Buffer.byteLength(pdf, "utf8");
+  pdf += `xref\n0 ${objects.length + 1}\n${offsets.join("")}trailer\n<< /Size ${objects.length + 1} /Root ${catalogObjectId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
+  return Buffer.from(pdf, "utf8");
+};
+
+const safeJsonParse = (value, fallback = null) => {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+  if (typeof value === "object") {
+    return value;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const isDangerousSpreadsheetValue = (value) => {
+  if (typeof value !== "string") return false;
+  const text = value.trimStart();
+  return /^[=+@]/.test(text) || /^\t/.test(text);
+};
+
+const getImportRowsFromSheet = (buffer, originalname = "") => {
+  const filename = String(originalname || "").toLowerCase();
+  if (filename.endsWith(".json")) {
+    const raw = buffer.toString("utf8").trim();
+    const parsed = raw ? JSON.parse(raw) : [];
+    const records = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed.rows)
+        ? parsed.rows
+        : Array.isArray(parsed.responses)
+          ? parsed.responses
+          : Array.isArray(parsed.data)
+            ? parsed.data
+            : [];
+    if (!records.length) {
+      return { rows: [], sheetName: "JSON", workbook: null };
+    }
+    const headers = Array.from(
+      records.reduce((set, record) => {
+        Object.keys(record || {}).forEach((key) => set.add(key));
+        return set;
+      }, new Set()),
+    );
+    const rows = [
+      headers,
+      ...records.map((record) =>
+        headers.map((header) => normalizeImportValue(record?.[header])),
+      ),
+    ];
+    return { rows, sheetName: "JSON", workbook: null };
+  }
+
+  const workbook = XLSX.read(buffer, {
+    type: "buffer",
+    cellDates: true,
+    raw: false,
+  });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) {
+    return { rows: [], sheetName: "", workbook };
+  }
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+    blankrows: false,
+  });
+  return { rows, sheetName, workbook };
+};
+
+const normalizeImportHeader = (value = "") =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
+const normalizeImportValue = (value) => {
+  if (value === undefined || value === null) return "";
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return String(value).trim();
+};
+
+const normalizeExportLookupKey = (value = "") =>
+  normalizeComparableText(String(value || ""))
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getExportAnswerLabel = (answer = {}) =>
+  String(
+    answer.displayLabel ||
+      answer.fieldLabel ||
+      answer.question?.label ||
+      answer.questionLabel ||
+      answer.parentOptionLabel ||
+      "Question",
+  ).trim();
+
+const getExportAnswerValueText = (answer = {}) => {
+  if (Array.isArray(answer.displayValue) && answer.displayValue.length) {
+    return answer.displayValue
+      .map((item) => {
+        if (item && typeof item === "object") {
+          const label = String(item.label || item.value || item.text || "").trim();
+          const url = String(item.url || item.href || "").trim();
+          if (label && url) return `${label} (${url})`;
+          return label || url;
+        }
+        return String(item ?? "");
+      })
+      .filter(Boolean)
+      .join(" | ");
+  }
+
   if (Array.isArray(answer.fileUrls) && answer.fileUrls.length > 1) {
     return answer.fileUrls
       .map((url, index) => {
@@ -3084,6 +3632,7 @@ const formatExportAnswerValue = (answer = {}) => {
           answer.fileNames?.[index] || answer.fileName || `File ${index + 1}`;
         return url ? `${fileName} (${url})` : fileName;
       })
+      .filter(Boolean)
       .join(" | ");
   }
 
@@ -3094,87 +3643,212 @@ const formatExportAnswerValue = (answer = {}) => {
   }
 
   if (Array.isArray(answer.value)) {
-    return answer.value.join(", ");
+    return answer.value.map((item) => String(item ?? "")).join(" | ");
   }
 
-  return answer.value ?? "";
+  if (answer.value && typeof answer.value === "object") {
+    try {
+      return JSON.stringify(answer.value);
+    } catch {
+      return String(answer.value || "");
+    }
+  }
+
+  return String(answer.value ?? "");
+};
+
+const getExportQuestionAliases = (question = {}) => {
+  const label = String(question.label || "").trim();
+  const aliases = new Set([
+    normalizeExportLookupKey(question._id || question.id || ""),
+    normalizeExportLookupKey(label),
+    normalizeExportLookupKey(question.fieldKey || ""),
+    normalizeExportLookupKey(slugify(label)),
+  ]);
+  return Array.from(aliases).filter(Boolean);
+};
+
+const matchesExportQuestion = (answer = {}, question = {}) => {
+  const questionId = normalizeExportLookupKey(question._id || question.id || "");
+  const answerQuestionId = normalizeExportLookupKey(
+    answer.questionId?._id || answer.questionId || "",
+  );
+  if (questionId && answerQuestionId && questionId === answerQuestionId) {
+    return true;
+  }
+
+  const questionAliases = getExportQuestionAliases(question);
+  const answerAliases = [
+    normalizeExportLookupKey(answer.displayLabel),
+    normalizeExportLookupKey(answer.fieldLabel),
+    normalizeExportLookupKey(answer.question?.label),
+    normalizeExportLookupKey(answer.questionLabel),
+    normalizeExportLookupKey(answer.fieldKey || ""),
+    normalizeExportLookupKey(answer.parentOptionLabel || ""),
+  ].filter(Boolean);
+
+  return answerAliases.some((alias) => questionAliases.includes(alias));
+};
+
+const getExportAnswerColumnKey = (answer = {}) => {
+  const label = getExportAnswerLabel(answer);
+  return (
+    normalizeExportLookupKey(answer.conditionalPath || "") ||
+    normalizeExportLookupKey(answer.fieldId || "") ||
+    normalizeExportLookupKey(answer.parentOptionId || "") ||
+    normalizeExportLookupKey(`${answer.questionId || ""}:${label}`) ||
+    normalizeExportLookupKey(label)
+  );
+};
+
+const isExportAnswerConditional = (answer = {}) =>
+  Boolean(
+    answer.fieldId ||
+      answer.parentQuestionId ||
+      answer.parentOptionId ||
+      answer.conditionalPath ||
+      answer.conditionalDepth,
+  );
+
+const buildExportAnswerSnapshot = (response = {}) => {
+  const answers = Array.isArray(response.answers) ? response.answers : [];
+  return answers
+    .map((answer) => {
+      const label = String(
+        answer.displayLabel ||
+          answer.fieldLabel ||
+          answer.question?.label ||
+          answer.questionLabel ||
+          answer.parentOptionLabel ||
+          "Question",
+      ).trim();
+      const value = getExportAnswerValueText(answer);
+      const context = String(answer.displayContext || "").trim();
+      if (context && context !== label) {
+        return `${context}: ${value}`;
+      }
+      return `${label}: ${value}`;
+    })
+    .filter((entry) => /\S/.test(entry))
+    .join(" | ");
+};
+
+const buildImportPreview = (form, questions, rows = [], filename = "") => {
+  const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
+  const sampleRows = rows.slice(1, 6).map((row, index) => ({
+    rowNumber: index + 2,
+    values: row,
+  }));
+  const questionMap = questions.map((question) => {
+    const label = String(question.label || "").trim();
+    const normalizedLabel = normalizeImportHeader(label);
+    const slugLabel = normalizeImportHeader(slugify(label));
+    const matchIndex = headerRow.findIndex((header) => {
+      const normalizedHeader = normalizeImportHeader(header);
+      return (
+        normalizedHeader === normalizedLabel ||
+        normalizedHeader === slugLabel ||
+        normalizedHeader === normalizeImportHeader(String(question._id)) ||
+        normalizedHeader === normalizeImportHeader(question.fieldKey || "")
+      );
+    });
+    return {
+      questionId: String(question._id),
+      questionLabel: label,
+      questionType: question.type,
+      matchedColumnIndex: matchIndex >= 0 ? matchIndex : null,
+      matchedColumnHeader:
+        matchIndex >= 0 ? String(headerRow[matchIndex] || "") : "",
+    };
+  });
+
+  return {
+    filename,
+    sheetName: form.title || "Responses",
+    columns: headerRow.map((header, index) => ({
+      index,
+      header: String(header || ""),
+      normalized: normalizeImportHeader(header),
+    })),
+    sampleRows,
+    questionMap,
+    totalRows: Math.max(0, rows.length - 1),
+  };
+};
+
+const buildResponseImportPreview = ({
+  form,
+  questions,
+  parsed = {},
+  filename = "",
+}) => {
+  const columns = Array.isArray(parsed.columns) ? parsed.columns : [];
+  const records = Array.isArray(parsed.records) ? parsed.records : [];
+  const previewRows = Array.isArray(parsed.previewRows) && parsed.previewRows.length
+    ? parsed.previewRows
+    : records.slice(0, 10).map((record) => ({
+        rowNumber: record.rowNumber,
+        values: columns.map((column) =>
+          formatPreviewCell(record.data?.[column.normalizedKey] ?? ""),
+        ),
+      }));
+
+  const questionMap = questions.map((question) => {
+    const label = String(question.label || "").trim();
+    const normalizedLabel = normalizeImportHeader(label);
+    const slugLabel = normalizeImportHeader(slugify(label));
+    const matchIndex = columns.findIndex((column) => {
+      const normalizedHeader = normalizeImportHeader(
+        column.originalHeader || column.normalizedKey || "",
+      );
+      const normalizedKey = normalizeImportHeader(column.normalizedKey || "");
+      return (
+        normalizedHeader === normalizedLabel ||
+        normalizedHeader === slugLabel ||
+        normalizedHeader === normalizeImportHeader(String(question._id)) ||
+        normalizedHeader === normalizeImportHeader(question.fieldKey || "") ||
+        normalizedKey === normalizedLabel ||
+        normalizedKey === slugLabel ||
+        normalizedKey === normalizeImportHeader(String(question._id)) ||
+        normalizedKey === normalizeImportHeader(question.fieldKey || "")
+      );
+    });
+    return {
+      questionId: String(question._id),
+      questionLabel: label,
+      questionType: question.type,
+      matchedColumnIndex: matchIndex >= 0 ? matchIndex : null,
+      matchedColumnHeader:
+        matchIndex >= 0 ? String(columns[matchIndex]?.originalHeader || "") : "",
+    };
+  });
+
+  return {
+    filename,
+    sheetName: parsed.selectedSheet || parsed.sheetName || form.title || "Responses",
+    columns: columns.map((column, index) => ({
+      index,
+      header: String(column.originalHeader || column.normalizedKey || `Column ${index + 1}`),
+      normalized: String(column.normalizedKey || ""),
+      detectedType: column.detectedType || "text",
+    })),
+    previewRows,
+    questionMap,
+    totalRows: records.length,
+  };
+};
+
+const formatExportAnswerValue = (answer = {}) => {
+  return getExportAnswerValueText(answer);
 };
 
 const buildCsv = (form, questions, responses) => {
-  const conditionalColumns = [];
-  const conditionalColumnMap = new Map();
-  for (const response of responses) {
-    for (const answer of response.answers || []) {
-      if (!answer.fieldId && !answer.parentOptionId) continue;
-      const key =
-        answer.conditionalPath ||
-        answer.fieldId ||
-        `${answer.parentOptionId}:${answer.fieldLabel}`;
-      if (conditionalColumnMap.has(key)) continue;
-      const header = answer.displayContext
-        ? answer.displayContext
-        : answer.parentOptionLabel
-          ? `${answer.parentOptionLabel} - ${answer.fieldLabel || answer.question?.label || "Conditional Field"}`
-          : answer.fieldLabel || answer.question?.label || "Conditional Field";
-      conditionalColumnMap.set(key, header);
-      conditionalColumns.push({ key, header });
-    }
+  const { headers, rows } = buildResponseExportTable(form, questions, responses);
+  const lines = [headers.map(escapeCsv).join(",")];
+  for (const row of rows) {
+    lines.push(row.map(escapeCsv).join(","));
   }
-
-  const headers = [
-    "Reference ID",
-    "Submitted At",
-    "Name",
-    "Email",
-    "Phone",
-    ...questions.map((question) => question.label),
-    ...conditionalColumns.map((column) => column.header),
-  ];
-
-  const rows = [headers.map(escapeCsv).join(",")];
-  const questionIdOrder = questions.map((question) => String(question._id));
-
-  for (const response of responses) {
-    const answerMap = new Map();
-    for (const answer of response.answers || []) {
-      answerMap.set(String(answer.questionId), answer);
-    }
-    const conditionalMap = new Map();
-    for (const answer of response.answers || []) {
-      if (answer.fieldId || answer.parentOptionId) {
-        const key =
-          answer.conditionalPath ||
-          answer.fieldId ||
-          `${answer.parentOptionId}:${answer.fieldLabel}`;
-        conditionalMap.set(key, answer);
-      }
-    }
-
-    const row = [
-      response.referenceId,
-      response.submittedAt || response.createdAt,
-      response.name || "",
-      response.email || "",
-      response.phone || "",
-      ...questionIdOrder.map((questionId) => {
-        const answer = answerMap.get(questionId);
-        if (!answer) return "";
-        if (answer.question?.type === "password") {
-          return "";
-        }
-        return formatExportAnswerValue(answer);
-      }),
-      ...conditionalColumns.map((column) => {
-        const answer = conditionalMap.get(column.key);
-        if (!answer) return "";
-        return formatExportAnswerValue(answer);
-      }),
-    ];
-
-    rows.push(row.map(escapeCsv).join(","));
-  }
-
-  return rows.join("\n");
+  return lines.join("\n");
 };
 
 const parseAnswersPayload = (body = {}) => {
@@ -3225,6 +3899,12 @@ const parseVerificationTokensPayload = (body = {}) => {
 
   return {};
 };
+
+const parseDeclarationAcceptedPayload = (body = {}) =>
+  body.declarationAccepted === true || body.declarationAccepted === "true";
+
+const parseDeclarationTextPayload = (body = {}) =>
+  String(body.declarationText || "").trim();
 
 const normalizeEmailValue = (value = "") =>
   String(value || "")
@@ -3333,7 +4013,10 @@ const validateQuestionValue = (question, value, fileList = []) => {
     isEmpty &&
     question.type !== "sectionHeading"
   ) {
-    throw new Error(`Question "${question.label}" is required`);
+    const error = new Error(`Question "${question.label}" is required`);
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
   }
 
   if (isEmpty && !hasFile) {
@@ -3404,7 +4087,10 @@ const validateQuestionValue = (question, value, fileList = []) => {
   if (question.type === "email" && stringValue) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(stringValue)) {
-      throw new Error(`Question "${question.label}" must be a valid email`);
+      const error = new Error(`Question "${question.label}" must be a valid email`);
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
     }
   }
 
@@ -3412,13 +4098,19 @@ const validateQuestionValue = (question, value, fileList = []) => {
     const digits = normalizePhoneValue(stringValue);
     const phoneRegex = /^[6-9]\d{9}$/;
     if (!phoneRegex.test(digits)) {
-      throw new Error("Please enter a valid 10-digit mobile number.");
+      const error = new Error("Please enter a valid 10-digit mobile number.");
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
     }
   }
 
   if (question.type === "link" && stringValue) {
     if (!normalizeHttpUrl(stringValue)) {
-      throw new Error("Please enter a valid link.");
+      const error = new Error("Please enter a valid link.");
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
     }
   }
 };
@@ -3444,14 +4136,20 @@ const validateUploadedFiles = (question, fileEntries = []) => {
         : 1;
 
   if (fileEntries.length > maxFiles) {
-    throw new Error(`Maximum ${maxFiles} files are allowed.`);
+    const error = new Error(`Maximum ${maxFiles} files are allowed.`);
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
   }
 
   for (const file of fileEntries) {
     if (file.size && file.size > maxFileSize) {
-      throw new Error(
+      const error = new Error(
         `File size must not exceed ${Math.max(1, Math.round(maxFileSize / (1024 * 1024)))} MB.`,
       );
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
     }
 
     const uploadType = String(
@@ -3470,7 +4168,10 @@ const validateUploadedFiles = (question, fileEntries = []) => {
     const fileName = String(file.originalname || "").toLowerCase();
 
     if (allowedMimeTypes && !allowedMimeTypes.includes(file.mimetype)) {
-      throw new Error(`"${file.originalname}" is not an allowed file type.`);
+      const error = new Error(`"${file.originalname}" is not an allowed file type.`);
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
     }
 
     if (
@@ -3479,30 +4180,42 @@ const validateUploadedFiles = (question, fileEntries = []) => {
         fileName.endsWith(String(extension).toLowerCase()),
       )
     ) {
-      throw new Error(
+      const error = new Error(
         `"${file.originalname}" does not match an allowed extension.`,
       );
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
     }
 
     if (uploadType === "image" || question.type === "imageUpload") {
       if (!IMAGE_MIME_TYPES.has(file.mimetype) && !allowedMimeTypes) {
-        throw new Error(
+        const error = new Error(
           `Question "${question.label}" only accepts JPG, PNG, or WEBP images`,
         );
+        error.statusCode = 400;
+        error.code = "VALIDATION_ERROR";
+        throw error;
       }
     }
 
     if (uploadType === "pdf" || question.type === "pdfUpload") {
       if (file.mimetype !== "application/pdf" && !allowedMimeTypes) {
-        throw new Error(`Question "${question.label}" only accepts PDF files`);
+        const error = new Error(`Question "${question.label}" only accepts PDF files`);
+        error.statusCode = 400;
+        error.code = "VALIDATION_ERROR";
+        throw error;
       }
     }
 
     if (question.type === "fileUpload" && !allowedMimeTypes) {
       if (!FILE_MIME_TYPES.has(file.mimetype)) {
-        throw new Error(
+        const error = new Error(
           `Question "${question.label}" only accepts PDF, DOC, DOCX, MP4, WEBM, MOV, JPG, JPEG, PNG, or WEBP files`,
         );
+        error.statusCode = 400;
+        error.code = "VALIDATION_ERROR";
+        throw error;
       }
     }
   }
@@ -3527,7 +4240,10 @@ const validateQuestionVerification = (
     verificationTokens[question.label] ||
     "";
   if (!token) {
-    throw new Error(`Please verify ${question.label} before submitting.`);
+    const error = new Error(`Please verify ${question.label} before submitting.`);
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
   }
 
   const destination =
@@ -3544,7 +4260,10 @@ const validateQuestionVerification = (
       type: question.type,
     })
   ) {
-    throw new Error(`Please verify ${question.label} before submitting.`);
+    const error = new Error(`Please verify ${question.label} before submitting.`);
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
   }
 };
 
@@ -4030,6 +4749,7 @@ const sendSubmissionNotifications = async ({
   answers,
   adminUrl,
   contact = {},
+  declaration = null,
 }) => {
   const branding = await getBrandingSettings(form);
   const emailTemplate = normalizeEmailTemplate(form.emailTemplate, form);
@@ -4064,6 +4784,7 @@ const sendSubmissionNotifications = async ({
           adminUrl,
           branding,
           emailTemplate,
+          declaration,
         }),
       });
       await logNotification({
@@ -4112,6 +4833,7 @@ const sendSubmissionNotifications = async ({
             "",
           branding,
           emailTemplate,
+          declaration,
         }),
       });
       await logNotification({
@@ -4326,6 +5048,10 @@ const getAdminForms = async () => {
     description: normalizeDescriptionHtml(form.description || ""),
     descriptionStyle: normalizeDescriptionStyle(form.descriptionStyle),
     emailTemplate: normalizeEmailTemplate(form.emailTemplate, form),
+    declarationSettings: normalizeDeclarationSettings(
+      form.declarationSettings,
+      form,
+    ),
     responseCount: countMap.get(String(form._id)) || 0,
     questionCount: questionCountMap.get(String(form._id)) || 0,
   }));
@@ -4362,6 +5088,7 @@ const updateForm = async (formId, payload) => {
   existing.bannerImageAsset = formPayload.bannerImageAsset;
   existing.emailTemplate = formPayload.emailTemplate;
   existing.notificationSettings = formPayload.notificationSettings;
+  existing.declarationSettings = formPayload.declarationSettings;
   existing.notificationEmail = formPayload.notificationEmail;
   existing.confirmationEmailEnabled = formPayload.confirmationEmailEnabled;
   existing.allowFileUpload = formPayload.allowFileUpload;
@@ -4397,20 +5124,30 @@ const deleteForm = async (formId) => {
 
 const getFormResponses = async (formId, options = {}) => {
   const responses = await collectResponses(formId);
+  const sourceFilter = normalizeResponseSourceFilter(options.source);
+  const scopedResponses =
+    sourceFilter === "all"
+      ? responses
+      : responses.filter((response) =>
+          sourceFilter === "imported"
+            ? response.imported === true
+            : response.imported !== true,
+        );
   const hasFilters =
     options.search ||
     options.from ||
     options.to ||
     options.page ||
-    options.limit;
+    options.limit ||
+    sourceFilter !== "all";
 
   if (!hasFilters) {
-    return responses.map(sanitizeResponseForApi);
+    return scopedResponses.map(sanitizeResponseForApi);
   }
 
   const fromTime = options.from ? new Date(options.from).getTime() : null;
   const toTime = options.to ? new Date(options.to).getTime() : null;
-  const filtered = responses.filter((response) => {
+  const filtered = scopedResponses.filter((response) => {
     const submittedTime = normalizeSubmissionDate(
       response.submittedAt || response.createdAt,
     );
@@ -4439,7 +5176,16 @@ const getFormResponses = async (formId, options = {}) => {
 
 const getFormResponseAnalysis = async (formId, options = {}) => {
   const responses = await collectResponses(formId);
-  const filtered = responses.filter((response) => {
+  const sourceFilter = normalizeResponseSourceFilter(options.source);
+  const scopedResponses =
+    sourceFilter === "all"
+      ? responses
+      : responses.filter((response) =>
+          sourceFilter === "imported"
+            ? response.imported === true
+            : response.imported !== true,
+        );
+  const filtered = scopedResponses.filter((response) => {
     if (!matchesResponseSearch(response, options.search)) {
       return false;
     }
@@ -4506,8 +5252,13 @@ const getFormResponseById = async (formId, responseId) => {
       question: answer.questionId,
     }),
   );
+  const contact = getResponseContactFromAnswers({
+    ...response,
+    answers: normalizedAnswers,
+  });
   return {
     ...response,
+    ...contact,
     answers: normalizedAnswers,
     submissionSummary: buildResponseSubmissionRows(normalizedAnswers),
   };
@@ -4525,23 +5276,785 @@ const deleteFormResponse = async (formId, responseId) => {
 };
 
 const exportFormResponses = async (formId, options = {}) => {
-  const form = await Form.findById(formId).lean();
-  if (!form) {
-    throw new Error("Form not found");
-  }
+  const form = (await Form.findById(formId).lean()) || {
+    _id: formId,
+    title: "Responses",
+    name: "Responses",
+    slug: "",
+    publicSlug: "",
+  };
 
   const questions = await FormQuestion.find({ formId })
     .sort({ order: 1 })
     .lean();
   const usesAnalysisFilters =
     options.rating != null || options.interest != null || options.score != null;
-  const responses = usesAnalysisFilters
+  const responsePayload = usesAnalysisFilters
     ? await getFormResponseAnalysis(formId, options)
     : await getFormResponses(formId, options);
-  const exportRows = Array.isArray(responses)
-    ? responses
-    : responses.items || [];
-  return buildCsv(form, questions, exportRows);
+  const exportRows = Array.isArray(responsePayload)
+    ? responsePayload
+    : responsePayload.items || [];
+  return {
+    format: "csv",
+    filename: `${slugify(form.title || form.name || "responses")}-responses.csv`,
+    contentType: "text/csv; charset=utf-8",
+    buffer: Buffer.from(buildCsv(form, questions, exportRows), "utf8"),
+    rowCount: exportRows.length,
+    form,
+    questions,
+    responses: exportRows,
+  };
+};
+
+const buildImportColumnLookup = (questions = []) => {
+  const lookup = new Map();
+  for (const question of questions) {
+    const id = String(question._id || question.id || "");
+    const label = String(question.label || "").trim();
+    const normalizedLabel = normalizeImportHeader(label);
+    if (id) lookup.set(id, question);
+    if (normalizedLabel) lookup.set(normalizedLabel, question);
+    const slugLabel = normalizeImportHeader(slugify(label));
+    if (slugLabel) lookup.set(slugLabel, question);
+  }
+  return lookup;
+};
+
+const normalizeResponseImportMappings = (mapping = []) => {
+  const mappings = safeJsonParse(mapping, mapping);
+  if (Array.isArray(mappings)) {
+    return mappings
+      .map((entry) => ({
+        columnIndex: Number.parseInt(entry.columnIndex, 10),
+        questionId: String(entry.questionId || "").trim(),
+        fieldPath: String(entry.fieldPath || "").trim(),
+        label: String(entry.label || "").trim(),
+      }))
+      .filter((entry) => Number.isInteger(entry.columnIndex) && entry.columnIndex >= 0);
+  }
+
+  if (mappings && typeof mappings === "object") {
+    return Object.entries(mappings)
+      .map(([columnIndex, value]) => ({
+        columnIndex: Number.parseInt(columnIndex, 10),
+        questionId: String(value?.questionId || value || "").trim(),
+        fieldPath: String(value?.fieldPath || "").trim(),
+        label: String(value?.label || "").trim(),
+      }))
+      .filter((entry) => Number.isInteger(entry.columnIndex) && entry.columnIndex >= 0);
+  }
+
+  return [];
+};
+
+const validateImportedQuestionValue = (question, value, fileUrls = []) => {
+  const normalizedValue = Array.isArray(value)
+    ? value.map((item) => String(item).trim()).filter(Boolean)
+    : String(value ?? "").trim();
+
+  if (question.required === true) {
+    if (Array.isArray(normalizedValue) ? !normalizedValue.length : !normalizedValue) {
+      throw new Error(`Question "${question.label}" is required`);
+    }
+  }
+
+  if (!normalizedValue && !fileUrls.length) {
+    return;
+  }
+
+  const type = String(question.type || "").trim();
+  if (type === "email") {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(String(normalizedValue))) {
+      throw new Error(`Question "${question.label}" must be a valid email`);
+    }
+  }
+
+  if (type === "phone") {
+    const phone = normalizePhoneValue(String(normalizedValue));
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      throw new Error("Please enter a valid 10-digit mobile number.");
+    }
+  }
+
+  if (type === "number") {
+    const numberValue = String(normalizedValue).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(numberValue)) {
+      throw new Error(`Question "${question.label}" must be a valid number`);
+    }
+  }
+
+  if (type === "date") {
+    if (Number.isNaN(new Date(String(normalizedValue)).getTime())) {
+      throw new Error(`Question "${question.label}" must be a valid date`);
+    }
+  }
+
+  if (type === "time") {
+    if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(String(normalizedValue))) {
+      throw new Error(`Question "${question.label}" must be a valid time`);
+    }
+  }
+
+  if (type === "dropdown" || type === "radio" || type === "checkbox") {
+    const optionValues = normalizeQuestionOptions(question).map((option) =>
+      String(option.value || option.label || "").trim(),
+    );
+    const values = Array.isArray(normalizedValue)
+      ? normalizedValue
+      : String(normalizedValue)
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+    const invalid = values.filter((item) => !optionValues.includes(item));
+    if (invalid.length) {
+      const error = new Error(
+        `Question "${question.label}" contains invalid option values`,
+      );
+      error.statusCode = 400;
+      error.code = "VALIDATION_ERROR";
+      throw error;
+    }
+  }
+
+  if (type === "link") {
+    if (!normalizeHttpUrl(String(normalizedValue))) {
+      throw new Error(`Question "${question.label}" must be a valid link`);
+    }
+  }
+
+  if (type === "fileUpload" || type === "imageUpload" || type === "pdfUpload") {
+    const urls = Array.isArray(fileUrls) ? fileUrls : [String(normalizedValue)];
+    const invalid = urls.some((url) => {
+      const text = String(url || "").trim();
+      return !/^https?:\/\//i.test(text);
+    });
+    if (invalid) {
+      throw new Error(`Question "${question.label}" must contain valid file URLs`);
+    }
+  }
+};
+
+const rowValuesToString = (row = []) =>
+  Array.isArray(row)
+    ? row.map((value) => String(value ?? "")).join(" ")
+    : String(row ?? "");
+
+const pickMappedDuplicateValue = ({
+  response,
+  duplicateField,
+  questions,
+}) => {
+  const normalizedField = normalizeImportHeader(duplicateField);
+  if (!normalizedField || normalizedField === "email") {
+    return String(response.email || getResponseContactFromAnswers(response).email || "").trim().toLowerCase();
+  }
+  if (normalizedField === "phone") {
+    return normalizePhoneValue(response.phone || getResponseContactFromAnswers(response).phone || "");
+  }
+  if (normalizedField === "submission id" || normalizedField === "reference id") {
+    return String(response.referenceId || "").trim().toLowerCase();
+  }
+
+  const questionLookup = buildImportColumnLookup(questions);
+  const question =
+    questionLookup.get(normalizedField) ||
+    questionLookup.get(String(duplicateField || "").trim()) ||
+    null;
+  if (!question) {
+    return "";
+  }
+  const answer = (response.answers || []).find(
+    (item) => String(item.questionId) === String(question._id || question.id || ""),
+  );
+  if (!answer) {
+    return "";
+  }
+  return Array.isArray(answer.value)
+    ? answer.value.join(", ").trim().toLowerCase()
+    : String(answer.value || "").trim().toLowerCase();
+};
+
+const getImportedResponseCandidateKey = ({
+  rowObject = {},
+  questions = [],
+  duplicateField = "email",
+}) => {
+  const normalizedField = normalizeImportHeader(duplicateField);
+  if (normalizedField === "submission id" || normalizedField === "reference id") {
+    return String(rowObject["Submission ID"] || rowObject["Reference ID"] || "").trim().toLowerCase();
+  }
+
+  if (normalizedField === "phone") {
+    return normalizePhoneValue(
+      rowObject.Phone || rowObject.phone || rowObject.Mobile || rowObject.mobile || "",
+    );
+  }
+
+  if (normalizedField !== "email") {
+    const questionLookup = buildImportColumnLookup(questions);
+    const question =
+      questionLookup.get(normalizedField) ||
+      questionLookup.get(String(duplicateField || "").trim()) ||
+      null;
+    if (question) {
+      const header = String(question.label || "").trim();
+      const normalizedHeader = normalizeImportHeader(header);
+      const rowEntry = Object.entries(rowObject).find(
+        ([key]) => normalizeImportHeader(key) === normalizedHeader,
+      );
+      return String(
+        rowEntry?.[1] ||
+          rowObject[header] ||
+          rowObject[slugify(header)] ||
+          "",
+      )
+        .trim()
+        .toLowerCase();
+    }
+  }
+
+  return String(
+    rowObject.Email ||
+      rowObject.email ||
+      rowObject["E-mail"] ||
+      rowObject["Email Address"] ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+};
+
+const buildImportedResponsePayload = async ({
+  form,
+  questions,
+  rowObject,
+  rowNumber,
+  sourceFile = "",
+  importBatchId = "",
+  importedBy = null,
+  importedAt = new Date(),
+  duplicateField = "email",
+  mapping = [],
+  existingResponse = null,
+}) => {
+  const columnMappings = normalizeResponseImportMappings(mapping);
+  const questionLookup = buildImportColumnLookup(questions);
+  const answersToInsert = [];
+  const contactAnswers = {};
+  for (const mappingItem of columnMappings) {
+    const columnIndex = mappingItem.columnIndex;
+    const questionId = String(mappingItem.questionId || "").trim();
+    const fieldPath = String(mappingItem.fieldPath || "").trim();
+    const headerKeys = Object.keys(rowObject);
+    const header = headerKeys[columnIndex] || "";
+    const rawValue = rowObject[header];
+    if (!questionId && !fieldPath) continue;
+
+    if (questionId) {
+      const question = questions.find(
+        (item) => String(item._id || item.id || "") === String(questionId),
+      );
+      if (!question) continue;
+      const fileUrls = Array.isArray(rawValue)
+        ? rawValue.filter(Boolean)
+        : String(rawValue || "")
+            .split(/\s*[|,]\s*/)
+            .filter(Boolean)
+            .filter((item) => /^https?:\/\//i.test(item));
+      validateImportedQuestionValue(question, rawValue, fileUrls);
+      const preparedValue = Array.isArray(rawValue)
+        ? rawValue
+        : String(rawValue || "").includes("|")
+          ? String(rawValue || "")
+              .split("|")
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : String(rawValue || "").trim();
+      if (question.type === "email") {
+        contactAnswers.email = normalizeEmailValue(preparedValue);
+      }
+      if (question.type === "phone") {
+        contactAnswers.phone = normalizePhoneValue(preparedValue);
+      }
+      if (question.type === "shortAnswer" && /name/i.test(question.label || "")) {
+        contactAnswers.name = String(preparedValue || "").trim();
+      }
+      answersToInsert.push({
+        question,
+        submittedValue: preparedValue,
+        fileEntries: [],
+      });
+    }
+  }
+
+  const summaryContact = getResponseContactFromAnswers({
+    answers: answersToInsert.map((item) => ({
+      question: item.question,
+      value: item.submittedValue,
+    })),
+  });
+
+  const duplicateCandidateKey = getImportedResponseCandidateKey({
+    rowObject,
+    questions,
+    duplicateField,
+  });
+
+  const normalizedExisting = existingResponse || null;
+  const responsePayload = {
+    formId: form._id,
+    referenceId:
+      normalizedExisting?.referenceId ||
+      `IMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    email: normalizedExisting ? normalizedExisting.email || "" : "",
+    phone: normalizedExisting ? normalizedExisting.phone || "" : "",
+    submittedAt: normalizedExisting?.submittedAt || importedAt,
+    ipAddress: normalizedExisting?.ipAddress || "",
+    userAgent: normalizedExisting?.userAgent || "",
+    imported: true,
+    importedBy,
+    importedAt,
+    sourceFile,
+    originalRowNumber: rowNumber,
+    importBatchId,
+    importSource: "responses-import",
+    declaration: {
+      accepted: false,
+      text: "",
+      acceptedAt: null,
+    },
+    verification: normalizedExisting?.verification || {},
+  };
+
+  if (!normalizedExisting) {
+    responsePayload.email = "";
+    responsePayload.phone = "";
+  }
+
+  return {
+    responsePayload,
+    answersToInsert,
+    summaryContact,
+    duplicateCandidateKey,
+    contactAnswers,
+    questionLookup,
+  };
+};
+
+const collectResponseImportMatches = async ({
+  formId,
+  questions,
+  duplicateField,
+  duplicateValue,
+}) => {
+  const responses = await collectResponses(formId);
+  const normalizedDuplicateValue = String(duplicateValue || "").trim().toLowerCase();
+  if (!normalizedDuplicateValue) {
+    return null;
+  }
+
+  if (normalizeImportHeader(duplicateField) === "email") {
+    return (
+      responses.find(
+        (response) =>
+          String(getResponseContactFromAnswers(response).email || response.email || "")
+            .trim()
+            .toLowerCase() === normalizedDuplicateValue,
+      ) || null
+    );
+  }
+
+  if (normalizeImportHeader(duplicateField) === "phone") {
+    return (
+      responses.find(
+        (response) =>
+          normalizePhoneValue(response.phone || getResponseContactFromAnswers(response).phone || "") ===
+          normalizePhoneValue(normalizedDuplicateValue),
+      ) || null
+    );
+  }
+
+  if (
+    normalizeImportHeader(duplicateField) === "submission id" ||
+    normalizeImportHeader(duplicateField) === "reference id"
+  ) {
+    return (
+      responses.find(
+        (response) =>
+          String(response.referenceId || "")
+            .trim()
+            .toLowerCase() === normalizedDuplicateValue,
+      ) || null
+    );
+  }
+
+  const questionLookup = buildImportColumnLookup(questions);
+  const question =
+    questionLookup.get(normalizeImportHeader(duplicateField)) ||
+    questionLookup.get(String(duplicateField || "").trim()) ||
+    null;
+  if (!question) {
+    return null;
+  }
+
+  return (
+    responses.find((response) => {
+      const answer = (response.answers || []).find(
+        (item) =>
+          String(item.questionId) === String(question._id || question.id || ""),
+      );
+      if (!answer) return false;
+      const answerValue = Array.isArray(answer.value)
+        ? answer.value.join(", ")
+        : String(answer.value || "");
+      return answerValue.trim().toLowerCase() === normalizedDuplicateValue;
+    }) || null
+  );
+};
+
+const deleteImportedResponseBatch = async (formId, batchId) => {
+  const responses = await FormResponse.find({
+    formId,
+    importBatchId: batchId,
+  }).lean();
+  const responseIds = responses.map((response) => response._id);
+  if (!responseIds.length) {
+    return { deleted: 0 };
+  }
+  await Promise.all([
+    FormResponseAnswer.deleteMany({ responseId: { $in: responseIds } }),
+    FormResponse.deleteMany({ _id: { $in: responseIds } }),
+  ]);
+  return { deleted: responseIds.length };
+};
+
+const previewResponseImport = async ({ formId, file, fileName = "" }) => {
+  const form = await Form.findById(formId).lean();
+  if (!form) {
+    throw new Error("Form not found");
+  }
+  if (!file?.buffer) {
+    throw new Error("No file uploaded");
+  }
+
+  const questions = await FormQuestion.find({ formId })
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
+  const parsed = await parseUploadedDataFile({
+    file,
+    selectedSheet: undefined,
+    selectedTableId: "",
+  });
+  return {
+    type: "preview",
+    fileName,
+    sheetName: parsed.selectedSheet || parsed.sheetName || form.title || "Responses",
+    preview: buildResponseImportPreview({
+      form,
+      questions,
+      parsed,
+      filename: fileName,
+    }),
+  };
+};
+
+const importResponseRows = async ({
+  formId,
+  file,
+  fileName = "",
+  importedBy = null,
+  mapping = [],
+  duplicateStrategy = "skip",
+  duplicateField = "email",
+}) => {
+  const form = await Form.findById(formId).lean();
+  if (!form) {
+    throw new Error("Form not found");
+  }
+  if (!file?.buffer) {
+    throw new Error("No file uploaded");
+  }
+
+  const questions = await FormQuestion.find({ formId })
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
+  const parsed = await parseUploadedDataFile({
+    file,
+    selectedSheet: undefined,
+    selectedTableId: "",
+  });
+  const columns = Array.isArray(parsed.columns) ? parsed.columns : [];
+  const dataRows = Array.isArray(parsed.records) ? parsed.records : [];
+  const columnMappings = normalizeResponseImportMappings(mapping);
+  const batchId = `IMP-${crypto.randomUUID().slice(0, 12).toUpperCase()}`;
+  const importedAt = new Date();
+  const summary = {
+    imported: 0,
+    updated: 0,
+    skipped: 0,
+    errors: 0,
+    total: dataRows.length,
+  };
+  const errorRows = [];
+  const importedResponseIds = [];
+
+  for (let index = 0; index < dataRows.length; index += 1) {
+    const record = dataRows[index];
+    const rowNumber = Number.isFinite(Number(record?.rowNumber))
+      ? Number(record.rowNumber)
+      : index + 2;
+    const rowValues = columns.map((column) =>
+      normalizeImportValue(record?.data?.[column.normalizedKey]),
+    );
+    const rowObject = {};
+    columns.forEach((column, columnIndex) => {
+      rowObject[String(column.originalHeader || `Column ${columnIndex + 1}`)] =
+        rowValues[columnIndex];
+    });
+
+    try {
+      for (const value of Object.values(rowObject)) {
+        if (isDangerousSpreadsheetValue(value)) {
+          throw new Error("CSV injection content detected");
+        }
+      }
+
+      const duplicateValue = getImportedResponseCandidateKey({
+        rowObject,
+        questions,
+        duplicateField,
+      });
+      const existingResponse =
+        duplicateStrategy === "import-all"
+          ? null
+          : await collectResponseImportMatches({
+              formId,
+              questions,
+              duplicateField,
+              duplicateValue,
+            });
+
+      if (existingResponse && duplicateStrategy === "skip") {
+        summary.skipped += 1;
+        continue;
+      }
+
+      const payload = await buildImportedResponsePayload({
+        form,
+        questions,
+        rowObject,
+        columns,
+        rowValues,
+        rowNumber,
+        sourceFile: fileName,
+        importBatchId: batchId,
+        importedBy,
+        importedAt,
+        duplicateField,
+        mapping: columnMappings,
+        existingResponse,
+      });
+
+      let responseDoc = existingResponse
+        ? await FormResponse.findById(existingResponse._id)
+        : null;
+      if (responseDoc && duplicateStrategy === "update") {
+        await FormResponseAnswer.deleteMany({ responseId: responseDoc._id });
+        responseDoc.set({
+          ...payload.responsePayload,
+          imported: true,
+          importedBy,
+          importedAt,
+          sourceFile: fileName,
+          originalRowNumber: rowNumber,
+          importBatchId: batchId,
+          importSource: "responses-import",
+        });
+        await responseDoc.save();
+        summary.updated += 1;
+      } else {
+        responseDoc = await FormResponse.create(payload.responsePayload);
+        summary.imported += 1;
+      }
+
+      for (const item of payload.answersToInsert) {
+        const question =
+          item.question ||
+          questions.find(
+            (current) =>
+              String(current._id || current.id || "") ===
+              String(item.question?._id || item.question?.id || ""),
+          );
+        if (!question) continue;
+
+        const prepared = await prepareAnswerRecord(
+          question,
+          item.submittedValue,
+          item.fileEntries || [],
+          {
+            formId: String(form._id),
+            formSlug: form.slug || form.publicSlug || slugify(form.title),
+          },
+        );
+
+        await FormResponseAnswer.create({
+          responseId: responseDoc._id,
+          questionId: question._id,
+          ...prepared,
+        });
+      }
+
+      importedResponseIds.push(String(responseDoc._id));
+    } catch (error) {
+      summary.errors += 1;
+      errorRows.push({
+        rowNumber,
+        error: error.message || "Import failed",
+        reason: rowObject.Email || rowObject.email || rowObject.ReferenceID || "",
+      });
+    }
+  }
+
+  await createLog({
+    userId: importedBy || null,
+    userName: "",
+    email: "",
+    role: null,
+    action: "responses_imported",
+    module: "forms",
+    description: `Imported ${summary.imported} responses for form ${form.title || form._id}`,
+    entityId: String(form._id),
+    entityType: "Form",
+    metadata: {
+      formId: String(form._id),
+      batchId,
+      imported: summary.imported,
+      updated: summary.updated,
+      skipped: summary.skipped,
+      errors: summary.errors,
+      fileName,
+      sheetName,
+      duplicateStrategy,
+      duplicateField,
+    },
+  });
+
+  return {
+    batchId,
+    fileName,
+    sheetName,
+    summary,
+    errorRows,
+      importedResponseIds,
+    };
+};
+
+const exportResponseBundle = async ({
+  formId,
+  options = {},
+  format = "csv",
+}) => {
+  const form = (await Form.findById(formId).lean()) || {
+    _id: formId,
+    title: "Responses",
+    name: "Responses",
+    slug: "",
+    publicSlug: "",
+  };
+  const questions = await FormQuestion.find({ formId })
+    .sort({ order: 1 })
+    .lean();
+  const usesAnalysisFilters =
+    options.rating != null || options.interest != null || options.score != null;
+  const responsePayload = usesAnalysisFilters
+    ? await getFormResponseAnalysis(formId, options)
+    : await getFormResponses(formId, options);
+  const exportRows = Array.isArray(responsePayload)
+    ? responsePayload
+    : responsePayload.items || [];
+  const normalizedFormat = String(format || "csv").trim().toLowerCase();
+  let buffer = Buffer.from(buildCsv(form, questions, exportRows), "utf8");
+  let contentType = "text/csv; charset=utf-8";
+  let filename = `${slugify(form.title || form.name || "responses")}-responses.csv`;
+
+  if (normalizedFormat === "xlsx") {
+    buffer = buildXlsxBuffer(form, questions, exportRows);
+    contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    filename = `${slugify(form.title || form.name || "responses")}-responses.xlsx`;
+  } else if (normalizedFormat === "pdf") {
+    buffer = buildPdfBuffer(form, questions, exportRows);
+    contentType = "application/pdf";
+    filename = `${slugify(form.title || form.name || "responses")}-responses.pdf`;
+  } else if (normalizedFormat === "json") {
+    const exportTable = buildResponseExportTable(form, questions, exportRows);
+    const payload = {
+      form: {
+        id: String(form._id),
+        title: form.title,
+        slug: form.slug,
+      },
+      generatedAt: new Date().toISOString(),
+      totalResponses: exportRows.length,
+      columns: exportTable.headers,
+      responses: exportRows.map((response) => ({
+        ...response,
+        id: String(response._id || response.id || ""),
+        referenceId: response.referenceId || "",
+        submittedAt: response.submittedAt || response.createdAt || "",
+        metadata: {
+          imported: response.imported === true,
+          importedBy: response.importedBy || null,
+          importedAt: response.importedAt || null,
+          sourceFile: response.sourceFile || "",
+          originalRowNumber: response.originalRowNumber || null,
+          importBatchId: response.importBatchId || "",
+          ipAddress: response.ipAddress || "",
+          userAgent: response.userAgent || "",
+        },
+        verification: response.verification || {},
+        declaration: response.declaration || {},
+        submissionSummary:
+          response.submissionSummary || buildResponseSubmissionRows(response.answers || []),
+        answers: Array.isArray(response.answers)
+          ? response.answers.map((answer) => sanitizeAnswerForApi(answer))
+          : [],
+      })),
+    };
+    buffer = Buffer.from(JSON.stringify(payload, null, 2), "utf8");
+    contentType = "application/json; charset=utf-8";
+    filename = `${slugify(form.title || form.name || "responses")}-responses.json`;
+  }
+
+  await createLog({
+    userId: options.userId || null,
+    userName: options.userName || "",
+    email: options.email || "",
+    role: options.role || null,
+    action: "responses_exported",
+    module: "forms",
+    description: `Exported ${exportRows.length} responses as ${normalizedFormat.toUpperCase()}`,
+    entityId: String(form._id),
+    entityType: "Form",
+    metadata: {
+      formId: String(form._id),
+      format: normalizedFormat,
+      totalResponses: exportRows.length,
+    },
+  });
+
+  return {
+    form,
+    questions,
+    responses: exportRows,
+    buffer,
+    contentType,
+    filename,
+    rowCount: exportRows.length,
+    format: normalizedFormat,
+  };
 };
 
 const getFormBySlug = async (slug) => {
@@ -4714,6 +6227,8 @@ const submitForm = async ({
   const answersPayload = parseAnswersPayload(body);
   const conditionalAnswersPayload = parseConditionalAnswersPayload(body);
   const verificationTokens = parseVerificationTokensPayload(body);
+  const declarationAccepted = parseDeclarationAcceptedPayload(body);
+  const declarationText = parseDeclarationTextPayload(body);
   const fileEntriesByKey = getConditionalFileEntriesByKey(files);
   const contact = extractSubmissionContact(questions, answersPayload);
 
@@ -4738,21 +6253,30 @@ const submitForm = async ({
      */
     if (question.allowUserToAddMore === true) {
       if (!Array.isArray(submittedValue)) {
-        throw new Error(
+        const error = new Error(
           `Question "${question.label}" must be submitted as a list.`,
         );
+        error.statusCode = 400;
+        error.code = "VALIDATION_ERROR";
+        throw error;
       }
 
       if (submittedValue.length > 5) {
-        throw new Error(
+        const error = new Error(
           `Question "${question.label}" allows maximum 5 entries.`,
         );
+        error.statusCode = 400;
+        error.code = "VALIDATION_ERROR";
+        throw error;
       }
 
       if (submittedValue.length === 0) {
-        throw new Error(
+        const error = new Error(
           `Question "${question.label}" must contain at least one entry.`,
         );
+        error.statusCode = 400;
+        error.code = "VALIDATION_ERROR";
+        throw error;
       }
 
       if (question.required === true) {
@@ -4767,9 +6291,12 @@ const submitForm = async ({
         });
 
         if (hasEmptyEntry) {
-          throw new Error(
+          const error = new Error(
             `Please complete all added entries for "${question.label}".`,
           );
+          error.statusCode = 400;
+          error.code = "VALIDATION_ERROR";
+          throw error;
         }
       }
     }
@@ -4832,18 +6359,9 @@ const submitForm = async ({
     }
   }
 
-  const invalidConditionalKeys = Object.keys(
-    conditionalAnswersPayload || {},
-  ).filter(
-    (key) =>
-      String(key || "").includes("::") &&
-      !activeConditionalKeys.has(String(key)),
-  );
-  if (invalidConditionalKeys.length) {
-    throw new Error(
-      "One or more conditional answers do not belong to the active form branch.",
-    );
-  }
+  // Ignore stale conditional branches that may remain in client state after
+  // the user changes an earlier option. Only active descriptors are processed
+  // below, so extra hidden branch payload keys are safely ignored.
 
   const duplicateSubmission = await findDuplicateFormResponse(
     form._id,
@@ -4856,6 +6374,20 @@ const submitForm = async ({
     const error = new Error("You have already filled this form.");
     error.code = "DUPLICATE_SUBMISSION";
     error.statusCode = 409;
+    throw error;
+  }
+
+  const declarationSettings = normalizeDeclarationSettings(
+    form.declarationSettings,
+    form,
+  );
+  if (
+    declarationSettings.enabled === true &&
+    declarationSettings.required !== false &&
+    declarationAccepted !== true
+  ) {
+    const error = new Error("Please accept the declaration before submitting.");
+    error.statusCode = 400;
     throw error;
   }
 
@@ -4872,6 +6404,14 @@ const submitForm = async ({
       submittedAt: new Date(),
       ipAddress,
       userAgent,
+      declaration: {
+        accepted: declarationAccepted === true,
+        text:
+          declarationText ||
+          declarationSettings.text ||
+          String(form.declarationSettings?.text || "").trim(),
+        acceptedAt: declarationAccepted === true ? new Date() : null,
+      },
     });
 
     const insertedAnswers = [];
@@ -4925,6 +6465,7 @@ const submitForm = async ({
       response,
       answers: populatedAnswers,
       contact,
+      declaration: response.declaration,
       adminUrl:
         adminUrl ||
         `${process.env.FRONTEND_URL || process.env.VITE_PUBLIC_URL || ""}/admin/forms`,
@@ -4996,6 +6537,10 @@ module.exports = {
   getFormResponseById,
   deleteFormResponse,
   exportFormResponses,
+  exportResponseBundle,
+  previewResponseImport,
+  importResponseRows,
+  deleteImportedResponseBatch,
   getFormBySlug,
   sendFormVerification,
   verifyFormVerification,

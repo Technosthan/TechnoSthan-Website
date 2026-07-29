@@ -32,15 +32,17 @@
 }
 
 .carousel-track {
-  display: inline-flex;
+  display: flex;
   flex-wrap: nowrap;
-  gap: 20px;
+  gap: 24px;
   width: max-content;
   align-items: stretch;
-  animation: carousel-scroll 18s linear infinite;
+
+  padding: 0 24px;
+
+  animation: carousel-scroll 12s linear infinite;
+
   will-change: transform;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
 }
 
 .carousel-track > .carousel-card {
@@ -136,11 +138,16 @@
 }
 
 @keyframes carousel-scroll {
-  0% {
-    transform: translateX(0);
+  from {
+    transform: translate3d(0, 0, 0);
   }
-  100% {
-    transform: translateX(-50%);
+
+  to {
+    transform: translate3d(
+      calc(-50% - 10px),
+      0,
+      0
+    );
   }
 }
 
@@ -169,7 +176,7 @@
 
   .carousel-track {
     gap: 16px;
-    animation-duration: 16s;
+    animation-duration: 5s;
   }
 
   .carousel-card {

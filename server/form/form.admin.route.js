@@ -12,6 +12,10 @@ const {
   getFormSubmissionById,
   deleteFormSubmission,
   exportFormSubmissions,
+  exportResponsesByFormat,
+  previewResponsesImport,
+  importResponses,
+  undoImportedResponses,
   revealFormResponseSecret,
   importFormFile,
 } = require("./form.controller.js");
@@ -109,6 +113,19 @@ const importUpload = createMemoryUpload({
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
     "application/json",
+  ],
+});
+
+const responseImportUpload = createMemoryUpload({
+  maxFileSize: 20 * 1024 * 1024,
+  allowedMimeTypes: [
+    "text/csv",
+    "application/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/json",
+    "text/plain",
+    "application/octet-stream",
   ],
 });
 
@@ -254,6 +271,78 @@ router.put("/:formId", updateForm);
 router.delete("/:formId", deleteForm);
 router.get("/:formId/responses", getFormSubmissions);
 router.get("/:formId/responses/analysis", getFormResponseAnalysis);
+router.get("/:formId/responses/export", exportFormSubmissions);
+router.post("/:formId/responses/export", exportFormSubmissions);
+router.get("/:formId/responses/export/csv", (req, res) => {
+  req.params.format = "csv";
+  return exportResponsesByFormat(req, res);
+});
+router.get("/:formId/responses/export/xlsx", (req, res) => {
+  req.params.format = "xlsx";
+  return exportResponsesByFormat(req, res);
+});
+router.get("/:formId/responses/export/pdf", (req, res) => {
+  req.params.format = "pdf";
+  return exportResponsesByFormat(req, res);
+});
+router.get("/:formId/responses/export/json", (req, res) => {
+  req.params.format = "json";
+  return exportResponsesByFormat(req, res);
+});
+router.get("/:formId/responses/export/:format", exportResponsesByFormat);
+router.post("/:formId/responses/import", (req, res) => {
+  responseImportUpload.single("file")(req, res, async (error) => {
+    if (error) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          success: false,
+          message: "Maximum file size allowed is 20 MB.",
+        });
+      }
+
+      if (error.code === "UNSUPPORTED_MIME_TYPE") {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload a CSV, Excel, or JSON file.",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to import responses",
+      });
+    }
+
+    return importResponses(req, res);
+  });
+});
+router.post("/:formId/responses/import/preview", (req, res) => {
+  responseImportUpload.single("file")(req, res, async (error) => {
+    if (error) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          success: false,
+          message: "Maximum file size allowed is 20 MB.",
+        });
+      }
+
+      if (error.code === "UNSUPPORTED_MIME_TYPE") {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload a CSV, Excel, or JSON file.",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to preview import",
+      });
+    }
+
+    return previewResponsesImport(req, res);
+  });
+});
+router.delete("/:formId/responses/import/:batchId", undoImportedResponses);
 router.get("/:formId/responses/:responseId", getFormSubmissionById);
 router.delete("/:formId/responses/:responseId", deleteFormSubmission);
 router.post("/:formId/responses/:responseId/reveal-secret", revealFormResponseSecret);

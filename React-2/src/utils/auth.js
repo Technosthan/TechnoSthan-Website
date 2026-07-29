@@ -6,6 +6,22 @@ export const AUTH_STORAGE_KEYS = {
   workspaceSettingsUpdatedAt: "workspace-settings-updated-at",
 };
 
+const AUTH_TOKEN_COOKIE_NAME = AUTH_STORAGE_KEYS.token;
+
+const syncAuthTokenCookie = (token) => {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const value = String(token || "").trim();
+  if (value) {
+    document.cookie = `${AUTH_TOKEN_COOKIE_NAME}=${encodeURIComponent(value)}; path=/; SameSite=Lax`;
+    return;
+  }
+
+  document.cookie = `${AUTH_TOKEN_COOKIE_NAME}=; path=/; Max-Age=0; SameSite=Lax`;
+};
+
 export const SESSION_EVENT_TYPES = Object.freeze({
   LOGOUT: "logout",
   SESSION_EXPIRED: "session-expired",
@@ -20,7 +36,11 @@ export const normalizeRole = (role) => {
   return ["ADMIN", "HR", "USER"].includes(normalized) ? normalized : "USER";
 };
 
-export const getStoredToken = () => localStorage.getItem(AUTH_STORAGE_KEYS.token);
+export const getStoredToken = () => {
+  const token = localStorage.getItem(AUTH_STORAGE_KEYS.token);
+  syncAuthTokenCookie(token);
+  return token;
+};
 
 export const getLastActivityAt = () => {
   const value = Number(localStorage.getItem(AUTH_STORAGE_KEYS.lastActivityAt));
@@ -94,6 +114,7 @@ export const getStoredUser = () => {
 
 export const setAuth = ({ token, user }) => {
   localStorage.setItem(AUTH_STORAGE_KEYS.token, token);
+  syncAuthTokenCookie(token);
   localStorage.setItem(
     AUTH_STORAGE_KEYS.user,
     JSON.stringify({
@@ -113,6 +134,7 @@ export const clearAuth = ({
   broadcast = true,
 } = {}) => {
   localStorage.removeItem(AUTH_STORAGE_KEYS.token);
+  syncAuthTokenCookie("");
   localStorage.removeItem(AUTH_STORAGE_KEYS.user);
   clearLastActivityAt();
   if (broadcast) {

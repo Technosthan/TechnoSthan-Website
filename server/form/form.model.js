@@ -638,6 +638,21 @@ const formSchema = new mongoose.Schema(
       default: "#16a34a",
       trim: true,
     },
+    declarationSettings: {
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
+      text: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      required: {
+        type: Boolean,
+        default: true,
+      },
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

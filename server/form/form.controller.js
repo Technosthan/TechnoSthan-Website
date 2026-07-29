@@ -10,6 +10,10 @@ const {
   getFormResponseById: getFormResponseByIdService,
   deleteFormResponse: deleteFormResponseService,
   exportFormResponses: exportFormResponsesService,
+  exportResponseBundle: exportResponseBundleService,
+  previewResponseImport: previewResponseImportService,
+  importResponseRows: importResponseRowsService,
+  deleteImportedResponseBatch: deleteImportedResponseBatchService,
   getFormBySlug: getFormBySlugService,
   sendFormVerification: sendFormVerificationService,
   verifyFormVerification: verifyFormVerificationService,
@@ -150,15 +154,102 @@ const importFormFile = async (req, res) => {
 
 const exportFormSubmissions = async (req, res) => {
   try {
-    const csv = await exportFormResponsesService(req.params.formId, req.query);
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    const format = String(req.query?.format || req.body?.format || "csv")
+      .trim()
+      .toLowerCase();
+    const exportData = await exportResponseBundleService(req.params.formId, {
+      ...req.query,
+      ...req.body,
+      format,
+      userId: req.user?.id || req.user?.userId || null,
+      userName: req.user?.name || "",
+      email: req.user?.email || "",
+      role: req.user?.role || null,
+    });
+    res.setHeader("Content-Type", exportData.contentType);
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=form-${req.params.formId}-responses.csv`,
+      `attachment; filename=${exportData.filename}`,
     );
-    res.send(csv);
+    res.send(exportData.buffer);
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const exportResponsesByFormat = async (req, res) => {
+  try {
+    const format = String(req.params.format || req.query?.format || "csv")
+      .trim()
+      .toLowerCase();
+    const exportData = await exportResponseBundleService(req.params.formId, {
+      ...req.query,
+      ...req.body,
+      format,
+      userId: req.user?.id || req.user?.userId || null,
+      userName: req.user?.name || "",
+      email: req.user?.email || "",
+      role: req.user?.role || null,
+    });
+    res.setHeader("Content-Type", exportData.contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${exportData.filename}`,
+    );
+    res.send(exportData.buffer);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const previewResponsesImport = async (req, res) => {
+  try {
+    const result = await previewResponseImportService({
+      formId: req.params.formId,
+      file: req.file,
+      fileName: req.file?.originalname || "",
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const importResponses = async (req, res) => {
+  try {
+    const result = await importResponseRowsService({
+      formId: req.params.formId,
+      file: req.file,
+      fileName: req.file?.originalname || "",
+      importedBy: req.user?.id || req.user?.userId || null,
+      mapping: req.body?.mapping || req.body?.columnMappings || [],
+      duplicateStrategy: String(req.body?.duplicateStrategy || "skip").trim().toLowerCase(),
+      duplicateField: String(req.body?.duplicateField || "email").trim(),
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const undoImportedResponses = async (req, res) => {
+  try {
+    const result = await deleteImportedResponseBatchService(
+      req.params.formId,
+      req.params.batchId,
+    );
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -272,8 +363,15 @@ const submitPublicForm = async (req, res) => {
       error.statusCode === 400 ||
       /Question ".+" is required/i.test(error.message || "") ||
       /must be a valid/i.test(error.message || "") ||
+      /invalid option values/i.test(error.message || "") ||
+      /please verify/i.test(error.message || "") ||
+      /declaration/i.test(error.message || "") ||
+      /conditional answers do not belong/i.test(error.message || "") ||
       /Maximum file size allowed/i.test(error.message || "") ||
-      /File uploads are disabled/i.test(error.message || "");
+      /File uploads are disabled/i.test(error.message || "") ||
+      /must contain at least one entry/i.test(error.message || "") ||
+      /must be submitted as a list/i.test(error.message || "") ||
+      /allows maximum 5 entries/i.test(error.message || "");
 
     const statusCode = isValidationError ? 400 : 500;
     res.status(statusCode).json({
@@ -298,6 +396,10 @@ module.exports = {
   getFormSubmissionById,
   deleteFormSubmission,
   exportFormSubmissions,
+  exportResponsesByFormat,
+  previewResponsesImport,
+  importResponses,
+  undoImportedResponses,
   getPublicFormBySlug,
   sendPublicFormVerification,
   verifyPublicFormVerification,

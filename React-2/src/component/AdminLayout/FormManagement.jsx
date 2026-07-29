@@ -39,13 +39,17 @@ import {
   deleteAdminForm,
   deleteAdminFormResponse,
   exportAdminFormResponses,
+  exportAdminFormResponsesByFormat,
   getAdminFormExport,
   getAdminFormById,
   getAdminForms,
   getAdminFormResponse,
   getAdminFormResponses,
   importAdminFormFile,
+  importAdminFormResponses,
+  importAdminFormResponsesPreview,
   revealAdminFormResponseSecret,
+  undoAdminFormResponseImport,
   updateAdminForm,
 } from "../../forms/formsApi";
 import {
@@ -278,6 +282,12 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   whatsappBusinessNumber: "",
 };
 
+const DEFAULT_DECLARATION_SETTINGS = {
+  enabled: false,
+  text: "",
+  required: true,
+};
+
 const IMAGE_SIZE_LIMIT_MESSAGE =
   "Image size is too large. Please upload a file 5 MB or smaller.";
 const UPLOAD_REQUEST_TIMEOUT_MS = 90000;
@@ -306,6 +316,7 @@ const EMPTY_FORM = {
   allowFileUpload: false,
   expiresAt: "",
   themeColor: "#16a34a",
+  declarationSettings: { ...DEFAULT_DECLARATION_SETTINGS },
   questions: [],
   sections: [],
 };
@@ -501,6 +512,7 @@ const createConditionalField = (order = 0) => ({
   helpText: "",
   required: false,
   validationEnabled: false,
+  allowUserToAddMore: false,
   validation: normalizeNumberValidation(),
   options: [],
   uploadConfig: {
@@ -772,6 +784,7 @@ const normalizeConditionalField = (field = {}, index = 0) => ({
         : "",
   required: field.required === true,
   validationEnabled: field.validationEnabled === true,
+  allowUserToAddMore: field.allowUserToAddMore === true,
   validation: normalizeConditionalValidation(field.validation),
   options: Array.isArray(field.options)
     ? field.options.map((option, optionIndex) =>
@@ -912,11 +925,7 @@ const normalizeHttpsUrl = (value = "") => {
 
 const resolveEmailTemplateImageUrl = (url, asset) => {
   const rawValue =
-    url ||
-    asset?.secureUrl ||
-    asset?.secure_url ||
-    asset?.url ||
-    "";
+    url || asset?.secureUrl || asset?.secure_url || asset?.url || "";
 
   return normalizeHttpsUrl(rawValue);
 };
@@ -1344,7 +1353,10 @@ const normalizeEmailTemplate = (template = {}, form = {}) => {
     logoUrl:
       source.logoUrl ?? legacy.logoUrl ?? legacy.emailTemplate?.logoUrl ?? "",
     logoAsset:
-      source.logoAsset ?? legacy.logoAsset ?? legacy.emailTemplate?.logoAsset ?? null,
+      source.logoAsset ??
+      legacy.logoAsset ??
+      legacy.emailTemplate?.logoAsset ??
+      null,
     bannerUrl:
       source.bannerUrl ??
       legacy.emailTemplate?.bannerUrl ??
@@ -1759,6 +1771,13 @@ const normalizeForm = (form) => ({
     form?.notificationSettings,
     form,
   ),
+  declarationSettings: {
+    ...DEFAULT_DECLARATION_SETTINGS,
+    ...(form?.declarationSettings || {}),
+    enabled: form?.declarationSettings?.enabled === true,
+    text: String(form?.declarationSettings?.text || "").trim(),
+    required: form?.declarationSettings?.required !== false,
+  },
   sections: normalizeSections(form?.sections || [], form?.questions || []),
   questions: Array.isArray(form?.questions)
     ? form.questions.map(normalizeQuestion)
@@ -2089,9 +2108,28 @@ const FormManagement = () => {
   const [responsesTab, setResponsesTab] = useState("list");
   const [responseSearch, setResponseSearch] = useState("");
   const [responseFilter, setResponseFilter] = useState("all");
+  const [responseSourceFilter, setResponseSourceFilter] = useState("all");
   const [responseDateFrom, setResponseDateFrom] = useState("");
   const [responseDateTo, setResponseDateTo] = useState("");
   const [exportingFormId, setExportingFormId] = useState(null);
+  const [responseExportModalOpen, setResponseExportModalOpen] =
+    useState(false);
+  const [responseExportFormat, setResponseExportFormat] = useState("csv");
+  const [responseImportModalOpen, setResponseImportModalOpen] =
+    useState(false);
+  const [responseImportFile, setResponseImportFile] = useState(null);
+  const [responseImportPreview, setResponseImportPreview] = useState(null);
+  const [responseImportMappings, setResponseImportMappings] = useState([]);
+  const [responseImportDuplicateStrategy, setResponseImportDuplicateStrategy] =
+    useState("skip");
+  const [responseImportDuplicateField, setResponseImportDuplicateField] =
+    useState("email");
+  const [responseImportLoading, setResponseImportLoading] = useState(false);
+  const [responseImportProgress, setResponseImportProgress] = useState(0);
+  const [responseImportSummary, setResponseImportSummary] = useState(null);
+  const [responseImportErrorRows, setResponseImportErrorRows] = useState([]);
+  const [responseImportBatchId, setResponseImportBatchId] = useState("");
+  const responseImportInputRef = useRef(null);
   const [analysisLeadFilter, setAnalysisLeadFilter] = useState("all");
   const [analysisRatingFilter, setAnalysisRatingFilter] = useState("all");
   const [analysisInterestFilter, setAnalysisInterestFilter] = useState("all");
@@ -2244,6 +2282,15 @@ const FormManagement = () => {
     setSlugTouched(true);
     setSelectedResponse(null);
     setImportPreview(null);
+    setResponseExportModalOpen(false);
+    setResponseImportModalOpen(false);
+    setResponseImportFile(null);
+    setResponseImportPreview(null);
+    setResponseImportMappings([]);
+    setResponseImportSummary(null);
+    setResponseImportErrorRows([]);
+    setResponseImportBatchId("");
+    setResponseImportProgress(0);
     sessionUploadedAssetsRef.current = [];
     setUploadingEmailTemplateField("");
     setUploadingFormLogoImage(false);
@@ -2282,6 +2329,15 @@ const FormManagement = () => {
     setResponsesTab("list");
     setSlugTouched(false);
     setImportPreview(null);
+    setResponseExportModalOpen(false);
+    setResponseImportModalOpen(false);
+    setResponseImportFile(null);
+    setResponseImportPreview(null);
+    setResponseImportMappings([]);
+    setResponseImportSummary(null);
+    setResponseImportErrorRows([]);
+    setResponseImportBatchId("");
+    setResponseImportProgress(0);
     setCollapsedSections({});
     draftResolutionRef.current = null;
     const initialStructure = createInitialFormStructure();
@@ -4119,6 +4175,13 @@ const FormManagement = () => {
         ...normalizedEmailTemplate,
         footerButtons: normalizedEmailTemplate.footerButtons || [],
       },
+      declarationSettings: {
+        ...DEFAULT_DECLARATION_SETTINGS,
+        ...(draft.declarationSettings || {}),
+        enabled: draft.declarationSettings?.enabled === true,
+        text: String(draft.declarationSettings?.text || "").trim(),
+        required: draft.declarationSettings?.required !== false,
+      },
       status: nextStatus,
       slug: slugify(draft.slug || draft.title),
       expiresAt:
@@ -4184,6 +4247,7 @@ const FormManagement = () => {
                           helpText: String(field.helpText || "").trim(),
                           required: field.required === true,
                           validationEnabled: field.validationEnabled === true,
+                          allowUserToAddMore: field.allowUserToAddMore === true,
                           validation: normalizeNumberValidation(
                             field.validation,
                           ),
@@ -4251,6 +4315,7 @@ const FormManagement = () => {
                 helpText: String(field.helpText || "").trim(),
                 required: field.required === true,
                 validationEnabled: field.validationEnabled === true,
+                allowUserToAddMore: field.allowUserToAddMore === true,
                 validation: normalizeNumberValidation(field.validation),
                 options: Array.isArray(field.options)
                   ? field.options
@@ -4343,6 +4408,7 @@ const FormManagement = () => {
                       helpText: String(field.helpText || "").trim(),
                       required: field.required === true,
                       validationEnabled: field.validationEnabled === true,
+                      allowUserToAddMore: field.allowUserToAddMore === true,
                       validation: normalizeNumberValidation(field.validation),
                       options: Array.isArray(field.options)
                         ? field.options
@@ -4402,6 +4468,7 @@ const FormManagement = () => {
               helpText: String(field.helpText || "").trim(),
               required: field.required === true,
               validationEnabled: field.validationEnabled === true,
+              allowUserToAddMore: field.allowUserToAddMore === true,
               validation: normalizeNumberValidation(field.validation),
               options: Array.isArray(field.options)
                 ? field.options
@@ -4555,16 +4622,214 @@ const FormManagement = () => {
     );
   };
 
-  const exportResponses = async (params = {}, filenameSuffix = "responses") => {
+  const exportResponses = async (
+    params = {},
+    filenameSuffix = "responses",
+    format = "csv",
+  ) => {
     if (!selectedFormId) return;
-    const res = await exportAdminFormResponses(selectedFormId, params);
-    const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
+    const res = await exportAdminFormResponsesByFormat(
+      selectedFormId,
+      format,
+      params,
+    );
+    const contentType =
+      res.headers?.["content-type"] ||
+      (format === "xlsx"
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : format === "pdf"
+          ? "application/pdf"
+          : format === "json"
+            ? "application/json"
+            : "text/csv;charset=utf-8;");
+    const blob = new Blob([res.data], { type: contentType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${slugify(draft.slug || draft.title || "form")}-${filenameSuffix}.csv`;
+    link.download = `${slugify(draft.slug || draft.title || "form")}-${filenameSuffix}.${format}`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openResponseExportDialog = () => {
+    if (!selectedFormId) {
+      toast.error("Save the form first");
+      return;
+    }
+    setResponseExportModalOpen(true);
+    setResponseExportFormat("csv");
+  };
+
+  const closeResponseExportDialog = () => {
+    setResponseExportModalOpen(false);
+  };
+
+  const openResponseImportDialog = () => {
+    if (!selectedFormId) {
+      toast.error("Save the form first");
+      return;
+    }
+    setResponseImportModalOpen(true);
+    setResponseImportFile(null);
+    setResponseImportPreview(null);
+    setResponseImportMappings([]);
+    setResponseImportDuplicateStrategy("skip");
+    setResponseImportDuplicateField("email");
+    setResponseImportSummary(null);
+    setResponseImportErrorRows([]);
+    setResponseImportBatchId("");
+    setResponseImportProgress(0);
+  };
+
+  const closeResponseImportDialog = () => {
+    if (responseImportLoading) return;
+    setResponseImportModalOpen(false);
+    setResponseImportFile(null);
+    setResponseImportPreview(null);
+    setResponseImportMappings([]);
+    setResponseImportSummary(null);
+    setResponseImportErrorRows([]);
+    setResponseImportBatchId("");
+    setResponseImportProgress(0);
+  };
+
+  const resetResponseImportProgress = () => {
+    setResponseImportLoading(false);
+    setResponseImportProgress(0);
+  };
+
+  const handleResponseImportFileSelect = async (file) => {
+    if (!file) return;
+
+    const allowed = [
+      ".csv",
+      ".xls",
+      ".xlsx",
+      ".json",
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/json",
+      "application/octet-stream",
+      "text/plain",
+    ];
+    const fileName = String(file.name || "").toLowerCase();
+    const isAllowed = allowed.some(
+      (item) => item.startsWith(".") ? fileName.endsWith(item) : file.type === item,
+    );
+
+    if (!isAllowed) {
+      toast.error("Please upload a CSV, Excel, or JSON file.");
+      return;
+    }
+
+    setResponseImportFile(file);
+    setResponseImportLoading(true);
+    setResponseImportProgress(25);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await importAdminFormResponsesPreview(selectedFormId, formData);
+      const previewData = response.data?.data?.preview || response.data?.data || {};
+      const questionMap = Array.isArray(previewData.questionMap)
+        ? previewData.questionMap
+        : [];
+      const mappings = Array.isArray(previewData.columns)
+        ? previewData.columns.map((column) => {
+            const match = questionMap.find(
+              (item) => item.matchedColumnIndex === column.index,
+            );
+            return {
+              columnIndex: column.index,
+              header: column.header,
+              questionId: match?.questionId || "",
+              label: match?.questionLabel || "",
+              fieldPath: "",
+            };
+          })
+        : [];
+      setResponseImportPreview(previewData);
+      setResponseImportMappings(mappings);
+      setResponseImportProgress(100);
+      toast.success("Import file analyzed");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to analyze import file");
+      setResponseImportFile(null);
+      setResponseImportPreview(null);
+      setResponseImportMappings([]);
+      setResponseImportProgress(0);
+    } finally {
+      resetResponseImportProgress();
+    }
+  };
+
+  const handleResponseImportChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleResponseImportFileSelect(file);
+    event.target.value = "";
+  };
+
+  const updateResponseImportMapping = (index, field, value) => {
+    setResponseImportMappings((prev) => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        [field]: value,
+      };
+      return next;
+    });
+  };
+
+  const handleCommitResponseImport = async () => {
+    if (!selectedFormId || !responseImportFile || !responseImportPreview) {
+      toast.error("Choose a file first");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", responseImportFile);
+    formData.append("duplicateStrategy", responseImportDuplicateStrategy);
+    formData.append("duplicateField", responseImportDuplicateField);
+    formData.append("mapping", JSON.stringify(responseImportMappings));
+
+    setResponseImportLoading(true);
+    setResponseImportProgress(35);
+    try {
+      const response = await importAdminFormResponses(selectedFormId, formData);
+      const data = response.data?.data || {};
+      setResponseImportSummary(data.summary || null);
+      setResponseImportErrorRows(Array.isArray(data.errorRows) ? data.errorRows : []);
+      setResponseImportBatchId(data.batchId || "");
+      setResponseImportProgress(100);
+
+      const [responsesRes] = await Promise.all([getAdminFormResponses(selectedFormId)]);
+      setResponses(normalizeResponsesPayload(responsesRes.data?.data));
+      setSelectedResponse(null);
+      toast.success("Responses imported successfully");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to import responses");
+    } finally {
+      resetResponseImportProgress();
+    }
+  };
+
+  const handleUndoResponseImport = async () => {
+    if (!selectedFormId || !responseImportBatchId) return;
+    if (!window.confirm("Undo this import batch?")) return;
+
+    try {
+      await undoAdminFormResponseImport(selectedFormId, responseImportBatchId);
+      const [responsesRes] = await Promise.all([getAdminFormResponses(selectedFormId)]);
+      setResponses(normalizeResponsesPayload(responsesRes.data?.data));
+      setResponseImportSummary(null);
+      setResponseImportErrorRows([]);
+      setResponseImportBatchId("");
+      toast.success("Import batch undone");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to undo import");
+    }
   };
 
   const handleExportForm = async (formId) => {
@@ -4716,6 +4981,12 @@ const FormManagement = () => {
         const submittedTime = new Date(
           response.submittedAt || response.createdAt,
         ).getTime();
+        if (responseSourceFilter === "imported" && response.imported !== true) {
+          return false;
+        }
+        if (responseSourceFilter === "manual" && response.imported === true) {
+          return false;
+        }
         if (responseFilter === "today") {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -4768,12 +5039,15 @@ const FormManagement = () => {
           name,
           email,
           phone,
+          imported: response.imported === true,
+          sourceLabel: response.imported === true ? "Imported" : "Manual",
         };
       });
   }, [
     responseDateFrom,
     responseDateTo,
     responseFilter,
+    responseSourceFilter,
     responseSearch,
     responses,
   ]);
@@ -4867,6 +5141,13 @@ const FormManagement = () => {
     const answers = Array.isArray(selectedResponse.answers)
       ? selectedResponse.answers
       : [];
+    const submissionRows = Array.isArray(
+      selectedResponse.submissionSummary?.rows,
+    )
+      ? selectedResponse.submissionSummary.rows
+      : [];
+    const declaration = selectedResponse.declaration || null;
+    const isImportedResponse = selectedResponse.imported === true;
     const mainAnswers = answers.filter((answer) => !answer.conditional);
     const conditionalAnswers = answers.filter((answer) => answer.conditional);
 
@@ -4928,6 +5209,101 @@ const FormManagement = () => {
 
     return (
       <>
+        {declaration && !isImportedResponse && (
+          <section className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Declaration
+            </div>
+            <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+              <div className="text-sm font-semibold text-emerald-100">
+                {declaration.accepted === true ? "Accepted" : "Not accepted"}
+              </div>
+              {declaration.acceptedAt && (
+                <div className="mt-1 text-xs text-emerald-200/80">
+                  Accepted At:{" "}
+                  {new Date(declaration.acceptedAt).toLocaleString()}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {isImportedResponse && (
+          <section className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Import Metadata
+            </div>
+            <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-4 text-sm">
+              <div className="font-semibold text-cyan-100">Imported</div>
+              <div className="mt-2 grid gap-2 text-cyan-50/90 md:grid-cols-2">
+                <div>Source File: {selectedResponse.sourceFile || "-"}</div>
+                <div>Original Row: {selectedResponse.originalRowNumber || "-"}</div>
+                <div>Batch ID: {selectedResponse.importBatchId || "-"}</div>
+                <div>
+                  Imported At:{" "}
+                  {selectedResponse.importedAt
+                    ? new Date(selectedResponse.importedAt).toLocaleString()
+                    : "-"}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {isImportedResponse && submissionRows.length > 0 && (
+          <section className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Imported Fields
+            </div>
+            <div className="space-y-3">
+              {submissionRows.map((row, index) => {
+                if (row.kind === "section") {
+                  return (
+                    <div
+                      key={`imported-section-${index}`}
+                      className="rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200"
+                    >
+                      {row.label}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={`imported-row-${index}-${row.questionId || row.fieldId || row.fieldLabel || "row"}`}
+                    className="rounded-3xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="text-sm font-semibold">
+                      {row.displayLabel ||
+                        row.fieldLabel ||
+                        row.question?.label ||
+                        "Question"}
+                    </div>
+                    {row.displayContext ? (
+                      <div className="mt-1 text-xs text-cyan-200/80">
+                        {row.displayContext}
+                      </div>
+                    ) : null}
+                    <div className="mt-2 text-sm text-slate-300">
+                      {renderAnswerValue(
+                        {
+                          ...row,
+                          questionType:
+                            row.fieldType || row.question?.type || "",
+                        },
+                        {
+                          revealed: Boolean(revealedSecrets[row.questionId]),
+                          revealedValue: revealedSecrets[row.questionId],
+                        },
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {mainAnswers.length > 0 && (
           <section className="space-y-3">
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -4935,6 +5311,56 @@ const FormManagement = () => {
             </div>
             <div className="space-y-3">
               {mainAnswers.map((answer) => renderAnswerCard(answer, "main"))}
+            </div>
+          </section>
+        )}
+
+        {!mainAnswers.length && submissionRows.length > 0 && (
+          <section className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Submission Details
+            </div>
+            <div className="space-y-3">
+              {submissionRows.map((row, index) => {
+                if (row.kind === "section") {
+                  return (
+                    <div
+                      key={`submission-section-${index}`}
+                      className="rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200"
+                    >
+                      {row.label}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={`submission-row-${index}-${row.questionId || row.fieldId || row.fieldLabel || "row"}`}
+                    className="rounded-3xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="text-sm font-semibold">
+                      {row.displayLabel || row.fieldLabel || row.question?.label || "Question"}
+                    </div>
+                    {row.displayContext ? (
+                      <div className="mt-1 text-xs text-cyan-200/80">
+                        {row.displayContext}
+                      </div>
+                    ) : null}
+                    <div className="mt-2 text-sm text-slate-300">
+                      {renderAnswerValue(
+                        {
+                          ...row,
+                          questionType: row.fieldType || row.question?.type || "",
+                        },
+                        {
+                          revealed: Boolean(revealedSecrets[row.questionId]),
+                          revealedValue: revealedSecrets[row.questionId],
+                        },
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
@@ -5119,6 +5545,22 @@ const FormManagement = () => {
               }
             />
             Enable Validation
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={field.allowUserToAddMore === true}
+              onChange={(e) =>
+                updateConditionalField(
+                  questionIndex,
+                  optionId,
+                  field.id,
+                  "allowUserToAddMore",
+                  e.target.checked,
+                )
+              }
+            />
+            Allow user to add question
           </label>
         </div>
 
@@ -6602,6 +7044,75 @@ const FormManagement = () => {
                   />
                 </div>
                 <div className="space-y-4">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">Declaration</div>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Show an admin-controlled declaration before
+                          submission.
+                        </p>
+                      </div>
+                      <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={draft.declarationSettings?.enabled === true}
+                          onChange={(e) =>
+                            updateDraft("declarationSettings", {
+                              ...(draft.declarationSettings || {}),
+                              enabled: e.target.checked,
+                              text: String(
+                                draft.declarationSettings?.text || "",
+                              ),
+                              required:
+                                draft.declarationSettings?.required !== false,
+                            })
+                          }
+                        />
+                        Show declaration on this form
+                      </label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold">
+                        Declaration Text
+                      </label>
+                      <textarea
+                        value={draft.declarationSettings?.text || ""}
+                        onChange={(e) =>
+                          updateDraft("declarationSettings", {
+                            ...(draft.declarationSettings || {}),
+                            enabled:
+                              draft.declarationSettings?.enabled === true,
+                            text: e.target.value,
+                            required:
+                              draft.declarationSettings?.required !== false,
+                          })
+                        }
+                        rows={4}
+                        placeholder="I hereby declare that the information provided above is true and correct to the best of my knowledge."
+                        className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 resize-none`}
+                      />
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={draft.declarationSettings?.required !== false}
+                        onChange={(e) =>
+                          updateDraft("declarationSettings", {
+                            ...(draft.declarationSettings || {}),
+                            enabled:
+                              draft.declarationSettings?.enabled === true,
+                            text: String(draft.declarationSettings?.text || ""),
+                            required: e.target.checked,
+                          })
+                        }
+                      />
+                      User must accept declaration before submission
+                    </label>
+                  </div>
+
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4 space-y-4">
                     <div>
                       <label className="mb-2 block text-sm font-semibold">
@@ -8500,7 +9011,8 @@ const FormManagement = () => {
                           style={{
                             minHeight: `${emailTemplatePreview.headerMinHeight || 220}px`,
                             backgroundColor:
-                              emailTemplatePreview.resolved.headerBackgroundColor,
+                              emailTemplatePreview.resolved
+                                .headerBackgroundColor,
                             backgroundImage:
                               emailTemplatePreview.headerBackgroundType ===
                                 "image" &&
@@ -8605,7 +9117,8 @@ const FormManagement = () => {
                             className="rounded-3xl border p-4"
                             style={{
                               backgroundColor:
-                                emailTemplatePreview.resolved.bodyBackgroundColor,
+                                emailTemplatePreview.resolved
+                                  .bodyBackgroundColor,
                               borderColor:
                                 emailTemplatePreview.resolved.accentColor,
                             }}
@@ -8630,7 +9143,8 @@ const FormManagement = () => {
                             style={{
                               borderColor: "rgba(148,163,184,0.18)",
                               backgroundColor:
-                                emailTemplatePreview.resolved.cardBackgroundColor,
+                                emailTemplatePreview.resolved
+                                  .cardBackgroundColor,
                             }}
                           >
                             <table className="min-w-full text-left text-sm">
@@ -8647,7 +9161,8 @@ const FormManagement = () => {
                                       className="w-1/3 px-4 py-3 font-semibold"
                                       style={{
                                         color:
-                                          emailTemplatePreview.resolved.textColor,
+                                          emailTemplatePreview.resolved
+                                            .textColor,
                                         backgroundColor: "rgba(0,0,0,0.02)",
                                       }}
                                     >
@@ -8657,7 +9172,8 @@ const FormManagement = () => {
                                       className="px-4 py-3"
                                       style={{
                                         color:
-                                          emailTemplatePreview.resolved.textColor,
+                                          emailTemplatePreview.resolved
+                                            .textColor,
                                       }}
                                     >
                                       {row.answer}
@@ -8708,7 +9224,8 @@ const FormManagement = () => {
                             style={{
                               borderColor: "rgba(148,163,184,0.18)",
                               backgroundColor:
-                                emailTemplatePreview.resolved.footerBackgroundColor,
+                                emailTemplatePreview.resolved
+                                  .footerBackgroundColor,
                               backgroundImage:
                                 emailTemplatePreview.footerBackgroundType ===
                                   "image" &&
@@ -8745,7 +9262,8 @@ const FormManagement = () => {
                               className="relative z-10 flex h-full flex-col justify-center gap-3 p-5"
                               style={{
                                 textAlign:
-                                  emailTemplatePreview.footerTextAlign || "left",
+                                  emailTemplatePreview.footerTextAlign ||
+                                  "left",
                               }}
                             >
                               {emailTemplatePreview.footerText && (
@@ -8813,23 +9331,17 @@ const FormManagement = () => {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      exportResponses(
-                        {
-                          search: responseSearch,
-                          ...getFilterRange(responseFilter),
-                          from:
-                            responseDateFrom ||
-                            getFilterRange(responseFilter).from,
-                          to:
-                            responseDateTo || getFilterRange(responseFilter).to,
-                        },
-                        "filtered",
-                      )
-                    }
+                    onClick={openResponseExportDialog}
                     className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
                   >
-                    <Download size={16} /> Export CSV
+                    <Download size={16} /> Export
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openResponseImportDialog}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                  >
+                    <Upload size={16} /> Import
                   </button>
                   <button
                     type="button"
@@ -9258,6 +9770,15 @@ const FormManagement = () => {
                       <option value="7days">Last 7 days</option>
                       <option value="30days">Last 30 days</option>
                     </select>
+                    <select
+                      value={responseSourceFilter}
+                      onChange={(e) => setResponseSourceFilter(e.target.value)}
+                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-4 py-3 text-sm`}
+                    >
+                      <option value="all">All responses</option>
+                      <option value="manual">Manual only</option>
+                      <option value="imported">Imported only</option>
+                    </select>
                     <input
                       type="date"
                       value={responseDateFrom}
@@ -9275,6 +9796,7 @@ const FormManagement = () => {
                       onClick={() => {
                         setResponseSearch("");
                         setResponseFilter("all");
+                        setResponseSourceFilter("all");
                         setResponseDateFrom("");
                         setResponseDateTo("");
                       }}
@@ -9291,6 +9813,7 @@ const FormManagement = () => {
                           <th className="px-4 py-3">Name</th>
                           <th className="px-4 py-3">Email</th>
                           <th className="px-4 py-3">Phone</th>
+                          <th className="px-4 py-3">Source</th>
                           <th className="px-4 py-3">Submitted At</th>
                           <th className="px-4 py-3">View</th>
                           <th className="px-4 py-3">Delete</th>
@@ -9310,6 +9833,17 @@ const FormManagement = () => {
                             </td>
                             <td className="px-4 py-3">
                               {response.phone || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                  response.imported
+                                    ? "bg-cyan-500/15 text-cyan-100"
+                                    : "bg-white/10 text-slate-200"
+                                }`}
+                              >
+                                {response.sourceLabel || "Manual"}
+                              </span>
                             </td>
                             <td className="px-4 py-3">
                               {formatSubmittedAt(
@@ -9339,7 +9873,7 @@ const FormManagement = () => {
                         {!responseTable.length && (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="px-4 py-8 text-center text-slate-400"
                             >
                               No responses yet.
@@ -9355,6 +9889,348 @@ const FormManagement = () => {
           )}
         </section>
       </div>
+
+      <input
+        ref={responseImportInputRef}
+        type="file"
+        accept=".csv,.xls,.xlsx,.json,text/csv,application/json,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        onChange={handleResponseImportChange}
+        className="hidden"
+      />
+
+      {responseExportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className={`${theme.card} w-full max-w-xl rounded-3xl border ${theme.border} p-6`}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold">Export Responses</h3>
+                <p className={`mt-1 text-sm ${theme.textSecondary}`}>
+                  Choose a format for the currently filtered response set.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeResponseExportDialog}
+                className="rounded-2xl border border-white/10 px-3 py-2 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="mt-6 space-y-3">
+              {[
+                ["xlsx", "Excel (.xlsx)"],
+                ["csv", "CSV (.csv)"],
+                ["pdf", "PDF (.pdf)"],
+                ["json", "JSON (.json)"],
+              ].map(([value, label]) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 ${
+                    responseExportFormat === value
+                      ? "border-cyan-400/40 bg-cyan-500/10"
+                      : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  <span className="text-sm font-medium">{label}</span>
+                  <input
+                    type="radio"
+                    name="responseExportFormat"
+                    checked={responseExportFormat === value}
+                    onChange={() => setResponseExportFormat(value)}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeResponseExportDialog}
+                className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await exportResponses(
+                      {
+                        search: responseSearch,
+                        source: responseSourceFilter,
+                        ...getFilterRange(responseFilter),
+                        from:
+                          responseDateFrom ||
+                          getFilterRange(responseFilter).from,
+                        to:
+                          responseDateTo ||
+                          getFilterRange(responseFilter).to,
+                      },
+                      "responses",
+                      responseExportFormat,
+                    );
+                    closeResponseExportDialog();
+                  } catch (error) {
+                    toast.error(
+                      error.response?.data?.message || "Failed to export responses",
+                    );
+                  }
+                }}
+                className="rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {responseImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className={`${theme.card} max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold">Import Responses</h3>
+                <p className={`mt-1 text-sm ${theme.textSecondary}`}>
+                  Upload a CSV, Excel, or JSON file, map columns, and resolve duplicates before importing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeResponseImportDialog}
+                className="rounded-2xl border border-white/10 px-3 py-2 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {!responseImportPreview ? (
+              <div className="mt-6 grid gap-4 md:grid-cols-[1.4fr_1fr]">
+                <button
+                  type="button"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const file = event.dataTransfer.files?.[0];
+                    if (file) {
+                      void handleResponseImportFileSelect(file);
+                    }
+                  }}
+                  onClick={() => responseImportInputRef.current?.click()}
+                  className="flex min-h-[180px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/5 p-6 text-center"
+                >
+                  <Upload size={28} className="mb-3 text-cyan-300" />
+                  <div className="text-lg font-semibold">Drag & Drop File</div>
+                  <div className={`mt-1 text-sm ${theme.textSecondary}`}>or browse</div>
+                </button>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="text-sm font-semibold">Supported</div>
+                  <div className="mt-3 space-y-2 text-sm text-slate-300">
+                    <div>CSV</div>
+                    <div>Excel (.xlsx)</div>
+                    <div>JSON</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6 space-y-5">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-sm font-semibold">File</div>
+                    <div className="mt-2 text-sm text-slate-300">
+                      {responseImportFile?.name || responseImportPreview.filename || "Selected file"}
+                    </div>
+                    <div className="mt-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                      Rows: {responseImportPreview.totalRows || 0}
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-sm font-semibold">Duplicate Handling</div>
+                    <div className="mt-3 space-y-2">
+                      {[
+                        ["skip", "Skip duplicates"],
+                        ["update", "Update existing"],
+                        ["import-all", "Import everything"],
+                      ].map(([value, label]) => (
+                        <label key={value} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm">
+                          <span>{label}</span>
+                          <input
+                            type="radio"
+                            checked={responseImportDuplicateStrategy === value}
+                            onChange={() => setResponseImportDuplicateStrategy(value)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-sm font-semibold">Mapping</div>
+                    <div className="mt-4 max-h-[360px] overflow-y-auto rounded-2xl border border-white/10">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="bg-slate-950/95 text-slate-300">
+                          <tr>
+                            <th className="px-3 py-2">Imported Column</th>
+                            <th className="px-3 py-2">Current Question</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(responseImportPreview.columns || []).map((column, index) => {
+                            const mapping = responseImportMappings[index] || {};
+                            return (
+                              <tr key={`${column.index}-${column.header}`} className="border-t border-white/10">
+                                <td className="px-3 py-3 text-slate-300">{column.header || `Column ${column.index + 1}`}</td>
+                                <td className="px-3 py-3">
+                                  <select
+                                    value={mapping.questionId || ""}
+                                    onChange={(event) =>
+                                      updateResponseImportMapping(index, "questionId", event.target.value)
+                                    }
+                                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-3 py-2 text-sm`}
+                                  >
+                                    <option value="">Ignore</option>
+                                    {(draft.questions || [])
+                                      .filter((question) => question.type !== "sectionHeading")
+                                      .map((question) => (
+                                        <option key={question._id || question.id} value={question._id || question.id}>
+                                          {question.label || "Untitled question"}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                      <div className="text-sm font-semibold">Duplicate Field</div>
+                      <select
+                        value={responseImportDuplicateField}
+                        onChange={(event) => setResponseImportDuplicateField(event.target.value)}
+                        className={`${theme.input} mt-3 w-full rounded-2xl border ${theme.border} px-3 py-2 text-sm`}
+                      >
+                        <option value="email">Email</option>
+                        <option value="phone">Phone</option>
+                        <option value="submission id">Submission ID</option>
+                        {(draft.questions || [])
+                          .filter((question) => question.type !== "sectionHeading")
+                          .map((question) => (
+                            <option key={question._id || question.id} value={question.label || question._id || question.id}>
+                              {question.label || "Untitled question"}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    {responseImportProgress > 0 && (
+                      <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Importing...</span>
+                          <span>{responseImportProgress}%</span>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/10">
+                          <div
+                            className="h-2 rounded-full bg-cyan-400 transition-all"
+                            style={{ width: `${responseImportProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {responseImportSummary && (
+                      <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                        <div className="text-sm font-semibold text-emerald-100">
+                          Import Completed
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                          <div>Imported: {responseImportSummary.imported || 0}</div>
+                          <div>Updated: {responseImportSummary.updated || 0}</div>
+                          <div>Skipped: {responseImportSummary.skipped || 0}</div>
+                          <div>Errors: {responseImportSummary.errors || 0}</div>
+                        </div>
+                        {responseImportBatchId && (
+                          <button
+                            type="button"
+                            onClick={handleUndoResponseImport}
+                            className="mt-4 w-full rounded-2xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-100"
+                          >
+                            Undo Import
+                          </button>
+                        )}
+                        {responseImportErrorRows.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const rows = [
+                                ["Row Number", "Error", "Reason"],
+                                ...responseImportErrorRows.map((row) => [
+                                  row.rowNumber,
+                                  row.error,
+                                  row.reason,
+                                ]),
+                              ];
+                              const csv = rows
+                                .map((row) =>
+                                  row
+                                    .map((cell) =>
+                                      `"${String(cell ?? "").replace(/"/g, '""')}"`,
+                                    )
+                                    .join(","),
+                                )
+                                .join("\n");
+                              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                              const url = URL.createObjectURL(blob);
+                              const anchor = document.createElement("a");
+                              anchor.href = url;
+                              anchor.download = `${slugify(draft.slug || draft.title || "form")}-import-errors.csv`;
+                              anchor.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="mt-3 w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+                          >
+                            Download Error Report
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeResponseImportDialog}
+                className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              {!responseImportPreview ? (
+                <button
+                  type="button"
+                  onClick={() => responseImportInputRef.current?.click()}
+                  className="rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white"
+                >
+                  Browse
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCommitResponseImport}
+                  disabled={responseImportLoading}
+                  className="rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Import
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {importPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">

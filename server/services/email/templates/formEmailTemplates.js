@@ -787,6 +787,23 @@ const buildEmailShell = ({
   </html>`;
 };
 
+const renderDeclarationSection = (declaration = {}) => {
+  if (!declaration || declaration.accepted !== true) return "";
+
+  const declarationText = String(declaration.text || "").trim();
+  const acceptedAt = declaration.acceptedAt
+    ? formatDateTime(declaration.acceptedAt)
+    : "";
+
+  return `
+    <div style="margin-bottom:18px;padding:16px 18px;border:1px solid rgba(148,163,184,0.24);border-radius:20px;background:rgba(15,23,42,0.03);color:#0f172a;line-height:1.7;">
+      <div style="font-weight:800;margin-bottom:6px;">Declaration accepted</div>
+      ${declarationText ? `<div style="white-space:pre-wrap;">${escapeHtml(declarationText)}</div>` : ""}
+      ${acceptedAt ? `<div style="margin-top:8px;font-size:12px;color:#475569;"><strong>Accepted at:</strong> ${escapeHtml(acceptedAt)}</div>` : ""}
+    </div>
+  `;
+};
+
 const buildAdminFormSubmissionEmail = ({
   formTitle = "Form Submission",
   submittedAt = new Date().toISOString(),
@@ -795,6 +812,7 @@ const buildAdminFormSubmissionEmail = ({
   adminUrl = "",
   branding = {},
   emailTemplate = {},
+  declaration = null,
 }) => {
   const resolvedBranding = {
     ...branding,
@@ -830,6 +848,7 @@ const buildAdminFormSubmissionEmail = ({
         ]
       : [],
   );
+  const declarationSection = renderDeclarationSection(declaration);
 
   return buildEmailShell({
     headerTitle: emailTemplate.headerTitle || "New Form Submission",
@@ -856,6 +875,7 @@ const buildAdminFormSubmissionEmail = ({
         <div><strong>Reference ID:</strong> ${escapeHtml(referenceId)}</div>
         <div><strong>Submitted at:</strong> ${escapeHtml(formatDateTime(submittedAt))}</div>
       </div>
+      ${declarationSection}
       ${
         rows.length
           ? `<div style="margin-bottom:12px;font-size:15px;font-weight:700;color:${normalizeHexColor(emailTemplate.textColor, "#0f172a")};">Submission Summary</div>${renderResponsesTable(
@@ -893,6 +913,7 @@ const buildUserConfirmationEmail = ({
   publicUrl = "",
   branding = {},
   emailTemplate = {},
+  declaration = null,
 }) => {
   const resolvedBranding = {
     ...branding,
@@ -934,6 +955,7 @@ const buildUserConfirmationEmail = ({
         ]
       : [],
   );
+  const declarationSection = renderDeclarationSection(declaration);
 
   return buildEmailShell({
     headerTitle: emailTemplate.headerTitle || "Thank you for your submission",
@@ -951,20 +973,31 @@ const buildUserConfirmationEmail = ({
       ...emailTemplate,
       companyName: resolvedBranding.companyName,
     },
-    bodyContent: rows.length
-      ? `
-        <div style="margin-bottom:12px;font-size:15px;font-weight:700;color:${normalizeHexColor(emailTemplate.textColor, "#0f172a")};">Submission Summary</div>
-        ${renderResponsesTable(rows, {
-          cardBackgroundColor: normalizeHexColor(
-            emailTemplate.cardBackgroundColor,
-            "#ffffff",
-          ),
-          accentColor: normalizeHexColor(emailTemplate.accentColor, "#0ea5e9"),
-          textColor: normalizeHexColor(emailTemplate.textColor, "#0f172a"),
-          borderRadius: normalizeBorderRadius(emailTemplate.borderRadius, 24),
-        })}
-      `
-      : "",
+    bodyContent: `
+      ${declarationSection}
+      ${
+        rows.length
+          ? `
+            <div style="margin-bottom:12px;font-size:15px;font-weight:700;color:${normalizeHexColor(emailTemplate.textColor, "#0f172a")};">Submission Summary</div>
+            ${renderResponsesTable(rows, {
+              cardBackgroundColor: normalizeHexColor(
+                emailTemplate.cardBackgroundColor,
+                "#ffffff",
+              ),
+              accentColor: normalizeHexColor(
+                emailTemplate.accentColor,
+                "#0ea5e9",
+              ),
+              textColor: normalizeHexColor(emailTemplate.textColor, "#0f172a"),
+              borderRadius: normalizeBorderRadius(
+                emailTemplate.borderRadius,
+                24,
+              ),
+            })}
+          `
+          : ""
+      }
+    `,
   });
 };
 

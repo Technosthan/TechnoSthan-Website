@@ -13,6 +13,25 @@ const {
   sessionTimeoutToMs,
 } = require("../utils/sessionTimeout");
 
+const parseCookieHeader = (header = "") =>
+  String(header || "")
+    .split(";")
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .reduce((acc, chunk) => {
+      const index = chunk.indexOf("=");
+      if (index < 0) {
+        return acc;
+      }
+
+      const key = chunk.slice(0, index).trim();
+      const value = chunk.slice(index + 1).trim();
+      if (key) {
+        acc[key] = decodeURIComponent(value);
+      }
+      return acc;
+    }, {});
+
 const buildAuthUser = (user) => {
   const role = normalizeRole(user.role);
   return {
@@ -36,6 +55,11 @@ const extractToken = (req) => {
 
   if (req.headers["x-access-token"]) {
     return String(req.headers["x-access-token"]).trim();
+  }
+
+  const cookies = req.cookies || parseCookieHeader(req.headers.cookie);
+  if (cookies?.token) {
+    return String(cookies.token).trim();
   }
 
   return null;
