@@ -1,0 +1,117 @@
+.portfolio-stats {
+  position: relative;
+  padding: clamp(88px, 10vw, 128px) 20px;
+  background:
+    radial-gradient(circle at top right, rgba(85, 149, 165, 0.07), transparent 28%),
+    linear-gradient(180deg, var(--bg-secondary), var(--bg-primary));
+}
+
+.stats-shell {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 28px;
+  align-items: center;
+}
+
+.stats-header {
+  max-width: 720px;
+}
+
+.stats-header h2 {
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  max-width: 12ch;
+}
+
+.stats-header p {
+  max-width: 620px;
+}
+
+.stats-copy-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.stats-copy-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border-primary);
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+}
+
+.stats-copy-row strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.stats-card {
+  position: relative;
+  padding: 26px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 24px;
+  border: 1px solid var(--border-primary);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 120%),
+    var(--surface-secondary);
+  box-shadow: var(--shadow-card);
+}
+
+.stats-note {
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.stats-card h3 {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  font-size: clamp(2.4rem, 5vw, 3.9rem);
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.stats-number {
+  color: var(--accent-primary);
+}
+
+.stats-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 1024px) {
+  .stats-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .portfolio-stats {
+    padding: 76px 16px;
+  }
+
+  .stats-grid,
+  .stats-copy-row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,34 @@
+.mission-section {
+  padding: 0 20px 92px;
+}
+
+.mission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.mission-grid .glass-card {
+  padding: 34px;
+  border-radius: 26px;
+  border: 1px solid var(--border-primary);
+  background:
+    linear-gradient(180deg, rgba(24, 33, 58, 0.96), rgba(17, 24, 39, 0.92));
+  box-shadow: var(--shadow-card);
+}
+
+.mission-grid h3 {
+  margin-bottom: 12px;
+  font-size: 1.45rem;
+}
+
+.mission-grid p {
+  color: var(--text-secondary);
+  line-height: 1.82;
+}
+
+@media (max-width: 860px) {
+  .mission-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,35 @@
+.portfolio-hero {
+  padding: clamp(132px, 14vw, 176px) 20px 96px;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at top, rgba(239, 91, 42, 0.09), transparent 28%),
+    linear-gradient(180deg, rgba(15, 15, 15, 0.98), rgba(23, 23, 23, 1));
+}
+
+.portfolio-hero h1 {
+  max-width: 980px;
+  margin: 18px auto 18px;
+  font-size: clamp(3rem, 7vw, 5.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.portfolio-hero p {
+  max-width: 760px;
+  margin: 0 auto;
+  color: var(--text-secondary);
+  font-size: 1.08rem;
+  line-height: 1.86;
+}
+
+@media (max-width: 768px) {
+  .portfolio-hero {
+    padding-top: 124px;
+  }
+
+  .portfolio-hero h1 {
+    font-size: clamp(2.4rem, 10vw, 3.4rem);
+  }
+}

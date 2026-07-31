@@ -1,0 +1,2 @@
+ALTER TABLE "HeroVisualSetting"
+ADD COLUMN IF NOT EXISTS "heroHeadingLines" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
