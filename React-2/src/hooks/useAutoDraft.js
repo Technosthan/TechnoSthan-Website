@@ -12,6 +12,7 @@ const DEFAULT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const useAutoDraft = ({
   key,
   data,
+  dataRef = null,
   enabled = true,
   debounceMs = DEFAULT_DEBOUNCE_MS,
   version = 1,
@@ -32,6 +33,12 @@ const useAutoDraft = ({
   const [externalUpdateAt, setExternalUpdateAt] = useState(null);
   const saveTimerRef = useRef(null);
   const recoveryPendingRef = useRef(Boolean(draftSnapshot));
+  const enabledRef = useRef(Boolean(enabled));
+  const resolveDraftData = useCallback(
+    () => (dataRef?.current !== undefined ? dataRef.current : data),
+    [data, dataRef],
+  );
+  enabledRef.current = Boolean(enabled);
 
   const draftMeta = useMemo(() => {
     if (!key) return null;
@@ -122,7 +129,7 @@ const useAutoDraft = ({
         mode,
         recordId,
         userId,
-        data,
+        data: resolveDraftData(),
         version,
         expiresInMs,
       });
@@ -146,15 +153,26 @@ const useAutoDraft = ({
         window.clearTimeout(saveTimerRef.current);
       }
     };
-  }, [data, debounceMs, enabled, expiresInMs, key, module, mode, recordId, userId, version]);
+  }, [
+    debounceMs,
+    enabled,
+    expiresInMs,
+    key,
+    module,
+    mode,
+    recordId,
+    resolveDraftData,
+    userId,
+    version,
+  ]);
 
   useEffect(() => {
-    if (!key || !enabled) {
+    if (!key) {
       return undefined;
     }
 
     const flushDraft = () => {
-      if (recoveryPendingRef.current) {
+      if (recoveryPendingRef.current || !enabledRef.current) {
         return;
       }
 
@@ -164,7 +182,7 @@ const useAutoDraft = ({
         mode,
         recordId,
         userId,
-        data,
+        data: resolveDraftData(),
         version,
         expiresInMs,
       });
@@ -212,7 +230,7 @@ const useAutoDraft = ({
         window.clearTimeout(saveTimerRef.current);
       }
     };
-  }, [data, enabled, expiresInMs, emitStatus, key, module, mode, recordId, userId, version]);
+  }, [expiresInMs, emitStatus, key, module, mode, recordId, resolveDraftData, userId, version]);
 
   return {
     draftSnapshot,

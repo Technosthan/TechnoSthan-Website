@@ -362,6 +362,9 @@ const DataWorkManager = () => {
           Create a new work, upload a spreadsheet, and the imported records will
           appear here.
         </p>
+        {/* <p className="mt-2 text-sm text-slate-500">
+          Create separate workspaces, upload structured files, and manage imported records.
+        </p> */}
       </div>
     ),
     [],
@@ -369,8 +372,8 @@ const DataWorkManager = () => {
 
   return (
     <AdminLayout
-      title="Data Work Manager"
-      subtitle="Create separate workspaces, upload structured files, and manage imported records."
+    //   title="Data Work Manager"
+    //  subtitle="Create separate workspaces, upload structured files, and manage imported records."
     >
       <div className="space-y-6 pb-24">
         <div className="flex flex-col gap-4 rounded-[30px] border border-white/10 bg-slate-950/70 p-5 shadow-xl shadow-slate-950/20 lg:flex-row lg:items-end lg:justify-between">

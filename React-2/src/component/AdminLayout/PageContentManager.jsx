@@ -250,15 +250,15 @@ const PageContentManager = () => {
 
   return (
     <AdminLayout
-      title="Page Content Manager"
-      subtitle="Create reusable sections for any route and position without replacing the existing site content."
+      // title="Page Content Manager"
+      // subtitle="Create reusable sections for any route and position without replacing the existing site content."
     >
       <div className="page-layout space-y-6">
         <div className="card glass p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="eyebrow">Dynamic Section Builder</p>
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-white" >
                 Add content blocks for routes like /, /about, /contact, or your
                 future pages
               </h2>

@@ -31,6 +31,7 @@ import {
   buildDraftKey,
   findLatestDraftKeyForModule,
   getCurrentDraftUserId,
+  saveDraft,
 } from "../../shared/lib/draftPersistence";
 import { getStoredUser } from "../../utils/auth";
 import {
@@ -1787,6 +1788,122 @@ const normalizeForm = (form) => ({
 const normalizeResponsesPayload = (payload) =>
   Array.isArray(payload) ? payload : payload?.items || [];
 
+const cloneDraftState = (value) => JSON.parse(JSON.stringify(value));
+
+const createBlankFormDraftState = () => {
+  const initialStructure = createInitialFormStructure();
+
+  return {
+    ...EMPTY_FORM,
+    ...initialStructure,
+    emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
+    notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
+    selectedFormId: null,
+  };
+};
+
+const DEFAULT_IGNORED_DRAFT_TEXTS = new Set([
+  "Untitled question",
+  "Untitled Section",
+  "Form Details",
+  "Untitled field",
+]);
+
+const isMeaningfulDraftText = (
+  value,
+  ignoredTexts = DEFAULT_IGNORED_DRAFT_TEXTS,
+) => {
+  const text = String(value || "").trim();
+  return Boolean(text) && !ignoredTexts.has(text);
+};
+
+const hasMeaningfulDraftOption = (option = {}) => {
+  const label = String(option?.label || option?.value || option || "").trim();
+  return Boolean(label) && !/^option\s+\d+$/i.test(label);
+};
+
+const hasMeaningfulDraftConditionalField = (field = {}) => {
+  if (!field || typeof field !== "object") {
+    return false;
+  }
+
+  const label = String(field.label || field.title || "").trim();
+  const placeholder = String(field.placeholder || "").trim();
+  const helpText = String(field.helpText || field.description || "").trim();
+  const type = String(field.type || field.fieldType || "shortAnswer").trim();
+  const options = Array.isArray(field.options) ? field.options : [];
+  const conditionalFields = Array.isArray(field.conditionalFields)
+    ? field.conditionalFields
+    : Array.isArray(field.conditionalLogic?.fields)
+      ? field.conditionalLogic.fields
+      : [];
+  const uploadConfig = field.uploadConfig || {};
+
+  return Boolean(
+    isMeaningfulDraftText(label) ||
+    Boolean(placeholder) ||
+    Boolean(helpText) ||
+    type !== "shortAnswer" ||
+    field.required === true ||
+    field.validationEnabled === true ||
+    field.allowUserToAddMore === true ||
+    Boolean(String(uploadConfig.uploadType || "").trim()) ||
+    uploadConfig.required === true ||
+    uploadConfig.multiple === true ||
+    Boolean(String(uploadConfig.label || "").trim()) ||
+    Boolean(String(uploadConfig.helpText || "").trim()) ||
+    options.some(hasMeaningfulDraftOption) ||
+    conditionalFields.some(hasMeaningfulDraftConditionalField),
+  );
+};
+
+const hasMeaningfulDraftQuestion = (question = {}, index = 0) => {
+  if (!question || typeof question !== "object") {
+    return false;
+  }
+
+  const label = String(question.label || question.title || "").trim();
+  const placeholder = String(question.placeholder || "").trim();
+  const helpText = String(
+    question.helpText || question.description || "",
+  ).trim();
+  const type = String(question.type || "shortAnswer").trim();
+  const options = Array.isArray(question.options) ? question.options : [];
+  const conditionalFields = Array.isArray(question.conditionalFields)
+    ? question.conditionalFields
+    : Array.isArray(question.followUpFields)
+      ? question.followUpFields
+      : [];
+  const uploadConfig = question.uploadConfig || {};
+
+  return Boolean(
+    index > 0 ||
+    isMeaningfulDraftText(label) ||
+    Boolean(placeholder) ||
+    Boolean(helpText) ||
+    type !== "shortAnswer" ||
+    question.required === true ||
+    question.validationEnabled === true ||
+    question.allowUserToAddMore === true ||
+    Boolean(String(question.validation?.errorMessage || "").trim()) ||
+    Boolean(String(uploadConfig.uploadType || "").trim()) ||
+    uploadConfig.required === true ||
+    uploadConfig.multiple === true ||
+    Boolean(String(uploadConfig.label || "").trim()) ||
+    Boolean(String(uploadConfig.helpText || "").trim()) ||
+    options.some(hasMeaningfulDraftOption) ||
+    conditionalFields.some(hasMeaningfulDraftConditionalField),
+  );
+};
+
+const normalizeImportedHeader = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
 const getResponseText = (response) => {
   const answers = Array.isArray(response?.answers) ? response.answers : [];
   return [
@@ -2086,21 +2203,18 @@ const FormManagement = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const draftUserId = getCurrentDraftUserId(getStoredUser());
+  const initialCreateDraftRef = useRef(null);
+  if (!initialCreateDraftRef.current) {
+    initialCreateDraftRef.current = createBlankFormDraftState();
+  }
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("questions");
   const [selectedFormId, setSelectedFormId] = useState(null);
-  const [draft, setDraft] = useState(() => {
-    const initialStructure = createInitialFormStructure();
-
-    return {
-      ...EMPTY_FORM,
-      ...initialStructure,
-      emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
-      notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
-    };
-  });
+  const [draft, setDraft] = useState(() =>
+    cloneDraftState(initialCreateDraftRef.current),
+  );
   const [responses, setResponses] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -2112,11 +2226,9 @@ const FormManagement = () => {
   const [responseDateFrom, setResponseDateFrom] = useState("");
   const [responseDateTo, setResponseDateTo] = useState("");
   const [exportingFormId, setExportingFormId] = useState(null);
-  const [responseExportModalOpen, setResponseExportModalOpen] =
-    useState(false);
+  const [responseExportModalOpen, setResponseExportModalOpen] = useState(false);
   const [responseExportFormat, setResponseExportFormat] = useState("csv");
-  const [responseImportModalOpen, setResponseImportModalOpen] =
-    useState(false);
+  const [responseImportModalOpen, setResponseImportModalOpen] = useState(false);
   const [responseImportFile, setResponseImportFile] = useState(null);
   const [responseImportPreview, setResponseImportPreview] = useState(null);
   const [responseImportMappings, setResponseImportMappings] = useState([]);
@@ -2189,20 +2301,18 @@ const FormManagement = () => {
     }),
     [draft, selectedFormId],
   );
+  const latestDraftStateRef = useRef(draftState);
+  const lastMeaningfulDraftEnabledRef = useRef(false);
+  latestDraftStateRef.current = draftState;
   const hasMeaningfulCreateDraft = useMemo(() => {
-    const title = String(draft.title || "").trim();
-    const description = String(draft.description || "").trim();
-
-    const hasQuestionChanges = Array.isArray(draft.questions)
-      ? draft.questions.some((question) => {
-          const label = String(question?.label || "").trim();
-
-          return label && label !== "Untitled question";
-        })
-      : false;
-
-    return Boolean(title || description || hasQuestionChanges);
-  }, [draft]);
+    return (
+      JSON.stringify(draftState) !==
+      JSON.stringify({
+        ...initialCreateDraftRef.current,
+        selectedFormId: null,
+      })
+    );
+  }, [draftState]);
 
   const hasEditDraftChanges = useMemo(() => {
     if (!selectedFormId || !lastSavedFormSnapshot) {
@@ -2225,6 +2335,43 @@ const FormManagement = () => {
   const shouldAutoSaveDraft = selectedFormId
     ? hasEditDraftChanges
     : hasMeaningfulCreateDraft;
+  const validResponseImportMappings = useMemo(() => {
+    return (Array.isArray(responseImportMappings) ? responseImportMappings : [])
+      .map((mapping) => {
+        const sourceColumn = String(
+          mapping?.sourceColumn ||
+            mapping?.sourceKey ||
+            mapping?.column ||
+            mapping?.header ||
+            mapping?.source ||
+            "",
+        ).trim();
+        const sourceKey = String(
+          mapping?.sourceKey ||
+            mapping?.normalizedKey ||
+            mapping?.normalized ||
+            normalizeImportedHeader(sourceColumn),
+        ).trim();
+        const targetQuestionId = String(
+          mapping?.targetQuestionId ||
+            mapping?.questionId ||
+            mapping?.fieldId ||
+            mapping?.target ||
+            "",
+        ).trim();
+
+        return {
+          sourceColumn,
+          sourceKey,
+          targetQuestionId,
+        };
+      })
+      .filter(
+        (mapping) =>
+          Boolean(mapping.sourceColumn || mapping.sourceKey) &&
+          Boolean(mapping.targetQuestionId),
+      );
+  }, [responseImportMappings]);
   const draftSections = useMemo(
     () => groupQuestionsBySection(draft.questions, draft.sections),
     [draft.questions, draft.sections],
@@ -2232,20 +2379,95 @@ const FormManagement = () => {
   const { draftStatus, draftError } = useAutoDraft({
     key: draftKey,
     data: draftState,
+    dataRef: latestDraftStateRef,
     enabled: shouldAutoSaveDraft,
     module: "form-builder",
     mode: selectedFormId ? "edit" : "create",
     recordId: selectedFormId || "new",
     userId: draftUserId,
+    version: 1,
   });
-  const { drafts, count, removeDraft, refreshDrafts } = useModuleDrafts({
+  const {
+    drafts,
+    count: draftCount,
+    removeDraft,
+    refreshDrafts,
+  } = useModuleDrafts({
     module: "form-builder",
     userId: draftUserId,
+    version: 1,
   });
+
+  useEffect(() => {
+    if (selectedFormId || !shouldAutoSaveDraft) {
+      lastMeaningfulDraftEnabledRef.current = shouldAutoSaveDraft;
+      return undefined;
+    }
+
+    if (!lastMeaningfulDraftEnabledRef.current) {
+      const result = saveDraft({
+        key: draftKey,
+        module: "form-builder",
+        mode: "create",
+        recordId: "new",
+        userId: draftUserId,
+        version: 1,
+        data: latestDraftStateRef.current,
+      });
+
+      if (result.success) {
+        refreshDrafts();
+      }
+    }
+
+    lastMeaningfulDraftEnabledRef.current = shouldAutoSaveDraft;
+    return undefined;
+  }, [
+    draftKey,
+    draftUserId,
+    refreshDrafts,
+    selectedFormId,
+    shouldAutoSaveDraft,
+  ]);
+
+  useEffect(() => {
+    if (
+      draftStatus === "saved" ||
+      draftStatus === "restored" ||
+      draftStatus === "cleared" ||
+      draftStatus === "external-update"
+    ) {
+      refreshDrafts();
+    }
+  }, [draftStatus, refreshDrafts]);
+
+  useEffect(() => {
+    if (draftsOpen) {
+      refreshDrafts();
+    }
+  }, [draftsOpen, refreshDrafts]);
 
   useEffect(() => {
     recoveryHandledRef.current = false;
   }, [draftKey]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!shouldAutoSaveDraft) return;
+      saveDraft({
+        key: draftKey,
+        module: "form-builder",
+        mode: selectedFormId ? "edit" : "create",
+        recordId: selectedFormId || "new",
+        userId: draftUserId,
+        version: 1,
+        data: latestDraftStateRef.current,
+      });
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [draftKey, draftUserId, selectedFormId, shouldAutoSaveDraft]);
 
   const loadForms = async () => {
     setLoading(true);
@@ -2343,10 +2565,7 @@ const FormManagement = () => {
     const initialStructure = createInitialFormStructure();
 
     setDraft({
-      ...EMPTY_FORM,
-      ...initialStructure,
-      emailTemplate: { ...DEFAULT_EMAIL_TEMPLATE },
-      notificationSettings: { ...DEFAULT_NOTIFICATION_SETTINGS },
+      ...cloneDraftState(initialCreateDraftRef.current),
     });
     lastSavedFormRef.current = null;
     setLastSavedFormSnapshot(null);
@@ -4714,8 +4933,8 @@ const FormManagement = () => {
       "text/plain",
     ];
     const fileName = String(file.name || "").toLowerCase();
-    const isAllowed = allowed.some(
-      (item) => item.startsWith(".") ? fileName.endsWith(item) : file.type === item,
+    const isAllowed = allowed.some((item) =>
+      item.startsWith(".") ? fileName.endsWith(item) : file.type === item,
     );
 
     if (!isAllowed) {
@@ -4730,22 +4949,61 @@ const FormManagement = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await importAdminFormResponsesPreview(selectedFormId, formData);
-      const previewData = response.data?.data?.preview || response.data?.data || {};
+      const response = await importAdminFormResponsesPreview(
+        selectedFormId,
+        formData,
+      );
+      const previewData =
+        response.data?.data?.preview || response.data?.data || {};
       const questionMap = Array.isArray(previewData.questionMap)
         ? previewData.questionMap
         : [];
+      const questions = Array.isArray(draft.questions) ? draft.questions : [];
       const mappings = Array.isArray(previewData.columns)
         ? previewData.columns.map((column) => {
             const match = questionMap.find(
               (item) => item.matchedColumnIndex === column.index,
             );
+            const originalHeader =
+              column.originalHeader ||
+              column.header ||
+              column.label ||
+              `Column ${column.index + 1}`;
+            const normalizedKey =
+              column.normalizedKey || column.normalized || "";
+            const normalizedHeader = normalizeImportedHeader(originalHeader);
+            const normalizedQuestionMatch = questions.find((question) => {
+              const questionLabel = normalizeImportedHeader(
+                question.label || "",
+              );
+              const questionKey = normalizeImportedHeader(
+                question.fieldKey || "",
+              );
+              const questionId = normalizeImportedHeader(
+                question._id || question.id || "",
+              );
+              return (
+                questionLabel === normalizedHeader ||
+                questionKey === normalizedHeader ||
+                questionId === normalizedHeader
+              );
+            });
+            const targetQuestionId =
+              match?.questionId ||
+              normalizedQuestionMatch?._id ||
+              normalizedQuestionMatch?.id ||
+              "";
             return {
-              columnIndex: column.index,
-              header: column.header,
-              questionId: match?.questionId || "",
-              label: match?.questionLabel || "",
-              fieldPath: "",
+              sourceColumn: originalHeader,
+              sourceKey: normalizedKey,
+              header: originalHeader,
+              normalizedKey,
+              column: originalHeader,
+              source: originalHeader,
+              targetQuestionId,
+              questionId: targetQuestionId,
+              fieldId: targetQuestionId,
+              target: targetQuestionId,
             };
           })
         : [];
@@ -4754,7 +5012,9 @@ const FormManagement = () => {
       setResponseImportProgress(100);
       toast.success("Import file analyzed");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to analyze import file");
+      toast.error(
+        error.response?.data?.message || "Failed to analyze import file",
+      );
       setResponseImportFile(null);
       setResponseImportPreview(null);
       setResponseImportMappings([]);
@@ -4778,6 +5038,11 @@ const FormManagement = () => {
         ...next[index],
         [field]: value,
       };
+      if (field === "targetQuestionId") {
+        delete next[index].questionId;
+        delete next[index].fieldId;
+        delete next[index].target;
+      }
       return next;
     });
   };
@@ -4788,11 +5053,16 @@ const FormManagement = () => {
       return;
     }
 
+    if (!validResponseImportMappings.length) {
+      toast.error("Please map at least one imported column");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", responseImportFile);
     formData.append("duplicateStrategy", responseImportDuplicateStrategy);
     formData.append("duplicateField", responseImportDuplicateField);
-    formData.append("mapping", JSON.stringify(responseImportMappings));
+    formData.append("mappings", JSON.stringify(validResponseImportMappings));
 
     setResponseImportLoading(true);
     setResponseImportProgress(35);
@@ -4800,16 +5070,22 @@ const FormManagement = () => {
       const response = await importAdminFormResponses(selectedFormId, formData);
       const data = response.data?.data || {};
       setResponseImportSummary(data.summary || null);
-      setResponseImportErrorRows(Array.isArray(data.errorRows) ? data.errorRows : []);
+      setResponseImportErrorRows(
+        Array.isArray(data.errorRows) ? data.errorRows : [],
+      );
       setResponseImportBatchId(data.batchId || "");
       setResponseImportProgress(100);
 
-      const [responsesRes] = await Promise.all([getAdminFormResponses(selectedFormId)]);
+      const [responsesRes] = await Promise.all([
+        getAdminFormResponses(selectedFormId),
+      ]);
       setResponses(normalizeResponsesPayload(responsesRes.data?.data));
       setSelectedResponse(null);
       toast.success("Responses imported successfully");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to import responses");
+      toast.error(
+        error.response?.data?.message || "Failed to import responses",
+      );
     } finally {
       resetResponseImportProgress();
     }
@@ -4821,7 +5097,9 @@ const FormManagement = () => {
 
     try {
       await undoAdminFormResponseImport(selectedFormId, responseImportBatchId);
-      const [responsesRes] = await Promise.all([getAdminFormResponses(selectedFormId)]);
+      const [responsesRes] = await Promise.all([
+        getAdminFormResponses(selectedFormId),
+      ]);
       setResponses(normalizeResponsesPayload(responsesRes.data?.data));
       setResponseImportSummary(null);
       setResponseImportErrorRows([]);
@@ -5237,7 +5515,9 @@ const FormManagement = () => {
               <div className="font-semibold text-cyan-100">Imported</div>
               <div className="mt-2 grid gap-2 text-cyan-50/90 md:grid-cols-2">
                 <div>Source File: {selectedResponse.sourceFile || "-"}</div>
-                <div>Original Row: {selectedResponse.originalRowNumber || "-"}</div>
+                <div>
+                  Original Row: {selectedResponse.originalRowNumber || "-"}
+                </div>
                 <div>Batch ID: {selectedResponse.importBatchId || "-"}</div>
                 <div>
                   Imported At:{" "}
@@ -5339,7 +5619,10 @@ const FormManagement = () => {
                     className="rounded-3xl border border-white/10 bg-white/5 p-4"
                   >
                     <div className="text-sm font-semibold">
-                      {row.displayLabel || row.fieldLabel || row.question?.label || "Question"}
+                      {row.displayLabel ||
+                        row.fieldLabel ||
+                        row.question?.label ||
+                        "Question"}
                     </div>
                     {row.displayContext ? (
                       <div className="mt-1 text-xs text-cyan-200/80">
@@ -5350,7 +5633,8 @@ const FormManagement = () => {
                       {renderAnswerValue(
                         {
                           ...row,
-                          questionType: row.fieldType || row.question?.type || "",
+                          questionType:
+                            row.fieldType || row.question?.type || "",
                         },
                         {
                           revealed: Boolean(revealedSecrets[row.questionId]),
@@ -5798,7 +6082,10 @@ const FormManagement = () => {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <DraftsButton count={count} onClick={() => setDraftsOpen(true)} />
+          <DraftsButton
+            count={draftCount}
+            onClick={() => setDraftsOpen(true)}
+          />
           <button
             type="button"
             onClick={startNewForm}
@@ -9900,7 +10187,9 @@ const FormManagement = () => {
 
       {responseExportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className={`${theme.card} w-full max-w-xl rounded-3xl border ${theme.border} p-6`}>
+          <div
+            className={`${theme.card} w-full max-w-xl rounded-3xl border ${theme.border} p-6`}
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-bold">Export Responses</h3>
@@ -9961,9 +10250,7 @@ const FormManagement = () => {
                         from:
                           responseDateFrom ||
                           getFilterRange(responseFilter).from,
-                        to:
-                          responseDateTo ||
-                          getFilterRange(responseFilter).to,
+                        to: responseDateTo || getFilterRange(responseFilter).to,
                       },
                       "responses",
                       responseExportFormat,
@@ -9971,7 +10258,8 @@ const FormManagement = () => {
                     closeResponseExportDialog();
                   } catch (error) {
                     toast.error(
-                      error.response?.data?.message || "Failed to export responses",
+                      error.response?.data?.message ||
+                        "Failed to export responses",
                     );
                   }
                 }}
@@ -9986,12 +10274,15 @@ const FormManagement = () => {
 
       {responseImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className={`${theme.card} max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}>
+          <div
+            className={`${theme.card} max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border ${theme.border} p-6`}
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-bold">Import Responses</h3>
                 <p className={`mt-1 text-sm ${theme.textSecondary}`}>
-                  Upload a CSV, Excel, or JSON file, map columns, and resolve duplicates before importing.
+                  Upload a CSV, Excel, or JSON file, map columns, and resolve
+                  duplicates before importing.
                 </p>
               </div>
               <button
@@ -10020,7 +10311,9 @@ const FormManagement = () => {
                 >
                   <Upload size={28} className="mb-3 text-cyan-300" />
                   <div className="text-lg font-semibold">Drag & Drop File</div>
-                  <div className={`mt-1 text-sm ${theme.textSecondary}`}>or browse</div>
+                  <div className={`mt-1 text-sm ${theme.textSecondary}`}>
+                    or browse
+                  </div>
                 </button>
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                   <div className="text-sm font-semibold">Supported</div>
@@ -10037,26 +10330,35 @@ const FormManagement = () => {
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                     <div className="text-sm font-semibold">File</div>
                     <div className="mt-2 text-sm text-slate-300">
-                      {responseImportFile?.name || responseImportPreview.filename || "Selected file"}
+                      {responseImportFile?.name ||
+                        responseImportPreview.filename ||
+                        "Selected file"}
                     </div>
                     <div className="mt-2 text-xs uppercase tracking-[0.2em] text-slate-400">
                       Rows: {responseImportPreview.totalRows || 0}
                     </div>
                   </div>
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-sm font-semibold">Duplicate Handling</div>
+                    <div className="text-sm font-semibold">
+                      Duplicate Handling
+                    </div>
                     <div className="mt-3 space-y-2">
                       {[
                         ["skip", "Skip duplicates"],
                         ["update", "Update existing"],
                         ["import-all", "Import everything"],
                       ].map(([value, label]) => (
-                        <label key={value} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm">
+                        <label
+                          key={value}
+                          className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm"
+                        >
                           <span>{label}</span>
                           <input
                             type="radio"
                             checked={responseImportDuplicateStrategy === value}
-                            onChange={() => setResponseImportDuplicateStrategy(value)}
+                            onChange={() =>
+                              setResponseImportDuplicateStrategy(value)
+                            }
                           />
                         </label>
                       ))}
@@ -10076,56 +10378,163 @@ const FormManagement = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {(responseImportPreview.columns || []).map((column, index) => {
-                            const mapping = responseImportMappings[index] || {};
-                            return (
-                              <tr key={`${column.index}-${column.header}`} className="border-t border-white/10">
-                                <td className="px-3 py-3 text-slate-300">{column.header || `Column ${column.index + 1}`}</td>
-                                <td className="px-3 py-3">
-                                  <select
-                                    value={mapping.questionId || ""}
-                                    onChange={(event) =>
-                                      updateResponseImportMapping(index, "questionId", event.target.value)
-                                    }
-                                    className={`${theme.input} w-full rounded-2xl border ${theme.border} px-3 py-2 text-sm`}
-                                  >
-                                    <option value="">Ignore</option>
-                                    {(draft.questions || [])
-                                      .filter((question) => question.type !== "sectionHeading")
-                                      .map((question) => (
-                                        <option key={question._id || question.id} value={question._id || question.id}>
-                                          {question.label || "Untitled question"}
-                                        </option>
-                                      ))}
-                                  </select>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                          {(responseImportPreview.columns || []).map(
+                            (column, index) => {
+                              const mapping =
+                                responseImportMappings[index] || {};
+                              const columnLabel =
+                                column.originalHeader ||
+                                column.header ||
+                                `Column ${column.index + 1}`;
+                              return (
+                                <tr
+                                  key={`${column.index}-${columnLabel}`}
+                                  className="border-t border-white/10"
+                                >
+                                  <td className="px-3 py-3 text-slate-300">
+                                    {columnLabel}
+                                  </td>
+                                  <td className="px-3 py-3">
+                                    <select
+                                      value={
+                                        mapping.targetQuestionId ||
+                                        mapping.questionId ||
+                                        ""
+                                      }
+                                      onChange={(event) =>
+                                        updateResponseImportMapping(
+                                          index,
+                                          "targetQuestionId",
+                                          event.target.value,
+                                        )
+                                      }
+                                      className={`${theme.input} w-full rounded-2xl border ${theme.border} px-3 py-2 text-sm`}
+                                    >
+                                      <option value="">Ignore</option>
+                                      {(draft.questions || [])
+                                        .filter(
+                                          (question) =>
+                                            question.type !== "sectionHeading",
+                                        )
+                                        .map((question) => (
+                                          <option
+                                            key={question._id || question.id}
+                                            value={question._id || question.id}
+                                          >
+                                            {question.label ||
+                                              "Untitled question"}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </td>
+                                </tr>
+                              );
+                            },
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                      <div className="text-sm font-semibold">Duplicate Field</div>
+                      <div className="text-sm font-semibold">
+                        Duplicate Field
+                      </div>
                       <select
                         value={responseImportDuplicateField}
-                        onChange={(event) => setResponseImportDuplicateField(event.target.value)}
+                        onChange={(event) =>
+                          setResponseImportDuplicateField(event.target.value)
+                        }
                         className={`${theme.input} mt-3 w-full rounded-2xl border ${theme.border} px-3 py-2 text-sm`}
                       >
                         <option value="email">Email</option>
                         <option value="phone">Phone</option>
                         <option value="submission id">Submission ID</option>
                         {(draft.questions || [])
-                          .filter((question) => question.type !== "sectionHeading")
+                          .filter(
+                            (question) => question.type !== "sectionHeading",
+                          )
                           .map((question) => (
-                            <option key={question._id || question.id} value={question.label || question._id || question.id}>
+                            <option
+                              key={question._id || question.id}
+                              value={
+                                question.label || question._id || question.id
+                              }
+                            >
                               {question.label || "Untitled question"}
                             </option>
                           ))}
                       </select>
                     </div>
+                    {!validResponseImportMappings.length && (
+                      <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+                        Please map at least one imported column
+                      </div>
+                    )}
+                    {(responseImportPreview.previewRows || []).length > 0 && (
+                      <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                        <div className="text-sm font-semibold">Sample Rows</div>
+                        <div className="mt-3 max-h-[240px] overflow-auto rounded-2xl border border-white/10">
+                          <table className="min-w-full text-left text-xs">
+                            <thead className="bg-slate-950/95 text-slate-300">
+                              <tr>
+                                <th className="px-3 py-2">Row</th>
+                                {(responseImportPreview.columns || [])
+                                  .slice(0, 4)
+                                  .map((column) => (
+                                    <th
+                                      key={
+                                        column.originalHeader ||
+                                        column.header ||
+                                        column.index
+                                      }
+                                      className="px-3 py-2"
+                                    >
+                                      {column.originalHeader ||
+                                        column.header ||
+                                        `Column ${column.index + 1}`}
+                                    </th>
+                                  ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(responseImportPreview.previewRows || [])
+                                .slice(0, 3)
+                                .map((row) => (
+                                  <tr
+                                    key={row.rowNumber}
+                                    className="border-t border-white/10"
+                                  >
+                                    <td className="px-3 py-2 text-slate-400">
+                                      {row.rowNumber}
+                                    </td>
+                                    {(responseImportPreview.columns || [])
+                                      .slice(0, 4)
+                                      .map((column) => {
+                                        const key =
+                                          column.normalizedKey ||
+                                          column.normalized ||
+                                          "";
+                                        const value =
+                                          row.data?.[key] ??
+                                          row.values?.[column.index] ??
+                                          "";
+                                        return (
+                                          <td
+                                            key={`${row.rowNumber}-${key}`}
+                                            className="px-3 py-2 text-slate-300"
+                                          >
+                                            {String(value ?? "") || "-"}
+                                          </td>
+                                        );
+                                      })}
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                     {responseImportProgress > 0 && (
                       <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-4">
                         <div className="flex items-center justify-between text-sm">
@@ -10146,9 +10555,15 @@ const FormManagement = () => {
                           Import Completed
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                          <div>Imported: {responseImportSummary.imported || 0}</div>
-                          <div>Updated: {responseImportSummary.updated || 0}</div>
-                          <div>Skipped: {responseImportSummary.skipped || 0}</div>
+                          <div>
+                            Imported: {responseImportSummary.imported || 0}
+                          </div>
+                          <div>
+                            Updated: {responseImportSummary.updated || 0}
+                          </div>
+                          <div>
+                            Skipped: {responseImportSummary.skipped || 0}
+                          </div>
                           <div>Errors: {responseImportSummary.errors || 0}</div>
                         </div>
                         {responseImportBatchId && (
@@ -10175,13 +10590,16 @@ const FormManagement = () => {
                               const csv = rows
                                 .map((row) =>
                                   row
-                                    .map((cell) =>
-                                      `"${String(cell ?? "").replace(/"/g, '""')}"`,
+                                    .map(
+                                      (cell) =>
+                                        `"${String(cell ?? "").replace(/"/g, '""')}"`,
                                     )
                                     .join(","),
                                 )
                                 .join("\n");
-                              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                              const blob = new Blob([csv], {
+                                type: "text/csv;charset=utf-8",
+                              });
                               const url = URL.createObjectURL(blob);
                               const anchor = document.createElement("a");
                               anchor.href = url;
@@ -10221,7 +10639,9 @@ const FormManagement = () => {
                 <button
                   type="button"
                   onClick={handleCommitResponseImport}
-                  disabled={responseImportLoading}
+                  disabled={
+                    responseImportLoading || !validResponseImportMappings.length
+                  }
                   className="rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Import

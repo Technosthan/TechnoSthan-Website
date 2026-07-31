@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const {
   createForm: createFormService,
   getAdminForms: getAdminFormsService,
@@ -21,6 +22,8 @@ const {
   revealFormResponseSecret: revealFormResponseSecretService,
   importFormFile: importFormFileService,
 } = require("./form.service.js");
+
+const isValidResponseId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const createForm = async (req, res) => {
   try {
@@ -103,6 +106,9 @@ const getFormResponseAnalysis = async (req, res) => {
 
 const getFormSubmissionById = async (req, res) => {
   try {
+    if (!isValidResponseId(req.params.responseId)) {
+      return res.status(404).json({ success: false, message: "Response not found" });
+    }
     const submission = await getFormResponseByIdService(
       req.params.formId,
       req.params.responseId,
@@ -120,6 +126,9 @@ const getFormSubmissionById = async (req, res) => {
 
 const deleteFormSubmission = async (req, res) => {
   try {
+    if (!isValidResponseId(req.params.responseId)) {
+      return res.status(404).json({ success: false, message: "Response not found" });
+    }
     await deleteFormResponseService(req.params.formId, req.params.responseId);
     res.json({ success: true, message: "Response deleted successfully" });
   } catch (error) {
@@ -129,6 +138,9 @@ const deleteFormSubmission = async (req, res) => {
 
 const revealFormResponseSecret = async (req, res) => {
   try {
+    if (!isValidResponseId(req.params.responseId)) {
+      return res.status(404).json({ success: false, message: "Response not found" });
+    }
     const revealed = await revealFormResponseSecretService({
       formId: req.params.formId,
       responseId: req.params.responseId,
@@ -157,14 +169,18 @@ const exportFormSubmissions = async (req, res) => {
     const format = String(req.query?.format || req.body?.format || "csv")
       .trim()
       .toLowerCase();
-    const exportData = await exportResponseBundleService(req.params.formId, {
-      ...req.query,
-      ...req.body,
+    const exportData = await exportResponseBundleService({
+      formId: req.params.formId,
+      options: {
+        ...req.query,
+        ...req.body,
+        format,
+        userId: req.user?.id || req.user?.userId || null,
+        userName: req.user?.name || "",
+        email: req.user?.email || "",
+        role: req.user?.role || null,
+      },
       format,
-      userId: req.user?.id || req.user?.userId || null,
-      userName: req.user?.name || "",
-      email: req.user?.email || "",
-      role: req.user?.role || null,
     });
     res.setHeader("Content-Type", exportData.contentType);
     res.setHeader(
@@ -182,14 +198,18 @@ const exportResponsesByFormat = async (req, res) => {
     const format = String(req.params.format || req.query?.format || "csv")
       .trim()
       .toLowerCase();
-    const exportData = await exportResponseBundleService(req.params.formId, {
-      ...req.query,
-      ...req.body,
+    const exportData = await exportResponseBundleService({
+      formId: req.params.formId,
+      options: {
+        ...req.query,
+        ...req.body,
+        format,
+        userId: req.user?.id || req.user?.userId || null,
+        userName: req.user?.name || "",
+        email: req.user?.email || "",
+        role: req.user?.role || null,
+      },
       format,
-      userId: req.user?.id || req.user?.userId || null,
-      userName: req.user?.name || "",
-      email: req.user?.email || "",
-      role: req.user?.role || null,
     });
     res.setHeader("Content-Type", exportData.contentType);
     res.setHeader(
@@ -220,12 +240,21 @@ const previewResponsesImport = async (req, res) => {
 
 const importResponses = async (req, res) => {
   try {
+    let mappings =
+      req.body?.mappings ?? req.body?.mapping ?? req.body?.columnMappings ?? [];
+    if (typeof mappings === "string") {
+      try {
+        mappings = JSON.parse(mappings);
+      } catch {
+        mappings = [];
+      }
+    }
     const result = await importResponseRowsService({
       formId: req.params.formId,
       file: req.file,
       fileName: req.file?.originalname || "",
       importedBy: req.user?.id || req.user?.userId || null,
-      mapping: req.body?.mapping || req.body?.columnMappings || [],
+      mapping: mappings,
       duplicateStrategy: String(req.body?.duplicateStrategy || "skip").trim().toLowerCase(),
       duplicateField: String(req.body?.duplicateField || "email").trim(),
     });

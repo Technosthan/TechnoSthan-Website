@@ -312,8 +312,8 @@ const BusinessVerticals = () => {
 
   return (
     <AdminLayout
-      title="Business Verticals"
-      subtitle="Manage the public business vertical cards shown on the website."
+      // title="Business Verticals"
+      // subtitle="Manage the public business vertical cards shown on the website."
     >
       <div className="business-verticals-page space-y-8 pb-24">
         <div className="business-verticals-header rounded-3xl border border-white/10 bg-slate-950/70 p-6 shadow-xl shadow-slate-950/20">

@@ -3175,7 +3175,7 @@ const getResponseContactFromAnswers = (response = {}) => {
     const label = normalizeComparableText(answer.displayLabel || answer.fieldLabel || answer.question?.label);
     const value = Array.isArray(answer.value)
       ? answer.value.join(", ")
-      : String(answer.value || "");
+      : String(answer.value ?? "");
 
     if (!name && (answer.question?.type === "shortAnswer" || /name/.test(label))) {
       name = value;
@@ -3581,11 +3581,15 @@ const getImportRowsFromSheet = (buffer, originalname = "") => {
   return { rows, sheetName, workbook };
 };
 
-const normalizeImportHeader = (value = "") =>
+const normalizeHeader = (value = "") =>
   String(value || "")
     .trim()
+    .toLowerCase()
     .replace(/\s+/g, " ")
-    .toLowerCase();
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const normalizeImportHeader = normalizeHeader;
 
 const normalizeImportValue = (value) => {
   if (value === undefined || value === null) return "";
@@ -3788,9 +3792,7 @@ const buildResponseImportPreview = ({
     ? parsed.previewRows
     : records.slice(0, 10).map((record) => ({
         rowNumber: record.rowNumber,
-        values: columns.map((column) =>
-          formatPreviewCell(record.data?.[column.normalizedKey] ?? ""),
-        ),
+        data: record.data,
       }));
 
   const questionMap = questions.map((question) => {
@@ -3828,8 +3830,10 @@ const buildResponseImportPreview = ({
     sheetName: parsed.selectedSheet || parsed.sheetName || form.title || "Responses",
     columns: columns.map((column, index) => ({
       index,
-      header: String(column.originalHeader || column.normalizedKey || `Column ${index + 1}`),
-      normalized: String(column.normalizedKey || ""),
+      originalHeader: String(
+        column.originalHeader || column.header || column.normalizedKey || `Column ${index + 1}`,
+      ),
+      normalizedKey: String(column.normalizedKey || column.normalized || ""),
       detectedType: column.detectedType || "text",
     })),
     previewRows,
@@ -5313,8 +5317,10 @@ const buildImportColumnLookup = (questions = []) => {
     const id = String(question._id || question.id || "");
     const label = String(question.label || "").trim();
     const normalizedLabel = normalizeImportHeader(label);
+    const fieldKey = normalizeImportHeader(question.fieldKey || "");
     if (id) lookup.set(id, question);
     if (normalizedLabel) lookup.set(normalizedLabel, question);
+    if (fieldKey) lookup.set(fieldKey, question);
     const slugLabel = normalizeImportHeader(slugify(label));
     if (slugLabel) lookup.set(slugLabel, question);
   }
@@ -5322,30 +5328,51 @@ const buildImportColumnLookup = (questions = []) => {
 };
 
 const normalizeResponseImportMappings = (mapping = []) => {
-  const mappings = safeJsonParse(mapping, mapping);
-  if (Array.isArray(mappings)) {
-    return mappings
-      .map((entry) => ({
-        columnIndex: Number.parseInt(entry.columnIndex, 10),
-        questionId: String(entry.questionId || "").trim(),
-        fieldPath: String(entry.fieldPath || "").trim(),
-        label: String(entry.label || "").trim(),
-      }))
-      .filter((entry) => Number.isInteger(entry.columnIndex) && entry.columnIndex >= 0);
-  }
+  const parsed =
+    typeof mapping === "string" ? safeJsonParse(mapping, []) : mapping;
+  const mappings = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object"
+      ? Object.values(parsed)
+      : [];
 
-  if (mappings && typeof mappings === "object") {
-    return Object.entries(mappings)
-      .map(([columnIndex, value]) => ({
-        columnIndex: Number.parseInt(columnIndex, 10),
-        questionId: String(value?.questionId || value || "").trim(),
-        fieldPath: String(value?.fieldPath || "").trim(),
-        label: String(value?.label || "").trim(),
-      }))
-      .filter((entry) => Number.isInteger(entry.columnIndex) && entry.columnIndex >= 0);
-  }
+  return mappings
+    .map((entry) => {
+      const sourceColumn = String(
+        entry?.sourceColumn ||
+          entry?.sourceKey ||
+          entry?.column ||
+          entry?.header ||
+          entry?.source ||
+          entry?.label ||
+          "",
+      ).trim();
+      const sourceKey = String(
+        entry?.sourceKey ||
+          entry?.normalized ||
+          entry?.normalizedKey ||
+          entry?.key ||
+          normalizeImportHeader(sourceColumn),
+      ).trim();
+      const targetQuestionId = String(
+        entry?.targetQuestionId ||
+          entry?.questionId ||
+          entry?.fieldId ||
+          entry?.target ||
+          "",
+      ).trim();
 
-  return [];
+      return {
+        sourceColumn,
+        sourceKey,
+        targetQuestionId,
+      };
+    })
+    .filter(
+      (entry) =>
+        Boolean(entry.sourceColumn || entry.sourceKey) &&
+        Boolean(entry.targetQuestionId),
+    );
 };
 
 const validateImportedQuestionValue = (question, value, fileUrls = []) => {
@@ -5529,6 +5556,7 @@ const getImportedResponseCandidateKey = ({
 const buildImportedResponsePayload = async ({
   form,
   questions,
+  questionLookup = new Map(),
   rowObject,
   rowNumber,
   sourceFile = "",
@@ -5540,53 +5568,63 @@ const buildImportedResponsePayload = async ({
   existingResponse = null,
 }) => {
   const columnMappings = normalizeResponseImportMappings(mapping);
-  const questionLookup = buildImportColumnLookup(questions);
   const answersToInsert = [];
   const contactAnswers = {};
   for (const mappingItem of columnMappings) {
-    const columnIndex = mappingItem.columnIndex;
-    const questionId = String(mappingItem.questionId || "").trim();
-    const fieldPath = String(mappingItem.fieldPath || "").trim();
-    const headerKeys = Object.keys(rowObject);
-    const header = headerKeys[columnIndex] || "";
-    const rawValue = rowObject[header];
-    if (!questionId && !fieldPath) continue;
-
-    if (questionId) {
-      const question = questions.find(
+    const sourceColumn = String(mappingItem.sourceColumn || "").trim();
+    const sourceKey = String(mappingItem.sourceKey || "").trim();
+    const questionId = String(mappingItem.targetQuestionId || "").trim();
+    const question =
+      questions.find(
         (item) => String(item._id || item.id || "") === String(questionId),
-      );
-      if (!question) continue;
-      const fileUrls = Array.isArray(rawValue)
-        ? rawValue.filter(Boolean)
-        : String(rawValue || "")
-            .split(/\s*[|,]\s*/)
-            .filter(Boolean)
-            .filter((item) => /^https?:\/\//i.test(item));
-      validateImportedQuestionValue(question, rawValue, fileUrls);
-      const preparedValue = Array.isArray(rawValue)
-        ? rawValue
-        : String(rawValue || "").includes("|")
-          ? String(rawValue || "")
-              .split("|")
-              .map((item) => item.trim())
-              .filter(Boolean)
-          : String(rawValue || "").trim();
-      if (question.type === "email") {
-        contactAnswers.email = normalizeEmailValue(preparedValue);
-      }
-      if (question.type === "phone") {
-        contactAnswers.phone = normalizePhoneValue(preparedValue);
-      }
-      if (question.type === "shortAnswer" && /name/i.test(question.label || "")) {
-        contactAnswers.name = String(preparedValue || "").trim();
-      }
-      answersToInsert.push({
-        question,
-        submittedValue: preparedValue,
-        fileEntries: [],
-      });
+      ) ||
+      questionLookup.get(normalizeImportHeader(sourceColumn)) ||
+      questionLookup.get(normalizeImportHeader(sourceKey)) ||
+      questionLookup.get(normalizeImportHeader(slugify(sourceColumn))) ||
+      questionLookup.get(normalizeImportHeader(slugify(sourceKey))) ||
+      null;
+
+    if (!question) {
+      continue;
     }
+
+    const rawValue =
+      rowObject[sourceColumn] ??
+      rowObject[sourceKey] ??
+      rowObject[normalizeHeader(sourceColumn)] ??
+      rowObject[normalizeHeader(sourceKey)] ??
+      "";
+    const normalizedRawValue =
+      rawValue === undefined || rawValue === null ? "" : rawValue;
+    const fileUrls = Array.isArray(rawValue)
+      ? rawValue.filter((item) => item !== undefined && item !== null && item !== "")
+      : String(normalizedRawValue)
+          .split(/\s*[|,]\s*/)
+          .filter(Boolean)
+          .filter((item) => /^https?:\/\//i.test(item));
+    validateImportedQuestionValue(question, normalizedRawValue, fileUrls);
+    const preparedValue = Array.isArray(rawValue)
+      ? rawValue
+      : String(normalizedRawValue).includes("|")
+        ? String(normalizedRawValue)
+            .split("|")
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : normalizedRawValue;
+    if (question.type === "email") {
+      contactAnswers.email = normalizeEmailValue(preparedValue);
+    }
+    if (question.type === "phone") {
+      contactAnswers.phone = normalizePhoneValue(preparedValue);
+    }
+    if (question.type === "shortAnswer" && /name/i.test(question.label || "")) {
+      contactAnswers.name = String(preparedValue ?? "").trim();
+    }
+    answersToInsert.push({
+      question,
+      submittedValue: preparedValue,
+      fileEntries: [],
+    });
   }
 
   const summaryContact = getResponseContactFromAnswers({
@@ -5608,8 +5646,12 @@ const buildImportedResponsePayload = async ({
     referenceId:
       normalizedExisting?.referenceId ||
       `IMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    email: normalizedExisting ? normalizedExisting.email || "" : "",
-    phone: normalizedExisting ? normalizedExisting.phone || "" : "",
+    email: normalizedExisting
+      ? normalizedExisting.email || ""
+      : summaryContact.email || contactAnswers.email || "",
+    phone: normalizedExisting
+      ? normalizedExisting.phone || ""
+      : summaryContact.phone || contactAnswers.phone || "",
     submittedAt: normalizedExisting?.submittedAt || importedAt,
     ipAddress: normalizedExisting?.ipAddress || "",
     userAgent: normalizedExisting?.userAgent || "",
@@ -5627,11 +5669,6 @@ const buildImportedResponsePayload = async ({
     },
     verification: normalizedExisting?.verification || {},
   };
-
-  if (!normalizedExisting) {
-    responsePayload.email = "";
-    responsePayload.phone = "";
-  }
 
   return {
     responsePayload,
@@ -5785,9 +5822,15 @@ const importResponseRows = async ({
     selectedSheet: undefined,
     selectedTableId: "",
   });
+  const sheetName =
+    parsed.selectedSheet || parsed.sheetName || form.title || "Responses";
   const columns = Array.isArray(parsed.columns) ? parsed.columns : [];
   const dataRows = Array.isArray(parsed.records) ? parsed.records : [];
   const columnMappings = normalizeResponseImportMappings(mapping);
+  if (!columnMappings.length) {
+    throw new Error("No valid mapped columns were provided for import");
+  }
+  const questionLookup = buildImportColumnLookup(questions);
   const batchId = `IMP-${crypto.randomUUID().slice(0, 12).toUpperCase()}`;
   const importedAt = new Date();
   const summary = {
@@ -5810,8 +5853,15 @@ const importResponseRows = async ({
     );
     const rowObject = {};
     columns.forEach((column, columnIndex) => {
-      rowObject[String(column.originalHeader || `Column ${columnIndex + 1}`)] =
-        rowValues[columnIndex];
+      const originalHeader = String(
+        column.originalHeader || `Column ${columnIndex + 1}`,
+      );
+      const normalizedHeader = normalizeHeader(
+        column.normalizedKey || originalHeader,
+      );
+      const value = rowValues[columnIndex];
+      rowObject[originalHeader] = value;
+      rowObject[normalizedHeader] = value;
     });
 
     try {
@@ -5844,6 +5894,7 @@ const importResponseRows = async ({
       const payload = await buildImportedResponsePayload({
         form,
         questions,
+        questionLookup,
         rowObject,
         columns,
         rowValues,
@@ -5856,6 +5907,36 @@ const importResponseRows = async ({
         mapping: columnMappings,
         existingResponse,
       });
+
+      const generatedAnswers = [];
+      for (const item of payload.answersToInsert) {
+        const question =
+          item.question ||
+          questions.find(
+            (current) =>
+              String(current._id || current.id || "") ===
+              String(item.question?._id || item.question?.id || ""),
+          );
+        if (!question) continue;
+
+        const prepared = await prepareAnswerRecord(
+          question,
+          item.submittedValue,
+          item.fileEntries || [],
+          {
+            formId: String(form._id),
+            formSlug: form.slug || form.publicSlug || slugify(form.title),
+          },
+        );
+        generatedAnswers.push({
+          question,
+          prepared,
+        });
+      }
+
+      if (!generatedAnswers.length) {
+        throw new Error("No mapped answers were generated for this row");
+      }
 
       let responseDoc = existingResponse
         ? await FormResponse.findById(existingResponse._id)
@@ -5879,30 +5960,12 @@ const importResponseRows = async ({
         summary.imported += 1;
       }
 
-      for (const item of payload.answersToInsert) {
-        const question =
-          item.question ||
-          questions.find(
-            (current) =>
-              String(current._id || current.id || "") ===
-              String(item.question?._id || item.question?.id || ""),
-          );
-        if (!question) continue;
-
-        const prepared = await prepareAnswerRecord(
-          question,
-          item.submittedValue,
-          item.fileEntries || [],
-          {
-            formId: String(form._id),
-            formSlug: form.slug || form.publicSlug || slugify(form.title),
-          },
-        );
-
+      for (const item of generatedAnswers) {
+        const questionId = String(item.question._id || item.question.id || "");
         await FormResponseAnswer.create({
           responseId: responseDoc._id,
-          questionId: question._id,
-          ...prepared,
+          questionId,
+          ...item.prepared,
         });
       }
 
@@ -5947,15 +6010,18 @@ const importResponseRows = async ({
     sheetName,
     summary,
     errorRows,
-      importedResponseIds,
-    };
+    importedResponseIds,
+  };
 };
 
-const exportResponseBundle = async ({
-  formId,
-  options = {},
-  format = "csv",
-}) => {
+const exportResponseBundle = async (input = {}) => {
+  const normalizedInput =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? input
+      : { formId: input };
+  const formId = normalizedInput.formId;
+  const options = normalizedInput.options || {};
+  const format = normalizedInput.format || "csv";
   const form = (await Form.findById(formId).lean()) || {
     _id: formId,
     title: "Responses",

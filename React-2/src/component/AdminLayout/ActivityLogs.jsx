@@ -170,8 +170,8 @@ const ActivityLogs = () => {
 
   return (
     <AdminLayout
-      title="Activity Logs"
-      subtitle="System audit trail and operational history"
+      // title="Activity Logs"
+      // subtitle="System audit trail and operational history"
     >
       <div className="space-y-4">
         {/* Export and Info Bar */}

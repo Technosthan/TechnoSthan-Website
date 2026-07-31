@@ -666,12 +666,12 @@ const AdminAssignments = () => {
 
   return (
     <AdminLayout
-      title={isAdmin ? "Assignment Center" : "HR Assignment Center"}
-      subtitle={
-        isAdmin
-          ? "Create, track, review, and prioritize assignments in one enterprise-grade workspace."
-          : "Manage user assignments, review delivery, and keep the queue moving from one focused workspace."
-      }
+      // title={isAdmin ? "Assignment Center" : "HR Assignment Center"}
+      // subtitle={
+      //   isAdmin
+      //     ? "Create, track, review, and prioritize assignments in one enterprise-grade workspace."
+      //     : "Manage user assignments, review delivery, and keep the queue moving from one focused workspace."
+      // }
     >
       <div className="space-y-5 pb-24 lg:pb-0">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

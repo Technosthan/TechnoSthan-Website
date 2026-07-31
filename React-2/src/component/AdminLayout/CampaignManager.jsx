@@ -510,8 +510,8 @@ const CampaignManager = () => {
 
   return (
     <AdminLayout
-      title="Campaign Manager"
-      subtitle="Upload and manage promotional campaigns that appear as a session-based popup across the website."
+      // title="Campaign Manager"
+      // subtitle="Upload and manage promotional campaigns that appear as a session-based popup across the website."
     >
       <div className="campaign-manager page-layout">
         <div className="campaign-manager__grid">

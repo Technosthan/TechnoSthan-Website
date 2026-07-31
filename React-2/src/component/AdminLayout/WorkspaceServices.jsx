@@ -42,17 +42,17 @@ const WorkspaceServices = () => {
 
   return (
     <AdminLayout
-      title="Workspace Permissions"
-      subtitle="Manage service availability, role permissions, and user-specific overrides in one place."
+      // title="Workspace Permissions"
+      // subtitle="Manage service availability, role permissions, and user-specific overrides in one place."
     >
       <div className="space-y-6 pb-24 lg:pb-0">
         {/* Permission System Overview */}
         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/60 to-slate-950/40 p-6">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/20">
+            {/* <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/20">
               <Settings size={24} className="text-indigo-400" />
-            </div>
-            <div>
+            </div> */}
+            {/* <div>
               <h3 className="text-sm font-semibold text-white">
                 Permission Resolution Order
               </h3>
@@ -71,7 +71,7 @@ const WorkspaceServices = () => {
                   Role Default = Fallback
                 </span>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 

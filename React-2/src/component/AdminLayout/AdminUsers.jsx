@@ -7,7 +7,7 @@ import { useToast } from "../Toast/ToastProvider";
 import socket from "../../socket";
 
 const fieldClassName =
-  "w-full rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-xs text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-white/10 bg-[#020617] px-3 py-2 text-xs text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-400/40";
 
 const roleBadgeClassNames = {
   USER: "bg-sky-500/15 text-sky-200 ring-sky-400/20",
@@ -219,8 +219,8 @@ const AdminUsers = () => {
 
   return (
     <AdminLayout
-      title="User Management"
-      subtitle="Manage roles, access, and account status from one compact operations grid."
+      // title="User Management"
+      // subtitle="Manage roles, access, and account status from one compact operations grid."
     >
       <div className="space-y-4">
         {loading ? (
@@ -268,7 +268,9 @@ const AdminUsers = () => {
                         <th className="px-4 py-3">Current Role</th>
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3">Change Role</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
+                       <th className="px-4 py-3 text-center">
+  Actions
+</th>
                       </tr>
                       <tr className="border-t border-white/10 bg-slate-950/45 align-top">
                         <th className="px-4 py-3">
@@ -392,48 +394,77 @@ const AdminUsers = () => {
                             </td>
                             <td className="px-4 py-4 align-top">
                               <select
-                                value={user.role}
-                                onChange={(event) =>
-                                  handleRoleChange(user.id, event.target.value)
-                                }
-                                className="w-full rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/40 disabled:opacity-50"
-                                disabled={currentUser?.id === user.id}
-                              >
-                                <option value="USER">User / Intern</option>
-                                <option value="HR">HR / Manager</option>
-                                <option value="ADMIN">Admin</option>
-                              </select>
+  value={user.role}
+  onChange={(event) =>
+    handleRoleChange(user.id, event.target.value)
+  }
+  className="w-full rounded-xl border border-white/10 bg-[#020617] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-cyan-400/40 disabled:opacity-50"
+  disabled={currentUser?.id === user.id}
+  style={{
+    colorScheme: "dark",
+  }}
+>
+  <option
+    value="USER"
+    className="bg-[#020617] text-white"
+  >
+    User / Intern
+  </option>
+
+  <option
+    value="HR"
+    className="bg-[#020617] text-white"
+  >
+    HR / Manager
+  </option>
+
+  <option
+    value="ADMIN"
+    className="bg-[#020617] text-white"
+  >
+    Admin
+  </option>
+</select>
                             </td>
-                            <td className="px-4 py-4 align-top">
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  className="rounded-full bg-amber-500/15 p-2 text-amber-100 transition hover:bg-amber-500/25 disabled:opacity-50"
-                                  onClick={() =>
-                                    handleStatusChange(user.id, !user.isActive)
-                                  }
-                                  disabled={currentUser?.id === user.id}
-                                  title={
-                                    user.isActive
-                                      ? "Suspend user"
-                                      : "Reactivate user"
-                                  }
-                                >
-                                  <Shield size={15} />
-                                </button>
-                                <button
-                                  className="rounded-full bg-rose-500/15 p-2 text-rose-100 transition hover:bg-rose-500/25 disabled:opacity-50"
-                                  onClick={() => handleDelete(user.id)}
-                                  disabled={currentUser?.id === user.id}
-                                  title={
-                                    currentUser?.id === user.id
-                                      ? "Cannot delete yourself"
-                                      : "Delete user"
-                                  }
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </div>
-                            </td>
+                           <td className="px-4 py-4 align-middle">
+  <div className="flex w-full items-center justify-center gap-2">
+    <button
+      type="button"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 p-0 text-amber-100 transition-colors hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+      onClick={() =>
+        handleStatusChange(user.id, !user.isActive)
+      }
+      disabled={currentUser?.id === user.id}
+      title={
+        user.isActive
+          ? "Suspend user"
+          : "Reactivate user"
+      }
+      aria-label={
+        user.isActive
+          ? "Suspend user"
+          : "Reactivate user"
+      }
+    >
+      <Shield size={16} />
+    </button>
+
+    <button
+      type="button"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/15 p-0 text-rose-100 transition-colors hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+      onClick={() => handleDelete(user.id)}
+      disabled={currentUser?.id === user.id}
+      title={
+        currentUser?.id === user.id
+          ? "Cannot delete yourself"
+          : "Delete user"
+      }
+      aria-label="Delete user"
+    >
+      <Trash2 size={16} />
+    </button>
+  </div>
+</td>
                           </tr>
                         );
                       })}

@@ -7,11 +7,7 @@ import {
 } from "../shared/lib/draftPersistence";
 import { getStoredUser } from "../utils/auth";
 
-const useModuleDrafts = ({
-  module,
-  userId: userIdProp,
-  version = 1,
-}) => {
+const useModuleDrafts = ({ module, userId: userIdProp, version = 1 }) => {
   const storedUser = getStoredUser();
   const userId = useMemo(
     () => getCurrentDraftUserId(userIdProp || storedUser),
@@ -22,7 +18,11 @@ const useModuleDrafts = ({
   const refreshDrafts = useCallback(() => {
     clearExpiredDraftEntriesForUser(userId);
     const nextDrafts = listDraftEntriesForModule(userId, module).filter(
-      (draft) => Number(draft.version || 0) === Number(version),
+      (draft) => {
+        // Purane drafts me version stored nahi hai, unhe version 1 maano
+        const draftVersion = Number(draft.version ?? 1);
+        return draftVersion === Number(version);
+      },
     );
     nextDrafts.sort((a, b) => {
       const left = new Date(b.savedAt || 0).getTime();
@@ -70,4 +70,3 @@ const useModuleDrafts = ({
 };
 
 export default useModuleDrafts;
-  
