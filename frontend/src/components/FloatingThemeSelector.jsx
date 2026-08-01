@@ -28,7 +28,7 @@ const FloatingThemeSelector = () => {
   return (
     <>
       {/* Floating Button */}
-      <motion.button
+      {/* <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.1 }}
@@ -37,7 +37,7 @@ const FloatingThemeSelector = () => {
         className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl z-50 flex items-center justify-center transition-all duration-300 ${theme.button} ${theme.border}`}
       >
         <Palette size={24} className={theme.text} />
-      </motion.button>
+      </motion.button> */}
 
       {/* Theme Options Panel */}
       <AnimatePresence>

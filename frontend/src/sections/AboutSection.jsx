@@ -12,40 +12,40 @@ import {
 const DEFAULT_EMPOWERING_CARDS = [
   {
     id: "default-1",
-    title: "Smart Farming",
-    description: "Modern agricultural solutions",
+    title: "Farmer support",
+    description: "Practical tools and guidance for everyday field decisions.",
     mediaType: "image",
     mediaUrl: "/optimized/farmer1-1536.jpg",
     thumbnailUrl: "",
     iconKey: "tractor",
-    buttonText: "Learn More",
-    buttonLink: "#",
+    buttonText: "Explore support",
+    buttonLink: "/contact",
     openInNewTab: false,
     displayOrder: 0,
   },
   {
     id: "default-2",
-    title: "Smart Farming",
-    description: "Modern agricultural solutions",
+    title: "Student learning",
+    description: "Articles, quizzes, and learning paths for AgriTech study.",
     mediaType: "image",
     mediaUrl: "/optimized/farmer2-1536.jpg",
     thumbnailUrl: "",
-    iconKey: "tractor",
-    buttonText: "Learn More",
-    buttonLink: "#",
+    iconKey: "book",
+    buttonText: "Open wiki",
+    buttonLink: "/AgriTech Wiki",
     openInNewTab: false,
     displayOrder: 1,
   },
   {
     id: "default-3",
-    title: "Smart Farming",
-    description: "Modern agricultural solutions",
+    title: "Innovation updates",
+    description: "Stay connected with platform-driven agriculture ideas and demos.",
     mediaType: "image",
     mediaUrl: "/optimized/farmer3-1536.jpg",
     thumbnailUrl: "",
-    iconKey: "tractor",
-    buttonText: "Learn More",
-    buttonLink: "#",
+    iconKey: "sparkles",
+    buttonText: "See insights",
+    buttonLink: "/chat",
     openInNewTab: false,
     displayOrder: 2,
   },
@@ -162,9 +162,9 @@ const AboutSection = () => {
             {Array.from({ length: 3 }).map((_, index) => (
               <div
                 key={index}
-                className="group relative overflow-hidden rounded-[2rem] shadow-2xl border border-white/10 bg-white/30 animate-pulse"
+                className="group relative overflow-hidden rounded-[2rem] shadow-2xl border border-white/10 bg-white/30 animate-pulse aspect-[4/5]"
               >
-                <div className="h-[420px] w-full bg-gradient-to-br from-white/50 to-emerald-100/40" />
+                <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-emerald-100/40" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-6 w-full">
                   <div className="h-12 w-12 rounded-xl bg-white/20 mb-3" />
@@ -198,7 +198,7 @@ const AboutSection = () => {
                   whileHover={{ y: -10, scale: 1.02 }}
                   transition={{ duration: 0.5 }}
                   viewport={{ once: true }}
-                  className="group relative overflow-hidden rounded-[2rem] shadow-2xl border border-white/10"
+                  className="group relative overflow-hidden rounded-[2rem] shadow-2xl border border-white/10 aspect-[4/5]"
                 >
                   {card.mediaType === "video" ? (
                     <video
@@ -211,7 +211,7 @@ const AboutSection = () => {
                       autoPlay={!reduceMotion}
                       preload="metadata"
                       aria-label={card.title}
-                      className="w-full h-[420px] object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
                     <img
@@ -219,7 +219,7 @@ const AboutSection = () => {
                       alt={card.title}
                       loading="lazy"
                       decoding="async"
-                      className="w-full h-[420px] object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   )}
 

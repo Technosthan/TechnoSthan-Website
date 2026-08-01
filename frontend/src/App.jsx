@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import Home from "./pages/Home";
-import LandingPage from "./pages/LandingPage";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import LoginPage from "./pages/LoginPage";
@@ -11,6 +10,8 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyPhonePage from "./pages/VerifyPhonePage";
 import TelegramLoginPage from "./pages/TelegramLoginPage";
 import WhatsappLoginPage from "./pages/WhatsappLoginPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import PublicFormPage from "./features/forms/PublicFormPage";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import AdminRoute from "./shared/components/AdminRoute";
@@ -19,8 +20,9 @@ import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 import { SettingsProvider } from "./contexts/SettingsContext.jsx";
 import { AccessControlProvider } from "./contexts/AccessControlContext.jsx";
 import RouteGuard from "./shared/components/RouteGuard";
-import FloatingThemeSelector from "./components/FloatingThemeSelector";
+import PublicLayout from "./components/PublicLayout";
 import { Toaster } from "react-hot-toast";
+import { Navigate } from "react-router-dom";
 
 const ContentPage = lazy(() => import("./features/content/ContentPage"));
 const QuizPage = lazy(() => import("./features/quiz/QuizPage"));
@@ -57,17 +59,26 @@ function App() {
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route element={<RouteGuard />}>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/landing" element={<LandingPage />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/verify-email" element={<VerifyEmailPage />} />
-                  <Route path="/verify-phone" element={<VerifyPhonePage />} />
-                  <Route path="/login/telegram" element={<TelegramLoginPage />} />
-                  <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
+                  <Route element={<PublicLayout />}>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/landing" element={<Navigate to="/" replace />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/verify-email" element={<VerifyEmailPage />} />
+                    <Route path="/verify-phone" element={<VerifyPhonePage />} />
+                    <Route path="/login/telegram" element={<TelegramLoginPage />} />
+                    <Route path="/login/whatsapp" element={<WhatsappLoginPage />} />
+                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/AgriTech Wiki" element={<ContentPage />} />
+                    <Route path="/quiz/:contentId" element={<QuizPage />} />
+                    <Route path="/chat" element={<ChatPage />} />
+                    <Route path="/forms/:slug" element={<PublicFormPage />} />
+                    <Route path="/f/:slug" element={<PublicFormPage />} />
+                  </Route>
                   <Route
                     path="/profile"
                     element={
@@ -76,12 +87,6 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
-
-                  <Route path="/AgriTech Wiki" element={<ContentPage />} />
-                  <Route path="/quiz/:contentId" element={<QuizPage />} />
-                  <Route path="/chat" element={<ChatPage />} />
-                  <Route path="/forms/:slug" element={<PublicFormPage />} />
-                  <Route path="/f/:slug" element={<PublicFormPage />} />
                   <Route
                     path="/dashboard"
                     element={
@@ -120,7 +125,6 @@ function App() {
           </BrowserRouter>
         </AccessControlProvider>
         <Toaster position="top-right" />
-        <FloatingThemeSelector />
       </ThemeProvider>
     </SettingsProvider>
   );

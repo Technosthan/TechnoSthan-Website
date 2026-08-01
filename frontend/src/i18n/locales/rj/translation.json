@@ -1,92 +1,308 @@
 {
   "navbar": {
-    "home": "घर",
-    "about": "हमारे बारे में",
-    "contact": "संपर्क",
+    "home": "होम",
+    "about": "आमरा बारे में",
+    "contact": "सम्पर्क",
     "wiki": "AgriTech विकी",
-    "aiChat": "AI चैट",
+    "aiChat": "AI बात",
     "adminPanel": "एडमिन पैनल",
-    "login": "लॉगिन",
-    "logout": "लॉगआउट"
+    "login": "लागिन",
+    "logout": "लोग आउट"
   },
   "common": {
-    "publicAccessEnabled": "पब्लिक पहुँच चालू है",
-    "languageTitle": "भासा",
+    "publicAccessEnabled": "पब्लिक पहुंच चालू है",
+    "publicAccessDisabled": "पब्लिक पहुंच बंद है",
+    "languageTitle": "भाषा",
     "welcome": "स्वागत है, {{name}}",
-    "logout": "लॉगआउट"
+    "logout": "लोग आउट"
   },
   "buttons": {
     "languageEnglish": "English",
     "languageHindi": "हिन्दी",
-    "languageRajasthani": "Rajasthani",
-    "uploadFiles": "फाइल अपलोड करो"
+    "languageRajasthani": "राजस्थानी",
+    "uploadFiles": "फाइलां अपलोड करो"
+  },
+  "site": {
+    "stats": {
+      "eyebrow": "प्लेटफ़ॉर्म झलक",
+      "title": "किसानां, सीखण वालां अर सहायता टीमां खातर बन्यो",
+      "subtitle": "एक काम रो AgriTech जगह, जेमे बिना बढ़ायो-चढ़ायो दावा करे, मार्गदर्शन, सीख अर टूल्स जोड़ा जावै है।",
+      "farmerTools": {
+        "title": "किसान-केंद्रित टूल्स",
+        "description": "फसल सहायता, योजना अर रोज़मर्रा काम खातर काम री चीज़ां।"
+      },
+      "learning": {
+        "title": "काम री सीख",
+        "description": "ज्ञान वालो सेक्शन जेके छात्र अर किसानां नै नई खेती समझावै है।"
+      },
+      "support": {
+        "title": "तकनीकी मदद",
+        "description": "AI चैट, OTP लॉगिन अर सुरक्षित flows जेके अनुभव नै जोड़ै राखै है।"
+      },
+      "knowledge": {
+        "title": "खेती रो ज्ञान",
+        "description": "Wiki सामग्री अर insights जेके प्लेटफ़ॉर्म नै काम रो सीखण हब बनाय राखै है।"
+      }
+    },
+    "platform": {
+      "eyebrow": "प्लेटफ़ॉर्म फीचर्स",
+      "title": "इण्ठे आप काय कर सको हो",
+      "subtitle": "टूल, लेख अर सहायता रा रास्ता खोजो जेके खेती नै असली product flows सूं जोड़ै।",
+      "openFeature": "फीचर खोलो",
+      "aiAssistant": {
+        "title": "AI फसल सहायक",
+        "description": "काम रा खेती सवाल पूछो अर अनिश्चितता तै समाधान तक पहुँचो।"
+      },
+      "wiki": {
+        "title": "AgriTech Wiki",
+        "description": "सीख री सामग्री, गाइड अर research-style लेख एक जगह पढ़ो।"
+      },
+      "monitoring": {
+        "title": "स्मार्ट फसल मॉनिटरिंग",
+        "description": "फसल ट्रैकिंग अर खेत दृश्यता रा रास्ता देखो।"
+      },
+      "analytics": {
+        "title": "फार्म एनालिटिक्स",
+        "description": "रुझान, प्रगति अर योजना समझण खातर डेटा आधारित दृश्य काम लो।"
+      },
+      "disease": {
+        "title": "रोग मार्गदर्शन",
+        "description": "फसल परेशानी में मदद लो अर जल्दी सही कदम तक पहुँचो।"
+      },
+      "weather": {
+        "title": "मौसम अर योजना",
+        "description": "बदलती खेत हालात खातर योजना-सक्षम मार्गदर्शन लो।"
+      },
+      "dashboard": {
+        "title": "किसान डैशबोर्ड",
+        "description": "व्यवस्थित प्लेटफ़ॉर्म अनुभव खातर मौजूदा dashboard flow खोलो।"
+      },
+      "learning": {
+        "title": "छात्र सीख रा संसाधन",
+        "description": "काम री समझ खातर शैक्षिक सामग्री अर learning routes खोजो।"
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "किवे काम करै",
+      "title": "सीख तै action तक एक सीधी राह",
+      "subtitle": "मौजूदा product flows बदले बिना प्लेटफ़ॉर्म नै कदम-दर-कदम काम लो।",
+      "step1": {
+        "title": "AgriTech resources देखो",
+        "description": "Wiki, homepage content अर काम री public routes सूं शुरुआत करो।"
+      },
+      "step2": {
+        "title": "टूल या सेवा चुनो",
+        "description": "अपणी खेती या सीख री ज़रूरत मुताबिक फीचर चुनो।"
+      },
+      "step3": {
+        "title": "विशेषज्ञां सूं जुड़ो",
+        "description": "सवाल सूं guidance तक पहुंचण खातर chat या contact options काम लो।"
+      },
+      "step4": {
+        "title": "देखो अर सीखो",
+        "description": "ज्यूँ-ज्यूँ लक्ष्य बदलै, सामग्री अर टूल्स पर वापिस आवो।"
+      },
+      "step5": {
+        "title": "उत्पादकता बढ़ाओ",
+        "description": "काम री insights लागू करि बेहतर फैसले लो।"
+      }
+    },
+    "whyChoose": {
+      "eyebrow": "TechnoSthan क्यों चुनो",
+      "title": "भरोसेमंद, काम रो अर भारतीय खेती खातर बन्यो",
+      "subtitle": "मार्केटिंग दावां बजाय काम री चीज़ां पर ध्यान।",
+      "practical": {
+        "title": "काम री खेती समाधान",
+        "description": "रोज़मर्रा खेती अर सीख कामां में मदद करण वाळा workflows।"
+      },
+      "technology": {
+        "title": "तकनीक-आधारित तरीका",
+        "description": "एक modern interface जेके टूल, guidance अर मदद नै आसान करै।"
+      },
+      "support": {
+        "title": "किसान अर छात्र मदद",
+        "description": "खेत उपयोगकर्ता अर सीखण वाळा दोनू खातर बन्यो support experience।"
+      },
+      "india": {
+        "title": "भारतीय खेती पर फोकस",
+        "description": "स्थानीय संदर्भ, भाषा support अर परिचित workflows मुताबिक design।"
+      },
+      "knowledge": {
+        "title": "ज्ञान अर प्रशिक्षण",
+        "description": "Wiki सामग्री, training routes अर सीख में मदद करण वाला सेक्शन।"
+      },
+      "innovation": {
+        "title": "लगातार नवाचार",
+        "description": "नई सामग्री, फीचर्स अर admin-managed updates सूं प्लेटफ़ॉर्म आगे बढ़ै है।"
+      }
+    },
+    "impact": {
+      "eyebrow": "प्रभाव कहानी",
+      "title": "खेत सीख, छात्र काम अर व्यावहारिक अपनाव",
+      "subtitle": "संपादन योग्य demo कहाणियां जेके बाद में असली media सूं बदल सकै है।",
+      "storySnapshot": "कहाणी स्नैपशॉट",
+      "fieldDemo": {
+        "label": "खेत मदद",
+        "title": "खेत में स्मार्ट मार्गदर्शन",
+        "location": "जयपुर, राजस्थान",
+        "category": "किसान सहायता",
+        "summary": "प्लेटफ़ॉर्म किवे खेत मार्गदर्शन, फसल संदर्भ अर अगले कदम दिखा सकै, इण रो व्यावहारिक उदाहरण।"
+      },
+      "studentProject": {
+        "label": "छात्र सीख",
+        "title": "प्रोजेक्ट-आधारित AgriTech सीख",
+        "location": "अजमेर, राजस्थान",
+        "category": "सीख",
+        "summary": "छात्र काम, guided exploration अर AgriTech समझ खातर एक सादा showcase।"
+      },
+      "workshop": {
+        "label": "प्रशिक्षण सत्र",
+        "title": "वर्कशॉप-शैली ज्ञान साझा करणी",
+        "location": "जोधपुर, राजस्थान",
+        "category": "प्रशिक्षण",
+        "summary": "वर्कशॉप, demo अर collaborative agricultural learning खातर visual जगह।"
+      }
+    },
+    "testimonials": {
+      "eyebrow": "प्रशंसापत्र",
+      "title": "सीखण वाळे अर खेत उपयोगकर्ता काय कह सकै है",
+      "subtitle": "Demo प्रशंसापत्र, जद तक असली approved testimonials न जुड़ै।",
+      "farmer": {
+        "name": "डेमो किसान",
+        "role": "किसान उपयोगकर्ता",
+        "location": "राजस्थान",
+        "quote": "इण प्लेटफ़ॉर्म बिना बेकार जटिलता के काम री AgriTech guidance ढूंढण आसान करै है।"
+      },
+      "student": {
+        "name": "डेमो छात्र",
+        "role": "सीखण वाळो",
+        "location": "भारत",
+        "quote": "इण म्हाने learning content नै व्यावहारिक खेती रा विचारां अर real platform tools सूं जोड़ण में मदद करै है।"
+      },
+      "trainer": {
+        "name": "डेमो प्रशिक्षक",
+        "role": "AgriTech मार्गदर्शक",
+        "location": "जयपुर",
+        "quote": "वेबसाइट साफ, पेशेवर अर किसानां, छात्रां अर संस्थां खातर तैयार लागै है।"
+      }
+    },
+    "latestWiki": {
+      "eyebrow": "नवीनतम Wiki सामग्री",
+      "title": "हाल रा सीखण अर ज्ञान लेख",
+      "subtitle": "जद उपलब्ध होय, मौजूदा wiki API सूं featured content दिखावै जावैगो।",
+      "defaultCategory": "AgriTech",
+      "defaultDescription": "जद विवरण उपलब्ध न होय, तब इण छोतो सार दिखावै जावै।",
+      "defaultTitle": "AgriTech लेख",
+      "recent": "हालिया",
+      "openWiki": "Wiki खोलो",
+      "viewAll": "सब लेख देखो",
+      "unavailableTitle": "Wiki preview उपलब्ध न होय",
+      "unavailableSubtitle": "जद कोई लेख प्रकाशित न होय या access सीमित होय, तब public preview खाली दिख सकै है।",
+      "retry": "फिर कोशिश करो"
+    },
+    "training": {
+      "eyebrow": "प्रशिक्षण अर सीख",
+      "title": "वर्कशॉप, संसाधन अर काम री सीख रा रास्ता",
+      "subtitle": "किसानां, छात्रां अर partner organizations खातर काम रो AgriTech सीख।",
+      "workshops": {
+        "title": "किसान वर्कशॉप",
+        "description": "हाथ-परो प्रशिक्षण सत्र अर community-based सीखण रा मौके देखो।"
+      },
+      "students": {
+        "title": "छात्र सीख",
+        "description": "AgriTech concepts अर project ideas खातर अध्ययन-अनुकूल जगह जिणो काम लो।"
+      },
+      "ai": {
+        "title": "AI सहायता सूं सीख",
+        "description": "सवाल पूछो, मार्गदर्शन देखो अर direct platform interaction सूं सीखो।"
+      },
+      "demo": {
+        "title": "काम रो प्रदर्शन",
+        "description": "फ़ील्ड demos, experiments अर कृषि नवाचार कार्यक्रमां नै दिखाओ।"
+      },
+      "learnMore": "अर जाणो"
+    },
+    "finalCta": {
+      "eyebrow": "अगलो कदम",
+      "title": "क्या थूं स्मार्ट खेती देखण खातर तैयार हो?",
+      "subtitle": "अपणी खेती, सीख या सहयोग री ज़रूरत मुताबिक सही रास्तो चुनो।",
+      "quickContact": "जल्दी सम्पर्क",
+      "quickContactSubtitle": "बात जारी राखण खातर मौजूदा contact details अर public routes काम लो।",
+      "email": "ईमेल",
+      "phone": "फोन",
+      "whatsapp": "व्हाट्सऐप",
+      "openChat": "चैट खोलो",
+      "contact": "टीम सूं सम्पर्क करो",
+      "chat": "AI चैट खोलो",
+      "wiki": "Wiki देखो"
+    }
   },
   "home": {
     "hero": {
-      "badge": "एआई चालित खेती प्लेटफ़ॉर्म",
+      "badge": "AI-संचालित स्मार्ट खेती",
       "titleLine1": "स्मार्ट खेती",
-      "titleLine2": "भारत री खातर 🇮🇳",
-      "subtitle": "आधुनिक खेती री तकनीक सिखो, खेत रो प्रदर्शन देखो, AgriTech इनोवेशन खोजो अणे AI टूल सूं उत्पादकता बढ़ाओ।",
+      "titleLine2": "भारत खातर",
+      "subtitle": "आधुनिक खेती री तकनीक सीखो, खेत रो प्रदर्शन देखो, AgriTech नवाचार एक्सप्लोर करो अर AI-आधारित औजारां सूं उत्पादकता बढ़ाओ।",
       "featureSmartFarming": "स्मार्ट खेती",
       "featureAISolutions": "AI समाधान",
-      "featureFarmAnalytics": "खेत आँकड़ा",
-      "exploreWiki": "विकी देखो",
+      "featureFarmAnalytics": "खेत विश्लेषण",
+      "exploreWiki": "Wiki देखो",
       "viewDashboard": "डैशबोर्ड देखो"
     },
     "features": {
-      "badge": "TECHNOSTHAN सेवावां",
-      "title": "हमारी सेवावां 🚀",
+      "badge": "TECHNOSTHAN प्लेटफ़ॉर्म",
+      "title": "आमरी सेवां",
       "agriTechTitle": "AgriTech",
-      "agriTechSubtitle": "स्मार्ट खेती इकोसिस्टम",
+      "agriTechSubtitle": "स्मार्ट खेती रो इकोसिस्टम",
       "serviceWiki": "विकी",
       "serviceQuiz": "क्विज़",
-      "serviceAIChatbot": "AI चैटबोट",
+      "serviceAIChatbot": "AI चैटबॉट",
       "serviceProgress": "प्रगति",
       "otherServiceInnovationHub": "इनोवेशन हब",
       "otherServiceITDevelopment": "आईटी विकास",
       "otherServiceHospitality": "हॉस्पिटैलिटी"
     },
     "aboutSection": {
-      "badge": "भरोसेमंद AgriTech प्लेटफ़ॉर्म",
-      "titleLine1": "किसानां ने मजबूत बनावणो",
-      "titleLine2": "अणे छात्र 🌾",
-      "subtitle": "आधुनिक तकनीक सूं कृषि जोके भलका किसान अणे छात्र ने स्मार्ट, तेज़ अणे टिकाऊ बनावणों है।",
+      "badge": "किसान अर विद्यार्थीां खातर AgriTech प्लेटफ़ॉर्म",
+      "titleLine1": "किसानां नै सशक्त",
+      "titleLine2": "अर विद्यार्थीां नै भी",
+      "subtitle": "कृषि नै आधुनिक तकनीक सूं जोड़ कै भारतीय किसानां अर विद्यार्थीां नै ज्यादा स्मार्ट, तेज अर टिकाऊ री रीत सूं आगे बढ़ावण में मदद करै।",
       "cardTitle": "स्मार्ट खेती",
       "cardDescription": "आधुनिक कृषि समाधान",
-      "learnMore": "और जाणो"
+      "learnMore": "अर जाणो"
     },
     "contactSection": {
-      "badge": "स्मार्ट खेती शुरू करो",
+      "badge": "स्मार्ट कृषि मंच",
       "titleLine1": "स्मार्ट खेती",
-      "titleLine2": "यहाँ सूं शुरू होवे है 🌱",
-      "description": "AgriTech सीखो, AI उपकरण देखो, खेती री प्रगति देखो, अणे TECHNOSTHAN AGRITECH सूं कृषि उत्पादकता बढ़ाओ।",
+      "titleLine2": "यहीं सूं शुरू होवै",
+      "description": "AgriTech सीखो, AI टूल्स देखो, खेती री प्रगति ट्रैक करो अर TECHNOSTHAN AGRITECH सूं कृषि उत्पादकता बढ़ाओ।",
       "button": "AgriTech देखो",
       "cardTitle": "AI कृषि",
-      "cardSubtitle": "स्मार्ट अणे टिकाऊ खेती",
-      "featureCropMonitoring": "स्मार्ट फसल मॉनिटरिंग",
+      "cardSubtitle": "स्मार्ट अर टिकाऊ खेती",
+      "featureCropMonitoring": "स्मार्ट फसल निगरानी",
       "featureFarmingSolutions": "AI खेती समाधान",
-      "featureSustainableAgriculture": "टिकाऊ कृषि"
+      "featureSustainableAgriculture": "सतत कृषि"
     }
   },
   "about": {
-    "pageTitle": "TECHNOSTHAN AGRITECH बारे में",
-    "description1": "TECHNOSTHAN AGRITECH एक नवीन AgriTech प्लेटफ़ॉर्म है जिको मकसद किसानां अणे छात्रां ने आधुनिक कृषि ज्ञान अणे AI चालित टूल सूं समर्थ बनावणो है।",
-    "description2": "हमारो मिशन पारंपरिक खेती अणे उन्नत तकनीक बीच रो फासलो घटावणो है, जासां भारत अणे इसके बाहिर टिकाऊ अणे उत्पादक कृषि संभव हो सके।",
-    "description3": "हमारा प्लेटफ़ॉर्म यूज़र्स ने स्मार्ट खेती तकनीकां बारे में सिखावै है, क्विज़ लेवां खाती ज्ञान परखणो है, त्वरित सलाह खाती AI चैटबोट सूं बातचीत कर सकै है, अणे डेटा-आधारित खेती अभ्यास लागू कर सकै है। हम मानै है के खेती समुदाय में हर किसी खातर टेक्नोलॉजी सुलभ होणी चाहिए।"
+    "pageTitle": "TECHNOSTHAN AGRITECH रो परिचय",
+    "description1": "TECHNOSTHAN AGRITECH एक आधुनिक AgriTech प्लेटफ़ॉर्म है, जिण नै किसानां अर विद्यार्थीां नै समकालीन कृषि ज्ञान अर AI-संचालित टूल्स सूं सशक्त करावण खातर बनायो गेलो है।",
+    "description2": "आमरो मकसद परंपरागत खेती अर नई तकनीक बिच री दूरी घटावणी है, ताकि भारत अर ओकर बाहर भी टिकाऊ अर उत्पादक कृषि नै बढ़ावा मिल सके।",
+    "description3": "इस प्लेटफ़ॉर्म पर यूज़र स्मार्ट खेती तकनीकां सीख सकै है, क्विज़ सूं अपनो ज्ञान परख सकै है, त्वरित सलाह खातर AI चैटबॉट सूं बात कर सकै है, अर डेटा-आधारित कृषि पद्धतियां अपना कै बेहतर निर्णय ले सकै है।"
   },
   "contact": {
-    "pageTitle": "संपर्क करें",
-    "description": "कोई सवाल या सुझाव हो तो हमें agritech@technosthan.com पर संपर्क करो। हम थारी स्मार्ट खेती यात्रा मै मदद करवा खातर यहाँ हैं!",
+    "pageTitle": "सम्पर्क करो",
+    "description": "कोई सवाल या सुझाव होय तो agritech@technosthan.com पर लिखो। हम तामरी स्मार्ट खेती यात्रा में मदद खातर एथै हां!",
     "emailLabel": "ईमेल:",
-    "phoneLabel": "फ़ोन:",
+    "phoneLabel": "फोन:",
     "addressLabel": "पता:",
     "email": "agritech@technosthan.com",
     "phone": "+91-9477288288",
-    "address": "47/1 न्यू संगानेर रोड, सोडाला, जयपुर, राजस्थान 302019"
+    "address": "47/1 न्यू सांगानेर रोड, सोडाला, जयपुर, राजस्थान 302019"
   },
   "aiChat": {
     "sidebar": {
-      "newChat": "न्यू चैट",
+      "newChat": "नई चैट",
       "startNewConversation": "नई बातचीत शुरू करो..."
     },
     "header": {
@@ -94,62 +310,29 @@
     },
     "empty": {
       "heading": "बातचीत शुरू करो",
-      "description": "खेती, कृषि, या फसल प्रबंधन बारे में कुछ भी पूछो!"
-    },
-    "messages": {
-      "emptyContent": "संदेश सामग्री उपलब्ध न्हीं है"
-    },
-    "status": {
-      "thinking": "सोच रो हूं..."
-    },
-    "errors": {
-      "unableLoadConversations": "बातचीत लोड करबा में नाकाम। कृपया पेज रीफ्रेश करो।",
-      "unableLoadMessages": "इस बातचीत री संदेश लोड करबा में नाकाम।",
-      "unableCreateChat": "नई चैट सत्र बनावबा में नाकाम। कृपया फेर कोशिश करो।",
-      "noResponse": "AI सूं कोई जवाब न मिल्यो। कृपया फेर कोशिश करो।",
-      "failedSend": "संदेश भेजबा में नाकाम। कृपया फेर कोशिश करो।",
-      "deleteFailed": "बातचीत हटावबा में नाकाम। कृपया फेर कोशिश करो।",
-      "describeFile": "कृपया बतावो के थम फ़ाइल सूं के करवा चाहो हो"
-    },
-    "suggestions": {
-      "summarizeFile": "इस फ़ाइल रो सारांश बनावो",
-      "analyzeData": "इस डाटा रो विश्लेषण करो",
-      "explainContent": "इस सामग्री ने समझावो"
-    },
-    "placeholders": {
-      "file": "इस फ़ाइल सूं थम के करवा चाहो हो, बतावो...",
-      "question": "खेती, फसल, मौसम, या कोई कृषि सवाल पूचो..."
-    },
-    "footerNote": "Enter दबाओ भेजबा खातर • फाइलां खातर + दबावो • आवाज़ इनपुट खातर माइक्रोफ़ोन दबावो",
-    "file": {
-      "processed": "मैं थारी फ़ाइल \"{{fileName}}\" को प्रोसेस कर लियो।"
-    },
-    "alerts": {
-      "voiceNotSupported": "इ ब्राउज़र में वॉइस रिकग्निशन सपोर्टेड नइ है।",
-      "unsupportedFileType": "फ़ाइल टाइप {{fileType}} सपोर्टेड नइ है। कृपया इमेज, पीडीएफ, या डॉक्युमेंट अपलोड करो।",
-      "fileTooLarge": "फ़ाइल {{fileName}} बहुत बड़ी है। मैक्सिमम साइज़ 10MB है।"
+      "description": "खेती, कृषि या फसल प्रबंधन बारे में कछू भी पूछो!"
     }
   },
   "footer": {
     "brandName": "TECHNOSTHAN",
-    "brandTagline": "AGRItech",
-    "tagline": "एआई, नवाचार अणे आधुनिक खेती समाधान सूं स्मार्ट कृषि ने समर्थ बनावणो।",
-    "quickLinks": "क्विक लिंक",
-    "services": "सेवावां",
-    "serviceAIChatbot": "AI चैटबोट",
+    "brandTagline": "AGRITECH",
+    "tagline": "AI, नवाचार अर आधुनिक खेती के समाधानों सूं किसानां अर विद्यार्थीां नै सशक्त बनावणो।",
+    "quickLinks": "त्वरित कड़ियाँ",
+    "services": "सेवां",
+    "serviceAIChatbot": "AI चैटबॉट",
     "serviceSmartFarming": "स्मार्ट खेती",
-    "serviceQuizLearning": "क्विज़ अणे सीखणो",
+    "serviceQuizLearning": "क्विज़ अर सीख",
     "serviceProgressTracking": "प्रगति ट्रैकिंग",
-    "contact": "संपर्क",
+    "contact": "सम्पर्क",
     "email": "agritech@technosthan.com",
     "phone": "+91 9477288288",
     "location": "जयपुर, राजस्थान, भारत",
     "privacyPolicy": "गोपनीयता नीति",
-    "termsOfService": "सेवा शर्तां",
-    "rights": "© 2026 TECHNOSTHAN AGRITECH। सभी अधिकार सुरक्षित।",
-    "linkHome": "घर",
-    "linkAbout": "हमारे बारे में",
-    "linkContact": "संपर्क",
+    "termsOfService": "सेवा री शर्तां",
+    "rights": "© 2026 TECHNOSTHAN AGRITECH. सर्वाधिकार सुरक्षित।",
+    "linkHome": "होम",
+    "linkAbout": "आमरा बारे में",
+    "linkContact": "सम्पर्क",
     "linkWiki": "AgriTech विकी"
   }
 }

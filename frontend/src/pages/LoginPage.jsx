@@ -1,26 +1,32 @@
-﻿import { useState, useEffect } from "react";
-import { useAuth } from "../features/auth/useAuth";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaTelegram, FaWhatsapp } from "react-icons/fa";
 import {
-  Lock,
+  CheckCircle,
   Eye,
   EyeOff,
-  XCircle,
+  Lock,
   Mail,
-  Shield,
   MessageSquare,
   Phone,
-  CheckCircle,
   QrCode,
   RefreshCw,
+  Shield,
+  XCircle,
 } from "lucide-react";
-import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../features/auth/useAuth";
 import { sendOTP, verifyOTP } from "../features/auth/authApi";
+import { useTheme } from "../contexts/ThemeContext";
+import AuthLayout from "../components/AuthLayout";
 
-const getSafeAuthMessage = (error, fallback = "Something went wrong. Please try again.") => {
+const getSafeAuthMessage = (
+  error,
+  fallback = "Something went wrong. Please try again.",
+) => {
   const message = error?.response?.data?.message || error?.message || "";
-  if (/E11000|duplicate key|MongoServerError|ValidationError|index:/i.test(message)) {
+  if (
+    /E11000|duplicate key|MongoServerError|ValidationError|index:/i.test(message)
+  ) {
     return fallback;
   }
   return message || fallback;
@@ -48,18 +54,14 @@ const LoginPage = () => {
 
   const [isOtpLogin, setIsOtpLogin] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
-
   const [contact, setContact] = useState("");
   const [otp, setOtp] = useState("");
-
   const [otpLoading, setOtpLoading] = useState(false);
-
   const [form, setForm] = useState({
     contact: "",
     password: "",
     otp: "",
   });
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [fieldError, setFieldError] = useState({});
@@ -70,6 +72,14 @@ const LoginPage = () => {
     /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
 
   const isPhone = (value) => /^\d{10}$/.test(value);
+
+  const authSubtitle = useMemo(() => {
+    if (isOtpLogin) {
+      return "Use OTP to access your farmer support and learning account.";
+    }
+
+    return "Login with password or choose one of the existing secure sign-in methods.";
+  }, [isOtpLogin]);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -110,10 +120,6 @@ const LoginPage = () => {
     }
   }, [isOtpLogin, isRegister, step]);
 
-  // =========================
-  // OTP LOGIN
-  // =========================
-
   const handleSendOtp = async () => {
     setError("");
     setSuccess("");
@@ -133,22 +139,20 @@ const LoginPage = () => {
     try {
       const method = isEmail(contact) ? "email" : "sms";
 
-      // Attempt to get reCAPTCHA token (v3). Falls back to null.
       const getRecaptchaToken = async () => {
         try {
           const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
           if (!siteKey) return null;
 
-          // If grecaptcha not loaded, inject script
           if (!window.grecaptcha) {
             await new Promise((resolve, reject) => {
-              const s = document.createElement("script");
-              s.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
-              s.async = true;
-              s.defer = true;
-              s.onload = resolve;
-              s.onerror = reject;
-              document.head.appendChild(s);
+              const script = document.createElement("script");
+              script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+              script.async = true;
+              script.defer = true;
+              script.onload = resolve;
+              script.onerror = reject;
+              document.head.appendChild(script);
             });
           }
 
@@ -157,27 +161,25 @@ const LoginPage = () => {
               window.grecaptcha.ready(() => {
                 window.grecaptcha
                   .execute(siteKey, { action: "send_otp" })
-                  .then((tok) => resolve(tok))
+                  .then((tokenValue) => resolve(tokenValue))
                   .catch(() => resolve(null));
               });
             });
           }
-        } catch (e) {
-          // ignore and continue without token
-          console.warn("reCAPTCHA unavailable:", e);
+        } catch (err) {
+          console.warn("reCAPTCHA unavailable:", err);
         }
+
         return null;
       };
 
       const recaptchaToken = await getRecaptchaToken();
-
       const res = await sendOTP({
         contact,
         method,
         recaptchaToken,
       });
 
-      // Optional backend response
       if (res?.data?.isNewUser) {
         setSuccess("Account not found. Creating new account automatically...");
       } else {
@@ -220,7 +222,6 @@ const LoginPage = () => {
       localStorage.setItem("user", JSON.stringify(userData));
 
       setSuccess("Login successful");
-
       navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
     } catch (err) {
       setError(getSafeAuthMessage(err, "Invalid OTP"));
@@ -229,12 +230,8 @@ const LoginPage = () => {
     }
   };
 
-  // =========================
-  // VALIDATION
-  // =========================
-
   const validate = () => {
-    let errors = {};
+    const errors = {};
 
     if (isOtpLogin || step !== "input") {
       if (step === "input") {
@@ -279,24 +276,17 @@ const LoginPage = () => {
     }
 
     setFieldError(errors);
-
     return Object.keys(errors).length === 0;
   };
 
-  // =========================
-  // MAIN LOGIN / REGISTER
-  // =========================
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
     setSuccess("");
 
     if (!validate()) return;
 
     try {
-      // OTP LOGIN
       if (isOtpLogin) {
         if (!isOtpSent) {
           await handleSendOtp();
@@ -306,36 +296,27 @@ const LoginPage = () => {
         return;
       }
 
-      // REGISTER OTP VERIFY
       if (isRegister && step === "verify-otp") {
         await handleVerifyOTP(form.otp);
-
         setSuccess("Account verified successfully");
-
         return;
       }
 
-      // REGISTER SECOND FIELD
       if (isRegister && step === "input-second-field") {
         await handleSecondFieldSubmit(form.contact);
-
         setSuccess("OTP sent successfully");
-
         return;
       }
 
-      // LOGIN / AUTO REGISTER
       const result = await authenticate({
         contact: form.contact,
         password: form.password,
       });
 
-      // AUTO REGISTER MESSAGE
       if (result?.flow === "register") {
         setSuccess("Account not found. Starting registration process...");
       }
 
-      // LOGIN SUCCESS
       if (result?.flow === "login") {
         const userData = JSON.parse(localStorage.getItem("user") || "null");
 
@@ -356,50 +337,33 @@ const LoginPage = () => {
     }
   };
 
-  // =========================
-  // QR
-  // =========================
-
   const handleGenerateQR = async () => {
     setError("");
 
     try {
       const qr = await generateQR();
-
       setQrData(qr);
     } catch (err) {
       setError(getSafeAuthMessage(err, "Failed to generate QR code"));
     }
   };
 
-  // =========================
-  // TOGGLE OTP LOGIN
-  // =========================
-
   const toggleOtpLogin = () => {
-    setIsOtpLogin(!isOtpLogin);
-
+    setIsOtpLogin((current) => !current);
     setIsOtpSent(false);
-
     setContact("");
     setOtp("");
-
     setError("");
     setSuccess("");
 
     if (isOtpLogin) {
       resetFlow();
-
-      setForm({
-        ...form,
+      setForm((prev) => ({
+        ...prev,
         otp: "",
-      });
+      }));
     }
   };
-
-  // =========================
-  // TITLES
-  // =========================
 
   const getStepTitle = () => {
     if (isOtpLogin) {
@@ -431,9 +395,7 @@ const LoginPage = () => {
     }
 
     if (step === "verify-otp") {
-      return `Enter OTP sent to your ${
-        inputType === "email" ? "email" : "phone"
-      }`;
+      return `Enter OTP sent to your ${inputType === "email" ? "email" : "phone"}`;
     }
 
     if (step === "input-second-field") {
@@ -445,51 +407,36 @@ const LoginPage = () => {
     return "Welcome";
   };
 
-  return (
-    <div
-      className={`min-h-screen flex items-center justify-center px-4 ${theme.bg} ${theme.text}`}
-    >
-      <div
-        className={`${theme.cardOpacity} p-8 rounded-3xl shadow-2xl w-full max-w-md`}
-      >
-        {/* TITLE */}
-        <div className="text-center mb-6">
-          <Shield className={`mx-auto mb-2 ${theme.accent}`} size={28} />
-
-          <h2 className="text-2xl font-semibold">{getStepTitle()}</h2>
-
-          <p className={theme.textSecondary}>{getStepDescription()}</p>
+  const renderMainForm = () => (
+    <div className="space-y-5">
+      {error ? (
+        <div className="status-badge rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+          <XCircle className="inline-block align-text-bottom" size={16} />
+          <span className="ml-2">{error}</span>
         </div>
+      ) : null}
 
-        {/* ERROR */}
-        {error && (
-          <div className="mb-4 bg-red-100 border border-red-300 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-            <XCircle size={16} />
-            {error}
-          </div>
-        )}
+      {success ? (
+        <div className="status-badge rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+          <CheckCircle className="inline-block align-text-bottom" size={16} />
+          <span className="ml-2">{success}</span>
+        </div>
+      ) : null}
 
-        {/* SUCCESS */}
-        {success && (
-          <div className="mb-4 bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-            <CheckCircle size={16} />
-            {success}
-          </div>
-        )}
-
-        {/* OTP LOGIN */}
-        {isOtpLogin && !isOtpSent && (
-          <div className="space-y-4 mb-4">
+      {isOtpLogin && !isOtpSent ? (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="otp-contact" className="mb-2 block text-sm font-medium">
+              Email or phone
+            </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-3 flex items-center">
-                <Mail className="text-gray-400" size={18} />
-              </div>
-
+              <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
+                id="otp-contact"
                 type="text"
                 placeholder="Enter email or phone"
                 value={contact}
-                className={`${theme.input} pl-10`}
+                className={`${theme.input} pl-11`}
                 onChange={(e) => {
                   setContact(e.target.value);
                   setError("");
@@ -497,329 +444,312 @@ const LoginPage = () => {
                 }}
               />
             </div>
-
-            <button
-              type="button"
-              onClick={handleSendOtp}
-              disabled={otpLoading}
-              className={`w-full ${theme.button} py-3 rounded-xl flex justify-center cursor-pointer items-center gap-2`}
-            >
-              {otpLoading ? (
-                <RefreshCw className="animate-spin" size={18} />
-              ) : (
-                <MessageSquare size={18} />
-              )}
-              Send OTP
-            </button>
           </div>
-        )}
 
-        {/* VERIFY OTP */}
-        {isOtpLogin && isOtpSent && (
-          <div className="space-y-4 mb-4">
+          <button
+            type="button"
+            onClick={handleSendOtp}
+            disabled={otpLoading}
+            className={`primary-button w-full inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+          >
+            {otpLoading ? <RefreshCw className="animate-spin" size={18} /> : <MessageSquare size={18} />}
+            Send OTP
+          </button>
+        </div>
+      ) : null}
+
+      {isOtpLogin && isOtpSent ? (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="otp-code" className="mb-2 block text-sm font-medium">
+              OTP
+            </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-3 flex items-center">
-                <Shield className="text-gray-400" size={18} />
-              </div>
-
+              <Shield className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
+                id="otp-code"
                 type="text"
                 placeholder="Enter 6 digit OTP"
                 value={otp}
                 maxLength={6}
-                className={`${theme.input} pl-10`}
+                className={`${theme.input} pl-11 text-center tracking-[0.35em]`}
                 onChange={(e) => {
                   setOtp(e.target.value.replace(/\D/g, ""));
-
                   setError("");
                   setSuccess("");
                 }}
               />
             </div>
-
-            <button
-              type="button"
-              onClick={handleVerifyOtp}
-              disabled={otpLoading}
-              className={`w-full ${theme.button} py-3 rounded-xl flex justify-center cursor-pointer items-center gap-2`}
-            >
-              {otpLoading ? (
-                <RefreshCw className="animate-spin" size={18} />
-              ) : (
-                <CheckCircle size={18} />
-              )}
-              Verify OTP
-            </button>
           </div>
-        )}
 
-        {/* MAIN FORM */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isOtpLogin && step === "input" && (
-            <>
-              {/* CONTACT */}
-              <div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center">
-                    <Mail className="text-gray-400" size={18} />
-                  </div>
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={otpLoading}
+            className={`primary-button w-full inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+          >
+            {otpLoading ? <RefreshCw className="animate-spin" size={18} /> : <CheckCircle size={18} />}
+            Verify OTP
+          </button>
+        </div>
+      ) : null}
 
-                  <input
-                    type="text"
-                    placeholder="Email or Phone"
-                    value={form.contact}
-                    className={`${theme.input} pl-10`}
-                    onChange={(e) => {
-                      setForm({
-                        ...form,
-                        contact: e.target.value,
-                      });
-
-                      setFieldError({
-                        ...fieldError,
-                        contact: "",
-                      });
-
-                      setError("");
-                      setSuccess("");
-                    }}
-                  />
-                </div>
-
-                {fieldError.contact && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fieldError.contact}
-                  </p>
-                )}
-              </div>
-
-              {/* PASSWORD */}
-              <div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center">
-                    <Lock className="text-gray-400" size={18} />
-                  </div>
-
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    value={form.password}
-                    className={`${theme.input} pl-10 pr-10`}
-                    onChange={(e) => {
-                      setForm({
-                        ...form,
-                        password: e.target.value,
-                      });
-
-                      setFieldError({
-                        ...fieldError,
-                        password: "",
-                      });
-
-                      setError("");
-                      setSuccess("");
-                    }}
-                  />
-
-                  <div
-                    className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </div>
-                </div>
-
-                {fieldError.password && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fieldError.password}
-                  </p>
-                )}
-              </div>
-
-              {/* BUTTON */}
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full ${theme.button} py-3 rounded-xl flex justify-center items-center gap-2 cursor-pointer`}
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="animate-spin " size={18} />
-                    Please wait...
-                  </>
-                ) : (
-                  "Continue"
-                )}
-              </button>
-
-              {/* FORGOT */}
-              <div className="text-center">
-                <a
-                  href="/forgot-password"
-                  className="text-blue-500 text-sm hover:text-blue-600"
-                >
-                  Forgot Password?
-                </a>
-              </div>
-
-              {/* OTP LOGIN TOGGLE */}
-              <button
-                type="button"
-                onClick={toggleOtpLogin}
-                className="w-full text-blue-500 text-sm hover:text-blue-600 cursor-pointer"
-              >
-                Login with OTP instead
-              </button>
-            </>
-          )}
-
-          {/* REGISTER OTP VERIFY */}
-          {!isOtpLogin && isRegister && step === "verify-otp" && (
-            <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {!isOtpLogin && step === "input" ? (
+          <>
+            <div>
+              <label htmlFor="login-contact" className="mb-2 block text-sm font-medium">
+                Email or phone
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center">
-                  <Lock className="text-gray-400" size={18} />
-                </div>
-
+                <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  id="login-contact"
                   type="text"
-                  placeholder="Enter 6 digit OTP"
-                  value={form.otp}
-                  maxLength={6}
-                  className={`${theme.input} pl-10 text-center tracking-widest`}
-                  onChange={(e) => {
-                    setForm({
-                      ...form,
-                      otp: e.target.value.replace(/\D/g, ""),
-                    });
-
-                    setError("");
-                  }}
-                />
-              </div>
-
-              {fieldError.otp && (
-                <p className="text-red-500 text-xs">{fieldError.otp}</p>
-              )}
-
-              <button
-                type="button"
-                onClick={() => handleSendOTP(otpMethod)}
-                disabled={loading}
-                className="w-full text-blue-500 text-sm flex justify-center items-center gap-2 cursor-pointer"
-              >
-                <RefreshCw size={14} />
-                Resend OTP
-              </button>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full ${theme.button} py-3 rounded-xl cursor-pointer`}
-              >
-                {loading ? "Verifying..." : "Verify OTP"}
-              </button>
-            </div>
-          )}
-
-          {/* SECOND FIELD */}
-          {!isOtpLogin && isRegister && step === "input-second-field" && (
-            <div className="space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center">
-                  {inputType === "email" ? (
-                    <Phone className="text-gray-400" size={18} />
-                  ) : (
-                    <Mail className="text-gray-400" size={18} />
-                  )}
-                </div>
-
-                <input
-                  type="text"
-                  placeholder={
-                    inputType === "email" ? "Phone Number" : "Email Address"
-                  }
+                  placeholder="Email or Phone"
                   value={form.contact}
-                  className={`${theme.input} pl-10`}
+                  aria-invalid={Boolean(fieldError.contact)}
+                  aria-describedby={fieldError.contact ? "login-contact-error" : undefined}
+                  className={`${theme.input} pl-11`}
                   onChange={(e) => {
                     setForm({
                       ...form,
                       contact: e.target.value,
                     });
+                    setFieldError({
+                      ...fieldError,
+                      contact: "",
+                    });
+                    setError("");
+                    setSuccess("");
+                  }}
+                />
+              </div>
+              {fieldError.contact ? (
+                <p id="login-contact-error" className="mt-1 text-xs text-red-500">
+                  {fieldError.contact}
+                </p>
+              ) : null}
+            </div>
 
+            <div>
+              <label htmlFor="login-password" className="mb-2 block text-sm font-medium">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={form.password}
+                  aria-invalid={Boolean(fieldError.password)}
+                  aria-describedby={fieldError.password ? "login-password-error" : undefined}
+                  className={`${theme.input} pl-11 pr-11`}
+                  onChange={(e) => {
+                    setForm({
+                      ...form,
+                      password: e.target.value,
+                    });
+                    setFieldError({
+                      ...fieldError,
+                      password: "",
+                    });
+                    setError("");
+                    setSuccess("");
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-lg p-2 text-slate-400 transition hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {fieldError.password ? (
+                <p id="login-password-error" className="mt-1 text-xs text-red-500">
+                  {fieldError.password}
+                </p>
+              ) : null}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`primary-button w-full inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="animate-spin" size={18} />
+                  Please wait...
+                </>
+              ) : (
+                "Continue"
+              )}
+            </button>
+
+            <div className="flex flex-col items-center gap-3 pt-1 text-sm">
+              <a
+                href="/forgot-password"
+                className={`${theme.link} font-medium`}
+              >
+                Forgot password?
+              </a>
+
+              <button
+                type="button"
+                onClick={toggleOtpLogin}
+                className={`${theme.link} font-medium`}
+              >
+                Login with OTP instead
+              </button>
+            </div>
+          </>
+        ) : null}
+
+        {!isOtpLogin && isRegister && step === "verify-otp" ? (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="register-otp" className="mb-2 block text-sm font-medium">
+                OTP
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  id="register-otp"
+                  type="text"
+                  placeholder="Enter 6 digit OTP"
+                  value={form.otp}
+                  maxLength={6}
+                  className={`${theme.input} pl-11 text-center tracking-[0.35em]`}
+                  onChange={(e) => {
+                    setForm({
+                      ...form,
+                      otp: e.target.value.replace(/\D/g, ""),
+                    });
                     setError("");
                   }}
                 />
               </div>
-
-              {fieldError.contact && (
-                <p className="text-red-500 text-xs">{fieldError.contact}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full ${theme.button}  py-3 rounded-xl cursor-pointer`}
-              >
-                {loading ? "Please wait..." : "Continue"}
-              </button>
             </div>
-          )}
 
-          {/* QR LOGIN */}
-          {!isOtpLogin && step === "input" && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={handleGenerateQR}
-                className="text-blue-500 text-sm flex items-center justify-center gap-2 mx-auto cursor-pointer"
-              >
-                <QrCode size={16} />
-                Login with QR Code
-              </button>
+            {fieldError.otp ? (
+              <p className="text-xs text-red-500">{fieldError.otp}</p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => handleSendOTP(otpMethod)}
+              disabled={loading}
+              className={`${theme.link} inline-flex items-center gap-2 text-sm font-medium`}
+            >
+              <RefreshCw size={14} />
+              Resend OTP
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`primary-button w-full rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+            >
+              {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+          </div>
+        ) : null}
+
+        {!isOtpLogin && isRegister && step === "input-second-field" ? (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="secondary-contact" className="mb-2 block text-sm font-medium">
+                {inputType === "email" ? "Phone number" : "Email address"}
+              </label>
+              <div className="relative">
+                {inputType === "email" ? (
+                  <Phone className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                ) : (
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                )}
+                <input
+                  id="secondary-contact"
+                  type="text"
+                  placeholder={inputType === "email" ? "Phone Number" : "Email Address"}
+                  value={form.contact}
+                  aria-invalid={Boolean(fieldError.contact)}
+                  aria-describedby={fieldError.contact ? "secondary-contact-error" : undefined}
+                  className={`${theme.input} pl-11`}
+                  onChange={(e) => {
+                    setForm({
+                      ...form,
+                      contact: e.target.value,
+                    });
+                    setError("");
+                  }}
+                />
+              </div>
+              {fieldError.contact ? (
+                <p id="secondary-contact-error" className="mt-1 text-xs text-red-500">
+                  {fieldError.contact}
+                </p>
+              ) : null}
             </div>
-          )}
 
-          {/* QR DISPLAY */}
-          {qrData && (
-            <div className="text-center">
-              <img src={qrData.qrCode} alt="QR Code" className="mx-auto mb-2" />
+            <button
+              type="submit"
+              disabled={loading}
+              className={`primary-button w-full rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+            >
+              {loading ? "Please wait..." : "Continue"}
+            </button>
+          </div>
+        ) : null}
 
-              <p className="text-sm text-gray-600">
-                Scan with your mobile device
-              </p>
-            </div>
-          )}
+        {!isOtpLogin && step === "input" ? (
+          <div className="space-y-5 pt-2">
+            <button
+              type="button"
+              onClick={handleGenerateQR}
+              className="ghost-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
+            >
+              <QrCode size={16} />
+              Login with QR Code
+            </button>
 
-          {/* GOOGLE */}
-          {!isOtpLogin && step === "input" && (
+            {qrData ? (
+              <div className="rounded-3xl border border-white/10 bg-black/5 p-4 text-center dark:bg-white/5">
+                <img
+                  src={qrData.qrCode}
+                  alt="QR code for login"
+                  className="mx-auto mb-3 max-h-56 rounded-2xl bg-white p-2"
+                />
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Scan with your mobile device
+                </p>
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className={`w-full ${theme.card} ${theme.border} py-3 rounded-xl flex items-center justify-center gap-3 cursor-pointer hover:opacity-90 transition`}
+              className={`inline-flex w-full items-center justify-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${theme.card} ${theme.border}`}
             >
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                alt="Google"
-                className="w-5 h-5"
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5"
               />
-
-              <span>Continue with Google</span>
+              Continue with Google
             </button>
-          )}
 
-          {/* SOCIAL LOGIN */}
-          {!isOtpLogin && step === "input" && (
-            <div className="mt-6">
+            <div className="pt-2">
               <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className={`${theme.border} w-full`} />
+                <div className={`absolute inset-0 flex items-center`}>
+                  <div className={`w-full border-t ${theme.border}`} />
                 </div>
-
                 <div className="relative flex justify-center text-sm">
-                  <span
-                    className={`${theme.surface} px-2 ${theme.textSecondary}`}
-                  >
+                  <span className={`${theme.surface} px-3 ${theme.textSecondary}`}>
                     Or login with
                   </span>
                 </div>
@@ -827,24 +757,34 @@ const LoginPage = () => {
 
               <div className="mt-4 flex justify-center gap-4">
                 <button
+                  type="button"
                   onClick={() => navigate("/login/telegram")}
-                  className="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                  aria-label="Login with Telegram"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-white transition hover:bg-blue-600"
                 >
                   <FaTelegram size={20} />
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => navigate("/login/whatsapp")}
-                  className="p-3 rounded-full bg-green-500 hover:bg-green-600 text-white cursor-pointer"
+                  aria-label="Login with WhatsApp"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-white transition hover:bg-green-600"
                 >
                   <FaWhatsapp size={20} />
                 </button>
               </div>
             </div>
-          )}
-        </form>
-      </div>
+          </div>
+        ) : null}
+      </form>
     </div>
+  );
+
+  return (
+    <AuthLayout title={getStepTitle()} subtitle={authSubtitle}>
+      {renderMainForm()}
+    </AuthLayout>
   );
 };
 

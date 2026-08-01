@@ -1,9 +1,8 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { ArrowRight, BarChart3, Brain, Leaf, Sparkles, Sprout } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
-
-import { ArrowRight, Sparkles, Leaf, Cpu, BarChart3 } from "lucide-react";
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -11,209 +10,132 @@ const HeroSection = () => {
   const { t } = useTranslation();
 
   return (
-    <section className="relative overflow-hidden">
-      {/* Background Blur */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-10 w-72 h-72 bg-green-400/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
+    <section className="relative overflow-hidden py-[clamp(3rem,8vw,6.5rem)]">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-6 top-6 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-amber-400/15 blur-3xl" />
       </div>
 
-      <div className="relative grid lg:grid-cols-2 gap-14 items-center px-6 md:px-10 lg:px-16 py-16 md:py-24 max-w-7xl mx-auto">
-        {/* LEFT CONTENT */}
+      <div className="site-container relative grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
         <motion.div
-          initial={{ opacity: 0, x: -70 }}
+          initial={{ opacity: 0, x: -28 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10"
+          transition={{ duration: 0.55 }}
+          className="min-w-0"
         >
-          {/* Badge */}
-          {/* <motion.div
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium text-sm mb-6 shadow-md"
-          >
-            <Sparkles size={16} />
-            {t("home.hero.badge")}
-          </motion.div> */}
+          {/* <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <Sparkles size={15} />
+            Smart agriculture platform
+          </div> */}
 
-          {/* Heading */}
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 ${theme.text}`}
+          <h1
+            className={`mt-6 max-w-3xl text-balance text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[clamp(3.5rem,5vw,4.6rem)] ${theme.text}`}
           >
             {t("home.hero.titleLine1")}
             <br />
+            <span className={theme.accent}>{t("home.hero.titleLine2")}</span>
+          </h1>
 
-            <span className={`${theme.accent}`}>
-              {t("home.hero.titleLine2")}
-            </span>
-          </motion.h1>
-
-          {/* Description */}
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className={`${theme.textSecondary} text-lg md:text-xl leading-relaxed mb-8 max-w-xl`}
-          >
+          <p className={`mt-6 max-w-2xl text-base leading-8 sm:text-lg ${theme.textSecondary}`}>
             {t("home.hero.subtitle")}
-          </motion.p>
+          </p>
 
-          {/* Features */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.55 }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10"
-          >
-            <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
-              <Leaf className="text-green-500" size={22} />
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            {[
+              { icon: Sprout, label: t("home.hero.featureSmartFarming") },
+              { icon: Brain, label: t("home.hero.featureAISolutions") },
+              { icon: BarChart3, label: t("home.hero.featureFarmAnalytics") },
+            ].map((item) => {
+              const Icon = item.icon;
 
-              <span className="font-medium text-sm">
-                {t("home.hero.featureSmartFarming")}
-              </span>
-            </div>
+              return (
+                <div
+                  key={item.label}
+                  className={`flex items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 ${theme.card}`}
+                >
+                  <div className="icon-chip rounded-2xl bg-emerald-600/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+                    <Icon size={18} />
+                  </div>
+                  <span className="text-sm font-medium">{item.label}</span>
+                </div>
+              );
+            })}
+          </div>
 
-            <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
-              <Cpu className="text-blue-500" size={22} />
-
-              <span className="font-medium text-sm">
-                {t("home.hero.featureAISolutions")}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg">
-              <BarChart3 className="text-yellow-500" size={22} />
-
-              <span className="font-medium text-sm">
-                {t("home.hero.featureFarmAnalytics")}
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 25 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65 }}
-            className="flex flex-wrap gap-4"
-          >
-            {/* Primary Button */}
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <motion.button
-              whileHover={{
-                scale: 1.05,
-              }}
-              whileTap={{
-                scale: 0.96,
-              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/AgriTech Wiki")}
-              className={`${theme.button} group px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold flex items-center gap-3 cursor-pointer`}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-semibold shadow-xl transition ${theme.button}`}
             >
               {t("home.hero.exploreWiki")}
-
-              <ArrowRight
-                size={20}
-                className="group-hover:translate-x-1 transition-transform duration-300"
-              />
+              <ArrowRight size={18} />
             </motion.button>
 
-            {/* Secondary Button */}
             <motion.button
-              whileHover={{
-                scale: 1.05,
-              }}
-              whileTap={{
-                scale: 0.96,
-              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/dashboard")}
-              className="px-8 py-4 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-800/60 backdrop-blur-md text-gray-800 dark:text-white shadow-lg font-semibold hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-6 py-4 text-base font-semibold shadow-lg transition ${theme.card} ${theme.text}`}
             >
               {t("home.hero.viewDashboard")}
             </motion.button>
-          </motion.div>
+          </div>
         </motion.div>
 
-        {/* RIGHT IMAGE */}
         <motion.div
-          initial={{
-            opacity: 0,
-            scale: 0.85,
-          }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-          }}
-          transition={{
-            duration: 0.9,
-          }}
-          className="relative"
+          initial={{ opacity: 0, x: 28, scale: 0.98 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="relative min-w-0"
         >
-          {/* Glow */}
-          <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 blur-3xl rounded-full" />
+          <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-emerald-500/20 via-transparent to-amber-400/20 blur-3xl" />
+          <div className={`relative overflow-hidden rounded-[2rem] border border-white/10 ${theme.card}`}>
+            <div className="relative aspect-[4/3] overflow-hidden">
+              <picture>
+                <source
+                  type="image/avif"
+                  srcSet="/optimized/hero-768.avif 768w, /optimized/hero-1536.avif 1536w"
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                />
+                <source
+                  type="image/webp"
+                  srcSet="/optimized/hero-768.webp 768w, /optimized/hero-1536.webp 1536w"
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                />
+                <img
+                  src="/optimized/hero-1536.jpg"
+                  alt="Smart agriculture platform preview"
+                  width="1536"
+                  height="1024"
+                  fetchPriority="high"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              </picture>
 
-          {/* Main Image */}
-          <motion.div
-            whileHover={{
-              scale: 1.02,
-            }}
-            transition={{
-              duration: 0.3,
-            }}
-            className="relative"
-          >
-            <picture>
-              <source
-                type="image/avif"
-                srcSet="/optimized/hero-768.avif 768w, /optimized/hero-1536.avif 1536w"
-                sizes="(min-width: 1024px) 50vw, 100vw"
-              />
-              <source
-                type="image/webp"
-                srcSet="/optimized/hero-768.webp 768w, /optimized/hero-1536.webp 1536w"
-                sizes="(min-width: 1024px) 50vw, 100vw"
-              />
-              <img
-                src="/optimized/hero-1536.jpg"
-                alt="Smart Farming"
-                width="1536"
-                height="1024"
-                fetchPriority="high"
-                decoding="async"
-                className="w-full rounded-[2rem] shadow-2xl border border-white/20"
-              />
-            </picture>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/25 to-transparent" />
 
-            {/* Floating Card */}
-            <motion.div
-              animate={{
-                y: [0, -10, 0],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-              }}
-              className="absolute -bottom-6 left-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-5 backdrop-blur-lg"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white shadow-lg">
-                  <Leaf size={22} />
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] rounded-3xl border border-white/10 bg-slate-950/75 p-4 text-white shadow-2xl backdrop-blur-xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="icon-chip rounded-2xl bg-emerald-500 text-white">
+                    <Leaf size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Actionable support</p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Keep learning, ask for help, and move from question to action.
+                    </p>
+                  </div>
                 </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-800 dark:text-white">
-                    AI Crop Monitoring
-                  </h4>
-
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Real-time farm insights
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+              </motion.div>
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>

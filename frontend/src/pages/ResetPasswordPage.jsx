@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Lock, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
+import AuthLayout from "../components/AuthLayout";
+import { useTheme } from "../contexts/ThemeContext";
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState("");
@@ -11,6 +14,7 @@ const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!token) {
@@ -48,99 +52,101 @@ const ResetPasswordPage = () => {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
-              Invalid Reset Link
-            </h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              The password reset link is invalid or has expired.
-            </p>
-            <div className="mt-4">
-              <a
-                href="/forgot-password"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Request a new password reset
-              </a>
-            </div>
+      <AuthLayout
+        title="Invalid reset link"
+        subtitle="The password reset link is invalid or has expired."
+      >
+        <div className="space-y-5">
+          <div className="status-badge rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+            <ShieldCheck className="inline-block align-text-bottom" size={16} />
+            <span className="ml-2">{error || "Invalid reset link."}</span>
           </div>
+
+          <Link
+            to="/forgot-password"
+            className={`secondary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.buttonSecondary}`}
+          >
+            Request a new password reset
+          </Link>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <AuthLayout
+      title="Reset your password"
+      subtitle="Choose a new password and use it for your next sign-in."
+      footerNote="Use a strong password that you can remember safely."
+    >
+      <form className="space-y-5" onSubmit={handleSubmit}>
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Reset your password
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Enter your new password below.
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="password" className="sr-only">
-              New Password
-            </label>
+          <label htmlFor="password" className="mb-2 block text-sm font-medium">
+            New password
+          </label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               id="password"
               name="password"
               type="password"
               autoComplete="new-password"
               required
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              className={theme.input}
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+        </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="sr-only">
-              Confirm New Password
-            </label>
+        <div>
+          <label
+            htmlFor="confirmPassword"
+            className="mb-2 block text-sm font-medium"
+          >
+            Confirm new password
+          </label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
               autoComplete="new-password"
               required
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              className={theme.input}
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
+        </div>
 
-          {error && (
-            <div className="text-red-600 dark:text-red-400 text-sm text-center">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="text-green-600 dark:text-green-400 text-sm text-center">
-              {message}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Resetting..." : "Reset password"}
-            </button>
+        {error ? (
+          <div className="status-badge rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+            <ShieldCheck className="inline-block align-text-bottom" size={16} />
+            <span className="ml-2">{error}</span>
           </div>
-        </form>
-      </div>
-    </div>
+        ) : null}
+
+        {message ? (
+          <div className="status-badge rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+            <ShieldCheck className="inline-block align-text-bottom" size={16} />
+            <span className="ml-2">{message}</span>
+          </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className={`primary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+        >
+          {loading ? <RefreshCw className="animate-spin" size={18} /> : <Lock size={18} />}
+          {loading ? "Resetting..." : "Reset password"}
+        </button>
+      </form>
+    </AuthLayout>
   );
 };
 

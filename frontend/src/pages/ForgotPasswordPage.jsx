@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
+import AuthLayout from "../components/AuthLayout";
+import { useTheme } from "../contexts/ThemeContext";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const { requestPasswordReset, loading } = useAuth();
+  const { theme } = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,68 +26,62 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <AuthLayout
+      title="Forgot your password?"
+      subtitle="Enter your email address and we’ll send you a link to reset your password."
+      footerNote="Use the same account email that you already registered with."
+    >
+      <form className="space-y-5" onSubmit={handleSubmit}>
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Forgot your password?
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Enter your email address and we'll send you a link to reset your
-            password.
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="email" className="sr-only">
-              Email address
-            </label>
+          <label htmlFor="forgot-email" className="mb-2 block text-sm font-medium">
+            Email address
+          </label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
-              id="email"
+              id="forgot-email"
               name="email"
               type="email"
               autoComplete="email"
               required
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Email address"
+              className={theme.input}
+              placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+        </div>
 
-          {error && (
-            <div className="text-red-600 dark:text-red-400 text-sm text-center">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="text-green-600 dark:text-green-400 text-sm text-center">
-              {message}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium cursor-pointer rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Sending..." : "Send reset link"}
-            </button>
+        {error ? (
+          <div className="status-badge rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+            <ShieldCheck className="inline-block align-text-bottom" size={16} />
+            <span className="ml-2">{error}</span>
           </div>
+        ) : null}
 
-          <div className="text-center">
-            <Link
-              to="/login"
-              className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Back to login
-            </Link>
+        {message ? (
+          <div className="status-badge rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+            <ShieldCheck className="inline-block align-text-bottom" size={16} />
+            <span className="ml-2">{message}</span>
           </div>
-        </form>
-      </div>
-    </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className={`primary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+        >
+          {loading ? <RefreshCw className="animate-spin" size={18} /> : <Mail size={18} />}
+          {loading ? "Sending..." : "Send reset link"}
+        </button>
+
+        <div className="text-center">
+          <Link to="/login" className={theme.link}>
+            Back to login
+          </Link>
+        </div>
+      </form>
+    </AuthLayout>
   );
 };
 

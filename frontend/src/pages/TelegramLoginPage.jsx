@@ -1,21 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaTelegram } from "react-icons/fa";
+import { ArrowLeft, CheckCircle, ExternalLink, MessageSquare, Phone, RefreshCw } from "lucide-react";
 import { sendLoginOtp } from "../features/auth/authApi";
 import { useAuth } from "../features/auth/useAuth";
-import {
-  ArrowLeft,
-  Phone,
-  MessageSquare,
-  ExternalLink,
-  CheckCircle,
-} from "lucide-react";
+import AuthLayout from "../components/AuthLayout";
 import { useTheme } from "../contexts/ThemeContext";
-import { FaTelegram } from "react-icons/fa";
 
 const TelegramLoginPage = () => {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState("phone"); // 'phone', 'not-linked', or 'otp'
+  const [step, setStep] = useState("phone");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [botLink, setBotLink] = useState("");
@@ -26,22 +21,35 @@ const TelegramLoginPage = () => {
   const { verifyLoginOTPFunc } = useAuth();
   const { theme } = useTheme();
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+
+    const interval = window.setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [resendCooldown]);
+
   const handleSendOtp = async () => {
     const cleanPhone = phone.trim();
 
-    // Empty validation
     if (!cleanPhone) {
       setError("Phone number is required");
       return;
     }
 
-    // Only digits validation
     if (!/^\d+$/.test(cleanPhone)) {
       setError("Phone number must contain only numbers");
       return;
     }
 
-    // Length validation
     if (cleanPhone.length !== 10) {
       setError("Phone number must be exactly 10 digits");
       return;
@@ -56,31 +64,16 @@ const TelegramLoginPage = () => {
         method: "telegram",
       });
 
-      // Check if Telegram is not linked (comes as 200 success with flag)
       if (response.data?.telegramNotLinked === true) {
         setBotLink(response.data.botLink);
         setLinkCode(response.data.linkCode || "");
         setBotStarted(false);
         setStep("not-linked");
       } else if (response.data?.success === true) {
-        // OTP sent successfully
         setStep("otp");
-
-        // Set resend cooldown
         setResendCooldown(60);
-
-        const interval = setInterval(() => {
-          setResendCooldown((prev) => {
-            if (prev <= 1) {
-              clearInterval(interval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
       }
     } catch (err) {
-      // Also check error response in case it comes as error
       if (err.response?.data?.telegramNotLinked === true) {
         setBotLink(err.response.data.botLink);
         setLinkCode(err.response.data.linkCode || "");
@@ -89,25 +82,22 @@ const TelegramLoginPage = () => {
       } else {
         setError(err.response?.data?.message || "Failed to send OTP");
       }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleVerifyOtp = async () => {
-    // Empty OTP validation
     if (!otp.trim()) {
       setError("OTP is required");
       return;
     }
 
-    // OTP only numbers
     if (!/^\d+$/.test(otp)) {
       setError("OTP must contain only numbers");
       return;
     }
 
-    // OTP length validation
     if (otp.length !== 6) {
       setError("OTP must be exactly 6 digits");
       return;
@@ -121,9 +111,9 @@ const TelegramLoginPage = () => {
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const openTelegramBot = () => {
@@ -132,248 +122,226 @@ const TelegramLoginPage = () => {
 
   const handleBotStarted = () => {
     setBotStarted(true);
-
-    // After a short delay, try sending OTP again
     setTimeout(() => {
       handleSendOtp();
     }, 1000);
   };
 
   return (
-    <div
-      className={`min-h-screen flex items-center justify-center p-4 ${theme.bg} ${theme.text}`}
+    <AuthLayout
+      title="Login with Telegram"
+      subtitle="Use your Telegram-linked phone number to receive and verify a login OTP."
+      footerNote="This keeps the existing Telegram OTP flow and backend checks unchanged."
     >
-      <div className={`max-w-md w-full ${theme.card} rounded-lg shadow-lg p-6`}>
-        <div className="flex items-center mb-6">
+      <button
+        type="button"
+        onClick={() => navigate("/login")}
+        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+      >
+        <ArrowLeft size={16} />
+        Back to login
+      </button>
+
+      <div className="mb-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 dark:text-blue-200">
+        <FaTelegram className="shrink-0 text-blue-500" size={20} />
+        <span>Telegram-based login requires a connected Telegram bot account.</span>
+      </div>
+
+      {step === "phone" && (
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Enter your phone number to receive OTP on Telegram.
+          </p>
+
+          <div>
+            <label htmlFor="telegram-phone" className="mb-2 block text-sm font-medium">
+              Phone number
+            </label>
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                id="telegram-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/\D/g, ""));
+                  setError("");
+                }}
+                className={`${theme.input} pl-11`}
+                placeholder="9876543210"
+                maxLength={10}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {error ? (
+            <p className="text-sm font-medium text-red-500">{error}</p>
+          ) : null}
+
           <button
-            onClick={() => navigate("/login")}
-            className="mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            type="button"
+            onClick={handleSendOtp}
+            disabled={loading || !phone.trim()}
+            className={`primary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
           >
-            <ArrowLeft size={20} />
+            {loading ? <RefreshCw className="animate-spin" size={18} /> : <MessageSquare size={18} />}
+            {loading ? "Sending..." : "Send OTP"}
+          </button>
+        </div>
+      )}
+
+      {step === "not-linked" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+            <p className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
+              Telegram account not connected
+            </p>
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              Please start our Telegram bot first to receive OTP. It’s quick and secure.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openTelegramBot}
+            className={`secondary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.buttonSecondary}`}
+          >
+            <ExternalLink size={18} />
+            Open Telegram Bot
           </button>
 
-          <div className="flex items-center">
-            <FaTelegram className="text-blue-500 mr-2" size={24} />
-            <h2 className="text-xl font-semibold">Login with Telegram</h2>
+          {linkCode ? (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+              <p className="mb-2 text-xs uppercase tracking-[0.24em] text-blue-700 dark:text-blue-300">
+                Linking code
+              </p>
+              <p className="text-lg font-semibold tracking-[0.3em] text-blue-900 dark:text-blue-100">
+                {linkCode}
+              </p>
+              <p className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                Send <span className="font-semibold">/link {linkCode}</span> to the bot after pressing Start.
+              </p>
+            </div>
+          ) : null}
+
+          <div className="relative py-3">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className={`${theme.surface} px-3 ${theme.textSecondary}`}>
+                After starting the bot
+              </span>
+            </div>
+          </div>
+
+          {!botStarted ? (
+            <button
+              type="button"
+              onClick={handleBotStarted}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/20"
+            >
+              I have started the bot
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 py-2 text-green-600 dark:text-green-400">
+              <CheckCircle size={18} />
+              <span className="text-sm">Retrying...</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setStep("phone");
+              setPhone("");
+              setError("");
+              setLinkCode("");
+              setBotStarted(false);
+            }}
+            className="w-full py-2 text-sm text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            Use different phone number
+          </button>
+
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+            Need help? Contact support@agritech.com
+          </p>
+        </div>
+      )}
+
+      {step === "otp" && (
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Enter the OTP sent to your Telegram.
+          </p>
+
+          <div>
+            <label htmlFor="telegram-otp" className="mb-2 block text-sm font-medium">
+              OTP
+            </label>
+            <input
+              id="telegram-otp"
+              type="text"
+              value={otp}
+              onChange={(e) => {
+                setOtp(e.target.value.replace(/\D/g, ""));
+                setError("");
+              }}
+              className={`${theme.input} text-center text-2xl tracking-[0.4em]`}
+              placeholder="000000"
+              maxLength={6}
+              disabled={loading}
+            />
+          </div>
+
+          {error ? <p className="text-sm font-medium text-red-500">{error}</p> : null}
+
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={loading || otp.length !== 6}
+            className={`primary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+          >
+            {loading ? <RefreshCw className="animate-spin" size={18} /> : <CheckCircle size={18} />}
+            {loading ? "Verifying..." : "Verify & login"}
+          </button>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setStep("phone");
+                setOtp("");
+                setError("");
+              }}
+              className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5"
+            >
+              Change phone
+            </button>
+
+            {resendCooldown > 0 ? (
+              <button
+                type="button"
+                disabled
+                className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-400"
+              >
+                Resend OTP ({resendCooldown}s)
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-blue-600 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/20"
+              >
+                Resend OTP
+              </button>
+            )}
           </div>
         </div>
-
-        {step === "phone" && (
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Enter your phone number to receive OTP on Telegram
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Phone Number
-                </label>
-
-                <div className="relative">
-                  <Phone
-                    className="absolute left-3 top-3 text-gray-400"
-                    size={16}
-                  />
-
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value.replace(/\D/g, ""));
-                      setError("");
-                    }}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${theme.input}`}
-                    placeholder="9876543210"
-                    maxLength={10}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <p className="text-red-500 text-sm font-medium">{error}</p>
-              )}
-
-              <button
-                onClick={handleSendOtp}
-                disabled={loading || !phone.trim()}
-                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="animate-spin mr-2">⟳</span>
-                    Sending...
-                  </span>
-                ) : (
-                  "Send OTP"
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "not-linked" && (
-          <div>
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-2">
-                ⚠️ Telegram Account Not Connected
-              </p>
-
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Please start our Telegram bot first to receive OTP. It's quick
-                and secure!
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={openTelegramBot}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition"
-              >
-                <ExternalLink size={18} />
-                Open Telegram Bot
-              </button>
-
-              {linkCode && (
-                <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
-                  <p className="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-300 mb-2">
-                    Linking Code
-                  </p>
-
-                  <p className="text-lg font-semibold tracking-widest text-blue-900 dark:text-blue-100">
-                    {linkCode}
-                  </p>
-
-                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                    Send <span className="font-semibold">/link {linkCode}</span>{" "}
-                    to the bot after pressing Start.
-                  </p>
-                </div>
-              )}
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-                </div>
-
-                <div className="relative flex justify-center text-sm">
-                  <span className={`px-2 ${theme.card}`}>
-                    After starting the bot
-                  </span>
-                </div>
-              </div>
-
-              {!botStarted ? (
-                <button
-                  onClick={handleBotStarted}
-                  className="w-full border-2 border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-2 rounded-lg font-medium transition"
-                >
-                  I Have Started the Bot
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 py-2">
-                  <CheckCircle size={18} />
-                  <span className="text-sm">Retrying...</span>
-                </div>
-              )}
-
-              <button
-                onClick={() => {
-                  setStep("phone");
-                  setPhone("");
-                  setError("");
-                  setLinkCode("");
-                  setBotStarted(false);
-                }}
-                className="w-full text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 py-2 text-sm transition"
-              >
-                Use Different Phone Number
-              </button>
-            </div>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
-              Need help? Contact support@agritech.com
-            </p>
-          </div>
-        )}
-
-        {step === "otp" && (
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Enter the OTP sent to your Telegram
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">OTP</label>
-
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, ""));
-                    setError("");
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest ${theme.input}`}
-                  placeholder="000000"
-                  maxLength={6}
-                  disabled={loading}
-                />
-              </div>
-
-              {error && (
-                <p className="text-red-500 text-sm font-medium">{error}</p>
-              )}
-
-              <button
-                onClick={handleVerifyOtp}
-                disabled={loading || otp.length !== 6}
-                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="animate-spin mr-2">⟳</span>
-                    Verifying...
-                  </span>
-                ) : (
-                  "Verify & Login"
-                )}
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setStep("phone");
-                    setOtp("");
-                    setError("");
-                  }}
-                  className="flex-1 text-blue-500 hover:text-blue-600 py-2 text-sm transition"
-                >
-                  Change Phone
-                </button>
-
-                {resendCooldown > 0 ? (
-                  <button
-                    disabled
-                    className="flex-1 text-gray-400 py-2 text-sm cursor-not-allowed"
-                  >
-                    Resend OTP ({resendCooldown}s)
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSendOtp}
-                    className="flex-1 text-blue-500 hover:text-blue-600 py-2 text-sm transition"
-                  >
-                    Resend OTP
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </AuthLayout>
   );
 };
 

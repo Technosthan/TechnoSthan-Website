@@ -1,74 +1,157 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Shield, Bell, Menu, X } from "lucide-react";
-import { useTheme } from "../contexts/ThemeContext";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Bell,
+  Globe,
+  LogOut,
+  Menu,
+  Palette,
+  Shield,
+  X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Globe } from "lucide-react";
 import { getMyUnreadNotificationCount } from "../shared/lib/notificationsApi";
 import { getOptimizedImageUrl } from "../shared/lib/assetUrl";
+import { useTheme } from "../contexts/ThemeContext";
+import { usePublicLayout } from "../contexts/PublicLayoutContext";
+
+const navId = "primary-navigation";
+const mobileMenuId = "mobile-navigation";
+
+const parseStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const isHomePath = (pathname) => pathname === "/" || pathname === "/landing";
+
+const matchesRoute = (pathname, path) => {
+  if (path === "/") {
+    return isHomePath(pathname);
+  }
+
+  return pathname === path || pathname.startsWith(`${path}/`);
+};
+
+const ThemeToggleButton = ({ theme, onClick, className = "" }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label="Open theme selector"
+    title="Theme"
+    className={`inline-flex items-center justify-center rounded-xl border px-3 py-2 text-sm transition ${theme.navItem} ${theme.navItemHover} border-transparent hover:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 ${className}`}
+  >
+    <Palette size={16} />
+  </button>
+);
 
 const LanguageSelector = ({
   currentLanguage = "en",
   changeLanguage,
   theme,
+  onSelect,
 }) => {
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
+  const wrapperRef = useRef(null);
 
-  const mapLabel = (c) => ({ en: "EN", hi: "HI", rj: "RJ" })[c] || c;
+  const mapLabel = (code) => ({ en: "EN", hi: "HI", rj: "RJ" })[code] || code;
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  const handleSelect = (languageCode) => {
+    changeLanguage(languageCode);
+    setOpen(false);
+    onSelect?.();
+  };
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className={`p-2 rounded-lg ${theme.navItem} transition-colors flex items-center gap-2`}
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-label={t("common.languageTitle")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="language-menu"
         title={t("common.languageTitle")}
+        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${theme.navItem} ${theme.navItemHover} border-transparent hover:border-white/10 hover:bg-black/5 dark:hover:bg-white/5`}
       >
         <Globe size={16} className={theme.text} />
-        <span className="text-sm hidden sm:inline">
-          {mapLabel(currentLanguage)}
-        </span>
+        <span className="hidden sm:inline">{mapLabel(currentLanguage)}</span>
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
+            id="language-menu"
+            role="menu"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className={`absolute right-0 mt-2 w-40 rounded-xl p-2 shadow-xl ${theme.card} border ${theme.border}`}
+            className={`absolute right-0 mt-2 w-44 rounded-2xl p-2 shadow-2xl ${theme.card} ${theme.text} border ${theme.border} z-50`}
           >
-            <div className="flex flex-col">
-              <button
-                onClick={() => {
-                  changeLanguage("en");
-                  setOpen(false);
-                }}
-                className={`text-left px-3 py-2 rounded-md ${currentLanguage === "en" ? "bg-cyan-600 text-white" : "hover:bg-white/5"}`}
-              >
-                {t("buttons.languageEnglish")}
-              </button>
-              <button
-                onClick={() => {
-                  changeLanguage("hi");
-                  setOpen(false);
-                }}
-                className={`text-left px-3 py-2 rounded-md ${currentLanguage === "hi" ? "bg-cyan-600 text-white" : "hover:bg-white/5"}`}
-              >
-                {t("buttons.languageHindi")}
-              </button>
-              <button
-                onClick={() => {
-                  changeLanguage("rj");
-                  setOpen(false);
-                }}
-                className={`text-left px-3 py-2 rounded-md ${currentLanguage === "rj" ? "bg-cyan-600 text-white" : "hover:bg-white/5"}`}
-              >
-                {t("buttons.languageRajasthani")}
-              </button>
-            </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => handleSelect("en")}
+              className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                currentLanguage === "en"
+                  ? "bg-emerald-600 text-white"
+                  : "hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              {t("buttons.languageEnglish")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => handleSelect("hi")}
+              className={`mt-1 w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                currentLanguage === "hi"
+                  ? "bg-emerald-600 text-white"
+                  : "hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              {t("buttons.languageHindi")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => handleSelect("rj")}
+              className={`mt-1 w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                currentLanguage === "rj"
+                  ? "bg-emerald-600 text-white"
+                  : "hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              {t("buttons.languageRajasthani")}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -77,23 +160,54 @@ const LanguageSelector = ({
 };
 
 const Navbar = () => {
+  const inPublicLayout = usePublicLayout();
+  if (inPublicLayout) {
+    return null;
+  }
+
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, appSettings, language: currentLanguage, changeLanguage } =
     useTheme();
   const { t } = useTranslation();
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user") || "null"),
-  );
-  const token = localStorage.getItem("token");
-  const isAdmin = user?.role === "admin";
+  const [user, setUser] = useState(() => parseStoredUser());
   const [unread, setUnread] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef(null);
+  const mobileMenuButtonRef = useRef(null);
+  const token = localStorage.getItem("token");
+  const isAdmin = user?.role === "admin";
+
+  const navItems = useMemo(
+    () => [
+      { label: t("navbar.home"), path: "/" },
+      { label: t("navbar.about"), path: "/about" },
+      { label: t("navbar.contact"), path: "/contact" },
+      {
+        label: t("navbar.wiki"),
+        path: "/AgriTech Wiki",
+        visible: appSettings.featureFlags?.contentVisibility !== false,
+      },
+      {
+        label: t("navbar.aiChat"),
+        path: "/chat",
+        visible: appSettings.featureFlags?.aiChat !== false,
+      },
+    ],
+    [appSettings.featureFlags?.aiChat, appSettings.featureFlags?.contentVisibility, t],
+  );
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUnread(0);
+    setUser(null);
+    closeMobileMenu();
     navigate("/");
-    setIsMobileMenuOpen(false);
   };
 
   const handleHomeClick = () => {
@@ -102,23 +216,32 @@ const Navbar = () => {
     } else {
       navigate("/");
     }
-    setIsMobileMenuOpen(false);
+    closeMobileMenu();
   };
 
   const handleNavClick = () => {
-    setIsMobileMenuOpen(false);
+    closeMobileMenu();
+  };
+
+  const openThemeSelector = () => {
+    window.dispatchEvent(new Event("openThemeSelector"));
   };
 
   useEffect(() => {
     let mounted = true;
+
     const fetchCount = async () => {
       try {
-        if (!token) return;
+        if (!token) {
+          if (mounted) setUnread(0);
+          return;
+        }
+
         const res = await getMyUnreadNotificationCount();
         if (!mounted) return;
         setUnread(res.data?.data?.count || 0);
-      } catch (err) {
-        // ignore
+      } catch {
+        // Keep the header usable even if notifications fail.
       }
     };
 
@@ -132,18 +255,17 @@ const Navbar = () => {
       }
     };
 
-    window.addEventListener("focus", fetchCount);
-    window.addEventListener("announcements:changed", fetchCount);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
     const handleUserUpdated = (event) => {
       if (event?.detail) {
         setUser(event.detail);
       } else {
-        setUser(JSON.parse(localStorage.getItem("user") || "null"));
+        setUser(parseStoredUser());
       }
     };
 
+    window.addEventListener("focus", fetchCount);
+    window.addEventListener("announcements:changed", fetchCount);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("userUpdated", handleUserUpdated);
 
     return () => {
@@ -156,303 +278,362 @@ const Navbar = () => {
     };
   }, [token]);
 
+  useEffect(() => {
+    closeMobileMenu();
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeMobileMenu();
+      }
+    };
+
+    const handlePointerDown = (event) => {
+      if (!isMobileMenuOpen) return;
+      if (
+        mobileMenuRef.current?.contains(event.target) ||
+        mobileMenuButtonRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+      closeMobileMenu();
+    };
+
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const handleResize = (event) => {
+      if (event.matches) {
+        closeMobileMenu();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+    mediaQuery.addEventListener("change", handleResize);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+      mediaQuery.removeEventListener("change", handleResize);
+    };
+  }, [isMobileMenuOpen]);
+
+  const navLinkClass = (path, base = "") => {
+    const active = matchesRoute(location.pathname, path);
+    return [
+      "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70",
+      theme.navItem,
+      theme.navItemHover,
+      active ? "bg-emerald-600/10 text-emerald-700 dark:text-emerald-300" : "",
+      base,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  const mobileNavLinkClass = (path) => {
+    const active = matchesRoute(location.pathname, path);
+    return [
+      "flex items-center justify-between rounded-2xl px-4 py-3 text-base font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70",
+      theme.navItem,
+      theme.navItemHover,
+      active ? "bg-emerald-600/10 text-emerald-700 dark:text-emerald-300" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  };
+
   return (
-    <motion.nav
-      initial={{ y: -80, opacity: 0 }}
+    <motion.header
+      initial={{ y: -40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className={`flex justify-between items-center px-6 md:px-12 py-4
-      backdrop-blur-md ${theme.navbar} shadow-sm sticky top-0 z-50`}
+      transition={{ duration: 0.35 }}
+      className={`sticky top-0 z-[60] w-full border-b ${theme.navbar} backdrop-blur-xl`}
     >
-      {/* Logo and Brand */}
-      <Link to="/" className="flex items-center gap-3" onClick={handleNavClick}>
-        <picture>
-          {!appSettings.logoUrl && (
-            <>
-              <source
-                srcSet="/optimized/hero-logo-64.avif 64w, /optimized/hero-logo-128.avif 128w"
-                sizes="48px"
-                type="image/avif"
-              />
-              <source
-                srcSet="/optimized/hero-logo-64.webp 64w, /optimized/hero-logo-128.webp 128w"
-                sizes="48px"
-                type="image/webp"
-              />
-              <source
-                srcSet="/optimized/hero-logo-64.jpg 64w, /optimized/hero-logo-128.jpg 128w"
-                sizes="48px"
-                type="image/jpeg"
-              />
-            </>
-          )}
-          <img
-            src={getOptimizedImageUrl(
-              appSettings.logoUrl || "/optimized/hero-logo-128.jpg",
-            )}
-            width="128"
-            height="128"
-            className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 ${theme.border} shadow object-cover`}
-            alt={`${appSettings.appName || "TECHNOSTHAN AGRITECH"} Logo`}
-            loading="eager"
-            decoding="async"
-          />
-        </picture>
-        <h1 className={`font-bold text-base md:text-lg ${theme.text}`}>
-          {appSettings.appName || "TECHNOSTHAN AGRITECH"}
-        </h1>
-      </Link>
-
-      {/* Desktop Navigation */}
-      <div className="hidden md:flex items-center gap-6">
-        <button
-          onClick={handleHomeClick}
-          className={`${theme.navItem} transition cursor-pointer`}
+      <div className="site-container flex h-[var(--navbar-height)] items-center justify-between gap-4">
+        <Link
+          to="/"
+          onClick={handleNavClick}
+          className="flex min-w-0 items-center gap-3 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+          aria-label={appSettings.appName || "TechnoSthan AgriTech home"}
         >
-          {t("navbar.home")}
-        </button>
-        <Link to="/about" className={`${theme.navItem} transition`}>
-          {t("navbar.about")}
-        </Link>
-        <Link to="/contact" className={`${theme.navItem} transition`}>
-          {t("navbar.contact")}
-        </Link>
-        {appSettings.featureFlags?.contentVisibility !== false && (
-          <Link to="/AgriTech Wiki" className={`${theme.navItem} transition`}>
-            {t("navbar.wiki")}
-          </Link>
-        )}
-        {appSettings.featureFlags?.aiChat !== false && (
-          <Link to="/chat" className={`${theme.navItem} transition`}>
-            {t("navbar.aiChat")}
-          </Link>
-        )}
-      </div>
+          <picture className="shrink-0">
+            {!appSettings.logoUrl && (
+              <>
+                <source
+                  srcSet="/optimized/hero-logo-64.avif 64w, /optimized/hero-logo-128.avif 128w"
+                  sizes="48px"
+                  type="image/avif"
+                />
+                <source
+                  srcSet="/optimized/hero-logo-64.webp 64w, /optimized/hero-logo-128.webp 128w"
+                  sizes="48px"
+                  type="image/webp"
+                />
+                <source
+                  srcSet="/optimized/hero-logo-64.jpg 64w, /optimized/hero-logo-128.jpg 128w"
+                  sizes="48px"
+                  type="image/jpeg"
+                />
+              </>
+            )}
+            <img
+              src={getOptimizedImageUrl(
+                appSettings.logoUrl || "/optimized/hero-logo-128.jpg",
+              )}
+              width="128"
+              height="128"
+              className="h-10 w-10 rounded-full border-2 border-emerald-500/30 object-cover shadow-lg md:h-11 md:w-11"
+              alt={`${appSettings.appName || "TechnoSthan AgriTech"} logo`}
+              loading="eager"
+              decoding="async"
+            />
+          </picture>
 
-      {/* Desktop User Section */}
-      <div className="hidden md:flex items-center gap-4">
-        {/* Theme Button */}
-        <div className="relative"></div>
+          <div className="min-w-0">
+            <p className={`truncate text-sm font-semibold md:text-base ${theme.text}`}>
+              {appSettings.appName || "TECHNOSTHAN AGRITECH"}
+            </p>
+            <p className={`truncate text-xs ${theme.textSecondary}`}>
+              Smart agriculture platform
+            </p>
+          </div>
+        </Link>
 
-        {/* Language Selector */}
-        <div className="relative">
+        <nav
+          id={navId}
+          aria-label="Primary navigation"
+          className="hidden min-w-0 items-center gap-1 lg:flex"
+        >
+          <button
+            type="button"
+            onClick={handleHomeClick}
+            className={navLinkClass("/")}
+            aria-current={isHomePath(location.pathname) ? "page" : undefined}
+          >
+            {t("navbar.home")}
+          </button>
+          {navItems.slice(1).map((item) => {
+            if (item.visible === false) return null;
+            const active = matchesRoute(location.pathname, item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={handleNavClick}
+                className={navLinkClass(item.path)}
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="hidden items-center gap-2 lg:flex">
+          <ThemeToggleButton theme={theme} onClick={openThemeSelector} />
+
           <LanguageSelector
             currentLanguage={currentLanguage}
             changeLanguage={changeLanguage}
             theme={theme}
           />
-        </div>
-        {token ? (
-          <>
-            {isAdmin && (
-              <Link
-                to="/admin/dashboard"
-                className={`${theme.navItem} transition flex items-center gap-1`}
-              >
-                <Shield size={16} />
-                {t("navbar.adminPanel")}
-              </Link>
-            )}
-            <button
-              title="Notifications"
-              onClick={() => navigate("/dashboard")}
-              className="relative mr-3 cursor-pointer"
-            >
-              <Bell size={18} className={`${theme.textSecondary}`} />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
-                  {unread}
-                </span>
-              )}
-            </button>
-            <span
-              onClick={() => navigate("/dashboard")}
-              className={`${theme.textSecondary} cursor-pointer text-sm`}
-            >
-              {t("common.welcome", { name: user.name })}
-            </span>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogout}
-              className={`${theme.logoutButton} px-4 py-2 cursor-pointer rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 text-sm`}
-            >
-              <LogOut size={16} />
-              {t("common.logout")}
-            </motion.button>
-          </>
-        ) : (
-          <Link
-            to="/login"
-            className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
-          >
-            <Shield size={16} />
-            {t("navbar.login")}
-          </Link>
-        )}
-      </div>
 
-      {/* Mobile Menu Button */}
-      <div className="md:hidden flex items-center gap-3">
-        {/* Mobile User Info */}
-        {token && (
-          <div className="flex items-center gap-2">
-            <button
-              title="Notifications"
-              onClick={() => navigate("/dashboard")}
-              className="relative cursor-pointer"
-            >
-              <Bell size={18} className={`${theme.textSecondary}`} />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
-                  {unread}
-                </span>
-              )}
-            </button>
-            <span
-              onClick={() => navigate("/dashboard")}
-              className={`${theme.textSecondary} cursor-pointer text-sm truncate max-w-20`}
-            >
-              {user.name}
-            </span>
-          </div>
-        )}
-
-        {/* Hamburger Menu */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className={`p-2 rounded-lg ${theme.navItem} transition-colors`}
-        >
-          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu Dropdown */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className={`absolute top-full left-0 right-0 ${theme.card} backdrop-blur-md border-t ${theme.border} shadow-lg md:hidden`}
-          >
-            <div className="flex flex-col py-4 px-6 space-y-3">
-              {/* Navigation Links */}
-              <button
-                onClick={handleHomeClick}
-                className={`text-left ${theme.navItem} transition cursor-pointer py-2`}
-              >
-                {t("navbar.home")}
-              </button>
-              <Link
-                to="/about"
-                className={`${theme.navItem} transition py-2`}
-                onClick={handleNavClick}
-              >
-                {t("navbar.about")}
-              </Link>
-              <Link
-                to="/contact"
-                className={`${theme.navItem} transition py-2`}
-                onClick={handleNavClick}
-              >
-                {t("navbar.contact")}
-              </Link>
-              {appSettings.featureFlags?.contentVisibility !== false && (
-                <Link
-                  to="/AgriTech Wiki"
-                  className={`${theme.navItem} transition py-2`}
-                  onClick={handleNavClick}
-                >
-                  {t("navbar.wiki")}
-                </Link>
-              )}
-              {appSettings.featureFlags?.aiChat !== false && (
-                <Link
-                  to="/chat"
-                  className={`${theme.navItem} transition py-2`}
-                  onClick={handleNavClick}
-                >
-                  {t("navbar.aiChat")}
-                </Link>
-              )}
-
-              {/* Admin Panel Link */}
-              {token && isAdmin && (
+          {token ? (
+            <>
+              {isAdmin && (
                 <Link
                   to="/admin/dashboard"
-                  className={`${theme.navItem} transition flex items-center gap-2 py-2`}
-                  onClick={handleNavClick}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${theme.navItem} ${theme.navItemHover}`}
                 >
                   <Shield size={16} />
                   {t("navbar.adminPanel")}
                 </Link>
               )}
 
-              {/* Mobile Logout/Login */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+              <button
+                type="button"
+                title="Notifications"
+                aria-label="Notifications"
+                onClick={() => navigate("/dashboard")}
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                <Bell size={18} className={theme.textSecondary} />
+                {unread > 0 && (
+                  <span className="absolute -right-1 top-0 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold leading-none text-white">
+                    {unread}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard")}
+                className={`max-w-44 truncate rounded-xl px-3 py-2 text-sm font-medium transition ${theme.navItem} ${theme.navItemHover}`}
+                title={t("common.welcome", { name: user?.name || "user" })}
+              >
+                {t("common.welcome", { name: user?.name || "user" })}
+              </button>
+
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleLogout}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-lg transition ${theme.logoutButton}`}
+              >
+                <LogOut size={16} />
+                {t("common.logout")}
+              </motion.button>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-lg transition ${theme.buttonSecondary}`}
+            >
+              <Shield size={16} />
+              {t("navbar.login")}
+            </Link>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggleButton theme={theme} onClick={openThemeSelector} />
+
+          <LanguageSelector
+            currentLanguage={currentLanguage}
+            changeLanguage={changeLanguage}
+            theme={theme}
+            onSelect={closeMobileMenu}
+          />
+
+          {token && (
+            <button
+              type="button"
+              title="Notifications"
+              aria-label="Notifications"
+              onClick={() => navigate("/dashboard")}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-black/5 dark:hover:bg-white/5"
+            >
+              <Bell size={18} className={theme.textSecondary} />
+              {unread > 0 && (
+                <span className="absolute -right-1 top-0 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold leading-none text-white">
+                  {unread}
+                </span>
+              )}
+            </button>
+          )}
+
+          <button
+            ref={mobileMenuButtonRef}
+            type="button"
+            onClick={() => setIsMobileMenuOpen((value) => !value)}
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls={mobileMenuId}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${theme.navItem} ${theme.navItemHover} border-transparent hover:border-white/10 hover:bg-black/5 dark:hover:bg-white/5`}
+          >
+            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            id={mobileMenuId}
+            ref={mobileMenuRef}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.18 }}
+            className={`lg:hidden border-t ${theme.border} ${theme.card} shadow-2xl`}
+          >
+            <div className="site-container max-h-[calc(100vh-4.5rem)] overflow-y-auto py-4">
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={handleHomeClick}
+                  className={mobileNavLinkClass("/")}
+                  aria-current={isHomePath(location.pathname) ? "page" : undefined}
+                >
+                  <span>{t("navbar.home")}</span>
+                  <span className="text-xs opacity-60">01</span>
+                </button>
+
+                {navItems.slice(1).map((item, index) => {
+                  if (item.visible === false) return null;
+                  const active = matchesRoute(location.pathname, item.path);
+
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={handleNavClick}
+                      className={mobileNavLinkClass(item.path)}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-xs opacity-60">
+                        {String(index + 2).padStart(2, "0")}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 grid gap-3 rounded-3xl border border-white/10 bg-black/5 p-4 dark:bg-white/5">
                 {token ? (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleLogout}
-                    className={`${theme.logoutButton} w-full px-4 py-3 cursor-pointer rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all duration-300`}
-                  >
-                    <LogOut size={18} />
-                    {t("common.logout")}
-                  </motion.button>
+                  <>
+                    {isAdmin && (
+                      <Link
+                        to="/admin/dashboard"
+                        onClick={handleNavClick}
+                        className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition ${theme.navItem} ${theme.navItemHover}`}
+                      >
+                        <Shield size={16} />
+                        {t("navbar.adminPanel")}
+                      </Link>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate("/dashboard");
+                        handleNavClick();
+                      }}
+                      className={`inline-flex items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${theme.navItem} ${theme.navItemHover}`}
+                    >
+                      <span>{t("common.welcome", { name: user?.name || "user" })}</span>
+                      <Bell size={16} />
+                    </button>
+
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleLogout}
+                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold shadow-lg transition ${theme.logoutButton}`}
+                    >
+                      <LogOut size={16} />
+                      {t("common.logout")}
+                    </motion.button>
+                  </>
                 ) : (
                   <Link
                     to="/login"
-                    className={`${theme.buttonSecondary} w-full hover:scale-105 transition transform px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2`}
                     onClick={handleNavClick}
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold shadow-lg transition ${theme.buttonSecondary}`}
                   >
                     <Shield size={16} />
                     {t("navbar.login")}
                   </Link>
                 )}
               </div>
-              {/* Mobile Language Selector */}
-              <div className="pt-3 mt-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="text-sm mb-2 text-slate-400">
-                  {t("common.languageTitle")}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      changeLanguage("en");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`px-3 py-2 rounded-xl ${currentLanguage === "en" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
-                  >
-                    EN
-                  </button>
-                  <button
-                    onClick={() => {
-                      changeLanguage("hi");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`px-3 py-2 rounded-xl ${currentLanguage === "hi" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
-                  >
-                    HI
-                  </button>
-                  <button
-                    onClick={() => {
-                      changeLanguage("rj");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`px-3 py-2 rounded-xl ${currentLanguage === "rj" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
-                  >
-                    RJ
-                  </button>
-                </div>
-              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.nav>
+    </motion.header>
   );
 };
 

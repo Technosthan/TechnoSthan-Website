@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaWhatsapp } from "react-icons/fa";
+import { ArrowLeft, CheckCircle, MessageCircle, Phone, RefreshCw } from "lucide-react";
 import { sendLoginOtp } from "../features/auth/authApi";
 import { useAuth } from "../features/auth/useAuth";
-import { ArrowLeft, Phone, MessageCircle } from "lucide-react";
+import AuthLayout from "../components/AuthLayout";
 import { useTheme } from "../contexts/ThemeContext";
-import { FaWhatsapp } from "react-icons/fa";
 
 const WhatsappLoginPage = () => {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState("phone"); // 'phone' or 'otp'
+  const [step, setStep] = useState("phone");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -18,22 +19,35 @@ const WhatsappLoginPage = () => {
   const { verifyLoginOTPFunc } = useAuth();
   const { theme } = useTheme();
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+
+    const interval = window.setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [resendCooldown]);
+
   const handleSendOtp = async () => {
     const cleanPhone = phone.trim();
 
-    // Empty validation
     if (!cleanPhone) {
       setError("Phone number is required");
       return;
     }
 
-    // Only digits validation
     if (!/^\d+$/.test(cleanPhone)) {
       setError("Phone number must contain only numbers");
       return;
     }
 
-    // Exact 10 digit validation
     if (cleanPhone.length !== 10) {
       setError("Phone number must be exactly 10 digits");
       return;
@@ -49,41 +63,25 @@ const WhatsappLoginPage = () => {
       });
 
       setStep("otp");
-
-      // Resend cooldown
       setResendCooldown(60);
-
-      const interval = setInterval(() => {
-        setResendCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-
-          return prev - 1;
-        });
-      }, 1000);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send OTP");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleVerifyOtp = async () => {
-    // Empty OTP validation
     if (!otp.trim()) {
       setError("OTP is required");
       return;
     }
 
-    // OTP only numbers
     if (!/^\d+$/.test(otp)) {
       setError("OTP must contain only numbers");
       return;
     }
 
-    // OTP length validation
     if (otp.length !== 6) {
       setError("OTP must be exactly 6 digits");
       return;
@@ -102,169 +100,144 @@ const WhatsappLoginPage = () => {
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div
-      className={`min-h-screen flex items-center justify-center p-4 ${theme.bg} ${theme.text}`}
+    <AuthLayout
+      title="Login with WhatsApp"
+      subtitle="Use your WhatsApp-linked phone number to receive and verify a login OTP."
+      footerNote="This keeps the existing WhatsApp OTP flow and backend checks unchanged."
     >
-      <div className={`max-w-md w-full ${theme.card} rounded-lg shadow-lg p-6`}>
-        <div className="flex items-center mb-6">
+      <button
+        type="button"
+        onClick={() => navigate("/login")}
+        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+      >
+        <ArrowLeft size={16} />
+        Back to login
+      </button>
+
+      <div className="mb-5 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+        <FaWhatsapp className="shrink-0 text-emerald-500" size={20} />
+        <span>WhatsApp-based login uses the same secure OTP backend flow.</span>
+      </div>
+
+      {step === "phone" && (
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Enter your phone number to receive OTP on WhatsApp.
+          </p>
+
+          <div>
+            <label htmlFor="whatsapp-phone" className="mb-2 block text-sm font-medium">
+              Phone number
+            </label>
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                id="whatsapp-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/\D/g, ""));
+                  setError("");
+                }}
+                className={`${theme.input} pl-11`}
+                placeholder="Enter 10-digit phone number"
+                maxLength={10}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {error ? <p className="text-sm font-medium text-red-500">{error}</p> : null}
+
           <button
-            onClick={() => navigate("/login")}
-            className="mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            type="button"
+            onClick={handleSendOtp}
+            disabled={loading || !phone.trim()}
+            className={`primary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
           >
-            <ArrowLeft size={20} />
+            {loading ? <RefreshCw className="animate-spin" size={18} /> : <MessageCircle size={18} />}
+            {loading ? "Sending..." : "Send OTP"}
+          </button>
+        </div>
+      )}
+
+      {step === "otp" && (
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Enter the OTP sent to your WhatsApp.
+          </p>
+
+          <div>
+            <label htmlFor="whatsapp-otp" className="mb-2 block text-sm font-medium">
+              OTP
+            </label>
+            <input
+              id="whatsapp-otp"
+              type="text"
+              value={otp}
+              onChange={(e) => {
+                setOtp(e.target.value.replace(/\D/g, ""));
+                setError("");
+              }}
+              className={`${theme.input} text-center text-2xl tracking-[0.4em]`}
+              placeholder="000000"
+              maxLength={6}
+              disabled={loading}
+            />
+          </div>
+
+          {error ? <p className="text-sm font-medium text-red-500">{error}</p> : null}
+
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={loading || otp.length !== 6}
+            className={`primary-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold ${theme.button}`}
+          >
+            {loading ? <RefreshCw className="animate-spin" size={18} /> : <CheckCircle size={18} />}
+            {loading ? "Verifying..." : "Verify & login"}
           </button>
 
-          <div className="flex items-center">
-            <FaWhatsapp className="text-green-500 mr-2" size={24} />
-            <h2 className="text-xl font-semibold">
-              Login with WhatsApp
-            </h2>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setStep("phone");
+                setOtp("");
+                setError("");
+              }}
+              className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5"
+            >
+              Change phone
+            </button>
+
+            {resendCooldown > 0 ? (
+              <button
+                type="button"
+                disabled
+                className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-400"
+              >
+                Resend OTP ({resendCooldown}s)
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+              >
+                Resend OTP
+              </button>
+            )}
           </div>
         </div>
-
-        {step === "phone" && (
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Enter your phone number to receive OTP on WhatsApp
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Phone Number
-                </label>
-
-                <div className="relative">
-                  <Phone
-                    className="absolute left-3 top-3 text-gray-400"
-                    size={16}
-                  />
-
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value.replace(/\D/g, ""));
-                      setError("");
-                    }}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 ${theme.input}`}
-                    placeholder="Enter 10-digit phone number"
-                    maxLength={10}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <p className="text-red-500 text-sm font-medium">
-                  {error}
-                </p>
-              )}
-
-              <button
-                onClick={handleSendOtp}
-                disabled={loading || !phone.trim()}
-                className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="animate-spin mr-2">⟳</span>
-                    Sending...
-                  </span>
-                ) : (
-                  "Send OTP"
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "otp" && (
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Enter the OTP sent to your WhatsApp
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  OTP
-                </label>
-
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, ""));
-                    setError("");
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 text-center text-2xl tracking-widest ${theme.input}`}
-                  placeholder="000000"
-                  maxLength={6}
-                  disabled={loading}
-                />
-              </div>
-
-              {error && (
-                <p className="text-red-500 text-sm font-medium">
-                  {error}
-                </p>
-              )}
-
-              <button
-                onClick={handleVerifyOtp}
-                disabled={loading || otp.length !== 6}
-                className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="animate-spin mr-2">⟳</span>
-                    Verifying...
-                  </span>
-                ) : (
-                  "Verify & Login"
-                )}
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setStep("phone");
-                    setOtp("");
-                    setError("");
-                  }}
-                  className="flex-1 text-green-500 hover:text-green-600 py-2 text-sm transition"
-                >
-                  Change Phone Number
-                </button>
-
-                {resendCooldown > 0 ? (
-                  <button
-                    disabled
-                    className="flex-1 text-gray-400 py-2 text-sm cursor-not-allowed"
-                  >
-                    Resend OTP ({resendCooldown}s)
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSendOtp}
-                    className="flex-1 text-green-500 hover:text-green-600 py-2 text-sm transition"
-                  >
-                    Resend OTP
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </AuthLayout>
   );
 };
 

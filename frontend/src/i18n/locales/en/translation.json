@@ -22,6 +22,221 @@
     "languageRajasthani": "Rajasthani",
     "uploadFiles": "Upload files"
   },
+  "site": {
+    "stats": {
+      "eyebrow": "Platform overview",
+      "title": "Built for farmers, learners, and support teams",
+      "subtitle": "A practical AgriTech space that combines guidance, learning, and tools without exaggerating claims.",
+      "farmerTools": {
+        "title": "Farmer-Focused Tools",
+        "description": "Useful public features designed around crop support, planning, and simple daily workflows."
+      },
+      "learning": {
+        "title": "Practical Learning",
+        "description": "Knowledge-first sections that help students and farmers understand modern agriculture."
+      },
+      "support": {
+        "title": "Technology Support",
+        "description": "AI chat, OTP login, and platform flows that keep the experience connected and secure."
+      },
+      "knowledge": {
+        "title": "Agriculture Knowledge",
+        "description": "Wiki content and insights that keep the platform useful as a learning hub."
+      }
+    },
+    "platform": {
+      "eyebrow": "Platform features",
+      "title": "What you can do here",
+      "subtitle": "Explore tools, articles, and support routes that connect agriculture with real product flows.",
+      "openFeature": "Open feature",
+      "aiAssistant": {
+        "title": "AI Crop Assistant",
+        "description": "Ask practical agriculture questions and move from uncertainty to action."
+      },
+      "wiki": {
+        "title": "AgriTech Wiki",
+        "description": "Read learning content, guides, and research-friendly articles in one place."
+      },
+      "monitoring": {
+        "title": "Smart Crop Monitoring",
+        "description": "Review platform pathways that support crop tracking and field visibility."
+      },
+      "analytics": {
+        "title": "Farm Analytics",
+        "description": "Use data-informed views to understand trends, progress, and planning."
+      },
+      "disease": {
+        "title": "Disease Guidance",
+        "description": "Get help with crop concerns and move quickly toward the right next step."
+      },
+      "weather": {
+        "title": "Weather and Planning",
+        "description": "Use planning-friendly guidance to prepare for changing field conditions."
+      },
+      "dashboard": {
+        "title": "Farmer Dashboard",
+        "description": "Access the existing dashboard flow for an organized platform experience."
+      },
+      "learning": {
+        "title": "Student Learning Resources",
+        "description": "Find educational material and learning routes built for practical understanding."
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "How it works",
+      "title": "A simple path from learning to action",
+      "subtitle": "Use the platform step by step without changing the existing product flows.",
+      "step1": {
+        "title": "Explore AgriTech resources",
+        "description": "Start with the wiki, homepage content, and helpful public routes."
+      },
+      "step2": {
+        "title": "Select a tool or service",
+        "description": "Choose a feature that fits your current farming or learning need."
+      },
+      "step3": {
+        "title": "Connect with experts",
+        "description": "Use chat or contact options to move from a question to guidance."
+      },
+      "step4": {
+        "title": "Monitor and learn",
+        "description": "Return to content and tools as your farm or study goals evolve."
+      },
+      "step5": {
+        "title": "Improve productivity",
+        "description": "Apply practical insights to make smarter decisions over time."
+      }
+    },
+    "whyChoose": {
+      "eyebrow": "Why choose TechnoSthan",
+      "title": "Reliable, practical, and built for Indian agriculture",
+      "subtitle": "Focused on useful outcomes rather than marketing-heavy promises.",
+      "practical": {
+        "title": "Practical Agriculture Solutions",
+        "description": "Helpful workflows that support day-to-day farming and learning tasks."
+      },
+      "technology": {
+        "title": "Technology-Driven Approach",
+        "description": "A modern interface that keeps tools, guidance, and support easy to access."
+      },
+      "support": {
+        "title": "Farmer and Student Support",
+        "description": "Built for both field users and learners who need clear next steps."
+      },
+      "india": {
+        "title": "Indian Agriculture Focus",
+        "description": "Designed around local context, language support, and familiar workflows."
+      },
+      "knowledge": {
+        "title": "Knowledge and Training",
+        "description": "Wiki content, training routes, and learning-friendly sections in one place."
+      },
+      "innovation": {
+        "title": "Continuous Innovation",
+        "description": "The platform can grow with new content, features, and admin-managed updates."
+      }
+    },
+    "impact": {
+      "eyebrow": "Impact stories",
+      "title": "Field learning, student work, and practical adoption",
+      "subtitle": "Editable demo stories that can later be replaced with real platform media.",
+      "storySnapshot": "Story snapshot",
+      "fieldDemo": {
+        "label": "Field Support",
+        "title": "Smart guidance in the field",
+        "location": "Jaipur, Rajasthan",
+        "category": "Farmer Support",
+        "summary": "A practical example of how the platform can present field guidance, crop context, and next steps."
+      },
+      "studentProject": {
+        "label": "Student Learning",
+        "title": "Project-based AgriTech learning",
+        "location": "Ajmer, Rajasthan",
+        "category": "Learning",
+        "summary": "A simple showcase for student work, guided exploration, and AgriTech understanding."
+      },
+      "workshop": {
+        "label": "Training Session",
+        "title": "Workshop-style knowledge sharing",
+        "location": "Jodhpur, Rajasthan",
+        "category": "Training",
+        "summary": "A visual place for workshops, demos, and collaborative agricultural learning."
+      }
+    },
+    "testimonials": {
+      "eyebrow": "Testimonials",
+      "title": "What learners and field users can say",
+      "subtitle": "Demo testimonials for layout and content structure until real approved testimonials are added.",
+      "farmer": {
+        "name": "Demo Farmer",
+        "role": "Farmer user",
+        "location": "Rajasthan",
+        "quote": "The platform makes it easier to find useful AgriTech guidance without unnecessary complexity."
+      },
+      "student": {
+        "name": "Demo Student",
+        "role": "Learner",
+        "location": "India",
+        "quote": "It helps me connect learning content with practical farming ideas and real platform tools."
+      },
+      "trainer": {
+        "name": "Demo Trainer",
+        "role": "AgriTech mentor",
+        "location": "Jaipur",
+        "quote": "The website feels clear, professional, and ready for farmers, students, and institutions."
+      }
+    },
+    "latestWiki": {
+      "eyebrow": "Latest wiki content",
+      "title": "Recent learning and knowledge articles",
+      "subtitle": "Featured content from the existing wiki API when available.",
+      "defaultCategory": "AgriTech",
+      "defaultDescription": "A short summary for wiki content when no description is available.",
+      "defaultTitle": "AgriTech Article",
+      "recent": "Recent",
+      "openWiki": "Open wiki",
+      "viewAll": "View all articles",
+      "unavailableTitle": "Wiki preview unavailable",
+      "unavailableSubtitle": "The public preview can appear empty when no articles are published or access is limited.",
+      "retry": "Retry"
+    },
+    "training": {
+      "eyebrow": "Training and learning",
+      "title": "Workshops, resources, and practical learning routes",
+      "subtitle": "Support for farmers, students, and partner organizations that want useful AgriTech learning.",
+      "workshops": {
+        "title": "Farmer workshops",
+        "description": "Explore hands-on training sessions and community-based learning opportunities."
+      },
+      "students": {
+        "title": "Student learning",
+        "description": "Use the platform as a study-friendly place for AgriTech concepts and project ideas."
+      },
+      "ai": {
+        "title": "AI-assisted learning",
+        "description": "Ask questions, review guidance, and learn through direct platform interaction."
+      },
+      "demo": {
+        "title": "Practical demonstrations",
+        "description": "Showcase field demos, experiments, and agricultural innovation programs."
+      },
+      "learnMore": "Learn more"
+    },
+    "finalCta": {
+      "eyebrow": "Next step",
+      "title": "Ready to explore smarter agriculture?",
+      "subtitle": "Choose the route that best fits your farming, learning, or collaboration needs.",
+      "quickContact": "Quick contact",
+      "quickContactSubtitle": "Use the existing contact details and public routes to continue the conversation.",
+      "email": "Email",
+      "phone": "Phone",
+      "whatsapp": "WhatsApp",
+      "openChat": "Open chat",
+      "contact": "Contact our team",
+      "chat": "Open AI chat",
+      "wiki": "Explore wiki"
+    }
+  },
   "home": {
     "hero": {
       "titleLine1": "Smart Agriculture",
