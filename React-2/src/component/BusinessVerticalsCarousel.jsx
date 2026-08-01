@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { DEFAULT_BUSINESS_VERTICALS } from "../lib/businessVerticalDefaults";
 import socket from "../socket";
@@ -21,59 +21,58 @@ const BusinessVerticalsCarousel = () => {
   const [loading, setLoading] = useState(true);
 
   const loadVerticals = async (activeRef) => {
-  try {
-    const response = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE ||
-        "http://localhost:5000"
-      }/api/business-verticals`,
-      {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-store",
-          Pragma: "no-cache",
+    try {
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE || "http://localhost:5000"
+        }/api/business-verticals`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-store",
+            Pragma: "no-cache",
+          },
         },
-      },
-    );
-
-    const data = await response.json();
-
-    if (!activeRef.current) return;
-
-    const apiVerticals =
-      data?.success && Array.isArray(data.data)
-        ? data.data
-        : [];
-
-    const finalVerticals = mergeBusinessVerticals(
-      [
-        ...DEFAULT_BUSINESS_VERTICALS,
-        ...apiVerticals,
-      ].map(mapVertical),
-    );
-
-    setVerticals(
-      finalVerticals.length
-        ? finalVerticals
-        : DEFAULT_BUSINESS_VERTICALS.map(mapVertical),
-    );
-  } catch (error) {
-    console.error(
-      "Failed to load business verticals",
-      error,
-    );
-
-    if (activeRef.current) {
-      setVerticals(
-        DEFAULT_BUSINESS_VERTICALS.map(mapVertical),
       );
+
+      const data = await response.json();
+
+      if (!activeRef.current) return;
+
+      const apiVerticals =
+        data?.success && Array.isArray(data.data)
+          ? data.data
+          : [];
+
+      const finalVerticals = mergeBusinessVerticals(
+        [
+          ...DEFAULT_BUSINESS_VERTICALS,
+          ...apiVerticals,
+        ].map(mapVertical),
+      );
+
+      setVerticals(
+        finalVerticals.length
+          ? finalVerticals
+          : DEFAULT_BUSINESS_VERTICALS.map(mapVertical),
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load business verticals",
+        error,
+      );
+
+      if (activeRef.current) {
+        setVerticals(
+          DEFAULT_BUSINESS_VERTICALS.map(mapVertical),
+        );
+      }
+    } finally {
+      if (activeRef.current) {
+        setLoading(false);
+      }
     }
-  } finally {
-    if (activeRef.current) {
-      setLoading(false);
-    }
-  }
-};
+  };
 
   useEffect(() => {
     const activeRef = { current: true };
@@ -128,33 +127,34 @@ const BusinessVerticalsCarousel = () => {
     };
   }, []);
 
+  const shouldAnimate = useMemo(
+    () => !loading && verticals.length > 0,
+    [loading, verticals.length],
+  );
+
   const renderVerticalCard = (
     vertical,
     index,
     groupName,
   ) => {
     const stableId =
-  vertical._id ||
-  vertical.id ||
-  vertical.slug ||
-  vertical.title ||
-  `vertical-${index}`;
+      vertical._id ||
+      vertical.id ||
+      vertical.slug ||
+      vertical.title ||
+      `vertical-${index}`;
+
+    const isExternalLink =
+      typeof vertical.path === "string" &&
+      vertical.path.startsWith("http");
 
     return (
       <motion.a
-       key={`${groupName}-${stableId}`}
+        key={`${groupName}-${stableId}`}
         className="carousel-card"
         href={vertical.path || "#"}
-        target={
-          vertical.path?.startsWith("http")
-            ? "_blank"
-            : "_self"
-        }
-        rel={
-          vertical.path?.startsWith("http")
-            ? "noreferrer"
-            : undefined
-        }
+        target={isExternalLink ? "_blank" : "_self"}
+        rel={isExternalLink ? "noreferrer" : undefined}
         whileHover={{ y: -6 }}
         transition={{
           duration: 0.3,
@@ -163,7 +163,7 @@ const BusinessVerticalsCarousel = () => {
       >
         <BusinessVerticalImage
           vertical={vertical}
-          alt={vertical.title}
+          alt={vertical.title || "Business vertical"}
           className="carousel-card__logo"
           imageClassName="carousel-card__logo-image"
         />
@@ -177,50 +177,53 @@ const BusinessVerticalsCarousel = () => {
   };
 
   return (
-    <section className="business-verticals-carousel">
+    <section className="business-verticals-carousel site-container">
       <div className="business-verticals-heading">
-        <h1>Our Business Verticals</h1>
+        <h2>Our Business Verticals</h2>
 
         <p>
-          Four flagship offerings that power
-          TechnoSthan, plus any custom verticals added
-          from the admin panel.
+          Four flagship offerings that power TechnoSthan,
+          plus any custom verticals added from the admin
+          panel.
         </p>
       </div>
 
-     <div className="carousel-viewport">
-  {!loading && verticals.length > 0 ? (
-    <div
-      className="carousel-track"
-      aria-busy="false"
-    >
-      <div className="carousel-group">
-        {verticals.map((vertical, index) =>
-          renderVerticalCard(
-            vertical,
-            index,
-            "first",
-          ),
-        )}
-      </div>
+      <div className="carousel-viewport">
+        {shouldAnimate ? (
+          <div
+            className="carousel-track"
+            aria-busy="false"
+          >
+            <div className="carousel-group">
+              {verticals.map((vertical, index) =>
+                renderVerticalCard(
+                  vertical,
+                  index,
+                  "first",
+                ),
+              )}
+            </div>
 
-      <div
-        className="carousel-group"
-        aria-hidden="true"
-      >
-        {verticals.map((vertical, index) =>
-          renderVerticalCard(
-            vertical,
-            index,
-            "second",
-          ),
+            <div
+              className="carousel-group"
+              aria-hidden="true"
+            >
+              {verticals.map((vertical, index) =>
+                renderVerticalCard(
+                  vertical,
+                  index,
+                  "second",
+                ),
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="carousel-loading-space"
+            aria-busy="true"
+          />
         )}
       </div>
-    </div>
-  ) : (
-    <div className="carousel-loading-space" />
-  )}
-</div>
     </section>
   );
 };

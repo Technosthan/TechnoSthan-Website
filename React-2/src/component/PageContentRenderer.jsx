@@ -110,7 +110,7 @@ const PageContentRenderer = ({ route, position }) => {
         const key = section._id || section.id;
 
         return (
-          <section key={key} className="container dynamic-section">
+          <section key={key} className="site-container container dynamic-section">
             <div
               className={`dynamic-section__card ${
                 section.themeType === "original"

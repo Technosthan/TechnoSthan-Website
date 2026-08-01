@@ -32,6 +32,8 @@ const BusinessVerticalImage = ({
         className={imageClassName}
         src={displaySrc}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         onError={handleError}
       />
     </div>

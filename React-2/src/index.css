@@ -18,6 +18,11 @@ body {
   color: #e2e8f0;
 }
 
+:root {
+  --public-container-width: 1320px;
+  --public-container-padding: clamp(16px, 3vw, 32px);
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -25,6 +30,12 @@ html {
 h1, h2 {
     font-family: 'Montserrat', sans-serif;
     font-weight: 700;
+}
+
+.site-container {
+  width: min(100%, var(--public-container-width));
+  margin-inline: auto;
+  padding-inline: var(--public-container-padding);
 }
 
 .admin-sidebar-scrollbar {

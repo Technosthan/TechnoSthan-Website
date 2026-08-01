@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const User = require("../models/User");
+const { sendEmail } = require("../services/email/sendEmail");
 const {
   ROLES,
   getRolePermissions,
@@ -12,8 +14,18 @@ const {
 const ADMIN_SECRET_CODE =
   process.env.ADMIN_SECRET_CODE || "technosthanadmin2026";
 
+const getFrontendBaseUrl = () =>
+  process.env.FRONTEND_URL ||
+  process.env.CORS_ORIGIN?.split(",")[0]?.trim() ||
+  "http://localhost:5173";
+
 const isValidEmail = (value = "") =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+
+const hashResetToken = (token = "") =>
+  crypto.createHash("sha256").update(String(token)).digest("hex");
+
+const createResetToken = () => crypto.randomBytes(32).toString("hex");
 
 const buildSafeUser = (user) => {
   const role = normalizeRole(user.role);
@@ -281,5 +293,126 @@ exports.logout = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Unable to logout right now" });
+  }
+};
+
+exports.requestPasswordReset = async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address",
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (user) {
+      const resetToken = createResetToken();
+      const passwordResetTokenHash = hashResetToken(resetToken);
+      const passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      user.passwordResetTokenHash = passwordResetTokenHash;
+      user.passwordResetExpiresAt = passwordResetExpiresAt;
+      await user.save({ validateBeforeSave: false });
+
+      const resetUrl = `${getFrontendBaseUrl()}/reset-password/${resetToken}`;
+
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your TechnoSthan password",
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a;">
+            <h2 style="margin:0 0 16px;">Reset your TechnoSthan password</h2>
+            <p style="margin:0 0 16px;">We received a request to reset your password. This link expires in 1 hour.</p>
+            <p style="margin:0 0 24px;">
+              <a href="${resetUrl}" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#0ea5e9;color:#fff;text-decoration:none;font-weight:700;">Reset Password</a>
+            </p>
+            <p style="margin:0;color:#475569;">If you did not request this, you can safely ignore this email.</p>
+          </div>
+        `,
+        text: `Reset your TechnoSthan password: ${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.`,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "If an account exists for this email, reset instructions have been sent.",
+    });
+  } catch (err) {
+    console.error("Password reset request error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to send reset instructions right now. Please try again.",
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const rawToken = String(req.params?.token || "").trim();
+    const password = String(req.body?.password || "");
+    const confirmPassword = String(req.body?.confirmPassword || "");
+
+    if (!rawToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token is missing or invalid",
+      });
+    }
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Password and confirmation are required",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    const passwordResetTokenHash = hashResetToken(rawToken);
+    const user = await User.findOne({
+      passwordResetTokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+    }).select("+password");
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset link is invalid or has expired",
+      });
+    }
+
+    user.password = password;
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    user.lastActivityAt = new Date();
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to reset password right now. Please try again.",
+    });
   }
 };

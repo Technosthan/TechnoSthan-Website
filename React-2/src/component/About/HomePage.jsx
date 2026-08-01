@@ -26,7 +26,7 @@ const Homepage = () => {
 
         <div className="video-overlay"></div>
 
-        <div className="hero-wrapper">
+        <div className="site-container hero-wrapper">
           <motion.div
             className="hero-content"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -36,8 +36,13 @@ const Homepage = () => {
         </div>
       </section>
 
+      <DynamicPageSections route={location.pathname} position="hero" />
+
       {/* WHO WE ARE */}
-      <motion.section className="glass-section" {...fadeIn}>
+     <motion.section
+  className="glass-section who-we-are-section"
+  {...fadeIn}
+>
         <h2>Who We Are</h2>
         <p>
           TechnoSthan is a diversified, technology-driven enterprise operating
@@ -49,7 +54,7 @@ const Homepage = () => {
       <DynamicPageSections route={location.pathname} position="whoWeAre" />
 
       {/* SERVICES */}
-      <section className="services-grid-wrapper">
+      <section className="site-container services-grid-wrapper">
         <BusinessVerticalsCarousel />
       </section>
 
@@ -75,7 +80,7 @@ const Homepage = () => {
       <DynamicPageSections route={location.pathname} position="top" />
       <DynamicPageSections route={location.pathname} position="bottom" />
 
-      <motion.section className="why-us-section" {...fadeIn}>
+      <motion.section className="site-container why-us-section" {...fadeIn}>
         {/* <h2>Why Choose Us</h2> */}
 
         {/* <div className="check-list">

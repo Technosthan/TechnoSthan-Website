@@ -22,6 +22,8 @@ import Solution from "./component/Solution/Solution";
 
 import Login from "./component/Auth/Login";
 import Register from "./component/Auth/Register";
+import ForgotPassword from "./component/Auth/ForgotPassword";
+import ResetPassword from "./component/Auth/ResetPassword";
 
 import Dashboard from "./component/Dashboard/Dashboard";
 import AdminDashboard from "./component/AdminDashboard/AdminDashboard";
@@ -103,6 +105,7 @@ function App() {
   const noGlobalLayoutPaths = [
     "/login",
     "/register",
+    "/forgot-password",
     "/dashboard",
     "/dashboard/daily-tasks",
     "/daily-tasks",
@@ -113,6 +116,7 @@ function App() {
 
   const hideLayout =
     noGlobalLayoutPaths.includes(location.pathname) ||
+    location.pathname.startsWith("/reset-password") ||
     location.pathname.startsWith("/forms/") ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/hr");
@@ -208,6 +212,13 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         <Route path="/register" element={<Register />} />
+
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        <Route
+          path="/reset-password/:token"
+          element={<ResetPassword />}
+        />
 
         {/* SOCIAL */}
         <Route

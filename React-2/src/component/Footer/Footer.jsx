@@ -5,17 +5,15 @@ import { Link } from "react-router-dom";
 const Footer = () => {
   return (
     <footer className="footer">
-      <div className="footer-container">
-        {/* Logo + About */}
-        <div className="footer-section">
+      <div className="site-container footer-container">
+        <div className="footer-section footer-section--brand">
           <h2>TechnoSthan</h2>
           <p>
-            Innovation Tomorrow. Building Digital Excellence. We help businesses
-            grow with modern web, cloud and digital solutions.
+            Innovation Tomorrow. Building Digital Excellence. We help
+            businesses grow with modern web, cloud and digital solutions.
           </p>
         </div>
 
-        {/* Company Links */}
         <div className="footer-section">
           <h3>Company</h3>
           <Link to="/">Home</Link>
@@ -27,33 +25,31 @@ const Footer = () => {
           <Link to="/data-deletion">Data Deletion</Link>
         </div>
 
-        {/* Services */}
         <div className="footer-section">
           <h3>Verticals</h3>
           <Link to="/services/technosthan-hospitality">
             TechnoSthan Hospitality
           </Link>
-          <Link to="https://ih.technosthan.com/">
+          <a href="https://ih.technosthan.com/" target="_blank" rel="noreferrer">
             TechnoSthan Innovations Hub
-          </Link>
+          </a>
           <a
             href="https://agritech.technosthan.com"
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noreferrer"
           >
             TechnoSthan AgriTech
           </a>
           <a
             href="https://it.technosthan.com"
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noreferrer"
           >
             TechnoSthan IT Services
           </a>
         </div>
 
-        {/* Contact */}
-        <div className="footer-section">
+        <address className="footer-section footer-section--contact">
           <h3>Contact</h3>
           <p>
             Email:{" "}
@@ -63,11 +59,12 @@ const Footer = () => {
             Phone: <a href="tel:+919477288288">+91 9477-288-288</a>
           </p>
           <p>47/1 New Sanganer Road Sodala Jaipur Rajasthan</p>
-        </div>
+        </address>
       </div>
 
-      {/* Bottom */}
-      <p className="copyright">© 2026 TechnoSthan. All rights reserved.</p>
+      <div className="site-container footer-bottom">
+        <p className="copyright">© 2026 TechnoSthan. All rights reserved.</p>
+      </div>
     </footer>
   );
 };

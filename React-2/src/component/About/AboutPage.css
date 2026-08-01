@@ -1,610 +1,205 @@
-:root {
-  --bg-dark: #111838;
-
-  /* 🎯 Brand Colors */
-  --hospitality: #f59e0b;
-  --innovation: #a855f7;
-  --agritech: #22c55e;
-  --it: #0ea5e9;
-}
-
-/* ================= BASE ================= */
 .about-container {
-  background: radial-gradient(circle at 20% 20%, #0f172a, #020617);
-  color: white;
-  padding: 18px 20px;
-  min-height: 100vh;
-  font-family: "Inter", sans-serif;
+  position: relative;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.08), transparent 26%),
+    radial-gradient(circle at 85% 12%, rgba(59, 130, 246, 0.08), transparent 24%),
+    linear-gradient(180deg, #020617 0%, #07111f 100%);
+  color: #f8fbff;
 }
 
-/* ================= HERO ================= */
+.about-container > section {
+  padding: 0;
+}
+
+.about-container .dynamic-section {
+  padding-block: clamp(2.5rem, 5vw, 4.75rem);
+}
+
+.about-container .site-container {
+  width: min(100%, var(--public-container-width));
+}
+
 .about-hero {
   position: relative;
-  width: 100%;
-  max-width: 100%;
-  height: 38vh;
-  min-height: 420px;
-  max-height: 500px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  min-height: clamp(18rem, 40vw, 33rem);
+  max-height: 39rem;
   overflow: hidden;
-  margin-bottom: 20px;
+  padding-top: clamp(4.75rem, 6vw, 6rem);
 }
 
-/* 🎬 VIDEO BACKGROUND (BRIGHT + CLEAR) */
 .hero-video-bg {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 110%;
-  height: 90%;
-  transform: translate(-50%, -50%);
-  object-fit: cover;
-
-  /* 🔥 FINAL BRIGHT EFFECT */
-  filter: brightness(1.6) contrast(1.4) saturate(1.4);
-
-  z-index: 1;
-}
-
-/* 🌑 LIGHT OVERLAY (dark kam kiya) */
-.video-overlay {
-  position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(2, 6, 23, 0.25),
-    rgba(2, 6, 23, 0.45)
-  );
-  z-index: 2;
-}
-
-/* ✨ SOFT GLOW EFFECT */
-.about-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.08),
-    rgba(2, 6, 23, 0.35)
-  );
-  z-index: 2;
-}
-
-/* ✨ HERO TEXT */
-.gradient-text {
-  font-size: clamp(2.2rem, 7vw, 3.8rem);
-  font-weight: 900;
-  letter-spacing: 1px;
-  text-align: center;
-
-  background: linear-gradient(90deg, #38bdf8, #6366f1, #22c55e);
-  -webkit-background-clip: text;
-  color: transparent;
-}
-
-.gradient-text::after {
-  content: "";
-  width: 120px;
-  height: 4px;
-  display: block;
-  margin: 15px auto;
-  background: linear-gradient(90deg, #6366f1, #22c55e);
-  border-radius: 10px;
-}
-
-.subtitle {
-  color: #cbd5f5;
-  font-size: 1.1rem;
-}
-
-/* ================= HERO WRAPPER ================= */
-.hero-wrapper {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   width: 100%;
   height: 100%;
-  gap: 20px;
-  margin: 0 auto;
-  padding: 0 20px;
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(1.12) contrast(1.08) saturate(1.08);
+}
+
+.video-overlay,
+.about-hero::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.video-overlay {
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.38));
+}
+
+.about-hero::after {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.05), transparent 40%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.1), rgba(2, 6, 23, 0.32));
+}
+
+.hero-wrapper {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-content {
-  text-align: center;
   width: 100%;
+  min-height: clamp(12rem, 24vw, 18rem);
 }
 
-/* ================= GLASS SECTION ================= */
 .glass-section,
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 40px;
-  max-width: 900px;
-  margin: 0 auto 60px;
-  transition: 0.4s;
+  width: min(100%, var(--public-container-width));
+  margin-inline: auto;
+  margin-top: clamp(1rem, 2vw, 1.5rem);
+  margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  border-radius: 28px;
+  border: 1px solid rgba(103, 232, 249, 0.12);
+  background: linear-gradient(180deg, rgba(8, 15, 31, 0.84), rgba(7, 12, 24, 0.92));
+  box-shadow:
+    0 24px 56px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-.glass-section:hover,
-.glass-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+.glass-section h2,
+.glass-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.5rem, 2.4vw, 2.25rem);
+  line-height: 1.12;
+  color: #f8fbff;
 }
 
-/* ================= SERVICES ================= */
+.glass-section p,
+.glass-card p {
+  margin: 0;
+  max-width: 70ch;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: clamp(0.98rem, 1.3vw, 1.08rem);
+  line-height: 1.8;
+}
+
 .services-grid-wrapper {
-  max-width: 1260px;
-  margin: 0 auto 60px;
-}
-
-.services-grid-wrapper h2 {
-  font-size: clamp(1.8rem, 3vw, 2.5rem);
-  margin-bottom: 10px;
-  letter-spacing: 0.2px;
-}
-
-.services-intro {
-  max-width: 720px;
-  color: #93a4c2;
-  margin: 0 0 22px;
-  font-size: 1rem;
-  line-height: 1.65;
-}
-
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 22px;
-}
-
-/* ================= CAROUSEL ================= */
-.carousel-container {
-  position: relative;
   width: 100%;
-  max-width: 900px;
-  margin: 40px auto;
-}
-
-.carousel-track {
-  position: relative;
-  width: 100%;
-  height: 380px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  perspective: 1000px;
-}
-
-.carousel-item {
-  position: absolute;
-  width: 100%;
-  max-width: 500px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.carousel-item.hidden {
-  pointer-events: none;
-}
-
-.carousel-item.active {
-  z-index: 10;
-}
-
-.carousel-item.prev {
-  z-index: 5;
-}
-
-.carousel-item.next {
-  z-index: 5;
-}
-
-/* ================= CAROUSEL CONTROLS ================= */
-.carousel-controls {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 40px;
-  align-items: center;
-}
-
-.carousel-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid rgba(99, 102, 241, 0.3);
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.4s ease;
+  margin: 0 auto;
   padding: 0;
 }
 
-.carousel-dot:hover {
-  border-color: rgba(99, 102, 241, 0.6);
-  background: rgba(99, 102, 241, 0.2);
-}
-
-.carousel-dot.active {
-  width: 28px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  border-color: #6366f1;
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
-}
-
-/* 🔥 CARD BASE */
-.service-card {
-  --service-accent: rgba(148, 163, 184, 0.35);
-  background:
-    radial-gradient(
-      120% 100% at 0% 0%,
-      rgba(255, 255, 255, 0.1),
-      transparent 45%
-    ),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.98));
-  border-radius: 22px;
-  padding: 22px 20px;
-  transition:
-    transform 0.45s ease,
-    box-shadow 0.45s ease,
-    border-color 0.45s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-  min-height: 270px;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-/* ✨ STRONG HOVER */
-.service-card:hover {
-  transform: translateY(-12px) scale(1.01);
-}
-
-.service-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-.card-glow {
-  position: absolute;
-  inset: -80px -40px auto auto;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, var(--service-accent), transparent 72%);
-  opacity: 0.55;
-  transition: opacity 0.4s ease;
-  z-index: -1;
-}
-
-/* ICON */
-.icon-box {
-  width: 84px;
-  height: 84px;
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
-.service-icon-img {
+.services-grid-wrapper > * {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
 }
 
-.service-count {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  font-size: 0.76rem;
-  color: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 4px 10px;
-  backdrop-filter: blur(4px);
+.why-us-section {
+  width: min(100%, var(--public-container-width));
+  margin-inline: auto;
+  margin-top: clamp(0.25rem, 1vw, 1rem);
+  margin-bottom: clamp(2rem, 4vw, 4rem);
 }
 
-.service-tag {
-  display: inline-block;
-  margin-bottom: 8px;
-  font-size: 0.74rem;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  color: #e2e8f0;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
+.gradient-text {
+  background: linear-gradient(90deg, #67e8f9 0%, #38bdf8 35%, #2563eb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-.service-card.is-active {
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.65);
+.services-grid-wrapper .business-verticals-carousel {
+  margin-block: clamp(0.25rem, 1vw, 0.75rem) 0;
 }
 
-.service-card.is-active .card-glow,
-.service-card:hover .card-glow {
-  opacity: 0.9;
+.services-grid-wrapper .business-verticals-heading {
+  margin-bottom: clamp(1rem, 2vw, 1.5rem);
 }
 
-/* ================= 🎨 COLOR SYSTEM ================= */
-
-/* 🏨 Hospitality */
-.service-0 {
-  --service-accent: rgba(245, 158, 11, 0.52);
-  border-top: 3px solid var(--hospitality);
-}
-.service-0 .icon-box {
-  background: transparent;
-}
-.service-0:hover {
-  box-shadow: 0 20px 50px rgba(245, 158, 11, 0.3);
+.why-us-section {
+  min-height: 0;
 }
 
-/* 🚀 Innovation */
-.service-1 {
-  --service-accent: rgba(168, 85, 247, 0.5);
-  border-top: 3px solid var(--innovation);
-}
-.service-1 .icon-box {
-  background: transparent;
-}
-.service-1:hover {
-  box-shadow: 0 20px 50px rgba(168, 85, 247, 0.3);
-}
-
-/* 🌱 Agritech */
-.service-2 {
-  --service-accent: rgba(34, 197, 94, 0.52);
-  border-top: 3px solid var(--agritech);
-}
-.service-2 .icon-box {
-  background: transparent;
-}
-.service-2:hover {
-  box-shadow: 0 20px 50px rgba(34, 197, 94, 0.3);
-}
-
-/* 💻 IT */
-.service-3 {
-  --service-accent: rgba(14, 165, 233, 0.52);
-  border-top: 3px solid var(--it);
-}
-.service-3 .icon-box {
-  background: transparent;
-}
-.service-3:hover {
-  box-shadow: 0 20px 50px rgba(14, 165, 233, 0.3);
-}
-
-/* ================= TEXT ================= */
-.service-card h3 {
-  font-size: 1.02rem;
-  margin-bottom: 10px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-.service-card p {
-  color: #94a3b8;
-  font-size: 0.91rem;
-  line-height: 1.55;
-}
-
-@media (max-width: 1180px) {
-  .bento-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .service-card {
-    min-height: 235px;
-  }
-
-  .icon-box {
-    width: 72px;
-    height: 72px;
-  }
-}
-
-/* ================= WHY US - CHECK BOXES ================= */
-.check-list {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  max-width: 1100px;
-  margin: 24px auto 0;
-}
-
-.check-box-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.check-text {
-  font-size: 1.22rem;
-  font-weight: 600;
-  color: #e6eefb;
-  line-height: 1.2;
-  text-align: center;
-}
-
-@media (max-width: 900px) {
-  .check-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 480px) {
-  .check-list {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-top: 16px;
-  }
-
-  .check-box {
-    padding: 12px 14px;
-    min-height: 64px;
-  }
-
-  .check-text {
-    font-size: 0.98rem;
-  }
-}
-
-/* Reduce hero height for tablets */
-@media (max-width: 900px) {
-  .about-hero {
-    height: 34vh;
-    min-height: 320px;
-    max-height: 420px;
-    margin-bottom: 18px;
-  }
-
-  .gradient-text {
-    font-size: clamp(2.4rem, 7.5vw, 3.6rem);
-  }
-}
-
-/* Reduce hero height for phones */
-@media (max-width: 640px) {
-  .about-hero {
-    height: 28vh;
-    min-height: 240px;
-    max-height: 320px;
-    margin-bottom: 16px;
-  }
-
-  .hero-video-bg {
-    height: 100%;
-    width: 130%;
-  }
-
-  .gradient-text {
-    font-size: clamp(1.6rem, 10vw, 2.4rem);
-  }
-}
-
-/* Extra small devices (iPhone, small phones) */
-@media (max-width: 420px) {
-  .about-hero {
-    height: auto;
-    min-height: 200px;
-    max-height: 280px;
-    padding: 28px 12px;
-  }
-
-  .gradient-text {
-    font-size: 1.8rem;
-  }
-}
-
-/* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
-  .about-container {
-    padding: 12px 15px;
-  }
-
-  .gradient-text {
-    font-size: 2rem;
-  }
-
   .about-hero {
-    height: 35vh;
-    min-height: 350px;
-    max-height: 420px;
-    margin-bottom: 15px;
+    min-height: 15rem;
+    max-height: 23rem;
+    padding-top: 4.25rem;
   }
 
   .glass-section,
   .glass-card {
-    padding: 25px;
+    border-radius: 22px;
+    padding: 1.25rem;
   }
 
-  .hero-wrapper {
-    gap: 15px;
-    padding: 0 15px;
+  .glass-section h2,
+  .glass-card h2 {
+    font-size: 1.4rem;
   }
 
-  .bento-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .service-card {
-    min-height: 220px;
-    padding: 16px;
-  }
-
-  .icon-box {
-    width: 52px;
-    height: 52px;
-  }
-
-  .service-tag {
-    font-size: 0.68rem;
-  }
-
-  /* Carousel Mobile */
-  .carousel-container {
-    max-width: 100%;
-    margin: 30px auto;
-  }
-
-  .carousel-track {
-    height: 320px;
-  }
-
-  .carousel-item {
-    max-width: 100%;
-    width: 90%;
-  }
-
-  .carousel-controls {
-    gap: 8px;
-  }
-
-  .carousel-dot {
-    width: 10px;
-    height: 10px;
-  }
-
-  .carousel-dot.active {
-    width: 24px;
+  .glass-section p,
+  .glass-card p {
+    line-height: 1.75;
   }
 }
 
-@media (max-width: 640px) {
-  .services-intro {
-    margin-bottom: 16px;
-    font-size: 0.92rem;
+@media (max-width: 480px) {
+  .about-hero {
+    min-height: 13rem;
+    max-height: 19rem;
+    padding-top: 4rem;
   }
 
-  .bento-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  .glass-section,
+  .glass-card {
+    padding: 1rem;
   }
+}
 
-  .service-card {
-    min-height: 200px;
+
+.about-container .who-we-are-section {
+  width: min(calc(100% - 2rem), 900px);
+  margin-inline: auto;
+  margin-top: clamp(1.25rem, 2.5vw, 2rem);
+  margin-bottom: clamp(2rem, 4vw, 3.5rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+@media (max-width: 768px) {
+  .about-container .who-we-are-section {
+    width: calc(100% - 1.5rem);
+    padding: 1.25rem;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .about-container .who-we-are-section {
+    width: calc(100% - 1rem);
+    padding: 1rem;
+    border-radius: 20px;
   }
 }

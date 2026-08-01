@@ -4,7 +4,13 @@ const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
 
-const { register, login, logout } = require("../controllers/authController");
+const {
+  register,
+  login,
+  logout,
+  requestPasswordReset,
+  resetPassword,
+} = require("../controllers/authController");
 const {
   ROLES,
   getRolePermissions,
@@ -27,6 +33,8 @@ const getFrontendBaseUrl = () =>
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
 router.post("/logout", require("../middleware/authMiddleware").protect, logout);
+router.post("/forgot-password", authLimiter, requestPasswordReset);
+router.post("/reset-password/:token", authLimiter, resetPassword);
 
 router.get(
   "/google",

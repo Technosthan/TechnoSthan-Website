@@ -1,14 +1,14 @@
 .dynamic-section {
-  padding: 100px 0;
+  padding: clamp(2.5rem, 5vw, 4.75rem) 0;
 }
 
 .dynamic-section__card {
   position: relative;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1320px;
   margin: 0 auto;
   border-radius: 28px;
-  padding: 48px;
+  padding: clamp(1.5rem, 3vw, 3rem);
   box-shadow: 0 32px 90px rgba(15, 23, 42, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(15, 23, 42, 0.94);
@@ -33,7 +33,7 @@
 
 .dynamic-section__title {
   font-family: var(--font-display);
-  font-size: clamp(2.85rem, 4.4vw, 3.75rem);
+  font-size: clamp(1.9rem, 4.1vw, 3.35rem);
   font-weight: 800;
   line-height: 1.02;
   margin: 0 0 20px 0;
@@ -46,7 +46,7 @@
 .dynamic-section__subtitle {
   margin: 0 0 30px 0;
   color: #e2e8f0;
-  font-size: clamp(1.5rem, 2.5vw, 1.75rem);
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
   font-weight: 600;
   max-width: 900px;
   line-height: 1.5;
@@ -57,8 +57,8 @@
   word-break: break-word;
   line-height: 1.9;
   color: #cbd5e1;
-  font-size: clamp(1.125rem, 1.4vw, 1.25rem);
-  max-width: 950px;
+  font-size: clamp(1rem, 1.2vw, 1.125rem);
+  max-width: 960px;
 }
 
 .dynamic-section__body p {
@@ -92,22 +92,22 @@
 
 @media (max-width: 1024px) {
   .dynamic-section__card {
-    padding: 36px;
+    padding: 1.75rem;
   }
 }
 
 @media (max-width: 768px) {
   .dynamic-section {
-    padding: 72px 0;
+    padding: 2.25rem 0;
   }
 
   .dynamic-section__card {
-    padding: 26px;
+    padding: 1.25rem;
     border-radius: 22px;
   }
 
   .dynamic-section__title {
-    font-size: clamp(2.2rem, 8vw, 2.8rem);
+    font-size: clamp(1.7rem, 7vw, 2.35rem);
   }
 
   .dynamic-section__media-media {
@@ -116,6 +116,6 @@
 
   .dynamic-section__subtitle {
     max-width: 100%;
-    font-size: 1.45rem;
+    font-size: 1.05rem;
   }
 }

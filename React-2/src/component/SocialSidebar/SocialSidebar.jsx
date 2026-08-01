@@ -13,9 +13,15 @@ const SocialSidebar = () => {
     >
 
       {/* Main Button */}
-      <div className="main-icon">
+      <button
+        type="button"
+        className="main-icon"
+        aria-label="Open quick share links"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
         <FaShareAlt />
-      </div>
+      </button>
 
       {/* Social Icons */}
       <div className="social-icons">
