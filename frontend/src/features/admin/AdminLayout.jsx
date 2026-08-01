@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu } from "lucide-react";
+import { Home, Menu } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useTheme } from "../../contexts/ThemeContext";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
@@ -60,7 +61,13 @@ const AdminLayout = () => {
                 Admin Panel
               </h1>
             </div>
-            <div className="w-10"></div>
+            <Link
+              to="/?view=website"
+              className={`p-2 rounded-xl ${theme.surface} hover:${theme.navItemHover} transition-colors duration-200`}
+              aria-label="Go to home page"
+            >
+              <Home className={`h-5 w-5 ${theme.text}`} />
+            </Link>
           </div>
         </motion.div>
 

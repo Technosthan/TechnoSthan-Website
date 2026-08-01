@@ -38,9 +38,32 @@ const ICON_MAP = {
 };
 
 const DEFAULT_ICON = Sparkles;
+const OPEN_SERVICE_IDS_STORAGE_KEY = "technosthan-homepage-open-services";
 
 const getServiceId = (service = {}, index = 0) =>
   String(service.serviceKey || service.slug || service._id || service.id || index);
+
+const loadOpenServiceIds = () => {
+  if (typeof window === "undefined") {
+    return new Set();
+  }
+
+  try {
+    const stored = window.localStorage.getItem(OPEN_SERVICE_IDS_STORAGE_KEY);
+    if (!stored) {
+      return new Set();
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+
+    return new Set(parsed.filter((value) => typeof value === "string" && value.trim()));
+  } catch {
+    return new Set();
+  }
+};
 
 const FeaturesSection = () => {
   const { language } = useTheme();
@@ -50,7 +73,7 @@ const FeaturesSection = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedServiceId, setSelectedServiceId] = useState(null);
+  const [openServiceIds, setOpenServiceIds] = useState(() => loadOpenServiceIds());
 
   const cardRefs = useRef(new Map());
 
@@ -69,11 +92,14 @@ const FeaturesSection = () => {
         if (cancelled) return;
 
         setServices(nextServices);
-        setSelectedServiceId((current) => {
-          if (current && nextServices.some((service, index) => getServiceId(service, index) === current)) {
-            return current;
-          }
-          return null;
+        setOpenServiceIds((current) => {
+          const next = new Set();
+          current.forEach((serviceId) => {
+            if (nextServices.some((service, index) => getServiceId(service, index) === serviceId)) {
+              next.add(serviceId);
+            }
+          });
+          return next;
         });
       } catch (err) {
         if (cancelled) return;
@@ -108,11 +134,22 @@ const FeaturesSection = () => {
   const iconFor = (value = "") => ICON_MAP[value] || DEFAULT_ICON;
 
   useEffect(() => {
-    if (!selectedServiceId) return undefined;
+    if (typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(
+        OPEN_SERVICE_IDS_STORAGE_KEY,
+        JSON.stringify(Array.from(openServiceIds)),
+      );
+    } catch {}
+  }, [openServiceIds]);
+
+  useEffect(() => {
+    if (openServiceIds.size === 0) return undefined;
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
-        setSelectedServiceId(null);
+        setOpenServiceIds(new Set());
       }
     };
 
@@ -122,7 +159,7 @@ const FeaturesSection = () => {
       );
 
       if (!clickedCard) {
-        setSelectedServiceId(null);
+        setOpenServiceIds(new Set());
       }
     };
 
@@ -133,19 +170,34 @@ const FeaturesSection = () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [selectedServiceId]);
+  }, [openServiceIds]);
 
   useEffect(() => {
-    if (!selectedServiceId) return;
+    if (openServiceIds.size === 0) return;
 
-    const selectedExists = sortedServices.some((service, index) => getServiceId(service, index) === selectedServiceId);
-    if (!selectedExists) {
-      setSelectedServiceId(null);
-    }
-  }, [selectedServiceId, sortedServices]);
+    setOpenServiceIds((current) => {
+      const next = new Set();
+      current.forEach((serviceId) => {
+        if (sortedServices.some((service, index) => getServiceId(service, index) === serviceId)) {
+          next.add(serviceId);
+        }
+      });
+      return next;
+    });
+  }, [sortedServices]);
 
-  const handleServiceClick = (serviceId) => {
-    setSelectedServiceId((currentId) => (currentId === serviceId ? null : serviceId));
+  const toggleService = (serviceId) => {
+    setOpenServiceIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(serviceId)) {
+        next.delete(serviceId);
+      } else {
+        next.add(serviceId);
+      }
+
+      return next;
+    });
   };
 
   return (
@@ -204,7 +256,7 @@ const FeaturesSection = () => {
           <div className="grid auto-rows-auto grid-cols-1 items-start gap-[22px] md:grid-cols-2">
             {sortedServices.map((service, index) => {
               const serviceId = getServiceId(service, index);
-              const isSelected = selectedServiceId === serviceId;
+              const isSelected = openServiceIds.has(serviceId);
               const ServiceIcon = iconFor(service.icon);
               const innerServices = Array.isArray(service.innerServices) ? service.innerServices : [];
 
@@ -219,10 +271,12 @@ const FeaturesSection = () => {
                   }`}
                 >
                   <button
+                    id={`service-trigger-${serviceId}`}
                     type="button"
                     className="service-card-header flex w-full items-center gap-4 px-6 py-6 text-left sm:gap-4 sm:px-6 sm:py-6"
                     aria-expanded={isSelected}
-                    onClick={() => handleServiceClick(serviceId)}
+                    aria-controls={`service-panel-${serviceId}`}
+                    onClick={() => toggleService(serviceId)}
                   >
                     <div
                       className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
@@ -267,6 +321,9 @@ const FeaturesSection = () => {
                     {isSelected ? (
                       <motion.div
                         key={`sub-services-${serviceId}`}
+                        id={`service-panel-${serviceId}`}
+                        role="region"
+                        aria-labelledby={`service-trigger-${serviceId}`}
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}

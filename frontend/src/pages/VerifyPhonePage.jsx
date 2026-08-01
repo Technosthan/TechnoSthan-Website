@@ -19,6 +19,14 @@ import {
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
+const getSafeAuthMessage = (error, fallback = "Something went wrong. Please try again.") => {
+  const message = error?.response?.data?.message || error?.message || "";
+  if (/E11000|duplicate key|MongoServerError|ValidationError|index:/i.test(message)) {
+    return fallback;
+  }
+  return message || fallback;
+};
+
 const VerifyPhonePage = () => {
   const { loading, setInputValue, setInputType, inputValue } = useAuth();
 
@@ -69,9 +77,7 @@ const VerifyPhonePage = () => {
         setError("Verification incomplete");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message || err.message || "Verification failed",
-      );
+      setError(getSafeAuthMessage(err, "Verification failed"));
     }
   };
 
@@ -83,7 +89,7 @@ const VerifyPhonePage = () => {
         pendingUserId,
       });
     } catch (err) {
-      setError(err.message || "Failed to resend OTP");
+      setError(getSafeAuthMessage(err, "Failed to resend OTP"));
     }
   };
 

@@ -18,6 +18,14 @@ import {
 import { useTheme } from "../contexts/ThemeContext";
 import { sendOTP, verifyOTP } from "../features/auth/authApi";
 
+const getSafeAuthMessage = (error, fallback = "Something went wrong. Please try again.") => {
+  const message = error?.response?.data?.message || error?.message || "";
+  if (/E11000|duplicate key|MongoServerError|ValidationError|index:/i.test(message)) {
+    return fallback;
+  }
+  return message || fallback;
+};
+
 const LoginPage = () => {
   const {
     loading,
@@ -178,9 +186,7 @@ const LoginPage = () => {
 
       setIsOtpSent(true);
     } catch (err) {
-      setError(
-        err?.response?.data?.message || err?.message || "Failed to send OTP",
-      );
+      setError(getSafeAuthMessage(err, "Failed to send OTP"));
     } finally {
       setOtpLoading(false);
     }
@@ -217,7 +223,7 @@ const LoginPage = () => {
 
       navigate(userData.role === "admin" ? "/admin/dashboard" : "/");
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Invalid OTP");
+      setError(getSafeAuthMessage(err, "Invalid OTP"));
     } finally {
       setOtpLoading(false);
     }
@@ -346,9 +352,7 @@ const LoginPage = () => {
         "[LoginPage] authenticate error details:",
         err?.response?.data || err?.message || err,
       );
-      setError(
-        err?.response?.data?.message || err?.message || "Something went wrong",
-      );
+      setError(getSafeAuthMessage(err));
     }
   };
 
@@ -364,11 +368,7 @@ const LoginPage = () => {
 
       setQrData(qr);
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to generate QR code",
-      );
+      setError(getSafeAuthMessage(err, "Failed to generate QR code"));
     }
   };
 

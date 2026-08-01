@@ -11,6 +11,7 @@
   },
   "common": {
     "publicAccessEnabled": "सार्वजनिक पहुँच सक्षम है",
+    "publicAccessDisabled": "सार्वजनिक पहुँच अक्षम है",
     "languageTitle": "भाषा",
     "welcome": "स्वागत है, {{name}}",
     "logout": "लॉगआउट"

@@ -5,6 +5,10 @@ import { PhoneProviderFactory } from "./providers/phoneProviderFactory.js";
 import otpTemplate, {
   otpTextTemplate,
 } from "../email/templates/otpTemplate.js";
+import {
+  getRuntimeDefaultEmailProvider,
+  getSendGridConfigurationError,
+} from "../email/emailProviderDefaults.js";
 
 /**
  * Central OTP Manager
@@ -24,11 +28,11 @@ export class OtpManager {
         .sort({ isDefault: -1 })
         .select("+password +apiKey +accessKey +secretKey");
 
-      if (!provider) {
-        throw new Error("No active email provider configured");
+      if (provider) {
+        return provider;
       }
 
-      return provider;
+      return getRuntimeDefaultEmailProvider();
     } catch (error) {
       throw new Error(`Failed to get active email provider: ${error.message}`);
     }
@@ -100,10 +104,15 @@ export class OtpManager {
    * Send OTP via email with fallback support
    */
   static async sendEmailOTP({ email, otp, senderName = "AgriTech" }) {
-    const providers = await this.getAllActiveEmailProviders();
+    let providers = await this.getAllActiveEmailProviders();
 
     if (providers.length === 0) {
-      throw new Error("No active email providers configured");
+      const runtimeProvider = getRuntimeDefaultEmailProvider();
+      if (!runtimeProvider) {
+        throw new Error(getSendGridConfigurationError());
+      }
+
+      providers = [runtimeProvider];
     }
 
     let lastError = null;
@@ -112,7 +121,7 @@ export class OtpManager {
       try {
         const provider = EmailProviderFactory.create(
           providerDoc.providerType,
-          providerDoc.toObject(),
+          providerDoc.toObject ? providerDoc.toObject() : providerDoc,
         );
 
         const result = await provider.send({

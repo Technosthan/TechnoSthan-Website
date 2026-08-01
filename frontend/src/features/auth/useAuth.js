@@ -40,8 +40,13 @@ export const useAuth = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [tempData, setTempData] = useState({}); // Store temporary data during flow
 
-  const getErrorMessage = (error) =>
-    error?.response?.data?.message || error?.message || "Something went wrong";
+  const getErrorMessage = (error) => {
+    const message = error?.response?.data?.message || error?.message || "";
+    if (/E11000|duplicate key|MongoServerError|ValidationError|index:/i.test(message)) {
+      return "Something went wrong. Please try again.";
+    }
+    return message || "Something went wrong. Please try again.";
+  };
 
   // Detect input type
   const detectInputType = (value) => {

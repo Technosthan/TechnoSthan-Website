@@ -15,8 +15,11 @@ import announcementsRoutes from "./features/announcements/announcements.route.js
 import notificationRoutes from "./features/notifications/notification.route.js";
 import formRoutes from "./features/form/form.route.js";
 import homepageServicesRoutes from "./features/homepageServices/homepageServices.route.js";
+import empoweringCardsRoutes from "./features/empoweringCards/empoweringCards.route.js";
+import homepageCtaSectionsRoutes from "./features/homepageCtaSections/homepageCtaSections.route.js";
 import { sendEmail } from "./services/email/sendEmail.js";
 import { resolveEmailProvider } from "./features/admin/otpProvider.service.js";
+import { getSendGridConfigurationError } from "./services/email/emailProviderDefaults.js";
 
 // Rate limiting
 import { generalRateLimit } from "./shared/middleware/rateLimitMiddleware.js";
@@ -27,6 +30,7 @@ const app = express();
 // ✅ allowed origins
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://www.technosthan.com",
   "https://agritech.technosthan.com",
   "https://techno-sthan-website-z9yp.vercel.app",
@@ -107,28 +111,35 @@ app.get("/api/health", async (req, res) => {
     success: true,
     message: "API is running",
     timestamp: new Date().toISOString(),
-    emailProviderConfigured: !!activeProvider || !!process.env.RESEND_API_KEY,
-    emailFrom: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
+    emailProviderConfigured: !!activeProvider,
+    emailFrom:
+      activeProvider?.senderEmail ||
+      activeProvider?.fromEmail ||
+      process.env.SENDGRID_FROM_EMAIL ||
+      process.env.EMAIL_FROM ||
+      "AgriTech <noreply@agritech.com>",
   });
 });
 
 app.get("/api/health/email", async (req, res) => {
   const activeProvider = await resolveEmailProvider();
-  if (!activeProvider && !process.env.RESEND_API_KEY) {
+  if (!activeProvider) {
     return res.status(500).json({
       success: false,
-      message:
-        "No active email provider configured and RESEND_API_KEY is not set",
+      message: getSendGridConfigurationError(),
     });
   }
 
   const healthData = {
     success: true,
-    message: activeProvider
-      ? "Active email provider is configured"
-      : "RESEND_API_KEY is configured",
+    message: "Active email provider is configured",
     emailProviderConfigured: true,
-    emailFrom: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
+    emailFrom:
+      activeProvider?.senderEmail ||
+      activeProvider?.fromEmail ||
+      process.env.SENDGRID_FROM_EMAIL ||
+      process.env.EMAIL_FROM ||
+      "AgriTech <noreply@agritech.com>",
   };
 
   const testEmail = req.query.email;
@@ -142,9 +153,12 @@ app.get("/api/health/email", async (req, res) => {
   try {
     const result = await sendEmail({
       to: testEmail,
-      from: process.env.EMAIL_FROM || "AgriTech <noreply@agritech.com>",
-      subject: "AgriTech Resend health check",
-      html: `<p>This is a Resend health check email from AgriTech. If you received it, the email service is working.</p>`,
+      from:
+        process.env.SENDGRID_FROM_EMAIL ||
+        process.env.EMAIL_FROM ||
+        "AgriTech <noreply@agritech.com>",
+      subject: "AgriTech SendGrid health check",
+      html: `<p>This is a SendGrid health check email from AgriTech. If you received it, the email service is working.</p>`,
     });
 
     return res.json({
@@ -155,7 +169,7 @@ app.get("/api/health/email", async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Resend email health check failed",
+      message: "SendGrid email health check failed",
       error: error?.message || error,
     });
   }
@@ -172,6 +186,8 @@ app.use("/api/announcements", announcementsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/homepage-services", homepageServicesRoutes);
+app.use("/api/empowering-cards", empoweringCardsRoutes);
+app.use("/api/public/homepage-cta-sections", homepageCtaSectionsRoutes);
 
 console.log("Routes mounted");
 

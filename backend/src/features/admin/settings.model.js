@@ -318,7 +318,7 @@ Respond:
     },
     publicAccessEnabled: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     publicWebsiteEnabled: {
       type: Boolean,

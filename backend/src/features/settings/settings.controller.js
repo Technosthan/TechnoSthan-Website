@@ -3,6 +3,7 @@ import {
   loadPublicAccessControlSnapshot,
   loadPublicSettingsSnapshot,
 } from "../../shared/cache/publicSettingsCache.js";
+import Settings from "../admin/settings.model.js";
 
 const publicCacheHeaders = {
   "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",

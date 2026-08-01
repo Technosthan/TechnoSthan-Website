@@ -5,7 +5,6 @@ import { LogOut, Shield, Bell, Menu, X } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
-import { useSettings } from "../contexts/SettingsContext";
 import { getMyUnreadNotificationCount } from "../shared/lib/notificationsApi";
 import { getOptimizedImageUrl } from "../shared/lib/assetUrl";
 
@@ -82,7 +81,6 @@ const Navbar = () => {
   const { theme, appSettings, language: currentLanguage, changeLanguage } =
     useTheme();
   const { t } = useTranslation();
-  const { settings } = useSettings();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user") || "null"),
   );
@@ -90,9 +88,6 @@ const Navbar = () => {
   const isAdmin = user?.role === "admin";
   const [unread, setUnread] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const isPublicAccessEnabled =
-    settings?.publicAccessEnabled === true &&
-    settings?.publicWebsiteEnabled === true;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -287,19 +282,13 @@ const Navbar = () => {
             </motion.button>
           </>
         ) : (
-          isPublicAccessEnabled ? (
-            <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-2">
-              {t("common.publicAccessEnabled")}
-            </span>
-          ) : (
-            <Link
-              to="/login"
-              className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
-            >
-              <Shield size={16} />
-              {t("navbar.login")}
-            </Link>
-          )
+          <Link
+            to="/login"
+            className={`${theme.buttonSecondary} hover:scale-105 transition transform px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm`}
+          >
+            <Shield size={16} />
+            {t("navbar.login")}
+          </Link>
         )}
       </div>
 
@@ -414,20 +403,14 @@ const Navbar = () => {
                     {t("common.logout")}
                   </motion.button>
                 ) : (
-                  isPublicAccessEnabled ? (
-                    <span className="inline-flex w-full items-center justify-center rounded-xl bg-green-100 text-green-800 text-xs font-semibold uppercase tracking-wider px-3 py-3">
-                      {t("common.publicAccessEnabled")}
-                    </span>
-                  ) : (
-                    <Link
-                      to="/login"
-                      className={`${theme.buttonSecondary} w-full hover:scale-105 transition transform px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2`}
-                      onClick={handleNavClick}
-                    >
-                      <Shield size={16} />
-                      {t("navbar.login")}
-                    </Link>
-                  )
+                  <Link
+                    to="/login"
+                    className={`${theme.buttonSecondary} w-full hover:scale-105 transition transform px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2`}
+                    onClick={handleNavClick}
+                  >
+                    <Shield size={16} />
+                    {t("navbar.login")}
+                  </Link>
                 )}
               </div>
               {/* Mobile Language Selector */}

@@ -11,6 +11,7 @@
   },
   "common": {
     "publicAccessEnabled": "Public Access Enabled",
+    "publicAccessDisabled": "Public Access Disabled",
     "languageTitle": "Language",
     "welcome": "Welcome, {{name}}",
     "logout": "Logout"

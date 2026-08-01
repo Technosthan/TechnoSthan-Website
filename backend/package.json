@@ -9,6 +9,7 @@
     "dev": "dotenv nodemon src/server.js",
     "start": "node src/server.js",
     "migrate:uploads-to-cloudinary": "node scripts/migrate-uploads-to-cloudinary.js",
+    "seed:homepage-cta-sections": "node scripts/seed-homepage-cta-sections.js",
     "telegram:webhook": "node telegram-webhook.js",
     "telegram:webhook:dev": "nodemon telegram-webhook.js"
   },

@@ -55,7 +55,7 @@ const defaultSettings = {
     cardOrder: ["stats", "users", "content", "quiz", "activity"],
   },
 
-  publicAccessEnabled: true,
+  publicAccessEnabled: false,
 
   publicWebsiteEnabled: true,
 
@@ -130,14 +130,14 @@ const SettingsPanel = () => {
         },
 
         publicAccessEnabled:
-          response.data.data?.publicAccessEnabled ??
-          response.data.data?.publicWebsiteEnabled ??
-          defaultSettings.publicAccessEnabled,
+          typeof response.data.data?.publicAccessEnabled === "boolean"
+            ? response.data.data.publicAccessEnabled
+            : defaultSettings.publicAccessEnabled,
 
         publicWebsiteEnabled:
-          response.data.data?.publicWebsiteEnabled ??
-          response.data.data?.publicAccessEnabled ??
-          defaultSettings.publicWebsiteEnabled,
+          typeof response.data.data?.publicWebsiteEnabled === "boolean"
+            ? response.data.data.publicWebsiteEnabled
+            : defaultSettings.publicWebsiteEnabled,
 
         publicRoutes:
           response.data.data?.publicRoutes ?? defaultSettings.publicRoutes,

@@ -734,7 +734,7 @@ export const getSettings = async (req, res) => {
         visibleCards: ["stats", "users", "content", "quiz", "activity"],
         cardOrder: ["stats", "users", "content", "quiz", "activity"],
       },
-      publicAccessEnabled: true,
+      publicAccessEnabled: false,
       publicWebsiteEnabled: true,
       hideLoginButton: true,
       publicRoutes: [
@@ -759,11 +759,6 @@ export const getSettings = async (req, res) => {
       settings = settings.toObject();
     }
 
-    const publicAccessEnabledValue =
-      settings.publicWebsiteEnabled != null
-        ? settings.publicWebsiteEnabled
-        : settings.publicAccessEnabled;
-
     settings = {
       ...defaultSettings,
       ...settings,
@@ -782,21 +777,15 @@ export const getSettings = async (req, res) => {
       publicAccessEnabled:
         settings.publicAccessEnabled != null
           ? settings.publicAccessEnabled
-          : publicAccessEnabledValue != null
-            ? publicAccessEnabledValue
-            : defaultSettings.publicAccessEnabled,
+          : defaultSettings.publicAccessEnabled,
       publicWebsiteEnabled:
         settings.publicWebsiteEnabled != null
           ? settings.publicWebsiteEnabled
-          : publicAccessEnabledValue != null
-            ? publicAccessEnabledValue
-            : defaultSettings.publicWebsiteEnabled,
+          : defaultSettings.publicWebsiteEnabled,
       hideLoginButton:
         settings.hideLoginButton != null
           ? settings.hideLoginButton
-          : publicAccessEnabledValue != null
-            ? publicAccessEnabledValue
-            : defaultSettings.hideLoginButton,
+          : defaultSettings.hideLoginButton,
     };
 
     console.log("Returning settings:", {

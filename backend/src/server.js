@@ -1,13 +1,18 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import app from "./app.js";
 import { migrateAISettings } from "./features/admin/aiMigration.service.js";
 import { validateCloudinaryConfig } from "./shared/services/cloudinary.service.js";
 import { seedHomepageServices } from "./features/homepageServices/homepageServices.seed.js";
 
-const PORT = process.env.PORT || 5000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+const PORT = process.env.PORT || 7000;
 
 /* ----------------------------- MongoDB Connect ---------------------------- */
 

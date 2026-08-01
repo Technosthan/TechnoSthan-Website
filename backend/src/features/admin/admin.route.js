@@ -63,6 +63,25 @@ import {
   uploadServiceImage,
 } from "../homepageServices/homepageServices.controller.js";
 import {
+  createHomepageCtaSectionController,
+  deleteHomepageCtaSectionController,
+  getHomepageCtaSection,
+  listHomepageCtaSections,
+  reorderHomepageCtaSectionsController,
+  updateHomepageCtaSectionController,
+  updateHomepageCtaSectionStatusController,
+} from "../homepageCtaSections/homepageCtaSections.controller.js";
+import {
+  createCard as createEmpoweringCard,
+  deleteCard as deleteEmpoweringCard,
+  getEmpoweringCard,
+  listEmpoweringCards,
+  reorderCards as reorderEmpoweringCards,
+  previewUpload as previewEmpoweringCardUpload,
+  updateCard as updateEmpoweringCard,
+  updateCardStatus as updateEmpoweringCardStatus,
+} from "../empoweringCards/empoweringCards.controller.js";
+import {
   createForm,
   importFormFromFile,
   getAdminForms,
@@ -135,6 +154,28 @@ router.post("/homepage-services", createService);
 router.put("/homepage-services/:serviceId", updateService);
 router.delete("/homepage-services/:serviceId", deleteService);
 router.patch("/homepage-services/:serviceId/status", updateServiceStatus);
+
+// Homepage CTA sections management
+router.get("/homepage-cta-sections", listHomepageCtaSections);
+router.patch("/homepage-cta-sections/reorder", reorderHomepageCtaSectionsController);
+router.get("/homepage-cta-sections/:sectionId", getHomepageCtaSection);
+router.post("/homepage-cta-sections", createHomepageCtaSectionController);
+router.put("/homepage-cta-sections/:sectionId", updateHomepageCtaSectionController);
+router.patch(
+  "/homepage-cta-sections/:sectionId/status",
+  updateHomepageCtaSectionStatusController,
+);
+router.delete("/homepage-cta-sections/:sectionId", deleteHomepageCtaSectionController);
+
+// Empowering cards management
+router.get("/empowering-cards", listEmpoweringCards);
+router.patch("/empowering-cards/reorder", reorderEmpoweringCards);
+router.post("/empowering-cards/preview-upload", previewEmpoweringCardUpload);
+router.get("/empowering-cards/:cardId", getEmpoweringCard);
+router.post("/empowering-cards", createEmpoweringCard);
+router.put("/empowering-cards/:cardId", updateEmpoweringCard);
+router.patch("/empowering-cards/:cardId/status", updateEmpoweringCardStatus);
+router.delete("/empowering-cards/:cardId", deleteEmpoweringCard);
 
 // Auth settings management
 router.get("/auth-settings", getAuthSettings);

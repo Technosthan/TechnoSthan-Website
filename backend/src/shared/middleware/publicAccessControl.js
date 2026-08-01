@@ -6,6 +6,8 @@ const publicAccessControl = async (req, res, next) => {
       "/api/auth",
       "/api/settings/public",
       "/api/homepage-services/public",
+      "/api/empowering-cards/public",
+      "/api/public/homepage-cta-sections",
       "/api/health",
       "/api/forms",
       "/api/admin/forms/banner-image",
@@ -17,26 +19,26 @@ const publicAccessControl = async (req, res, next) => {
     }
 
     const settings = await loadPublicAccessControlSnapshot();
-    const publicWebsiteEnabled = settings?.publicWebsiteEnabled;
-    const publicAccessSetting = settings?.publicAccessEnabled;
+    const publicWebsiteEnabled =
+      typeof settings?.publicWebsiteEnabled === "boolean"
+        ? settings.publicWebsiteEnabled
+        : false;
     const publicAccessEnabled =
-      publicWebsiteEnabled === false || publicAccessSetting === false
-        ? false
-        : typeof publicWebsiteEnabled === "boolean"
-          ? publicWebsiteEnabled
-          : typeof publicAccessSetting === "boolean"
-            ? publicAccessSetting
-            : true; // Default to public access enabled
+      typeof settings?.publicAccessEnabled === "boolean"
+        ? settings.publicAccessEnabled
+        : false;
+    const effectivePublicAccessEnabled =
+      publicWebsiteEnabled && publicAccessEnabled;
 
     console.log("[publicAccessControl]", {
       path: req.path,
       publicWebsiteEnabled,
-      publicAccessSetting,
-      effectivePublicAccessEnabled: publicAccessEnabled,
+      publicAccessEnabled,
+      effectivePublicAccessEnabled,
       hasAuth: !!req.headers.authorization,
     });
 
-    if (publicAccessEnabled === false) {
+    if (!effectivePublicAccessEnabled) {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
         console.log("[publicAccessControl] Blocking unauthenticated access");

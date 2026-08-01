@@ -15,6 +15,8 @@ import {
   Activity,
   FileText,
   LayoutGrid,
+  Image as ImageIcon,
+  Sprout,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getOptimizedImageUrl } from "../../shared/lib/assetUrl";
@@ -47,6 +49,22 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       path: "homepage-services",
       description: "Dynamic homepage services",
       color: "from-emerald-500 to-teal-600",
+    },
+    {
+      id: "homepage-cta-sections",
+      label: "Smart Farming Sections",
+      icon: Sprout,
+      path: "homepage-cta-sections",
+      description: "Smart Farming homepage sections",
+      color: "from-emerald-500 to-lime-600",
+    },
+    {
+      id: "empowering-cards",
+      label: "Empowering Cards",
+      icon: ImageIcon,
+      path: "empowering-cards",
+      description: "Homepage media cards",
+      color: "from-emerald-500 to-lime-600",
     },
     {
       id: "quiz",
@@ -174,7 +192,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
               return (
                 <NavLink
                   key={item.id}
-                  to={item.path}
+                  to={targetPath}
                   className={`w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-200 group ${
                     isActive
                       ? theme.sidebarActive

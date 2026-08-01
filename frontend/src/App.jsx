@@ -30,6 +30,8 @@ const AdminLayout = lazy(() => import("./features/admin/AdminLayout"));
 const AdminDashboardHome = lazy(() => import("./features/admin/AdminDashboardHome"));
 const ContentManagement = lazy(() => import("./features/admin/ContentManagement"));
 const HomepageServices = lazy(() => import("./features/admin/HomepageServices"));
+const HomepageCtaSections = lazy(() => import("./features/admin/HomepageCtaSections"));
+const EmpoweringCards = lazy(() => import("./features/admin/EmpoweringCards"));
 const QuizManagement = lazy(() => import("./features/admin/QuizManagement"));
 const UserManagement = lazy(() => import("./features/admin/UserManagement"));
 const AIControlPanel = lazy(() => import("./features/admin/AIControlPanel"));
@@ -101,6 +103,8 @@ function App() {
                   <Route index element={<AdminDashboardHome />} />
                   <Route path="content" element={<ContentManagement />} />
                   <Route path="homepage-services" element={<HomepageServices />} />
+                  <Route path="homepage-cta-sections" element={<HomepageCtaSections />} />
+                  <Route path="empowering-cards" element={<EmpoweringCards />} />
                   <Route path="quiz" element={<QuizManagement />} />
                   <Route path="users" element={<UserManagement />} />
                   <Route path="forms" element={<FormManagement />} />

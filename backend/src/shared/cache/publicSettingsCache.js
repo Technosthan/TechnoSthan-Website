@@ -65,7 +65,7 @@ const buildDefaultPublicSettings = () => ({
     visibleCards: ["stats", "users", "content", "quiz", "activity"],
     cardOrder: ["stats", "users", "content", "quiz", "activity"],
   },
-  publicAccessEnabled: true,
+  publicAccessEnabled: false,
   publicWebsiteEnabled: true,
   hideLoginButton: true,
   publicRoutes: defaultPublicRoutes,
@@ -74,10 +74,6 @@ const buildDefaultPublicSettings = () => ({
 
 const buildPublicSettingsSnapshot = (settings = {}) => {
   const defaults = buildDefaultPublicSettings();
-  const publicAccessEnabledValue =
-    settings.publicWebsiteEnabled != null
-      ? settings.publicWebsiteEnabled
-      : settings.publicAccessEnabled;
 
   return {
     ...defaults,
@@ -97,17 +93,11 @@ const buildPublicSettingsSnapshot = (settings = {}) => {
     publicWebsiteEnabled:
       settings.publicWebsiteEnabled != null
         ? settings.publicWebsiteEnabled
-        : publicAccessEnabledValue != null
-          ? publicAccessEnabledValue
-          : defaults.publicWebsiteEnabled,
+        : defaults.publicWebsiteEnabled,
     hideLoginButton:
       settings.hideLoginButton != null
         ? settings.hideLoginButton
-        : settings.publicWebsiteEnabled != null
-          ? settings.publicWebsiteEnabled
-          : settings.publicAccessEnabled != null
-            ? settings.publicAccessEnabled
-            : defaults.hideLoginButton,
+        : defaults.hideLoginButton,
     publicRoutes:
       settings.publicRoutes != null
         ? settings.publicRoutes

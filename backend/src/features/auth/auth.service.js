@@ -36,6 +36,138 @@ const normalizePhone = (phone) =>
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const PENDING_USER_EXPIRY_MS = 60 * 60 * 1000;
+
+const getPendingUserExpiry = () => new Date(Date.now() + PENDING_USER_EXPIRY_MS);
+
+const isPendingUserExpired = (pendingUser) => {
+  if (!pendingUser?.createdAt) {
+    return false;
+  }
+
+  return Date.now() - new Date(pendingUser.createdAt).getTime() >= PENDING_USER_EXPIRY_MS;
+};
+
+const getContactLookup = (contact) => {
+  if (isEmail(contact)) {
+    return { email: normalizeEmail(contact) };
+  }
+
+  return { mobile: normalizePhone(contact) };
+};
+
+const getRegisteredUserByContact = async (contact) => {
+  const lookup = getContactLookup(contact);
+  return await User.findOne(lookup);
+};
+
+const getPendingUserByContact = async (contact) => {
+  const lookup = getContactLookup(contact);
+  return await PendingUser.findOne(lookup);
+};
+
+const buildPendingUserUpdate = ({ contact, name, password }) => {
+  const normalizedName = String(name || "").trim() || "User";
+  const update = {
+    name: normalizedName,
+    password,
+    emailVerified: false,
+    phoneVerified: false,
+    otpAttempts: 0,
+    lastOtpSent: new Date(),
+  };
+
+  if (isEmail(contact)) {
+    update.email = normalizeEmail(contact);
+  } else {
+    update.mobile = normalizePhone(contact);
+  }
+
+  return update;
+};
+
+const upsertPendingUser = async ({ contact, name, password }) => {
+  const lookup = getContactLookup(contact);
+  let existingPending = await getPendingUserByContact(contact);
+
+  if (existingPending && isPendingUserExpired(existingPending)) {
+    await PendingUser.deleteOne({ _id: existingPending._id });
+    existingPending = null;
+  }
+
+  const update = buildPendingUserUpdate({ contact, name, password });
+
+  try {
+    const pendingUser = await PendingUser.findOneAndUpdate(
+      lookup,
+      { $set: update },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      },
+    );
+
+    return {
+      pendingUser,
+      reusedPendingUser: !!existingPending,
+    };
+  } catch (error) {
+    if (error?.code === 11000) {
+      const pendingUser = await getPendingUserByContact(contact);
+      if (pendingUser) {
+        if (isPendingUserExpired(pendingUser)) {
+          await PendingUser.deleteOne({ _id: pendingUser._id });
+        } else {
+          await PendingUser.findByIdAndUpdate(
+            pendingUser._id,
+            { $set: update },
+            { new: true, runValidators: true },
+          );
+
+          return {
+            pendingUser: await PendingUser.findById(pendingUser._id),
+            reusedPendingUser: true,
+          };
+        }
+      }
+
+      const registeredUser = await getRegisteredUserByContact(contact);
+      if (registeredUser) {
+        throw new Error(
+          isEmail(contact)
+            ? "An account already exists with this email. Please log in."
+            : "An account already exists with this contact. Please log in.",
+        );
+      }
+
+      const retryPendingUser = await PendingUser.findOneAndUpdate(
+        lookup,
+        { $set: update },
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        },
+      );
+
+      return {
+        pendingUser: retryPendingUser,
+        reusedPendingUser: false,
+      };
+    }
+
+    throw error;
+  }
+};
+
+const deletePendingUserByContact = async (contact) => {
+  const lookup = getContactLookup(contact);
+  await PendingUser.deleteOne(lookup);
+};
+
 const getEnabledOtpMethods = async () => {
   const authSettings = await getOrCreateAuthSettings();
   return {
@@ -60,73 +192,62 @@ const canFinalizePendingUser = (pendingUser, otpMethods) => {
 
 export const registerUser = async (data) => {
   const { name, contact, password } = data;
+  const normalizedEmail = normalizeEmail(contact);
+  const normalizedPhone = normalizePhone(contact);
+  const emailContact = isEmail(normalizedEmail);
+  const mobileContact = isMobile(normalizedPhone);
 
   let finalName = name;
   if (!finalName || !finalName.trim()) {
     // Derive a name from contact when not provided (email local-part)
-    if (isEmail(contact)) {
-      finalName = contact.split("@")[0] || "User";
+    if (emailContact) {
+      finalName = normalizedEmail.split("@")[0] || "User";
     } else {
-      finalName = contact || "User";
+      finalName = normalizedPhone || "User";
     }
   }
 
-  if (!isEmail(contact) && !isMobile(contact)) {
+  if (!emailContact && !mobileContact) {
     throw new Error("Invalid email or mobile number");
   }
 
   // Check if user already exists in main DB
-  const existingUser = isEmail(contact)
-    ? await User.findOne({ email: contact.trim().toLowerCase() })
-    : await User.findOne({ mobile: contact.trim() });
+  const existingUser = await getRegisteredUserByContact(
+    emailContact ? normalizedEmail : normalizedPhone,
+  );
 
   if (existingUser) {
-    throw new Error("User already exists");
-  }
-
-  // Check if pending user exists
-  const existingPending = isEmail(contact)
-    ? await PendingUser.findOne({ email: contact.trim().toLowerCase() })
-    : await PendingUser.findOne({ mobile: contact.trim() });
-
-  if (existingPending) {
-    throw new Error(
-      "Registration already in progress. Please check your email or SMS for OTP.",
-    );
+    throw new Error("An account already exists with this email. Please log in.");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-
-  const pendingData = {
+  const { pendingUser, reusedPendingUser } = await upsertPendingUser({
+    contact: emailContact ? normalizedEmail : normalizedPhone,
     name: finalName,
     password: hashedPassword,
-  };
-
-  if (isEmail(contact)) {
-    pendingData.email = contact.trim().toLowerCase();
-  } else {
-    pendingData.mobile = contact.trim();
-  }
-
-  const pendingUser = new PendingUser(pendingData);
-  await pendingUser.save();
+  });
 
   return {
     pendingUserId: pendingUser._id,
-    contactType: isEmail(contact) ? "email" : "phone",
+    contactType: emailContact ? "email" : "phone",
+    reusedPendingUser,
   };
 };
 
 export const loginUser = async (data) => {
   const { contact, password } = data;
+  const normalizedEmail = normalizeEmail(contact);
+  const normalizedPhone = normalizePhone(contact);
+  const emailContact = isEmail(normalizedEmail);
+  const mobileContact = isMobile(normalizedPhone);
 
-  if (!isEmail(contact) && !isMobile(contact)) {
+  if (!emailContact && !mobileContact) {
     throw new Error("Invalid email or mobile number");
   }
 
-  const user = isEmail(contact)
-    ? await User.findOne({ email: contact.trim().toLowerCase() })
-    : await User.findOne({ mobile: contact.trim() });
+  const user = await getRegisteredUserByContact(
+    emailContact ? normalizedEmail : normalizedPhone,
+  );
 
   if (!user) {
     throw new Error("Invalid credentials");
@@ -183,12 +304,14 @@ export const loginUser = async (data) => {
 
 export const authenticateUser = async ({ contact, password }) => {
   // Detect contact type
-  const contactType = isEmail(contact) ? "email" : "phone";
+  const normalizedEmail = normalizeEmail(contact);
+  const normalizedPhone = normalizePhone(contact);
+  const contactType = isEmail(normalizedEmail) ? "email" : "phone";
 
   // Check if user exists
-  const existingUser = isEmail(contact)
-    ? await User.findOne({ email: contact.trim().toLowerCase() })
-    : await User.findOne({ mobile: contact.trim() });
+  const existingUser = await getRegisteredUserByContact(
+    contactType === "email" ? normalizedEmail : normalizedPhone,
+  );
 
   if (!password || typeof password !== "string") {
     throw new Error("Password is required");
@@ -254,21 +377,16 @@ export const authenticateUser = async ({ contact, password }) => {
     // User doesn't exist - create a PendingUser and start registration
     const otpMethods = await getEnabledOtpMethods();
     const hashedPassword = await bcrypt.hash(password, 10);
+    const pendingName =
+      contactType === "email"
+        ? normalizedEmail.split("@")[0] || "User"
+        : normalizedPhone || "User";
 
-    const pendingData = { password: hashedPassword };
-
-    if (contactType === "email") {
-      pendingData.email = contact.trim().toLowerCase();
-      // Extract name from email local-part
-      pendingData.name = contact.split("@")[0] || "User";
-    } else {
-      pendingData.mobile = contact.trim();
-      // Use phone as temporary name until email is provided
-      pendingData.name = contact.trim();
-    }
-
-    const pendingUser = new PendingUser(pendingData);
-    await pendingUser.save();
+    const { pendingUser, reusedPendingUser } = await upsertPendingUser({
+      contact: contactType === "email" ? normalizedEmail : normalizedPhone,
+      name: pendingName,
+      password: hashedPassword,
+    });
 
     const method = contactType === "email" ? "email" : "sms";
     const isContactTypeEnabled =
@@ -281,7 +399,7 @@ export const authenticateUser = async ({ contact, password }) => {
         contactType,
         method,
         pendingUser._id,
-        pendingData.name,
+        pendingName,
       );
 
       return {
@@ -289,6 +407,7 @@ export const authenticateUser = async ({ contact, password }) => {
         pendingUserId: pendingUser._id,
         contactType,
         nextStep: "verify-otp",
+        verificationPending: reusedPendingUser,
       };
     }
 
@@ -304,6 +423,7 @@ export const authenticateUser = async ({ contact, password }) => {
       contactType,
       nextStep: fallbackStep,
       missingContactType: fallbackContactType,
+      verificationPending: reusedPendingUser,
     };
   }
 };
@@ -323,6 +443,29 @@ export const finalizeRegistration = async (pendingUserId) => {
     );
   }
 
+  const contactValue = pendingUser.email || pendingUser.mobile;
+  const existingUser = await getRegisteredUserByContact(contactValue);
+
+  if (existingUser) {
+    await deletePendingUserByContact(contactValue);
+
+    const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "24h",
+    });
+
+    return {
+      user: {
+        id: existingUser._id,
+        name: existingUser.name,
+        email: existingUser.email,
+        mobile: existingUser.mobile,
+        role: existingUser.role,
+        status: existingUser.status,
+      },
+      token,
+    };
+  }
+
   // Create user in main DB
   const needsEmail = otpMethods.email && !!pendingUser.email;
   const needsPhone = otpMethods.phone && !!pendingUser.mobile;
@@ -339,11 +482,42 @@ export const finalizeRegistration = async (pendingUserId) => {
     status: "active",
   };
 
-  const user = new User(userData);
-  await user.save();
+  let user;
+  try {
+    user = await User.create(userData);
+  } catch (error) {
+    if (error?.code === 11000) {
+      const existingUserAfterRace = await getRegisteredUserByContact(contactValue);
+      if (existingUserAfterRace) {
+        await deletePendingUserByContact(contactValue);
+
+        const token = jwt.sign(
+          { id: existingUserAfterRace._id },
+          process.env.JWT_SECRET,
+          {
+            expiresIn: "24h",
+          },
+        );
+
+        return {
+          user: {
+            id: existingUserAfterRace._id,
+            name: existingUserAfterRace.name,
+            email: existingUserAfterRace.email,
+            mobile: existingUserAfterRace.mobile,
+            role: existingUserAfterRace.role,
+            status: existingUserAfterRace.status,
+          },
+          token,
+        };
+      }
+    }
+
+    throw error;
+  }
 
   // Delete pending user
-  await PendingUser.findByIdAndDelete(pendingUserId);
+  await deletePendingUserByContact(contactValue);
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "24h",
@@ -363,7 +537,7 @@ export const finalizeRegistration = async (pendingUserId) => {
 
 // Forgot Password
 export const forgotPassword = async (email) => {
-  const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: normalizeEmail(email) });
   if (!user) {
     throw new Error("User not found");
   }
@@ -818,7 +992,7 @@ export const setupGoogleStrategy = () => {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL:
           process.env.GOOGLE_CALLBACK_URL ||
-          "http://localhost:5000/api/auth/google/callback",
+          "http://localhost:7000/api/auth/google/callback",
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -844,13 +1018,14 @@ export const setupGoogleStrategy = () => {
 export const sendEmailUpdateOTP = async (userId, newEmail) => {
   // Validate new email format
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
-  if (!emailRegex.test(newEmail)) {
+  const normalizedNewEmail = normalizeEmail(newEmail);
+  if (!emailRegex.test(normalizedNewEmail)) {
     throw new Error("Invalid email format");
   }
 
   // Check if email is already in use by another user
   const existingUser = await User.findOne({
-    email: newEmail.toLowerCase(),
+    email: normalizedNewEmail,
     _id: { $ne: userId },
   });
   if (existingUser) {
@@ -871,7 +1046,7 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
   // Check if there's already a pending request for this user/email
   const existingRequest = await EmailUpdateRequest.findOne({
     userId,
-    newEmail: newEmail.toLowerCase(),
+    newEmail: normalizedNewEmail,
   });
 
   if (existingRequest) {
@@ -881,8 +1056,11 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
       existingRequest.attempts < 3
     ) {
       // Resend existing OTP
-      await sendEmailOTP(newEmail, existingRequest.otp, user.name);
-      console.log("✅ Email update OTP resent successfully to:", newEmail);
+      await sendEmailOTP(normalizedNewEmail, existingRequest.otp, user.name);
+      console.log(
+        "✅ Email update OTP resent successfully to:",
+        normalizedNewEmail,
+      );
       return { success: true, message: "OTP sent to new email address" };
     }
 
@@ -893,15 +1071,18 @@ export const sendEmailUpdateOTP = async (userId, newEmail) => {
   const otp = generateOTP();
   const emailUpdateRequest = new EmailUpdateRequest({
     userId,
-    newEmail: newEmail.toLowerCase(),
+    newEmail: normalizedNewEmail,
     otp,
   });
 
   await emailUpdateRequest.save();
 
   // Send OTP to new email
-  await sendEmailOTP(newEmail, otp, user.name);
-  console.log("✅ Email update OTP sent successfully to:", newEmail);
+  await sendEmailOTP(normalizedNewEmail, otp, user.name);
+  console.log(
+    "✅ Email update OTP sent successfully to:",
+    normalizedNewEmail,
+  );
 
   return { success: true, message: "OTP sent to new email address" };
 };

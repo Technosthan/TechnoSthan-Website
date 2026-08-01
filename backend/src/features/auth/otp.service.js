@@ -47,6 +47,9 @@ export const detectContactType = (contact) => {
   return contact.includes("@") ? "email" : "phone";
 };
 
+const normalizeEmail = (email) =>
+  typeof email === "string" ? email.trim().toLowerCase() : "";
+
 export const validateContact = (contact, type) => {
   if (type === "email") {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -236,7 +239,7 @@ export const sendOTP = async (
 
   // Normalize contact
   const normalizedContact =
-    contactType === "email" ? contact.toLowerCase() : contact;
+    contactType === "email" ? contact.trim().toLowerCase() : contact.trim();
 
   // Rate limiting: Check recent OTP requests (last 1 minute)
   const recentOTP = await OTP.findOne({
@@ -284,18 +287,25 @@ export const sendOTP = async (
   // Update pending user with contact if not set
   if (pendingUserId) {
     const pendingUser = await PendingUser.findById(pendingUserId);
-    if (pendingUser) {
-      if (contactType === "email" && !pendingUser.email) {
-        pendingUser.email = normalizedContact;
-      } else if (contactType === "phone" && !pendingUser.mobile) {
-        pendingUser.mobile = normalizedContact;
-      }
-      // Update name if provided (e.g., when user provides email/phone later)
-      if (name && (!pendingUser.name || pendingUser.name === "")) {
-        pendingUser.name = name;
-      }
-      await pendingUser.save();
+    if (!pendingUser) {
+      throw new Error(
+        "Your verification request has expired. Please start again.",
+      );
     }
+
+    if (contactType === "email") {
+      pendingUser.email = normalizedContact;
+    } else if (contactType === "phone") {
+      pendingUser.mobile = normalizedContact;
+    }
+
+    if (name && (!pendingUser.name || pendingUser.name === "")) {
+      pendingUser.name = name;
+    }
+
+    pendingUser.lastOtpSent = new Date();
+    pendingUser.otpAttempts = 0;
+    await pendingUser.save();
   }
 
   // Create OTP record
@@ -396,7 +406,9 @@ export const verifyOTP = async (contact, otp) => {
   console.log("INPUT OTP:", otp);
 
   // 2. NORMALIZE CONTACT
-  contact = contact.trim().toLowerCase();
+  contact = contact.includes("@")
+    ? contact.trim().toLowerCase()
+    : contact.trim();
 
   console.log("NORMALIZED CONTACT:", contact);
 
@@ -462,8 +474,50 @@ export const verifyOTP = async (contact, otp) => {
         (!phoneRequired || pendingUser.phoneVerified);
 
       if (canFinalize) {
+        const contactValue =
+          otpRecord.contactType === "email"
+            ? pendingUser.email || normalizeEmail(otpRecord.contact)
+            : pendingUser.mobile || otpRecord.contact.trim();
+
+        const existingUser = await User.findOne(
+          otpRecord.contactType === "email"
+            ? { email: contactValue }
+            : { mobile: contactValue },
+        );
+
+        if (existingUser) {
+          await PendingUser.deleteOne(
+            otpRecord.contactType === "email"
+              ? { email: contactValue }
+              : { mobile: contactValue },
+          );
+
+          const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, {
+            expiresIn: "24h",
+          });
+
+          return {
+            success: true,
+            contactType: otpRecord.contactType,
+            finalized: true,
+            token,
+            user: {
+              id: existingUser._id,
+              name: existingUser.name,
+              email: existingUser.email,
+              mobile: existingUser.mobile,
+              role: existingUser.role,
+              status: existingUser.status,
+              emailVerified: existingUser.emailVerified,
+              phoneVerified: existingUser.phoneVerified,
+              telegramLinked: existingUser.telegramLinked,
+              telegramUsername: existingUser.telegramUsername,
+            },
+          };
+        }
+
         // Finalize registration
-        const user = new User({
+        const userData = {
           name: pendingUser.name,
           password: pendingUser.password,
           email: pendingUser.email,
@@ -472,11 +526,62 @@ export const verifyOTP = async (contact, otp) => {
           emailVerified: !emailRequired || !!pendingUser.emailVerified,
           phoneVerified: !phoneRequired || !!pendingUser.phoneVerified,
           status: "active",
-        });
-        await user.save();
+        };
+
+        let user;
+        try {
+          user = await User.create(userData);
+        } catch (error) {
+          if (error?.code === 11000) {
+            const existingUserAfterRace = await User.findOne(
+              otpRecord.contactType === "email"
+                ? { email: contactValue }
+                : { mobile: contactValue },
+            );
+
+            if (existingUserAfterRace) {
+              await PendingUser.deleteOne({
+                _id: otpRecord.pendingUserId,
+              });
+
+              const token = jwt.sign(
+                { id: existingUserAfterRace._id },
+                process.env.JWT_SECRET,
+                {
+                  expiresIn: "24h",
+                },
+              );
+
+              return {
+                success: true,
+                contactType: otpRecord.contactType,
+                finalized: true,
+                token,
+                user: {
+                  id: existingUserAfterRace._id,
+                  name: existingUserAfterRace.name,
+                  email: existingUserAfterRace.email,
+                  mobile: existingUserAfterRace.mobile,
+                  role: existingUserAfterRace.role,
+                  status: existingUserAfterRace.status,
+                  emailVerified: existingUserAfterRace.emailVerified,
+                  phoneVerified: existingUserAfterRace.phoneVerified,
+                  telegramLinked: existingUserAfterRace.telegramLinked,
+                  telegramUsername: existingUserAfterRace.telegramUsername,
+                },
+              };
+            }
+          }
+
+          throw error;
+        }
 
         // Delete pending user
-        await PendingUser.findByIdAndDelete(otpRecord.pendingUserId);
+        await PendingUser.deleteOne(
+          otpRecord.contactType === "email"
+            ? { email: contactValue }
+            : { mobile: contactValue },
+        );
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
           expiresIn: "24h",
@@ -528,7 +633,7 @@ export const verifyOTP = async (contact, otp) => {
     // It's for login
     const user = await User.findOne(
       otpRecord.contactType === "email"
-        ? { email: otpRecord.contact.toLowerCase() }
+        ? { email: normalizeEmail(otpRecord.contact) }
         : { mobile: otpRecord.contact },
     );
 
@@ -576,7 +681,7 @@ export const verifyOTP = async (contact, otp) => {
 export const registerWithOTP = async (email, phone, name) => {
   // Check if user already exists
   const existingUser = await User.findOne({
-    $or: [{ email: email?.toLowerCase() }, { mobile: phone }],
+    $or: [{ email: normalizeEmail(email) }, { mobile: phone }],
   });
 
   if (existingUser) {
@@ -586,7 +691,7 @@ export const registerWithOTP = async (email, phone, name) => {
   // Create user
   const user = new User({
     name,
-    email: email?.toLowerCase(),
+    email: normalizeEmail(email),
     mobile: phone,
     role: "student",
     status: "active",
@@ -620,7 +725,7 @@ export const registerWithOTP = async (email, phone, name) => {
 export const loginWithOTP = async (contact, contactType) => {
   const user = await User.findOne(
     contactType === "email"
-      ? { email: contact.toLowerCase() }
+      ? { email: normalizeEmail(contact) }
       : { mobile: contact },
   );
 

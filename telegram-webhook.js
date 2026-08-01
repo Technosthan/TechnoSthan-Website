@@ -24,7 +24,7 @@ if (existsSync(backendEnvPath)) {
 const app = express();
 app.use(express.json());
 
-const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:5000";
+const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:7000";
 const TELEGRAM_USE_POLLING = String(process.env.TELEGRAM_USE_POLLING || "")
   .trim()
   .toLowerCase();

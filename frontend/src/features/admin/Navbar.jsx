@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { LogOut, User } from "lucide-react";
+import { Home, LogOut, User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -46,6 +46,14 @@ const Navbar = () => {
 
         {/* Right side - User info and logout */}
         <div className="flex items-center space-x-4">
+          <Link
+            to="/?view=website"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${theme.navItem} transition-all duration-200 font-medium shadow-lg hover:shadow-xl`}
+          >
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Home</span>
+          </Link>
+
           {/* User Info */}
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">

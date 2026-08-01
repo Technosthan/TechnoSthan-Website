@@ -10,6 +10,12 @@ import OtpEmailProvider from "./otpEmailProvider.model.js";
 import OtpPhoneProvider from "./otpPhoneProvider.model.js";
 import AuthSettings from "./authSettings.model.js";
 import { OtpManager } from "../../services/otp/otpManager.js";
+import {
+  getRuntimeDefaultEmailProvider,
+  getSendGridConfigurationError,
+  isSupportedEmailProviderType,
+  parseEmailAddress,
+} from "../../services/email/emailProviderDefaults.js";
 
 const MASK_VALUE = "***";
 
@@ -106,7 +112,7 @@ const validateEmailProviderPayload = (payload, options = {}) => {
       if (active) {
         if (!payload.apiKey?.trim())
           throw new Error("SendGrid API key is required");
-        if (!payload.senderEmail?.trim())
+        if (!payload.senderEmail?.trim() && !payload.fromEmail?.trim())
           throw new Error("SendGrid sender email is required");
       }
       break;
@@ -284,12 +290,26 @@ const buildProviderSecrets = (payload = {}, existing = {}) => {
 };
 
 const getActiveEmailProvider = async () => {
-  return await OtpEmailProvider.findOne({
+  const provider = await OtpEmailProvider.findOne({
     status: "active",
     isDeleted: false,
   })
     .sort({ isDefault: -1 })
     .select("+password +apiKey +accessKey +secretKey");
+
+  if (!provider) {
+    return null;
+  }
+
+  if (!isSupportedEmailProviderType(provider.providerType)) {
+    console.warn("[Email Provider] Unsupported stored provider type:", {
+      providerType: provider.providerType,
+      providerId: provider._id,
+    });
+    return null;
+  }
+
+  return provider;
 };
 
 const getActivePhoneProvider = async () => {
@@ -400,7 +420,100 @@ const verifySmtpProvider = async (provider) => {
   await transporter.verify();
 };
 
-const sendEmailViaSmtp = async (provider, { to, subject, html, text }) => {
+const normalizeEmailList = (value) => {
+  if (!value) return [];
+
+  const list = Array.isArray(value) ? value : [value];
+  return list
+    .map((entry) => {
+      if (!entry) return null;
+      if (typeof entry === "string") {
+        const parsed = parseEmailAddress(entry);
+        return parsed.email
+          ? {
+              email: parsed.email,
+              name: parsed.name || undefined,
+            }
+          : null;
+      }
+
+      if (typeof entry === "object") {
+        const email = String(entry.email || entry.address || "").trim();
+        if (!email) return null;
+        return {
+          email,
+          name: entry.name ? String(entry.name).trim() || undefined : undefined,
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+};
+
+const normalizeAttachments = (attachments) => {
+  if (!Array.isArray(attachments)) return undefined;
+
+  const normalized = attachments
+    .map((attachment) => {
+      if (!attachment) return null;
+      if (typeof attachment !== "object") return null;
+
+      const content = attachment.content || attachment.data || attachment.body;
+      const filename = attachment.filename || attachment.name;
+      if (!content || !filename) return null;
+
+      return {
+        content,
+        filename,
+        type: attachment.type || attachment.contentType,
+        disposition: attachment.disposition,
+        content_id: attachment.contentId || attachment.cid,
+      };
+    })
+    .filter(Boolean);
+
+  return normalized.length ? normalized : undefined;
+};
+
+const resolveSendGridFrom = (provider, senderName, from) => {
+  const providerFrom = parseEmailAddress({
+    email: provider.senderEmail || provider.fromEmail || "",
+    name: provider.fromName || "",
+  });
+  const callerFrom = parseEmailAddress(from);
+
+  return {
+    email:
+      callerFrom.email ||
+      providerFrom.email ||
+      process.env.SENDGRID_FROM_EMAIL ||
+      "",
+    name:
+      senderName ||
+      providerFrom.name ||
+      callerFrom.name ||
+      process.env.SENDGRID_FROM_NAME ||
+      "TechnoSthan",
+  };
+};
+
+const resolveSendGridReplyTo = (provider, replyTo) => {
+  const parsedReplyTo = parseEmailAddress(replyTo || provider.replyTo || "");
+  if (!parsedReplyTo.email) {
+    return undefined;
+  }
+
+  return {
+    email: parsedReplyTo.email,
+    name: parsedReplyTo.name || undefined,
+  };
+};
+
+const sendEmailViaSmtp = async (
+  provider,
+  { to, subject, html, text, from, cc, bcc, replyTo, attachments },
+) => {
   const transporter = nodemailer.createTransport({
     host: provider.host,
     port: Number(provider.port) || 587,
@@ -415,43 +528,170 @@ const sendEmailViaSmtp = async (provider, { to, subject, html, text }) => {
         : undefined,
   });
 
-  const from =
-    provider.senderEmail || provider.fromEmail || process.env.EMAIL_FROM;
-  const message = { from, to, subject, html, text };
-  const result = await transporter.sendMail(message);
-  return result;
-};
-
-const sendEmailViaSendGrid = async (provider, { to, subject, html, text }) => {
-  const url = "https://api.sendgrid.com/v3/mail/send";
-  const payload = {
-    personalizations: [{ to: [{ email: to }] }],
-    from: {
-      email:
-        provider.senderEmail || provider.fromEmail || process.env.EMAIL_FROM,
-    },
-    subject,
-    content: [
-      { type: "text/plain", value: text },
-      { type: "text/html", value: html },
-    ],
-  };
-  await axios.post(url, payload, {
-    headers: {
-      Authorization: `Bearer ${provider.apiKey}`,
-      "Content-Type": "application/json",
-    },
-  });
-};
-
-const sendEmailViaResend = async (provider, { to, subject, html, text }) => {
-  const url = "https://api.resend.com/v1/emails";
-  const payload = {
-    from: provider.fromEmail || provider.senderEmail || process.env.EMAIL_FROM,
+  const resolvedFrom =
+    provider.senderEmail ||
+    provider.fromEmail ||
+    parseEmailAddress(from).email ||
+    process.env.EMAIL_FROM;
+  const message = {
+    from: resolvedFrom,
     to,
     subject,
     html,
     text,
+    cc,
+    bcc,
+    replyTo,
+    attachments,
+  };
+  const result = await transporter.sendMail(message);
+  return result;
+};
+
+const sendEmailViaSendGrid = async (
+  provider,
+  {
+    to,
+    subject,
+    html,
+    text,
+    cc,
+    bcc,
+    replyTo,
+    attachments,
+    headers,
+    categories,
+    customArgs,
+    dynamicTemplateData,
+    templateId,
+    senderName,
+    from,
+  },
+) => {
+  const url = "https://api.sendgrid.com/v3/mail/send";
+  const resolvedFrom = resolveSendGridFrom(provider, senderName, from);
+  const personalizations = [
+    {
+      to: normalizeEmailList(to),
+    },
+  ];
+
+  const ccList = normalizeEmailList(cc);
+  if (ccList.length) {
+    personalizations[0].cc = ccList;
+  }
+
+  const bccList = normalizeEmailList(bcc);
+  if (bccList.length) {
+    personalizations[0].bcc = bccList;
+  }
+
+  if (headers && typeof headers === "object" && Object.keys(headers).length) {
+    personalizations[0].headers = headers;
+  }
+
+  if (
+    customArgs &&
+    typeof customArgs === "object" &&
+    Object.keys(customArgs).length
+  ) {
+    personalizations[0].custom_args = customArgs;
+  }
+
+  if (
+    dynamicTemplateData &&
+    typeof dynamicTemplateData === "object" &&
+    Object.keys(dynamicTemplateData).length
+  ) {
+    personalizations[0].dynamic_template_data = dynamicTemplateData;
+  }
+
+  const payload = {
+    personalizations,
+    from: resolvedFrom,
+    subject,
+    content: [],
+  };
+
+  const resolvedReplyTo = resolveSendGridReplyTo(provider, replyTo);
+  if (resolvedReplyTo) {
+    payload.reply_to = resolvedReplyTo;
+  }
+
+  if (categories) {
+    payload.categories = Array.isArray(categories) ? categories : [categories];
+  }
+
+  const normalizedAttachments = normalizeAttachments(attachments);
+  if (normalizedAttachments) {
+    payload.attachments = normalizedAttachments;
+  }
+
+  if (templateId) {
+    payload.template_id = templateId;
+  }
+
+  if (text) {
+    payload.content.push({ type: "text/plain", value: text });
+  }
+  if (html) {
+    payload.content.push({ type: "text/html", value: html });
+  }
+
+  if (!payload.content.length && !templateId) {
+    throw new Error("Email content is required");
+  }
+
+  if (!payload.from?.email) {
+    throw new Error(getSendGridConfigurationError());
+  }
+
+  try {
+    await axios.post(url, payload, {
+      headers: {
+        Authorization: `Bearer ${provider.apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    const sendGridMessage =
+      error.response?.data?.errors?.map((item) => item.message).filter(Boolean)
+        .join(" ") ||
+      error.response?.data?.message ||
+      error.message ||
+      "SendGrid send failed";
+
+    console.error("[SendGrid] send failed:", {
+      status: error.response?.status,
+      message: sendGridMessage,
+      from: resolvedFrom.email,
+      hasApiKey: !!provider.apiKey,
+      providerType: provider.providerType,
+    });
+
+    throw new Error(`SendGrid send failed: ${sendGridMessage}`);
+  }
+};
+
+const sendEmailViaResend = async (
+  provider,
+  { to, subject, html, text, from, cc, bcc, replyTo, attachments },
+) => {
+  const url = "https://api.resend.com/v1/emails";
+  const payload = {
+    from:
+      provider.fromEmail ||
+      provider.senderEmail ||
+      parseEmailAddress(from).email ||
+      process.env.EMAIL_FROM,
+    to,
+    subject,
+    html,
+    text,
+    cc,
+    bcc,
+    reply_to: replyTo,
+    attachments,
   };
   await axios.post(url, payload, {
     headers: {
@@ -468,12 +708,18 @@ const verifyResendProvider = async (provider) => {
   });
 };
 
-const sendEmailViaMailgun = async (provider, { to, subject, html, text }) => {
+const sendEmailViaMailgun = async (
+  provider,
+  { to, subject, html, text, from },
+) => {
   const url = `https://api.mailgun.net/v3/${provider.domain}/messages`;
   const data = new URLSearchParams();
   data.append(
     "from",
-    provider.senderEmail || provider.fromEmail || process.env.EMAIL_FROM,
+    provider.senderEmail ||
+      provider.fromEmail ||
+      parseEmailAddress(from).email ||
+      process.env.EMAIL_FROM,
   );
   data.append("to", to);
   data.append("subject", subject);
@@ -498,7 +744,10 @@ const verifyMailgunProvider = async (provider) => {
   });
 };
 
-const sendEmailViaSes = async (provider, { to, subject, html, text }) => {
+const sendEmailViaSes = async (
+  provider,
+  { to, subject, html, text, from },
+) => {
   const ses = new SESClient({
     region: provider.region,
     credentials: {
@@ -517,7 +766,10 @@ const sendEmailViaSes = async (provider, { to, subject, html, text }) => {
       Subject: { Charset: "UTF-8", Data: subject },
     },
     Source:
-      provider.senderEmail || provider.fromEmail || process.env.EMAIL_FROM,
+      provider.senderEmail ||
+      provider.fromEmail ||
+      parseEmailAddress(from).email ||
+      process.env.EMAIL_FROM,
   };
   await ses.send(new SendEmailCommand(params));
 };
@@ -1024,10 +1276,20 @@ export const setDefaultPhoneProvider = async (providerId) => {
 
 export const resolveEmailProvider = async () => {
   const provider = await getActiveEmailProvider();
-  if (!provider) {
-    return null;
+  if (provider) {
+    return provider;
   }
-  return provider;
+
+  const runtimeProvider = getRuntimeDefaultEmailProvider();
+  if (runtimeProvider) {
+    console.log("[Email Provider] Using runtime default provider:", {
+      providerType: runtimeProvider.providerType,
+      source: runtimeProvider.runtimeSource,
+    });
+    return runtimeProvider;
+  }
+
+  return null;
 };
 
 export const resolvePhoneProvider = async () => {
@@ -1043,12 +1305,39 @@ export const sendEmailWithActiveProvider = async ({
   subject,
   html,
   text,
+  from,
+  cc,
+  bcc,
+  replyTo,
+  attachments,
+  headers,
+  categories,
+  customArgs,
+  dynamicTemplateData,
+  templateId,
+  senderName,
 }) => {
   const provider = await resolveEmailProvider();
   if (!provider) {
-    throw new Error("No active email provider configured");
+    throw new Error(getSendGridConfigurationError());
   }
-  return await sendEmailViaProvider(provider, { to, subject, html, text });
+  return await sendEmailViaProvider(provider, {
+    to,
+    subject,
+    html,
+    text,
+    from,
+    cc,
+    bcc,
+    replyTo,
+    attachments,
+    headers,
+    categories,
+    customArgs,
+    dynamicTemplateData,
+    templateId,
+    senderName,
+  });
 };
 
 export const sendPhoneOtpWithActiveProvider = async (

@@ -44,6 +44,28 @@ import {
 
 import User from "./user.model.js";
 
+const getPendingRegistrationMessage = (contactType, verificationPending) =>
+  verificationPending
+    ? `Your verification is still pending. We have sent a new OTP to your ${contactType}.`
+    : `Registration started. OTP sent to ${contactType}`;
+
+const getAuthErrorMessage = (error) => {
+  const rawMessage = String(error?.message || "");
+
+  if (
+    error?.code === 11000 ||
+    /duplicate key|E11000|MongoServerError|index:/i.test(rawMessage)
+  ) {
+    return "A verification request already exists for this email. We have sent a new OTP.";
+  }
+
+  if (/validationerror/i.test(rawMessage)) {
+    return "Something went wrong. Please try again.";
+  }
+
+  return rawMessage || "Something went wrong. Please try again.";
+};
+
 // ================= REGISTER =================
 export const register = async (req, res) => {
   try {
@@ -85,7 +107,10 @@ export const register = async (req, res) => {
 
       return res.status(201).json({
         success: true,
-        message: `Registration started. OTP sent to ${contactType}`,
+        message: getPendingRegistrationMessage(
+          contactType,
+          result.reusedPendingUser,
+        ),
         data: {
           pendingUserId: result.pendingUserId,
           contactType,
@@ -100,7 +125,9 @@ export const register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Registration started. Please verify using ${fallbackContactType}`,
+      message: result.reusedPendingUser
+        ? `Your verification is still pending. Please verify using ${fallbackContactType}. We have sent a new OTP.`
+        : `Registration started. Please verify using ${fallbackContactType}`,
       data: {
         pendingUserId: result.pendingUserId,
         contactType,
@@ -111,7 +138,7 @@ export const register = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };
@@ -131,7 +158,7 @@ export const login = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };
@@ -189,7 +216,10 @@ export const authenticate = async (req, res) => {
       // User doesn't exist - start registration
       return res.json({
         success: true,
-        message: `Registration started. OTP sent to ${result.contactType}`,
+        message: getPendingRegistrationMessage(
+          result.contactType,
+          result.verificationPending,
+        ),
         data: {
           pendingUserId: result.pendingUserId,
           contactType: result.contactType,
@@ -201,7 +231,7 @@ export const authenticate = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };
@@ -236,7 +266,7 @@ export const sendOTPController = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };
@@ -263,7 +293,7 @@ export const verifyOTPController = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };
@@ -290,7 +320,7 @@ export const registerOTP = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };
@@ -318,7 +348,7 @@ export const loginOTP = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: getAuthErrorMessage(error),
     });
   }
 };

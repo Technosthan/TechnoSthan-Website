@@ -7,23 +7,22 @@ const getPublicAccessEnabled = async () => {
     const settings = await loadPublicAccessControlSnapshot();
     if (!settings) {
       console.log(
-        "[optionalAuthMiddleware] No settings found, defaulting to public enabled",
+        "[optionalAuthMiddleware] No settings found, defaulting to public disabled",
       );
-      return true;
+      return false;
     }
-    const publicWebsiteEnabled = settings.publicWebsiteEnabled;
-    const publicAccessSetting = settings.publicAccessEnabled;
-    const enabled =
-      publicWebsiteEnabled === false || publicAccessSetting === false
-        ? false
-        : typeof publicWebsiteEnabled === "boolean"
-          ? publicWebsiteEnabled
-          : typeof publicAccessSetting === "boolean"
-            ? publicAccessSetting
-            : true;
+    const publicWebsiteEnabled =
+      typeof settings.publicWebsiteEnabled === "boolean"
+        ? settings.publicWebsiteEnabled
+        : false;
+    const publicAccessEnabled =
+      typeof settings.publicAccessEnabled === "boolean"
+        ? settings.publicAccessEnabled
+        : false;
+    const enabled = publicWebsiteEnabled && publicAccessEnabled;
     console.log("[optionalAuthMiddleware] Public access enabled:", {
       publicWebsiteEnabled,
-      publicAccessSetting,
+      publicAccessEnabled,
       effectivePublicAccessEnabled: enabled,
     });
     return enabled;
@@ -32,7 +31,7 @@ const getPublicAccessEnabled = async () => {
       "[optionalAuthMiddleware] Failed to read public access settings:",
       error,
     );
-    return true;
+    return false;
   }
 };
 

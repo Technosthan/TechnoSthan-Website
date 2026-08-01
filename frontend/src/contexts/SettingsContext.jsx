@@ -63,7 +63,7 @@ const normalizeSettings = (input = {}, fallback = {}) => {
         ? input.publicAccessEnabled
         : typeof fallback.publicAccessEnabled === "boolean"
           ? fallback.publicAccessEnabled
-          : true,
+          : false,
     publicWebsiteEnabled:
       typeof input.publicWebsiteEnabled === "boolean"
         ? input.publicWebsiteEnabled
@@ -116,7 +116,11 @@ const readCachedSettings = () => {
       return null;
     }
 
-    return normalizeSettings(parsed?.settings || {}, defaultSettings);
+    const cached = normalizeSettings(parsed?.settings || {}, defaultSettings);
+    return {
+      ...cached,
+      publicAccessEnabled: false,
+    };
   } catch {
     return null;
   }
@@ -170,7 +174,7 @@ export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(() => {
     return readCachedSettings() || defaultSettings;
   });
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const hasHydratedRef = React.useRef(Boolean(readCachedSettings()));
 
   const commitSettings = useCallback((nextSettings, source) => {
@@ -200,6 +204,7 @@ export const SettingsProvider = ({ children }) => {
 
   const refreshSettings = useCallback(async () => {
     try {
+      setLoading(true);
       const apiUrl =
         import.meta.env.VITE_API_URL ||
         import.meta.env.VITE_API_BASE_URL_PROD ||
@@ -222,6 +227,8 @@ export const SettingsProvider = ({ children }) => {
 
       hasHydratedRef.current = true;
       commitSettings(defaultSettings, "fallback");
+    } finally {
+      setLoading(false);
     }
   }, [commitSettings]);
 

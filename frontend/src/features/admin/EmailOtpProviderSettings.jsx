@@ -239,7 +239,7 @@ const EmailOtpProviderSettings = ({ theme }) => {
   const [editingProviderId, setEditingProviderId] = useState(null);
   const [providerForm, setProviderForm] = useState({});
   const [showSecrets, setShowSecrets] = useState({});
-  const [newProviderType, setNewProviderType] = useState("smtp");
+  const [newProviderType, setNewProviderType] = useState("sendgrid");
 
   useEffect(() => {
     void fetchProviders();
@@ -266,7 +266,7 @@ const EmailOtpProviderSettings = ({ theme }) => {
       setCreating(true);
       const payload = {
         providerName: "New Email Provider",
-        providerType: providerType || "smtp",
+        providerType: providerType || "sendgrid",
         status: "inactive",
       };
       const res = await createEmailProvider(payload);
@@ -411,6 +411,15 @@ const EmailOtpProviderSettings = ({ theme }) => {
         </div>
       )}
 
+      {providers.length === 0 && (
+        <div
+          className={`mb-4 rounded-2xl border border-dashed ${theme.border} p-4 text-sm ${theme.textSecondary} bg-white/50 dark:bg-gray-900/30`}
+        >
+          No email provider has been configured yet. SendGrid will be used as
+          the default until you add and activate another provider.
+        </div>
+      )}
+
       <div className="space-y-4">
         {providers.map((provider) => {
           const editing = editingProviderId === provider._id;
@@ -497,7 +506,7 @@ const EmailOtpProviderSettings = ({ theme }) => {
                       Provider Type
                     </label>
                     <select
-                      value={providerForm.providerType || "smtp"}
+                      value={providerForm.providerType || "sendgrid"}
                       onChange={(e) => {
                         const newType = e.target.value;
                         setProviderForm((prev) => ({
