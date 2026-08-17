@@ -1,5 +1,0 @@
-ALTER TABLE "Student"
-ADD COLUMN IF NOT EXISTS "profileImage" TEXT,
-ADD COLUMN IF NOT EXISTS "profileImageUrl" TEXT,
-ADD COLUMN IF NOT EXISTS "profileImageAssetId" TEXT,
-ADD COLUMN IF NOT EXISTS "profileImageStorage" TEXT;
