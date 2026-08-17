@@ -1,2 +1,0 @@
-// Contact services placeholder
-export {};

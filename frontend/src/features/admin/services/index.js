@@ -1,2 +1,0 @@
-// Admin services placeholder
-export {};

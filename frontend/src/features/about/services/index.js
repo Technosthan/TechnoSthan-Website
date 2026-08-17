@@ -1,2 +1,0 @@
-// About services placeholder
-export {};
