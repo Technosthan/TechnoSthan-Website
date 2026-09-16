@@ -1,2 +1,0 @@
-// Auth services placeholder
-export {};

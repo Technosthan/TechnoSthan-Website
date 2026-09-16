@@ -1,2 +1,0 @@
-// Contact feature index
-export {};

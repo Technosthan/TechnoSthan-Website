@@ -1,2 +1,0 @@
-// Admin feature index
-export {};
